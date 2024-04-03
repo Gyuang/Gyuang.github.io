@@ -53,16 +53,19 @@ Pl(A) = \sum_{B \cap A \neq \emptyset} m(B)
 $$
 
 ### Mass Function Computation
-각 픽셀과 각 모달리티에 대해, 질량 함수는 특징 벡터와 각 클래스의 전형적인 특징을 나타내는 미리 정의된 프로토타입 중심 사이의 거리를 기반으로 계산됩니다.
+각 픽셀과 각 모달리티에 대해, Mass Function는 특징 벡터와 각 클래스의 전형적인 특징을 나타내는 미리 정의된 프로토타입 중심 사이의 거리를 기반으로 계산됩니다.
 
 - Input: Feature vectors from the encoder-decoder module.
 - Output: Mass functions representing the evidence of segmentation classes.
 
 ### Multi-modality Evidence Fusion Module
-이 통합 모듈은 맥락적 정보와 Dempster의 결합 규칙을 기반으로 하는 할인 메커니즘을 적용하여 각 픽셀에 대해 모든 모달리티의 증거를 결합합니다.
+이 통합 모듈은 맥락적 정보와 Dempster의 결합 규칙을 기반으로 하는 discount 메커니즘을 적용하여 각 픽셀에 대해 모든 모달리티의 증거를 결합합니다.
 
 ### Contextual Discounting
 각 모달리티의 증거는 맥락을 고려하여 다른 클래스에 대한 신뢰성을 반영하는 할인율 벡터에 의해 할인됩니다.
+
+m_i'(A) = \alpha_i \cdot m_i(A) + (1 - \alpha_i) \cdot m(\Omega)
+
 
 ### Dempster’s Rule of Combination
 모든 모달리티에서 할인된 증거는 Dempster의 규칙을 사용하여 결합되어 각 픽셀에 대한 최종적인 집계된 belief function를 생성하며, 이는 그 픽셀의 segmentation 클래스에 대한 불확실성을 정량화합니다.
@@ -72,11 +75,22 @@ $$
 - Output: Combined belief function for each pixel.
 
 $$(m_1 \oplus m_2)(A) = \frac{1}{1 - \kappa} \sum_{B \cap C = A} m_1(B) \cdot m_2(C)$$
-여기서 $$\sum_{B \cap C = A} m_1(B) \cdot m_2(C)$$는 두 질량 함수 간의 충돌 정도를 나타냅니다.
+여기서 $$\sum_{B \cap C = A} m_1(B) \cdot m_2(C)$$는 두 질량 함수 간의 degree of conflict를 나타냅니다.
 
 ### Loss Function
 discounted Dice 지수를 기반으로 한 새로운 손실 함수가 전체 프레임워크를 훈련시키기 위해 도입되었습니다. 이 손실 함수는 segmentation 결과와 그 결과에 대한 신뢰도를 모두 고려함으로써 segmentation 정확도와 신뢰성을 극대화하려는 목표를 가집니다.
 
+$$
+
+\text{loss}_D = 1 - \frac{2 \sum_{n=1}^{N} \beta_{S_n} G_n}{\sum_{n=1}^{N} \beta_{S_n} + \sum_{n=1}^{N} G_n},
+
+여기서, \(\beta_{S_n}\)은 할인된 소스 정보를 통합함으로써 정규화된 \(n\)번째 복셀에 대한 세분화 출력을 나타내고, \(G_n\)은 \(n\)번째 복셀에 대한 ground truth를 나타내며, \(N\)은 볼륨 내 복셀의 총 수를 나타냅니다. \(\beta_{S_n}\)은 다음과 같이 계산됩니다:
+
+\beta_{S_n} = \frac{\prod_{h=1}^{H} \beta_h pl_{S_h}(\{\omega_k\})}{\sum_{k=1}^{K} \prod_{h=1}^{H} \beta_h pl_{S_h}(\{\omega_k\})},
+
+$$
+
+이 수식에서, \(H\)는 할인된 소스의 수, \(\beta_h\)는 \(h\)번째 소스에 대한 할인율, \(pl_{S_h}(\{\omega_k\})\)는 \(h\)번째 소스에서 \(k\)번째 클래스에 대한 가능성 함수, \(K\)는 세분화 클래스의 총 수를 나타냅니다.
 
 - 이 손실 함수는 모델이 정확하게 segmentation할 뿐만 아니라 높은 확률 영역에서 자신감을 가지고 불확실한 영역에서는 신중하게 행동하도록 장려합니다.
 
