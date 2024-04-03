@@ -38,14 +38,20 @@ last_modified_at: 2024-04-03
   <img src="/assets/images/paper/multimodal/deep_multimodal_guidance.png" alt="deep multimodal guidance" style="width: 100%;">
 </p>
  
-$$x_i^I$$ 는 Inferioir한 modal이고, $$x_i^S$$ 는 Superior한 modal을 뜻함. 마찬가지로 아래첨자 I와 S는 각각 Inferi
+# Deep Multimodal Guidance Model
 
-기본적인 개념은 다음과 같습니다. 
+위의 Figure에서, 아래첨자 I와 S는 각각 Inferior, Superior한 modal을 뜻합니다.
 
-(a): Inferior한 modal과 Superior한 modal을 각각 따로 인코더와 디코더를 이용하여 classification task를 학습한다.
+## 기본적인 개념
 
-(b): Inferior한 modal에서 나온 latant representation을 Superior한 modal의 latent representation으로 바꿉니다. 
+### (a) Inferior한 modal과 Superior한 modal 학습
+Inferior한 modal과 Superior한 modal을 각각 따로 인코더와 디코더를 이용하여 classification task를 학습시킵니다.
 
-(c): (a)에서 학습한 $$E_I$$와 $$D_S$$를 이용하여 다시한번 G를 finetuning 시킵니다.
+### (b) Guidance 모델 학습
+(a)에서 학습한 인코더에서 Inferior한 modal에서 나온 latent representation을 Superior한 modal의 latent representation으로 바꾸는 Guidance 모델을 학습시킵니다.
 
-(d): 마지막 단계로 두개의 representation을 모두 사용하는 $D_C$를 새로 만들어 classification을 진행합니다. 
+### (c) Fine-tuning Guidance 모델
+(a)에서 학습한 $$E_I$$와 $$D_S$$를 frozen 시킨 채로 이용하여 다시 한번 $$G$$를 fine-tuning 시킵니다.
+
+### (d) 결합 Decoder 학습
+마지막 단계로 Inferior한 modal을 이용하여 $$E_I$$와 $$G$$를 frozen시킨 채로 두 개의 representation을 모두 사용하는 $$D_C$$를 새로 만들어 학습시킵니다.
