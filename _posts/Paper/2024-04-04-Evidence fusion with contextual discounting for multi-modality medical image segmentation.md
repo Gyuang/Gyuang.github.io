@@ -5,12 +5,12 @@ excerpt: "논문요약"
 categories:
   - Multimodal
 tags:
-  - [Multimodal, Dempster-Shafer theory, Uncertainty quantification, Segmentation, Brain Miccai]
+  - [Multimodal, Dempster-Shafer theory, Uncertainty quantification, Segmentation, Brain, Miccai]
 
 toc: true
 toc_sticky: true
  
-date: 2024-04-03
+date: 2024-04-04
 last_modified_at: 2024-04-04
 
 ---
