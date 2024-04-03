@@ -38,10 +38,11 @@ last_modified_at: 2024-04-04
 
 ### Basic Concepts of DST
 
-Hypotheses Set (Ω): 모든 가능한 segmentation 클래스의 유한 집합. \Omega = \{\omega_1, \omega_2, ..., \omega_K\}
+Hypotheses Set (Ω): 모든 가능한 segmentation 클래스의 유한 집합. 
+$$\Omega = \{\omega_1, \omega_2, ..., \omega_K\}$$
 
 Mass Function (m): Ω의 각 부분집합에 할당된 신념의 양을 나타내며, $\sum_{A \subseteq \Omega} m(A) = 1$을 만족합니다.
-m: 2^\Omega \rightarrow [0, 1]
+$$ m: 2^\Omega \rightarrow [0, 1] $$
 Belief and Plausibility Functions: 어떤 가설 $A \subseteq \Omega$에 대해 신념의 하한과 상한을 나타냅니다.
 
 ### Mass Function Computation
