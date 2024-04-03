@@ -22,6 +22,7 @@ last_modified_at: 2024-04-04
 ## Method 
 
 
+
 <p align="center">
   <img src="/assets/images/paper/multimodal/Evidence fusion with contextual discounting for multi-modality medical image segmentation.png" alt="deep multimodal guidance" style="width: 100%;">
 </p>
