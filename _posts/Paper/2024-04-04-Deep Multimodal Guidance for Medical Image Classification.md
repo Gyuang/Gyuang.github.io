@@ -34,7 +34,6 @@ Knowledge Distillation(KD)으로도 알려진 S-T 학습은 한 모델에서 다
 
 ## Method 
 
-
 <p align="center">
   <img src="/assets/images/paper/multimodal/deep_multimodal_guidance.png" alt="deep multimodal guidance" style="width: 100%;">
 </p>

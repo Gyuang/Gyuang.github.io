@@ -47,13 +47,16 @@ Mass Function (m): Ω의 각 부분집합에 할당된 신념의 양을 나타�
 $$ m: 2^\Omega \rightarrow [0, 1] $$
 Belief and Plausibility Functions: 어떤 가설 $A \subseteq \Omega$에 대해 신념의 하한과 상한을 나타냅니다.
 
+$$
+Bel(A) = \sum_{\emptyset \neq B \subseteq A} m(B)
+Pl(A) = \sum_{B \cap A \neq \emptyset} m(B)
+$$
+
 ### Mass Function Computation
 각 픽셀과 각 모달리티에 대해, 질량 함수는 특징 벡터와 각 클래스의 전형적인 특징을 나타내는 미리 정의된 프로토타입 중심 사이의 거리를 기반으로 계산됩니다.
 
-
 - Input: Feature vectors from the encoder-decoder module.
 - Output: Mass functions representing the evidence of segmentation classes.
-
 
 ### Multi-modality Evidence Fusion Module
 이 통합 모듈은 맥락적 정보와 Dempster의 결합 규칙을 기반으로 하는 할인 메커니즘을 적용하여 각 픽셀에 대해 모든 모달리티의 증거를 결합합니다.
@@ -68,6 +71,8 @@ Belief and Plausibility Functions: 어떤 가설 $A \subseteq \Omega$에 대해 
 - Input: Discounted mass functions from all modalities.
 - Output: Combined belief function for each pixel.
 
+$$(m_1 \oplus m_2)(A) = \frac{1}{1 - \kappa} \sum_{B \cap C = A} m_1(B) \cdot m_2(C)$$
+여기서 $$\sum_{B \cap C = A} m_1(B) \cdot m_2(C)$$는 두 질량 함수 간의 충돌 정도를 나타냅니다.
 
 ### Loss Function
 discounted Dice 지수를 기반으로 한 새로운 손실 함수가 전체 프레임워크를 훈련시키기 위해 도입되었습니다. 이 손실 함수는 segmentation 결과와 그 결과에 대한 신뢰도를 모두 고려함으로써 segmentation 정확도와 신뢰성을 극대화하려는 목표를 가집니다.
