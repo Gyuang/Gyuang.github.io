@@ -35,16 +35,17 @@ last_modified_at: 2024-04-03
 
 
 <p align="center">
-  <img src="/assets/images/paper/multimodal/deep_multimodal_guidance.png" alt="deep multimodal guidance" style="width: 50%;">
+  <img src="/assets/images/paper/multimodal/deep_multimodal_guidance.png" alt="deep multimodal guidance" style="width: 100%;">
 </p>
  
-$x_i^I$ 는 Inferioir한 modal이고, $x_i^S$ 는 Superior한 modal을 뜻함.
+$$x_i^I$$ 는 Inferioir한 modal이고, $$x_i^S$$ 는 Superior한 modal을 뜻함. 마찬가지로 아래첨자 I와 S는 각각 Inferi
 
 기본적인 개념은 다음과 같습니다. 
+
 (a): Inferior한 modal과 Superior한 modal을 각각 따로 인코더와 디코더를 이용하여 classification task를 학습한다.
 
 (b): Inferior한 modal에서 나온 latant representation을 Superior한 modal의 latent representation으로 바꿉니다. 
 
-(c): (a)에서 학습한 $E_I$와 $D_S$를 이용하여 다시한번 G를 finetuning 시킵니다.
+(c): (a)에서 학습한 $$E_I$$와 $$D_S$$를 이용하여 다시한번 G를 finetuning 시킵니다.
 
 (d): 마지막 단계로 두개의 representation을 모두 사용하는 $D_C$를 새로 만들어 classification을 진행합니다. 
