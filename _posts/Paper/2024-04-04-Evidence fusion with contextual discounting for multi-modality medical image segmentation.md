@@ -31,8 +31,8 @@ last_modified_at: 2024-04-04
 ### Encoder-Decoder Feature Extraction Module
 인코더-디코더 구조는 다양한 모달리티에서 의료 이미지의 특징을 포착하고 재구성하기 위해 설계되었습니다. 인코더는 입력 이미지를 낮은 차원의 특징 공간으로 압축하여 segmentation에 필요한 핵심 정보를 포착합니다. 디코더는 그 특징 공간에서 segmentation된 이미지를 재구성합니다.
 
-- 입력: 다중 모달리티 의료 이미지.
-- 출력: 이미지를 대표하는 특징 맵.
+- Input: Multi-modality medical images.
+- Output: Feature maps representing the images.
 
 ### Evidential Segmentation Module
 이 모듈은 Dempster-Shafer 이론(DST)을 적용하여 추출된 특징에 기반한 각 픽셀(또는 복셀)의 segmentation 클래스에 대한 불확실성을 정량화합니다. 각 픽셀에 대해 각 모달리티별로 신념 함수를 계산하여 각 가능한 segmentation 클래스에 대한 신뢰도를 나타냅니다.
