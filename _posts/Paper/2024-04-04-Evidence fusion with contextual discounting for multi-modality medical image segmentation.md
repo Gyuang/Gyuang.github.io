@@ -1,4 +1,5 @@
 ---
+published: true
 title:  "Evidence fusion with contextual discounting for multi-modality medical image segmentation" 
 excerpt: "논문요약"
 
@@ -65,6 +66,7 @@ Belief and Plausibility Functions: 어떤 가설 $A \subseteq \Omega$에 대해 
 
 - Input: Discounted mass functions from all modalities.
 - Output: Combined belief function for each pixel.
+
 
 ### Loss Function
 discounted Dice 지수를 기반으로 한 새로운 손실 함수가 전체 프레임워크를 훈련시키기 위해 도입되었습니다. 이 손실 함수는 segmentation 결과와 그 결과에 대한 신뢰도를 모두 고려함으로써 segmentation 정확도와 신뢰성을 극대화하려는 목표를 가집니다.
