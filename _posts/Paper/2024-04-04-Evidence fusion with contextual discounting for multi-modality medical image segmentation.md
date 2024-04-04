@@ -40,29 +40,29 @@ last_modified_at: 2024-04-04
 
 Evidential Segmentation (ES) 모듈은 input layer, 두 개의 hidden layer, 그리고 output layer으로 구성되어 있습니다. 이 구조는 입력 벡터를 처리하고 각 복셀의 분할 클래스에 대한 불확실성을 정량화하는 신념 함수를 출력하는 과정을 담당합니다. 
 
-1. **Input layer**: 이 층은 입력 공간에서 프로토타입 $\mathbf{p}_i$에 해당하는 $I$개의 유닛으로 구성됩니다. 입력 벡터 $\mathbf{x}$에 대한 유닛 $i$의 활성화 $s_i$는 다음과 같이 정의됩니다:
+1. **Input layer**: 이 층은 입력 공간에서 프로토타입 $\mathbf{p}_i$에 해당하는 $I$개의 유닛으로 구성됩니다. 입력 벡터 $$\mathbf{x}$$에 대한 유닛 $$i$$의 활성화 $$s_i$$는 다음과 같이 정의됩니다:
 
    $$s_i = \alpha_i \exp(-\gamma_i \|\mathbf{x} - \mathbf{p}_i\|^2)$$
 
-   여기서 $\gamma_i > 0$ 및 $\alpha_i \in [0, 1]$은 활성화를 조절하는 매개변수입니다.
+   여기서 $$\gamma_i > 0$$ 및 $$\alpha_i \in [0, 1]$$은 활성화를 조절하는 매개변수입니다.
 
-2. **두 번째 Oidden layer**: 각 프로토타입 $\mathbf{p}_i$가 제공하는 증거를 나타내는 질량 함수 $m_i$를 계산합니다. 각 클래스 $\omega_k$ ($k = 1, \ldots, K$)에 대한 질량 함수와 클래스 전체 집합 $\Omega$에 대한 질량 함수는 다음과 같이 계산됩니다:
+2. **Hidden layer**: 각 프로토타입 $\mathbf{p}_i$가 제공하는 evidence를 나타내는 질량 함수 $m_i$를 계산합니다. 각 클래스 $$\omega_k$ ($$k = 1, \ldots, K$$)에 대한 질량 함수와 클래스 전체 집합 $\Omega$에 대한 질량 함수는 다음과 같이 계산됩니다:
 
-   - 클래스 $\omega_k$에 대한 질량 함수:
+   - 클래스 $$\omega_k$$에 대한 질량 함수:
      $$m_i(\{\omega_k\}) = u_{ik}s_i$$
 
-   - 클래스 전체 집합 $\Omega$에 대한 질량 함수:
+   - 클래스 전체 집합 $$\Omega$$에 대한 질량 함수:
      $$m_i(\Omega) = 1 - s_i$$
 
-   여기서 $u_{ik}$는 프로토타입 $i$가 클래스 $\omega_k$에 속하는 멤버십 정도를 나타내며, $\sum_{k=1}^{K} u_{ik} = 1$을 만족합니다.
+   여기서 $$u_{ik}$$는 프로토타입 $i$가 클래스 $$\omega_k$$에 속하는 멤버십 정도를 나타내며, $$\sum_{k=1}^{K} u_{ik} = 1$$을 만족합니다.
 
 3. **Output layer**: 모든 프로토타입에서 $m_1, \ldots, m_I$에 이르는 질량 함수를 Dempster의 결합 규칙을 사용하여 집계합니다. 이 과정은 각 복셀의 클래스에 대한 불확실성을 정량화하는 최종 신념 함수를 생성합니다.
 
-이 구조를 통해 ES 모듈은 입력 벡터를 처리하여 각 복셀에 대한 분할 클래스의 불확실성을 정량화하는 신념 함수를 효과적으로 출력할 수 있습니다. 여러 프로토타입에서의 증거를 결합함으로써, 불확실성을 정량화하고 통합하여 분할 작업의 정확성과 견고성을 향상시키는 데 기여합니다.
+이 구조를 통해 ES 모듈은 입력 벡터를 처리하여 각 복셀에 대한 분할 클래스의 불확실성을 정량화하는 신념 함수를 효과적으로 출력할 수 있습니다. 여러 프로토타입에서의 evidence를 결합함으로써, 불확실성을 정량화하고 통합하여 분할 작업의 정확성과 견고성을 향상시키는 데 기여합니다.
 
-### Basic Concepts of DST
+### Basic Concepts of DST(Dempster-Shafer Theory)
 
-> [참고 자료](https://gyuang.github.io/math/Dempster-Shafer/)
+> [DST 참고 자료](https://gyuang.github.io/math/Dempster-Shafer/)
 
 Hypotheses Set (Ω): 모든 가능한 segmentation 클래스의 유한 집합. 
 $$\Omega = \{\omega_1, \omega_2, ..., \omega_K\}$$
@@ -83,16 +83,28 @@ $$
 - Output: Mass functions representing the evidence of segmentation classes.
 
 ### Multi-modality Evidence Fusion Module
-이 통합 모듈은 맥락적 정보와 Dempster의 결합 규칙을 기반으로 하는 discount 메커니즘을 적용하여 각 픽셀에 대해 모든 모달리티의 증거를 결합합니다.
+이 통합 모듈은 맥락적 정보와 Dempster의 결합 규칙을 기반으로 하는 discount 메커니즘을 적용하여 각 픽셀에 대해 모든 모달리티의 evidence를 결합합니다.
+
+이 논문에서는 DST의 discounting operation을 통해 소스 신뢰도를 정량화하는 문제를 다룹니다. 질량 함수 $$m$$이 $$\Omega$$에 대해 정의되고 $$\beta$$가 $[0,1]$ 내의 계수일 때, discount rate $$1-\beta$$를 사용하는 discounting operation은 $$m$$을 더 약하고 정보가 적은 질량 함수 $\beta m$으로 변환합니다. 
+
+$$\beta m = \beta m + (1-\beta)m_?$$
+
+여기서, $$ {}^\beta m $$ 는 $$m_?(\Omega) = 1$$로 정의된 공허한 질량 함수이며, 계수 $$\beta$$는 소스 질량 함수 $$m$$이 신뢰할 수 있다는 믿음의 정도입니다. $$\beta = 1$$일 때는 소스에서 제공된 질량 함수 $m$을 우리 지식의 설명으로 받아들이고, $\beta = 0$일 때는 거부하고 공허한 질량 함수 $m?$를 가집니다. 이 논문에서는 $$\beta \in [0,1]$$인 상황에 초점을 맞추고, Dempster의 규칙을 사용하여 부분적으로 신뢰할 수 있는 불확실한 evidence를 결합합니다.
+
+[17]에서 제안된 바와 같이, 위의 discounting operation은 맥락적 discount으로 확장될 수 있습니다. 이 연산은 다른 맥락에서 정보 소스의 신뢰도에 대한 더 풍부한 메타 지식을 나타낼 수 있습니다. 이는 $$\beta = (\beta_1, ..., \beta_K)$$ 벡터에 의해 매개변수화되며, 여기서 $\beta_k$는 참 클래스가 $$\omega_k$$일 때 소스가 신뢰할 수 있다는 믿음의 정도입니다. discount된 질량 함수의 완전한 표현식은 [17]에 제공되며, 여기서는 나중에 사용될 해당 윤곽 함수의 표현식만 제공합니다.
+
+$$\beta pl(\{\omega_k\}) = 1-\beta_k + \beta_k pl(\{\omega_k\}),  k= 1,...,K$$
+
+독립적인 evidence에 의해 제공되는 여러 소스가 있을 때, discount된 evidence는 Dempster의 규칙에 의해 결합될 수 있습니다. 정보의 두 소스가 있고, 각각 $$S_1$$과 $$S_2$$에 의해 제공된 discount된 윤곽 함수가 $$\beta_1 pl_{S_1}$$과 $$\beta_2 pl_{S_2}$$이며, discount rate 벡터가 $$1-\beta_1$$과 $$1-\beta_2$$일 경우, 결합된 윤곽 함수는 $$\beta_1 pl_{S_1} \beta_2 pl_{S_2}$$의 곱에 비례합니다.
 
 ### Contextual Discounting
-각 모달리티의 증거는 맥락을 고려하여 다른 클래스에 대한 신뢰성을 반영하는 discount율 벡터에 의해 discount됩니다.
+각 모달리티의 evidence는 맥락을 고려하여 다른 클래스에 대한 신뢰성을 반영하는 discount rate 벡터에 의해 discount됩니다.
 
 $$m_i'(A) = \alpha_i \cdot m_i(A) + (1 - \alpha_i) \cdot m(\Omega)$$
 
 
 ### Dempster’s Rule of Combination
-모든 모달리티에서 discount된 증거는 Dempster의 규칙을 사용하여 결합되어 각 픽셀에 대한 최종적인 집계된 belief function를 생성하며, 이는 그 픽셀의 segmentation 클래스에 대한 불확실성을 정량화합니다.
+모든 모달리티에서 discount된 evidence는 Dempster의 규칙을 사용하여 결합되어 각 픽셀에 대한 최종적인 집계된 belief function를 생성하며, 이는 그 픽셀의 segmentation 클래스에 대한 불확실성을 정량화합니다.
 
 
 - Input: Discounted mass functions from all modalities.
@@ -115,8 +127,8 @@ $$\beta_{S_n} = \frac{\prod_{h=1}^{H} \beta_h pl_{S_h}(\{\omega_k\})}{\sum_{k=1}
 
 
 
-이 수식에서, H는 discount된 소스의 수, $$\beta_h$$는 h번째 소스에 대한 discount율, $$pl_{S_h}(\{\omega_k\})$$ 는 h번째 소스에서 k번째 클래스에 대한 가능성 함수, K는 세분화 클래스의 총 수를 나타냅니다.
+이 수식에서, H는 discount된 소스의 수, $$\beta_h$$는 h번째 소스에 대한 discount rate, $$pl_{S_h}(\{\omega_k\})$$ 는 h번째 소스에서 k번째 클래스에 대한 가능성 함수, K는 세분화 클래스의 총 수를 나타냅니다.
 
 - 이 손실 함수는 모델이 정확하게 segmentation할 뿐만 아니라 높은 확률 영역에서 자신감을 가지고 불확실한 영역에서는 신중하게 행동하도록 장려합니다.
 
-증거 통합과 맥락적 discount을 통합함으로써, 제안된 방법은 여러 모달리티에서 보완적인 정보를 효과적으로 활용하여, 특히 모호하거나 충돌하는 증거가 존재할 때 segmentation 정확도와 견고성을 향상시킵니다.
+evidence 통합과 맥락적 discount을 통합함으로써, 제안된 방법은 여러 모달리티에서 보완적인 정보를 효과적으로 활용하여, 특히 모호하거나 충돌하는 evidence가 존재할 때 segmentation 정확도와 견고성을 향상시킵니다.
