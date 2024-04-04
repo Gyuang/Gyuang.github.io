@@ -85,17 +85,17 @@ $$
 ### Multi-modality Evidence Fusion Module
 이 통합 모듈은 맥락적 정보와 Dempster의 결합 규칙을 기반으로 하는 discount 메커니즘을 적용하여 각 픽셀에 대해 모든 모달리티의 evidence를 결합합니다.
 
-이 논문에서는 DST의 discounting operation을 통해 소스 신뢰도를 정량화하는 문제를 다룹니다. 질량 함수 $$m$$이 $$\Omega$$에 대해 정의되고 $$\beta$$가 $[0,1]$ 내의 계수일 때, discount rate $$1-\beta$$를 사용하는 discounting operation은 $$m$$을 더 약하고 정보가 적은 질량 함수 $\beta m$으로 변환합니다. 
+이 논문에서는 DST의 discounting operation을 통해  source 신뢰도를 정량화하는 문제를 다룹니다. 질량 함수 $$m$$이 $$\Omega$$에 대해 정의되고 $$\beta$$가 $[0,1]$ 내의 계수일 때, discount rate $$1-\beta$$를 사용하는 discounting operation은 $$m$$을 더 약하고 정보가 적은 질량 함수 $\beta m$으로 변환합니다. 
 
 $$\beta m = \beta m + (1-\beta)m_?$$
 
-여기서, $$ {}^\beta m $$ 는 $$m_?(\Omega) = 1$$로 정의된 공허한 질량 함수이며, 계수 $$\beta$$는 소스 질량 함수 $$m$$이 신뢰할 수 있다는 믿음의 정도입니다. $$\beta = 1$$일 때는 소스에서 제공된 질량 함수 $m$을 우리 지식의 설명으로 받아들이고, $\beta = 0$일 때는 거부하고 공허한 질량 함수 $m?$를 가집니다. 이 논문에서는 $$\beta \in [0,1]$$인 상황에 초점을 맞추고, Dempster의 규칙을 사용하여 부분적으로 신뢰할 수 있는 불확실한 evidence를 결합합니다.
+여기서, $$ {}^\beta m $$ 는 $$m_?(\Omega) = 1$$로 정의된 vacuous mass function이며, 계수 $$\beta$$는  source 질량 함수 $$m$$이 신뢰할 수 있다는 믿음의 정도입니다. $$\beta = 1$$일 때는  source에서 제공된 질량 함수 $m$을 우리 지식의 설명으로 받아들이고, $\beta = 0$일 때는 거부하고 공허한 질량 함수 $m?$를 가집니다. 이 논문에서는 $$\beta \in [0,1]$$인 상황에 초점을 맞추고, Dempster의 규칙을 사용하여 부분적으로 신뢰할 수 있는 불확실한 evidence를 결합합니다.
 
-[17]에서 제안된 바와 같이, 위의 discounting operation은 맥락적 discount으로 확장될 수 있습니다. 이 연산은 다른 맥락에서 정보 소스의 신뢰도에 대한 더 풍부한 메타 지식을 나타낼 수 있습니다. 이는 $$\beta = (\beta_1, ..., \beta_K)$$ 벡터에 의해 매개변수화되며, 여기서 $\beta_k$는 참 클래스가 $$\omega_k$$일 때 소스가 신뢰할 수 있다는 믿음의 정도입니다. discount된 질량 함수의 완전한 표현식은 [17]에 제공되며, 여기서는 나중에 사용될 해당 윤곽 함수의 표현식만 제공합니다.
+[17]에서 제안된 바와 같이, 위의 discounting operation은 맥락적 discount으로 확장될 수 있습니다. 이 연산은 다른 맥락에서 정보  source의 신뢰도에 대한 더 풍부한 메타 지식을 나타낼 수 있습니다. 이는 $$\beta = (\beta_1, ..., \beta_K)$$ 벡터에 의해 매개변수화되며, 여기서 $\beta_k$는 참 클래스가 $$\omega_k$$일 때  source가 신뢰할 수 있다는 믿음의 정도입니다. discount된 질량 함수의 완전한 표현식은 [17]에 제공되며, 여기서는 나중에 사용될 해당 윤곽 함수의 표현식만 제공합니다.
 
-$$\beta pl(\{\omega_k\}) = 1-\beta_k + \beta_k pl(\{\omega_k\}),  k= 1,...,K$$
+$${}^\beta pl(\{\omega_k\}) = 1-\beta_k + \beta_k pl(\{\omega_k\}),  k= 1,...,K$$
 
-독립적인 evidence에 의해 제공되는 여러 소스가 있을 때, discount된 evidence는 Dempster의 규칙에 의해 결합될 수 있습니다. 정보의 두 소스가 있고, 각각 $$S_1$$과 $$S_2$$에 의해 제공된 discount된 윤곽 함수가 $$\beta_1 pl_{S_1}$$과 $$\beta_2 pl_{S_2}$$이며, discount rate 벡터가 $$1-\beta_1$$과 $$1-\beta_2$$일 경우, 결합된 윤곽 함수는 $$\beta_1 pl_{S_1} \beta_2 pl_{S_2}$$의 곱에 비례합니다.
+독립적인 evidence에 의해 제공되는 여러  source가 있을 때, discount된 evidence는 Dempster의 규칙에 의해 결합될 수 있습니다. 정보의 두  source가 있고, 각각 $$S_1$$과 $$S_2$$에 의해 제공된 discount된 윤곽 함수가 $$\beta_1 pl_{S_1}$$과 $$\beta_2 pl_{S_2}$$이며, discount rate 벡터가 $$1-\beta_1$$과 $$1-\beta_2$$일 경우, 결합된 윤곽 함수는 $$\beta_1 pl_{S_1} \beta_2 pl_{S_2}$$의 곱에 비례합니다.
 
 ### Contextual Discounting
 각 모달리티의 evidence는 맥락을 고려하여 다른 클래스에 대한 신뢰성을 반영하는 discount rate 벡터에 의해 discount됩니다.
@@ -121,13 +121,13 @@ $$
 \text{loss}_D = 1 - \frac{2 \sum_{n=1}^{N} \beta_{S_n} G_n}{\sum_{n=1}^{N} \beta_{S_n} + \sum_{n=1}^{N} G_n}
 $$
 
-여기서, $$\beta_{S_n}$$은 discount된 소스 정보를 통합함으로써 정규화된 n번째 복셀에 대한 세분화 출력을 나타내고, $$G_n$$은 n번째 복셀에 대한 ground truth를 나타내며, N은 볼륨 내 복셀의 총 수를 나타냅니다.$$ \beta_{S_n}$$은 다음과 같이 계산됩니다:
+여기서, $$\beta_{S_n}$$은 discount된  source 정보를 통합함으로써 정규화된 n번째 복셀에 대한 세분화 출력을 나타내고, $$G_n$$은 n번째 복셀에 대한 ground truth를 나타내며, N은 볼륨 내 복셀의 총 수를 나타냅니다.$$ \beta_{S_n}$$은 다음과 같이 계산됩니다:
 
 $$\beta_{S_n} = \frac{\prod_{h=1}^{H} \beta_h pl_{S_h}(\{\omega_k\})}{\sum_{k=1}^{K} \prod_{h=1}^{H} \beta_h pl_{S_h}(\{\omega_k\})}$$
 
 
 
-이 수식에서, H는 discount된 소스의 수, $$\beta_h$$는 h번째 소스에 대한 discount rate, $$pl_{S_h}(\{\omega_k\})$$ 는 h번째 소스에서 k번째 클래스에 대한 가능성 함수, K는 세분화 클래스의 총 수를 나타냅니다.
+이 수식에서, H는 discount된  source의 수, $$\beta_h$$는 h번째  source에 대한 discount rate, $$pl_{S_h}(\{\omega_k\})$$ 는 h번째  source에서 k번째 클래스에 대한 가능성 함수, K는 세분화 클래스의 총 수를 나타냅니다.
 
 - 이 손실 함수는 모델이 정확하게 segmentation할 뿐만 아니라 높은 확률 영역에서 자신감을 가지고 불확실한 영역에서는 신중하게 행동하도록 장려합니다.
 
