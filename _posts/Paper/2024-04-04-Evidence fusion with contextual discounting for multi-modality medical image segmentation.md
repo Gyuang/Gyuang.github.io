@@ -62,13 +62,13 @@ $$
 이 통합 모듈은 맥락적 정보와 Dempster의 결합 규칙을 기반으로 하는 discount 메커니즘을 적용하여 각 픽셀에 대해 모든 모달리티의 증거를 결합합니다.
 
 ### Contextual Discounting
-각 모달리티의 증거는 맥락을 고려하여 다른 클래스에 대한 신뢰성을 반영하는 할인율 벡터에 의해 할인됩니다.
+각 모달리티의 증거는 맥락을 고려하여 다른 클래스에 대한 신뢰성을 반영하는 discount율 벡터에 의해 discount됩니다.
 
 $$m_i'(A) = \alpha_i \cdot m_i(A) + (1 - \alpha_i) \cdot m(\Omega)$$
 
 
 ### Dempster’s Rule of Combination
-모든 모달리티에서 할인된 증거는 Dempster의 규칙을 사용하여 결합되어 각 픽셀에 대한 최종적인 집계된 belief function를 생성하며, 이는 그 픽셀의 segmentation 클래스에 대한 불확실성을 정량화합니다.
+모든 모달리티에서 discount된 증거는 Dempster의 규칙을 사용하여 결합되어 각 픽셀에 대한 최종적인 집계된 belief function를 생성하며, 이는 그 픽셀의 segmentation 클래스에 대한 불확실성을 정량화합니다.
 
 
 - Input: Discounted mass functions from all modalities.
@@ -82,17 +82,17 @@ $$(m_1 \oplus m_2)(A) = \frac{1}{1 - \kappa} \sum_{B \cap C = A} m_1(B) \cdot m_
 discounted Dice 지수를 기반으로 한 새로운 손실 함수가 전체 프레임워크를 훈련시키기 위해 도입되었습니다. 이 손실 함수는 segmentation 결과와 그 결과에 대한 신뢰도를 모두 고려함으로써 segmentation 정확도와 신뢰성을 극대화하려는 목표를 가집니다.
 
 $$
+\text{loss}_D = 1 - \frac{2 \sum_{n=1}^{N} \beta_{S_n} G_n}{\sum_{n=1}^{N} \beta_{S_n} + \sum_{n=1}^{N} G_n}
+$$
 
-\text{loss}_D = 1 - \frac{2 \sum_{n=1}^{N} \beta_{S_n} G_n}{\sum_{n=1}^{N} \beta_{S_n} + \sum_{n=1}^{N} G_n},
-
-$$여기서, $$\beta_{S_n}$$은 할인된 소스 정보를 통합함으로써 정규화된 n번째 복셀에 대한 세분화 출력을 나타내고, $$G_n$$은 n번째 복셀에 대한 ground truth를 나타내며, N은 볼륨 내 복셀의 총 수를 나타냅니다.$$ \beta_{S_n}$$은 다음과 같이 계산됩니다:
+여기서, $$\beta_{S_n}$$은 discount된 소스 정보를 통합함으로써 정규화된 n번째 복셀에 대한 세분화 출력을 나타내고, $$G_n$$은 n번째 복셀에 대한 ground truth를 나타내며, N은 볼륨 내 복셀의 총 수를 나타냅니다.$$ \beta_{S_n}$$은 다음과 같이 계산됩니다:
 
 $$\beta_{S_n} = \frac{\prod_{h=1}^{H} \beta_h pl_{S_h}(\{\omega_k\})}{\sum_{k=1}^{K} \prod_{h=1}^{H} \beta_h pl_{S_h}(\{\omega_k\})}$$
 
-$$
 
-$$이 수식에서, H는 할인된 소스의 수, $$\beta_h$$는 h번째 소스에 대한 할인율, $$pl_{S_h}(\{\omega_k\})$$ 는 h번째 소스에서 k번째 클래스에 대한 가능성 함수, K는 세분화 클래스의 총 수를 나타냅니다.$$
+
+이 수식에서, H는 discount된 소스의 수, $$\beta_h$$는 h번째 소스에 대한 discount율, $$pl_{S_h}(\{\omega_k\})$$ 는 h번째 소스에서 k번째 클래스에 대한 가능성 함수, K는 세분화 클래스의 총 수를 나타냅니다.
 
 - 이 손실 함수는 모델이 정확하게 segmentation할 뿐만 아니라 높은 확률 영역에서 자신감을 가지고 불확실한 영역에서는 신중하게 행동하도록 장려합니다.
 
-증거 통합과 맥락적 할인을 통합함으로써, 제안된 방법은 여러 모달리티에서 보완적인 정보를 효과적으로 활용하여, 특히 모호하거나 충돌하는 증거가 존재할 때 segmentation 정확도와 견고성을 향상시킵니다.
+증거 통합과 맥락적 discount을 통합함으로써, 제안된 방법은 여러 모달리티에서 보완적인 정보를 효과적으로 활용하여, 특히 모호하거나 충돌하는 증거가 존재할 때 segmentation 정확도와 견고성을 향상시킵니다.
