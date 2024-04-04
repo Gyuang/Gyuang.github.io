@@ -27,7 +27,7 @@ last_modified_at: 2024-04-04
   <img src="/assets/images/paper/multimodal/Evidence fusion with contextual discounting for multi-modality medical image segmentation.png" alt="deep multimodal guidance" style="width: 100%;">
 </p>
  
-본 논문에서 제안된 방법은 맥락적 할인과 증거 통합을 통합한 새로운 딥러닝 프레임워크를 도입하여 다양한 모달리티에서 의료 이미지의 segmentation을 향상시킵니다. 이 프레임워크는 Encoder-Decoder Feature Extraction Module, Evidential Segmentation Module, 그리고 Multi-modality Evidence Fusion Module의 세 가지 주요 구성 요소로 이루어져 있습니다.
+본 논문에서 제안된 방법은 contextual discounting과 evidence fusion을 통합한 새로운 딥러닝 프레임워크를 도입하여 다양한 모달리티에서 의료 이미지의 segmentation 성능을 향상시킵니다. 이 프레임워크는 Encoder-Decoder Feature Extraction Module, Evidential Segmentation Module, 그리고 Multi-modality Evidence Fusion Module의 세 가지 주요 구성 요소로 이루어져 있습니다.
 
 ### Encoder-Decoder Feature Extraction Module
 인코더-디코더 구조는 다양한 모달리티에서 의료 이미지의 특징을 포착하고 재구성하기 위해 설계되었습니다. 인코더는 입력 이미지를 낮은 차원의 특징 공간으로 압축하여 segmentation에 필요한 핵심 정보를 포착합니다. 디코더는 그 특징 공간에서 segmentation된 이미지를 재구성합니다.
@@ -75,7 +75,7 @@ m_i'(A) = \alpha_i \cdot m_i(A) + (1 - \alpha_i) \cdot m(\Omega)
 - Output: Combined belief function for each pixel.
 
 $$(m_1 \oplus m_2)(A) = \frac{1}{1 - \kappa} \sum_{B \cap C = A} m_1(B) \cdot m_2(C)$$
-여기서 $$\sum_{B \cap C = A} m_1(B) \cdot m_2(C)$$는 두 질량 함수 간의 degree of conflict를 나타냅니다.
+여기서 $$\kappa = \sum_{B \cap C = \emptyset} m_1(B) \cdot m_2(C)$$는 두 질량 함수 간의 degree of conflict를 나타냅니다.
 
 ### Loss Function
 discounted Dice 지수를 기반으로 한 새로운 손실 함수가 전체 프레임워크를 훈련시키기 위해 도입되었습니다. 이 손실 함수는 segmentation 결과와 그 결과에 대한 신뢰도를 모두 고려함으로써 segmentation 정확도와 신뢰성을 극대화하려는 목표를 가집니다.
