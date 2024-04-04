@@ -43,9 +43,9 @@ last_modified_at: 2024-04-04
 Hypotheses Set (Ω): 모든 가능한 segmentation 클래스의 유한 집합. 
 $$\Omega = \{\omega_1, \omega_2, ..., \omega_K\}$$
 
-Mass Function (m): Ω의 각 부분집합에 할당된 신념의 양을 나타내며, $\sum_{A \subseteq \Omega} m(A) = 1$을 만족합니다.
+Mass Function (m): Ω의 각 부분집합에 할당된 신념의 양을 나타내며, $$\sum_{A \subseteq \Omega} m(A) = 1$$을 만족합니다.
 $$ m: 2^\Omega \rightarrow [0, 1] $$
-Belief and Plausibility Functions: 어떤 가설 $A \subseteq \Omega$에 대해 신념의 하한과 상한을 나타냅니다.
+Belief and Plausibility Functions: 어떤 가설 $$A \subseteq \Omega$$에 대해 신념의 하한과 상한을 나타냅니다.
 
 $$
 Bel(A) = \sum_{\emptyset \neq B \subseteq A} m(B)
@@ -64,7 +64,7 @@ $$
 ### Contextual Discounting
 각 모달리티의 증거는 맥락을 고려하여 다른 클래스에 대한 신뢰성을 반영하는 할인율 벡터에 의해 할인됩니다.
 
-m_i'(A) = \alpha_i \cdot m_i(A) + (1 - \alpha_i) \cdot m(\Omega)
+$$m_i'(A) = \alpha_i \cdot m_i(A) + (1 - \alpha_i) \cdot m(\Omega)$$
 
 
 ### Dempster’s Rule of Combination
@@ -75,6 +75,7 @@ m_i'(A) = \alpha_i \cdot m_i(A) + (1 - \alpha_i) \cdot m(\Omega)
 - Output: Combined belief function for each pixel.
 
 $$(m_1 \oplus m_2)(A) = \frac{1}{1 - \kappa} \sum_{B \cap C = A} m_1(B) \cdot m_2(C)$$
+
 여기서 $$\kappa = \sum_{B \cap C = \emptyset} m_1(B) \cdot m_2(C)$$는 두 질량 함수 간의 degree of conflict를 나타냅니다.
 
 ### Loss Function
@@ -84,13 +85,13 @@ $$
 
 \text{loss}_D = 1 - \frac{2 \sum_{n=1}^{N} \beta_{S_n} G_n}{\sum_{n=1}^{N} \beta_{S_n} + \sum_{n=1}^{N} G_n},
 
-여기서, \(\beta_{S_n}\)은 할인된 소스 정보를 통합함으로써 정규화된 \(n\)번째 복셀에 대한 세분화 출력을 나타내고, \(G_n\)은 \(n\)번째 복셀에 대한 ground truth를 나타내며, \(N\)은 볼륨 내 복셀의 총 수를 나타냅니다. \(\beta_{S_n}\)은 다음과 같이 계산됩니다:
+$$여기서, $$\beta_{S_n}$$은 할인된 소스 정보를 통합함으로써 정규화된 n번째 복셀에 대한 세분화 출력을 나타내고, $$G_n$$은 n번째 복셀에 대한 ground truth를 나타내며, N은 볼륨 내 복셀의 총 수를 나타냅니다.$$ \beta_{S_n}$$은 다음과 같이 계산됩니다:
 
-\beta_{S_n} = \frac{\prod_{h=1}^{H} \beta_h pl_{S_h}(\{\omega_k\})}{\sum_{k=1}^{K} \prod_{h=1}^{H} \beta_h pl_{S_h}(\{\omega_k\})},
+$$\beta_{S_n} = \frac{\prod_{h=1}^{H} \beta_h pl_{S_h}(\{\omega_k\})}{\sum_{k=1}^{K} \prod_{h=1}^{H} \beta_h pl_{S_h}(\{\omega_k\})}$$
 
 $$
 
-이 수식에서, \(H\)는 할인된 소스의 수, \(\beta_h\)는 \(h\)번째 소스에 대한 할인율, \(pl_{S_h}(\{\omega_k\})\)는 \(h\)번째 소스에서 \(k\)번째 클래스에 대한 가능성 함수, \(K\)는 세분화 클래스의 총 수를 나타냅니다.
+$$이 수식에서, H는 할인된 소스의 수, $$\beta_h$$는 h번째 소스에 대한 할인율, $$pl_{S_h}(\{\omega_k\})$$ 는 h번째 소스에서 k번째 클래스에 대한 가능성 함수, K는 세분화 클래스의 총 수를 나타냅니다.$$
 
 - 이 손실 함수는 모델이 정확하게 segmentation할 뿐만 아니라 높은 확률 영역에서 자신감을 가지고 불확실한 영역에서는 신중하게 행동하도록 장려합니다.
 
