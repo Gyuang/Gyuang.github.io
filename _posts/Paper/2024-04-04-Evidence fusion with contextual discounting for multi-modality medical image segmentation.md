@@ -38,7 +38,31 @@ last_modified_at: 2024-04-04
 ### Evidential Segmentation Module
 이 모듈은 Dempster-Shafer 이론(DST)을 적용하여 추출된 특징에 기반한 각 픽셀(또는 복셀)의 segmentation 클래스에 대한 불확실성을 정량화합니다. 각 픽셀에 대해 각 모달리티별로 신념 함수를 계산하여 각 가능한 segmentation 클래스에 대한 신뢰도를 나타냅니다.
 
+Evidential Segmentation (ES) 모듈은 input layer, 두 개의 hidden layer, 그리고 output layer으로 구성되어 있습니다. 이 구조는 입력 벡터를 처리하고 각 복셀의 분할 클래스에 대한 불확실성을 정량화하는 신념 함수를 출력하는 과정을 담당합니다. 
+
+1. **Input layer**: 이 층은 입력 공간에서 프로토타입 $\mathbf{p}_i$에 해당하는 $I$개의 유닛으로 구성됩니다. 입력 벡터 $\mathbf{x}$에 대한 유닛 $i$의 활성화 $s_i$는 다음과 같이 정의됩니다:
+
+   $$s_i = \alpha_i \exp(-\gamma_i \|\mathbf{x} - \mathbf{p}_i\|^2)$$
+
+   여기서 $\gamma_i > 0$ 및 $\alpha_i \in [0, 1]$은 활성화를 조절하는 매개변수입니다.
+
+2. **두 번째 Oidden layer**: 각 프로토타입 $\mathbf{p}_i$가 제공하는 증거를 나타내는 질량 함수 $m_i$를 계산합니다. 각 클래스 $\omega_k$ ($k = 1, \ldots, K$)에 대한 질량 함수와 클래스 전체 집합 $\Omega$에 대한 질량 함수는 다음과 같이 계산됩니다:
+
+   - 클래스 $\omega_k$에 대한 질량 함수:
+     $$m_i(\{\omega_k\}) = u_{ik}s_i$$
+
+   - 클래스 전체 집합 $\Omega$에 대한 질량 함수:
+     $$m_i(\Omega) = 1 - s_i$$
+
+   여기서 $u_{ik}$는 프로토타입 $i$가 클래스 $\omega_k$에 속하는 멤버십 정도를 나타내며, $\sum_{k=1}^{K} u_{ik} = 1$을 만족합니다.
+
+3. **Output layer**: 모든 프로토타입에서 $m_1, \ldots, m_I$에 이르는 질량 함수를 Dempster의 결합 규칙을 사용하여 집계합니다. 이 과정은 각 복셀의 클래스에 대한 불확실성을 정량화하는 최종 신념 함수를 생성합니다.
+
+이 구조를 통해 ES 모듈은 입력 벡터를 처리하여 각 복셀에 대한 분할 클래스의 불확실성을 정량화하는 신념 함수를 효과적으로 출력할 수 있습니다. 여러 프로토타입에서의 증거를 결합함으로써, 불확실성을 정량화하고 통합하여 분할 작업의 정확성과 견고성을 향상시키는 데 기여합니다.
+
 ### Basic Concepts of DST
+
+> [참고 자료](https://gyuang.github.io/math/Dempster-Shafer/)
 
 Hypotheses Set (Ω): 모든 가능한 segmentation 클래스의 유한 집합. 
 $$\Omega = \{\omega_1, \omega_2, ..., \omega_K\}$$
