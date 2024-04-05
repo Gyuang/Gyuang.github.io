@@ -29,26 +29,26 @@ last_modified_at: 2024-04-06
 
 ### Axial attention 
 
-1. **Self-Attention Mechanism**
+  1. **Self-Attention Mechanism**
   기존의 self-Attention Mechanism은 전체 feature map에서 관련 있는 context를 볼 수 있는 장점이 있지만, 모든 patch에 대해 attention을 계산해야 하기 때문에 계산 비용이 매우 높습니다. 또한, 위치 정보의 활용이 불충분하여 non-local context를 계산할 때 위치 정보를 사용하지 않습니다.
 
   $$ y_o = \sum_{p \in N} \text{softmax}_p (q_o^T k_p) v_p $$
 
-2. **Stand-Alone Self Attention**
+  2. **Stand-Alone Self Attention**
 
   이 접근 방식에서는 모든 feature map pixel을 key로 사용하는 대신, query 주변의 MxM개만을 key로 사용하여 계산 복잡성을 줄입니다. 또한, query에 대한 relative positional encoding을 추가하여 위치 정보를 포함시킵니다. 결과적으로 각 pixel(query)은 주변 MxM 공간의 확장된 정보를 가지며, softmax 이후에도 dynamic한 prior를 생성할 수 있습니다.
 
   $$ y_o = \sum_{p \in N_{mxm(o)}} \text{softmax}_p (q_o^T k_p + q_o^T r) v_p $$
 
 
-3. **Position-Sensitivity Self Attention**
+  3. **Position-Sensitivity Self Attention**
 
   이 방식은 query뿐만 아니라 key와 value에 대해서도 relative positional encoding을 추가하여, 한 query에 대한 주변 patch의 attention만 계산할 때 위치 정보가 필수적임을 강조합니다. 추가된 positional encoding은 여러 head에 걸쳐 파라미터를 공유하여 큰 비용 증가 없이 long-range interaction과 positional information을 포함하는 position-sensitive self-attention을 생성합니다.
 
   $$ y_o = \sum_{p \in N_{mxm(o)}} \text{softmax}_p (q_o^T k_p + q_o^T r^q + k_p^T r^k) (v_p + r^v) $$
 
 
-4. **Axial Attention**
+  4. **Axial Attention**
 
   Axial Attention은 receptive field가 local constraint로 작용할 수 있는 stand-alone 메커니즘의 한계를 극복하고, global connection을 사용하여 global 정보를 포착합니다. 각 query에 대해 전체 HW를 key로 사용하는 대신 width-axis와 height-axis 방향으로 2번 적용하여 효율적인 계산을 달성합니다.
 
@@ -60,7 +60,7 @@ last_modified_at: 2024-04-06
   <img src="/assets/images/paper/transformer/Medical Transformer Gated Axial-Attention for Medical Image Segmentation1.png" alt="deep multimodal guidance" style="width: 100%;">
 </p>
 
-1. **Gated axial-attention**
+  1. **Gated axial-attention**
 
   Axial attention 메커니즘은 비주얼 인식에 있어 뛰어난 계산 효율성으로 non-local context를 계산할 수 있으며, 위치적 편향을 메커니즘에 인코딩하고 입력 feature map 내의 장거리 상호작용을 인코딩할 수 있는 능력을 제공합니다. 그러나, 해당 모델은 대규모 분할 데이터셋에서 평가되었으며, 이는 axial attention이 key, query, 및 value에서 위치적 편향을 학습하기 쉽게 만듭니다. 그러나 의료 영상 분할에서 흔히 발생하는 소규모 데이터셋의 실험에서는 위치적 편향을 학습하기 어렵고, 따라서 장거리 상호작용을 정확히 인코딩하지 못할 수 있습니다. 학습된 상대적 위치 인코딩이 충분히 정확하지 않은 경우, 해당 key, query 및 value 텐서에 추가하면 성능이 저하될 수 있습니다. 따라서, non-local context 인코딩에서 위치적 편향이 미치는 영향을 제어할 수 있는 수정된 axial-attention 블록을 제안합니다. 제안된 수정을 통해 width 축에 적용된 자기 주의 메커니즘은 다음과 같이 공식적으로 작성될 수 있습니다:
 
@@ -68,7 +68,7 @@ last_modified_at: 2024-04-06
 
   여기서, 자기 주의 수식은 추가된 게이팅 메커니즘을 포함하여 Eq. 2를 밀접하게 따릅니다. 또한, $$G_Q , G_K , G_{V1},G_{V2}$$는 학습 가능한 파라미터이며, 이들은 함께 학습된 상대적 위치 인코딩이 비-local 컨텍스트 인코딩에 미치는 영향을 제어하는 게이팅 메커니즘을 생성합니다. 일반적으로, 상대적 위치 인코딩이 정확하게 학습된 경우, 게이팅 메커니즘은 정확하지 않게 학습된 것들에 비해 높은 가중치를 할당합니다. 이러한 수정된 axial-attention 블록은 소규모 데이터셋에서도 위치적 편향의 영향을 효과적으로 제어하며 장거리 상호작용의 인코딩을 개선할 수 있습니다.
 
-2. **Local-Global Training**
+  2. **Local-Global Training**
 
   의료 영상 분할과 같은 작업에 있어서 패치 기반의 트랜스포머 학습은 빠르지만, 패치별 학습만으로는 충분하지 않습니다. 패치별 학습은 네트워크가 패치 간 픽셀의 정보나 의존성을 학습하는 데 제한을 둡니다. 이미지에 대한 전반적인 이해를 향상시키기 위해, 두 가지 branch(branch)를 네트워크에 사용할 것을 제안합니다: 하나는 이미지의 원본 해상도에서 작동하는 global branch와 다른 하나는 이미지의 패치에서 작동하는 local branch입니다. global branch에서는 장거리 의존성을 모델링하기에 충분하다고 관찰되는 트랜스포머 모델의 첫 몇 블록으로 gated axial transformer 레이어의 수를 줄입니다. local branch에서는 원본 이미지의 차원 I의 1/4 크기인 16개의 패치를 생성합니다. local branch의 각 패치는 네트워크를 통해 전달되며, 출력 feature map은 위치에 따라 다시 샘플링되어 최종 출력 feature map을 얻습니다. 두 branch의 출력 feature map은 더해진 후 1×1 합성곱 레이어를 통과하여 출력 분할 마스크를 생성합니다. 이 전략은 global branch가 고수준 정보에 집중하고 local branch가 더 세밀한 세부 사항에 집중할 수 있게 하여 성능을 향상시킵니다.
 
