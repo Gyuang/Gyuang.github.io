@@ -100,20 +100,25 @@ $$     \forall k \in [1..Nr], \quad z_k =      \begin{bmatrix}     g_k' \\     w
 
   GLAM-Transformer는 계층적 구조에서 window(window)간 통신을 가능하게 하며, 각 window에서 시각적 토큰이 자신의 로컬 통계를 통해 정보를 잡아내고, 글로벌 토큰을 통해 다른 window과의 정보를 주고받습니다. GLAM-Transformer 블록은 W-MSA(window 기반 selfattention)와 G-MSA(글로벌 selfattention) 단계를 통해 입력을 처리하고, 결과적으로 전체 이미지 영역 간의 상호작용을 모든 해상도에서 나타냅니다. 글로벌 토큰은 모든 window에 걸쳐 연산되어 전체적인 맥락을 이해하는 데 중요한 역할을 합니다.
 
-  즉 첫번째 단계에서 Global Token을 window의 patch 처럼 취급해서 concat하여 붙혀주고, W_MSA를 진행한 뒤에 각 윈도우의 global token들 끼리 G_MSA를 진행하는 것이다. 아래는 다음ㅇ
+  즉 첫번째 단계에서 Global Token을 window의 patch 처럼 취급해서 concat하여 붙혀주고, W_MSA를 진행한 뒤에 각 윈도우의 global token들 끼리 G_MSA를 진행하는 것이다.
 
-  $$\hat{z^l} = W-MSA(z_^{l-1}), \\ g^l = G-MSA(\hat{g^l}), \\ z^l = \begin{bmatrix} g^{l^T}_k & \hat{w}^{l^T}_k \end{bmatrix}^T$$
+  $$\hat{z^l} = W-MSA(z_^{l-1})$$
+  $$g^l = G-MSA(\hat{g^l})$$ 
+  $$z^l = \begin{bmatrix} g^{l^T}_k & \hat{w}^{l^T}_k \end{bmatrix}^T$$
 
   $$A^{l}_r$$ 은 transformer block l에서 window r에대한  attention matrix를 뜻합니다. 
 
   $$ A^{l}_r = \begin{bmatrix} A_{r,gg}^l & A_{r,gw}^l \\ A_{r,wg}^l & A_{r,ww}^l \end{bmatrix}$$
 
-  $$g_{r}^l = \sum_{n=1}^{N_r} B_{rn}^{l} \hat{g}_n^l
+
+
+  $$g_{r}^l = \sum_{n=1}^{N_r} B_{rn}^{l} \hat{g}_n^l \\
             = \sum_{n=1}^{N_r} B_{rn}^{l} (A_{r,gg}'^{l} g_r^{l-1} + A_{r,gw}'^{l} w_r^{l-1})$$
 
+  다음 식은 
 
-  $$ g_{k,r}^l = \sum_{r'=1}^{N_r} \sum_{j=1}^{N_g} b_{k,r,j,r`} \left( \sum_{i=1}^{N_g+N_p} a_{j,r',i} z_{i,r`}^{l-1} \right)$$
-  $$= \sum_{r'=1}^{N_r} \sum_{j=1}^{N_g} b_{k,r,j,r`} \left( \sum_{i=1}^{N_g+N_p} a_{j,r',i} z_{i,r`}^{l-1} \right)$$
+  $$ g_{k,r}^l = \sum_{r'=1}^{N_r} \sum_{j=1}^{N_g} b_{k,r,j,r`} \left( \sum_{i=1}^{N_g+N_p} a_{j,r',i} z_{i,r`}^{l-1} \right)\\$$
+  $$= \sum_{r'=1}^{N_r} \sum_{j=1}^{N_g} b_{k,r,j,r`} \left( \sum_{i=1}^{N_g+N_p} a_{j,r',i} z_{i,r`}^{l-1} \right)\\$$
   $$= \sum_{r'=1}^{N_r} \sum_{j=1}^{N_g} b_{k,r,j,r`} \left( \sum_{i=1}^{N_g+N_p} a_{j,r',i} z_{i,r`}^{l-1} \right)$$
   
 
