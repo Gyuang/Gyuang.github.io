@@ -82,16 +82,15 @@ Swin 아키텍처 통합: GLAM을 Swin 트랜스포머 아키텍처에 통합함
 
   1. Global Tokens
 
-    각 트랜스포머 블록에 대한 입력으로서, \( z_l \)은 각 창의 토큰과 해당 글로벌 토큰이 결합된 배치를 포함합니다. 입력 구조는 다음과 같이 표현됩니다:
+    각 트랜스포머 블록에 대한 입력으로서, $$ z_l $$은 각 창의 토큰과 해당 글로벌 토큰이 결합된 배치를 포함합니다. 입력 구조는 다음과 같이 표현됩니다:
 
+    $$ z_l \in \mathbb{R}^{Nr \times (Ng + Np) \times C} $$
 
-    \[ z_l \in \mathbb{R}^{Nr \times (Ng + Np) \times C} \]
-
-    - \( N_r \) is the number of windows in the feature map.
-    - \( N_p \) is the number of patches per window.
-    - \( N_g \) is the dimension of the global tokens.
-    - \( C \) is the dimension of the tokens.
-    - \( w^{l}_{k} \) is sequence of windows after being processed $$l^th$$ GLAM-transformer block. 
+    - $$ N_r $$ is the number of windows in the feature map.
+    - $$ N_p $$ is the number of patches per window.
+    - $$ N_g $$ is the dimension of the global tokens.
+    - $$ C $$ is the dimension of the tokens.
+    - $$ w^{l}_{k} $$ is sequence of windows after being processed $$l^th$$ GLAM-transformer block. 
   
     $$
     \forall k \in [1..Nr], \quad z_k = 
