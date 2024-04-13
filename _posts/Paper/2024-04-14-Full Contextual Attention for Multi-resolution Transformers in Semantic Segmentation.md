@@ -105,6 +105,24 @@ Swin 아키텍처 통합: GLAM을 Swin 트랜스포머 아키텍처에 통합함
   <p align="center">
     <img src="/assets/images/paper/transformer/GLAM-Transformer.png" alt="ADAPT Architecture" style="width: 100%;">
   </p>
+
+    GLAM-Transformer는 계층적 구조에서 창(window)간 통신을 가능하게 하며, 각 창에서 시각적 토큰이 자신의 로컬 통계를 통해 정보를 잡아내고, 글로벌 토큰을 통해 다른 창과의 정보를 주고받습니다. GLAM-Transformer 블록은 W-MSA(창 기반 자기주의)와 G-MSA(글로벌 자기주의) 단계를 통해 입력을 처리하고, 결과적으로 전체 이미지 영역 간의 상호작용을 모든 해상도에서 나타냅니다. 글로벌 토큰은 모든 창에 걸쳐 연산되어 전체적인 맥락을 이해하는 데 중요한 역할을 합니다.
+
+    $$
+
+    z_l' = W-MSA(z_l^{-1}), \quad g_l' = G-MSA(g_l), \quad z_l' = \begin{bmatrix} g_l'^T & w_l'^T \end{bmatrix}^T
+
+    A_l' = \begin{bmatrix} A_{l,gg}' & A_{l,gw}' \\ A_{l,wg}' & A_{l,ww}' \end{bmatrix}
+
+    g_l' = \sum_{n=1}^{Nr} B_{l}'^{rn} g_l^n, \quad g_l' = \sum_{n=1}^{N_r} B^{l}'_{rn} (A_{l,gg}'^{rn} g_l^{-1} + A_{l,gw}'^{rn} w_l^{-1})
+
+    g_{l,k}' = \sum_{r'=1}^{Nr} \sum_{j=1}^{Ng} b_{k,r',j,r}' (\sum_{i=1}^{N_g+N_p} a_{j,r',i,r,l-1}' z_{i,r}^{-1})
+
+    G_{k,l} = \begin{bmatrix} b_{k,1,1,r}' & \dots & b_{k,Nr,Ng,r}' \end{bmatrix}, \quad g_{k,r,l} = G_{k,l} g_{l}^{-1} + G_{k,l} w_{l}^{-1}
+
+    $$
+
+
   3. Non-Local Upsampling
 
 
