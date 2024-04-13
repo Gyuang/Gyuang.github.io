@@ -141,7 +141,3 @@ NLU 모듈은 skip connection을 쿼리 행렬 $$ Q $$로 변환하고, 저해�
 - attention 행렬: $$ A \in \mathbb{R}^{(4N_p) \times N_p} $$
 
 업샘플링된 저해상도 특징은 채널 수를 조정하는 linear projection을 거쳐 합산되고, Feed Forward (FF) 레이어가 적용됩니다. 최종적으로, skip connection과 업샘플링된 의미적 특징이 결합되어, 표준 U-Net 아키텍처와 유사한 방식으로 NLU를 마무리짓습니다.
-
-
-
-\text{The square matrices } A_{l_r,gg} \in \mathbb{R}^{N_g \times N_g} \text{ and } A_{l_r,ww} \in \mathbb{R}^{N_p \times N_p} \text{ give the attention from the global token and the spatial tokens on themselves respectively. The matrices } A_{l_r,gw} \in \mathbb{R}^{N_g \times N_p} \text{ and } A_{l_r,wg} \in \mathbb{R}^{N_p \times N_g} \text{ are the cross-attention matrices between local and global tokens. We define as } B_l \in \mathbb{R}^{(N_r \cdot N_g) \times (N_r \cdot N_g)} \text{ the global attention matrix from all the global token sequence and } B_{l_{ij}} \in \mathbb{R}^{N_g \times N_g} \text{ as the sub-matrices giving the attention between the global tokens of windows i and j.}
