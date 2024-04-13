@@ -104,18 +104,32 @@ $$     \forall k \in [1..Nr], \quad z_k =      \begin{bmatrix}     g_k' \\     w
 
   $$
 
-  z_l' = W-MSA(z_l^{-1}), \quad g_l' = G-MSA(g_l), \quad z_l' = \begin{bmatrix} g_l'^T & w_l'^T \end{bmatrix}^T
-
-  A_l' = \begin{bmatrix} A_{l,gg}' & A_{l,gw}' \\ A_{l,wg}' & A_{l,ww}' \end{bmatrix}
-
-  g_l' = \sum_{n=1}^{Nr} B_{l}'^{rn} g_l^n, \quad g_l' = \sum_{n=1}^{N_r} B^{l}'_{rn} (A_{l,gg}'^{rn} g_l^{-1} + A_{l,gw}'^{rn} w_l^{-1})
-
-  g_{l,k}' = \sum_{r'=1}^{Nr} \sum_{j=1}^{Ng} b_{k,r',j,r}' (\sum_{i=1}^{N_g+N_p} a_{j,r',i,r,l-1}' z_{i,r}^{-1})
-
-  G_{k,l} = \begin{bmatrix} b_{k,1,1,r}' & \dots & b_{k,Nr,Ng,r}' \end{bmatrix}, \quad g_{k,r,l} = G_{k,l} g_{l}^{-1} + G_{k,l} w_{l}^{-1}
+  \hat{z^l} = W-MSA(z_^{l-1}), \\
+  g^l = G-MSA(\hat{g^l}), \\
+  z^l = \begin{bmatrix} g^{l^T}_k & \hat{w}^{l^T}_k \end{bmatrix}^T
 
   $$
 
+  $$A^{l}_r$$ 은 transformer block l에서 window r에대한  attention matrix를 뜻합니다. 
+
+  $$ A^{l}_r = \begin{bmatrix} A_{r,gg}^l & A_{r,gw}^l \\ A_{r,wg}^l & A_{r,ww}^l \end{bmatrix}$$
+
+  $$g_{r}^l = \sum_{n=1}^{N_r} B_{rn}^{l} \hat{g}_n^l
+            = \sum_{n=1}^{N_r} B_{rn}^{l} (A_{r,gg}'^{l} g_r^{l-1} + A_{r,gw}'^{l} w_r^{l-1})$$
+
+  ```latex
+  \begin{alingn*}
+  g_{k,r}^l = \sum_{r'=1}^{N_r} \sum_{j=1}^{N_g} b_{k,r,j,r`} \left( \sum_{i=1}^{N_g+N_p} a_{j,r',i} z_{i,r`}^{l-1} \right) \\
+  = \sum_{r'=1}^{N_r} \sum_{j=1}^{N_g} b_{k,r,j,r`} \left( \sum_{i=1}^{N_g+N_p} a_{j,r',i} z_{i,r`}^{l-1} \right) \\
+  = \sum_{r'=1}^{N_r} \sum_{j=1}^{N_g} b_{k,r,j,r`} \left( \sum_{i=1}^{N_g+N_p} a_{j,r',i} z_{i,r`}^{l-1} \right) 
+  
+
+  G_{k,l} = \begin{bmatrix} b_{k,1,1,r}' & \dots & b_{k,Nr,Ng,r}' \end{bmatrix}
+  
+  g_{k,r,l} = G_{k,l} g_{l}^{-1} + G_{k,l} w_{l}^{-1}
+
+  \end{align*}
+  ```
 
 ### Non-Local Upsampling
 <p align="center">
