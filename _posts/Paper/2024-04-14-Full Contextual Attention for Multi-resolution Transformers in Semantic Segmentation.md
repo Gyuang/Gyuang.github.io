@@ -89,7 +89,7 @@ $$ z_l \in \mathbb{R}^{Nr \times (Ng + Np) \times C} $$
 - $$ N_p $$ is the number of patches per window.     
 - $$ N_g $$ is the dimension of the global tokens.     
 - $$ C $$ is the dimension of the tokens.    
-- $$ w^{l}_{k} $$ is sequence of windows after being processed $$l^th$$ GLAM-transformer block.         
+- $$ w^{l}_{k} $$ is sequence of windows after being processed $$l^{th}$$ GLAM-transformer block.         
 
 $$     \forall k \in [1..Nr], \quad z_k =      \begin{bmatrix}     g_k' \\     w_k'     \end{bmatrix}     \in \mathbb{R}^{(Ng + Np) \times C}.     $$
 
@@ -102,9 +102,9 @@ GLAM-Transformer는 계층적 구조에서 window(window)간 통신을 가능하
 
 즉 첫번째 단계에서 Global Token을 window의 patch 처럼 취급해서 concat하여 붙혀주고, W_MSA를 진행한 뒤에 각 윈도우의 global token들 끼리 G_MSA를 진행하는 것이다.
 
-$$\hat{z^l} = W-MSA(z_^{l-1})$$
+$$\hat{z^l} = W-MSA(z^{l-1})$$
 
-$$g^l = G-MSA(\hat{g^l})$$ 
+$$g^l = G-MSA(\hat{g}^l)$$ 
 
 $$z^l = \begin{bmatrix} g^{l^T}_k & \hat{w}^{l^T}_k \end{bmatrix}^T$$
 
@@ -112,15 +112,22 @@ $$A^{l}_r$$ 은 transformer block l에서 window r에대한  attention matrix를
 
 $$ A^{l}_r = \begin{bmatrix} A_{r,gg}^l & A_{r,gw}^l \\ A_{r,wg}^l & A_{r,ww}^l \end{bmatrix}$$
 
+정사각 행렬 $$ A_{l_r,gg} \in \mathbb{R}^{N_g \times N_g} $$과 $$ A_{l_r,ww} \in \mathbb{R}^{N_p \times N_p} $$은 각각 글로벌 토큰과 공간 토큰 자체에 대한 attention를 나타냅니다. 행렬 $$ A_{l_r,gw} \in \mathbb{R}^{N_g \times N_p} $$과 $$ A_{l_r,wg} \in \mathbb{R}^{N_p \times N_g} $$은 로컬과 글로벌 토큰 사이의 교차 attention 행렬입니다. $$ B_l \in \mathbb{R}^{(N_r \cdot N_g) \times (N_r \cdot N_g)} $$을 모든 글로벌 토큰 시퀀스에서 글로벌 attention를 나타내는 행렬로 정의하고, $$ B_{l_{ij}} \in \mathbb{R}^{N_g \times N_g} $$를 창 i와 j 사이의 글로벌 토큰 간 attention를 나타내는 부분 행렬로 정의합니다.
 
 
 $$g_{r}^l = \sum_{n=1}^{N_r} B_{rn}^{l} \hat{g}_n^l \\
-          = \sum_{n=1}^{N_r} B_{rn}^{l} (A_{r,gg}'^{l} g_r^{l-1} + A_{r,gw}'^{l} w_r^{l-1})$$
+          = \sum_{n=1}^{N_r} B_{rn}^{l} (A_{r,gg}^{l} g_r^{l-1} + A_{r,gw}^{l} w_r^{l-1})$$
 
 
 $$
 g_{k,r}^{l} = \sum_{r'=1}^{N_r} \sum_{i=1}^{N_p} \left (\sum_{j=1}^{N_g} b_{k,r,j,r'}  a_{j,r',(i+N_g)} w_{i,r'}^{l-1}\right ) + \sum_{r'=1}^{N_r}\left (\sum_{j=1}^{N_g} b_{k,r,j,r'} \sum_{i=1}^{N_g} a_{j,r',i} g_{i,r'}^{l-1}\right )
 $$
+
+이는 글로벌 attention 행렬 $$ G_k \in \mathbb{R}^{(N_r \cdot N_p) \times (N_r \cdot N_p)} $$으로 이어지며, 이 행렬은 $$ k $$번째 글로벌 토큰에 연관된 것으로 다음과 같이 주어집니다:
+\[ [G_k]_{r',i} = \sum_{j=1}^{N_g} b_{k,r,j,r'} a_{j,r',(i+N_g)} + \sum_{j=1}^{N_g} b_{k,r,j,r'} \sum_{i=1}^{N_g} a_{j,r',i} \]
+방정식 (7)은 $$ l $$번째 GLAM-transformer 블록에서 $$ k $$번째 글로벌 토큰 $$ g_{k,r}^l $$의 임베딩을 제공하며, 모든 특징 맵 창의 시각적 토큰 $$ w_{i,r'}^{l-1} $$ (첫 번째 행)과 모든 글로벌 토큰 $$ g_{i,r'}^{l-1} $$ (두 번째 행)에 대해 나타냅니다. 이 두 항은 은 글로벌 임베딩 $$ g_{k,r}^l $$이 해상도에 관계없이 모든 이미지 영역 간의 상호작용을 포착한다는 것을 보여줍니다. 분해된 다양한 항목은 각 이미지 영역과 관련된 attention 맵으로 해석됩니다. 
+
+
 ### Non-Local Upsampling
 <p align="center">
   <img src="/assets/images/paper/transformer/GLAM-NLU.png" alt="Non-Local Upsampling Architecture" style="width: 100%;">
@@ -137,3 +144,4 @@ NLU 모듈은 skip connection을 쿼리 행렬 $$ Q $$로 변환하고, 저해�
 
 
 
+\text{The square matrices } A_{l_r,gg} \in \mathbb{R}^{N_g \times N_g} \text{ and } A_{l_r,ww} \in \mathbb{R}^{N_p \times N_p} \text{ give the attention from the global token and the spatial tokens on themselves respectively. The matrices } A_{l_r,gw} \in \mathbb{R}^{N_g \times N_p} \text{ and } A_{l_r,wg} \in \mathbb{R}^{N_p \times N_g} \text{ are the cross-attention matrices between local and global tokens. We define as } B_l \in \mathbb{R}^{(N_r \cdot N_g) \times (N_r \cdot N_g)} \text{ the global attention matrix from all the global token sequence and } B_{l_{ij}} \in \mathbb{R}^{N_g \times N_g} \text{ as the sub-matrices giving the attention between the global tokens of windows i and j.}
