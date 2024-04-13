@@ -102,13 +102,7 @@ $$     \forall k \in [1..Nr], \quad z_k =      \begin{bmatrix}     g_k' \\     w
 
   즉 첫번째 단계에서 Global Token을 window의 patch 처럼 취급해서 concat하여 붙혀주고, W_MSA를 진행한 뒤에 각 윈도우의 global token들 끼리 G_MSA를 진행하는 것이다. 아래는 다음ㅇ
 
-  $$
-
-  \hat{z^l} = W-MSA(z_^{l-1}), \\
-  g^l = G-MSA(\hat{g^l}), \\
-  z^l = \begin{bmatrix} g^{l^T}_k & \hat{w}^{l^T}_k \end{bmatrix}^T
-
-  $$
+  $$\hat{z^l} = W-MSA(z_^{l-1}), \\ g^l = G-MSA(\hat{g^l}), \\ z^l = \begin{bmatrix} g^{l^T}_k & \hat{w}^{l^T}_k \end{bmatrix}^T$$
 
   $$A^{l}_r$$ 은 transformer block l에서 window r에대한  attention matrix를 뜻합니다. 
 
@@ -117,19 +111,15 @@ $$     \forall k \in [1..Nr], \quad z_k =      \begin{bmatrix}     g_k' \\     w
   $$g_{r}^l = \sum_{n=1}^{N_r} B_{rn}^{l} \hat{g}_n^l
             = \sum_{n=1}^{N_r} B_{rn}^{l} (A_{r,gg}'^{l} g_r^{l-1} + A_{r,gw}'^{l} w_r^{l-1})$$
 
-  ```latex
-  \begin{alingn*}
-  g_{k,r}^l = \sum_{r'=1}^{N_r} \sum_{j=1}^{N_g} b_{k,r,j,r`} \left( \sum_{i=1}^{N_g+N_p} a_{j,r',i} z_{i,r`}^{l-1} \right) \\
-  = \sum_{r'=1}^{N_r} \sum_{j=1}^{N_g} b_{k,r,j,r`} \left( \sum_{i=1}^{N_g+N_p} a_{j,r',i} z_{i,r`}^{l-1} \right) \\
-  = \sum_{r'=1}^{N_r} \sum_{j=1}^{N_g} b_{k,r,j,r`} \left( \sum_{i=1}^{N_g+N_p} a_{j,r',i} z_{i,r`}^{l-1} \right) 
+
+  $$ g_{k,r}^l = \sum_{r'=1}^{N_r} \sum_{j=1}^{N_g} b_{k,r,j,r`} \left( \sum_{i=1}^{N_g+N_p} a_{j,r',i} z_{i,r`}^{l-1} \right)$$
+  $$= \sum_{r'=1}^{N_r} \sum_{j=1}^{N_g} b_{k,r,j,r`} \left( \sum_{i=1}^{N_g+N_p} a_{j,r',i} z_{i,r`}^{l-1} \right)$$
+  $$= \sum_{r'=1}^{N_r} \sum_{j=1}^{N_g} b_{k,r,j,r`} \left( \sum_{i=1}^{N_g+N_p} a_{j,r',i} z_{i,r`}^{l-1} \right)$$
   
 
-  G_{k,l} = \begin{bmatrix} b_{k,1,1,r}' & \dots & b_{k,Nr,Ng,r}' \end{bmatrix}
+  $$G_{k,l} = \begin{bmatrix} b_{k,1,1,r}' & \dots & b_{k,Nr,Ng,r}' \end{bmatrix}$$
   
-  g_{k,r,l} = G_{k,l} g_{l}^{-1} + G_{k,l} w_{l}^{-1}
-
-  \end{align*}
-  ```
+  $$g_{k,r,l} = G_{k,l} g_{l}^{-1} + G_{k,l} w_{l}^{-1}$$
 
 ### Non-Local Upsampling
 <p align="center">
