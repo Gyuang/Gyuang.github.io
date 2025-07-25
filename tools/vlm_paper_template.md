@@ -1,73 +1,73 @@
 ---
 published: true
-title: "{{TITLE}}"
-excerpt: "{{EXCERPT}}"
+title: "__TITLE__"
+excerpt: "__EXCERPT__"
 
 categories:
   - VLM
 tags:
-  - [VLM, Vision-Language, {{ADDITIONAL_TAGS}}]
+  - [VLM, Vision-Language, __ADDITIONAL_TAGS__]
 
 toc: true
 toc_sticky: true
  
-date: {{DATE}}
-last_modified_at: {{DATE}}
+date: __DATE__
+last_modified_at: __DATE__
 
 ---
 
 ## Introduction
 
-{{INTRODUCTION}}
+__INTRODUCTION__
 
 ## Related Work 
 
 ### Vision-Language Models
 
-{{RELATED_WORK_VLM}}
+__RELATED_WORK_VLM__
 
-### {{SPECIFIC_DOMAIN}}
+### __SPECIFIC_DOMAIN__
 
-{{RELATED_WORK_DOMAIN}}
+__RELATED_WORK_DOMAIN__
 
 ## Method 
 
 ### Architecture Overview
 
-{{ARCHITECTURE_DESCRIPTION}}
+__ARCHITECTURE_DESCRIPTION__
 
 <p align="center">
-  <img src="/assets/images/paper/vlm/{{ARCHITECTURE_IMAGE}}" alt="{{TITLE}} Architecture" style="width: 100%;">
+  <img src="/assets/images/paper/vlm/__ARCHITECTURE_IMAGE__" alt="__TITLE__ Architecture" style="width: 100%;">
 </p>
 
 ### Key Components
 
-{{KEY_COMPONENTS}}
+__KEY_COMPONENTS__
 
 ### Training Strategy
 
-{{TRAINING_STRATEGY}}
+__TRAINING_STRATEGY__
 
-{{ADDITIONAL_IMAGES}}
+__ADDITIONAL_IMAGES__
 
 ## Experiments
 
 ### Datasets
 
-{{DATASETS}}
+__DATASETS__
 
 ### Results
 
-{{RESULTS}}
+__RESULTS__
 
 ### Ablation Studies
 
-{{ABLATION_STUDIES}}
+__ABLATION_STUDIES__
 
 ## Conclusion
 
-{{CONCLUSION}}
+__CONCLUSION__
 
 ## Key Takeaways
 
-{{KEY_TAKEAWAYS}}
+__KEY_TAKEAWAYS__
