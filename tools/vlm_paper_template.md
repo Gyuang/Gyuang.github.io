@@ -36,11 +36,9 @@ last_modified_at: {{DATE}}
 
 {{ARCHITECTURE_DESCRIPTION}}
 
-{{#if ARCHITECTURE_IMAGE}}
 <p align="center">
   <img src="/assets/images/paper/vlm/{{ARCHITECTURE_IMAGE}}" alt="{{TITLE}} Architecture" style="width: 100%;">
 </p>
-{{/if}}
 
 ### Key Components
 
@@ -50,9 +48,7 @@ last_modified_at: {{DATE}}
 
 {{TRAINING_STRATEGY}}
 
-{{#if ADDITIONAL_IMAGES}}
 {{ADDITIONAL_IMAGES}}
-{{/if}}
 
 ## Experiments
 
