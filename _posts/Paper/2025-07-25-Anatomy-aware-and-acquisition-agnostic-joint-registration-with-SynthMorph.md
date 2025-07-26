@@ -18,60 +18,37 @@ last_modified_at: 2025-07-25
 
 ## Introduction
 
-Affine image registration is a cornerstone of medical image analysis. While classical algorithms can achieve excellent accuracy, they solve a time-consuming optimization for every image pair. Deep-learning (DL) methods learn a function that maps an image pair to an output transform. Evaluating the function is fast, but capturing large transforms can be challenging, and networks tend to struggle if a test-image characteristic shifts from the training domain, such as resolution. Most affine method...
+Affine image registration is a cornerstone of medical image analysis that aligns brain images for comparative studies and preprocessing pipelines. While classical optimization-based algorithms achieve excellent accuracy, they require time-consuming optimization for every image pair and struggle with anatomy-specific alignment requirements. SynthMorph addresses these limitations by introducing a deep learning approach that is both anatomy-aware and acquisition-agnostic, enabling fast and robust registration across diverse neuroimaging protocols without preprocessing.
 
-## Related Work 
+## Methods
 
-### Vision-Language Models
+The SynthMorph methodology introduces several key innovations for robust medical image registration:
 
-기존 Vision-Language 모델들과의 비교 연구가 필요합니다.
+1. **Synthetic Training Data Generation**: Train networks exclusively using synthetically generated images from 100 whole-head tissue segmentations sourced from UKBB, OASIS, ABCD, and infant scan datasets
 
-### Computer Vision
+2. **Three Core Affine Registration Architectures**: 
+   - Parameter Encoder: Directly predicts affine transformation parameters
+   - Warp Decomposer: Decomposes displacement fields into affine components
+   - Feature Detector: Extracts anatomical features for registration guidance
 
-컴퓨터 비전 분야의 관련 연구들을 분석합니다.
+3. **Anatomy-Aware Optimization**: Optimize spatial overlap of select anatomical labels rather than all image structures, enabling networks to distinguish anatomy of interest from irrelevant structures
 
-## Method 
+4. **Hypernetwork Integration**: Combine affine model with deformable hypernetwork that allows users to dynamically choose optimal deformation-field regularity at registration time
 
-### Architecture Overview
+5. **Acquisition-Agnostic Training**: Apply random spatial transformations and image corruption during training to ensure robustness across different MRI contrasts, resolutions, and acquisition protocols
 
-논문에서 제안하는 아키텍처에 대한 설명이 필요합니다.
+6. **Joint Affine-Deformable Registration**: Provide end-to-end solution combining both affine and deformable registration in a single framework
 
+7. **Loss Function Design**: Utilize mean squared error loss function to optimize label overlap while maintaining spatial consistency through Jacobian regularization
 
 <p align="center">
   <img src="/assets/images/paper/vlm/anatomy-aware_and_acquisition-agnostic_joint_registration_with_synthmorph_architecture.png" alt="Anatomy-aware and acquisition-agnostic joint registration with SynthMorph Architecture" style="width: 100%;">
 </p>
 
+## Dataset
 
-### Key Components
+The evaluation encompasses an extremely diverse set of neuroimaging data to capture real-world performance. Training data includes 100 tissue segmentations from major neuroimaging datasets (UKBB, OASIS, ABCD, infant scans). Evaluation datasets span multiple MRI contrasts including T1-weighted, T2-weighted, and proton density-weighted images with varying resolutions (0.4-1.2 mm) and subject populations ranging from ages 0-75 years, covering both adult and pediatric brain imaging scenarios.
 
-주요 구성 요소들에 대한 설명이 필요합니다.
+## Results
 
-### Training Strategy
-
-훈련 전략에 대한 설명이 필요합니다.
-
-
-
-
-
-## Experiments
-
-### Datasets
-
-사용된 데이터셋에 대한 정보가 필요합니다.
-
-### Results
-
-실험 결과에 대한 설명이 필요합니다.
-
-### Ablation Studies
-
-Ablation study 결과에 대한 설명이 필요합니다.
-
-## Conclusion
-
-논문의 결론 및 기여도에 대한 설명이 필요합니다.
-
-## Key Takeaways
-
-주요 시사점들을 정리해주세요.
+SynthMorph demonstrates superior performance across diverse neuroimaging scenarios with significant improvements over classical methods. Key findings include high Dice overlap scores between transformed and fixed label maps, improved normalized cross-correlation of neighborhood descriptors, and optimal log-Jacobian spread for deformation field regularity. The method achieves fast registration times while maintaining accuracy comparable to or exceeding classical optimization-based approaches. Importantly, SynthMorph generalizes effectively across different MRI acquisition protocols without requiring domain-specific retraining, addressing the critical domain shift problem that limits other deep learning registration methods.

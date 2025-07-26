@@ -4,9 +4,9 @@ title: "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks"
 excerpt: "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks 논문 요약"
 
 categories:
-  - VLM
+  - Paper
 tags:
-  - [VLM, Vision-Language, Vision-Language]
+  - [RAG, Retrieval, NLP, Language Model]
 
 toc: true
 toc_sticky: true
@@ -18,60 +18,53 @@ last_modified_at: 2025-07-25
 
 ## Introduction
 
-Large pre-trained language models have been shown to store factual knowledge in their parameters, and achieve state-of-the-art results when fine-tuned on downstream NLP tasks. However, their ability to access and precisely manipulate knowledge is still limited, and hence on knowledge-intensive tasks, their performance lags behind task-specific architectures. Additionally, providing provenance for their decisions and updating their world knowledge remain open research problems. Pre-trained models...
+Knowledge-intensive NLP tasks require systems to access and manipulate large amounts of world knowledge, but traditional pre-trained language models struggle with precise knowledge access and cannot easily update their parametric knowledge. This paper introduces Retrieval-Augmented Generation (RAG), which combines pre-trained parametric models with non-parametric retrieval mechanisms to enhance performance on knowledge-intensive tasks while providing interpretable, updatable knowledge access.
 
-## Related Work 
+## Methods
 
-### Vision-Language Models
+RAG operates through a systematic approach that combines parametric and non-parametric knowledge:
 
-기존 Vision-Language 모델들과의 비교 연구가 필요합니다.
+1. **Document Encoding**: Pre-encode a knowledge corpus (e.g., Wikipedia) using DPR (Dense Passage Retrieval) to create dense vector representations of text passages
 
-### Computer Vision
+2. **Query Processing**: For each input query, use a bi-encoder retrieval system to find the top-k most relevant documents from the pre-encoded corpus
 
-컴퓨터 비전 분야의 관련 연구들을 분석합니다.
+3. **Context Augmentation**: Concatenate retrieved passages with the original input to create an augmented context that contains both the query and relevant background knowledge
 
-## Method 
+4. **Generation**: Feed the augmented input through a pre-trained sequence-to-sequence model (BART) that generates responses conditioned on both the original query and retrieved knowledge
 
-### Architecture Overview
+5. **End-to-End Training**: Train the entire system jointly, allowing the retriever and generator to learn complementary representations for knowledge-intensive tasks
 
-논문에서 제안하는 아키텍처에 대한 설명이 필요합니다.
+6. **Two RAG Variants**:
+   - **RAG-Sequence**: Retrieves documents once for the entire sequence generation
+   - **RAG-Token**: Retrieves different documents for each token generation step, allowing more dynamic knowledge access
 
+## Dataset
 
-<p align="center">
-  <img src="/assets/images/paper/vlm/retrieval-augmented_generation_for_knowledge-intensive_nlp_tasks_architecture.png" alt="Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks Architecture" style="width: 100%;">
-</p>
+The paper evaluates RAG on multiple knowledge-intensive NLP benchmarks:
 
+- **Open-domain QA**: Natural Questions, TriviaQA, WebQuestions, and CuratedTREC datasets requiring factual knowledge retrieval
+- **Knowledge Corpus**: Uses Wikipedia as the non-parametric knowledge source, with approximately 21 million passages
+- **Fact Verification**: FEVER dataset for claim verification against evidence passages  
+- **Jeopardy Question Generation**: Tasks requiring both knowledge retrieval and creative generation
 
-### Key Components
-
-주요 구성 요소들에 대한 설명이 필요합니다.
-
-### Training Strategy
-
-훈련 전략에 대한 설명이 필요합니다.
-
+All datasets test the system's ability to access external knowledge beyond what's stored in model parameters, with Wikipedia providing a comprehensive, updatable knowledge base for retrieval.
 
 
 
 
-## Experiments
 
-### Datasets
+## Results
 
-사용된 데이터셋에 대한 정보가 필요합니다.
-
-### Results
-
-실험 결과에 대한 설명이 필요합니다.
-
-### Ablation Studies
-
-Ablation study 결과에 대한 설명이 필요합니다.
+RAG demonstrates significant improvements across knowledge-intensive tasks compared to state-of-the-art parametric models. On open-domain question answering, RAG achieves substantial gains over BART baseline: +6.7% on Natural Questions, +4.4% on WebQuestions, and +2.9% on CuratedTREC. The system particularly excels in scenarios requiring up-to-date factual knowledge, as the non-parametric retrieval component can access current information without retraining. Additionally, RAG provides interpretable results by surfacing the specific passages used for generation, addressing the "black box" limitation of purely parametric approaches while maintaining competitive generation quality.
 
 ## Conclusion
 
-논문의 결론 및 기여도에 대한 설명이 필요합니다.
+RAG represents a fundamental breakthrough in combining parametric and non-parametric knowledge for NLP tasks. By integrating dense retrieval with pre-trained generation models, RAG addresses key limitations of purely parametric approaches: knowledge staleness, lack of interpretability, and difficulty in knowledge updates. The architecture's ability to leverage external knowledge sources while maintaining end-to-end trainability establishes RAG as a foundational framework for knowledge-intensive applications.
 
 ## Key Takeaways
 
-주요 시사점들을 정리해주세요.
+- **Hybrid Architecture**: Successfully combines parametric (model weights) and non-parametric (external corpus) knowledge sources
+- **Interpretability**: Provides transparent access to source knowledge through retrieved passages
+- **Updatable Knowledge**: Enables knowledge updates without retraining by modifying the retrieval corpus
+- **Strong Performance**: Achieves state-of-the-art results on multiple knowledge-intensive benchmarks
+- **Foundation for Future Work**: Establishes the RAG paradigm that influences subsequent retrieval-augmented systems
