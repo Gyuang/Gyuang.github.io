@@ -4,9 +4,9 @@ title: "Anatomy-aware and acquisition-agnostic joint registration with SynthMorp
 excerpt: "Anatomy-aware and acquisition-agnostic joint registration with SynthMorph 논문 요약"
 
 categories:
-  - VLM
+  - Paper
 tags:
-  - [VLM, Vision-Language, Vision-Language, Imaging Neuroscience]
+  - [Medical Imaging, Image Registration, Deep Learning, Neuroscience, MRI]
 
 toc: true
 toc_sticky: true

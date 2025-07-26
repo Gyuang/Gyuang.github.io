@@ -6,7 +6,7 @@ excerpt: "Towards a holistic framework for multimodal LLM in 3D brain CT radiolo
 categories:
   - VLM
 tags:
-  - [VLM, Vision-Language, Vision-Language]
+  - [VLM, Multimodal LLM, 3D Brain CT, Radiology Report, Medical AI]
 
 toc: true
 toc_sticky: true

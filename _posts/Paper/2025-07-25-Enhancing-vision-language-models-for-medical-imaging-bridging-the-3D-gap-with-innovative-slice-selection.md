@@ -6,7 +6,7 @@ excerpt: "Enhancing vision-language models for medical imaging: bridging the 3D 
 categories:
   - VLM
 tags:
-  - [VLM, Vision-Language, Vision-Language, Advances in Neural Information Processing Systems]
+  - [VLM, Vision-Language, 3D Medical Imaging, Slice Selection, Medical AI]
 
 toc: true
 toc_sticky: true

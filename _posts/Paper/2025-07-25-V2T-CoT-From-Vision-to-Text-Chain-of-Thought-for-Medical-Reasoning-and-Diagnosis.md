@@ -6,7 +6,7 @@ excerpt: "V2T-CoT: From Vision to Text Chain-of-Thought for Medical Reasoning an
 categories:
   - VLM
 tags:
-  - [VLM, Vision-Language, Vision-Language]
+  - [VLM, Chain-of-Thought, Medical VQA, Medical Reasoning, Visual Diagnosis]
 
 toc: true
 toc_sticky: true

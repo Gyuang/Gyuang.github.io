@@ -6,7 +6,7 @@ excerpt: "ChatCAD: Interactive Computer-Aided Diagnosis on Medical Image using L
 categories:
   - VLM
 tags:
-  - [VLM, Vision-Language, Vision-Language]
+  - [VLM, LLM, CAD, Medical Imaging, Interactive Diagnosis]
 
 toc: true
 toc_sticky: true

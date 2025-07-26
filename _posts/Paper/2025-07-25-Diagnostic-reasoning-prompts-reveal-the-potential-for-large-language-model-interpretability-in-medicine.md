@@ -4,9 +4,9 @@ title: "Diagnostic reasoning prompts reveal the potential for large language mod
 excerpt: "Diagnostic reasoning prompts reveal the potential for large language model interpretability in medicine 논문 요약"
 
 categories:
-  - VLM
+  - Paper
 tags:
-  - [VLM, Vision-Language, Vision-Language, npj Digital Medicine]
+  - [LLM, Medical AI, Interpretability, Clinical Reasoning, Diagnostic Prompts]
 
 toc: true
 toc_sticky: true

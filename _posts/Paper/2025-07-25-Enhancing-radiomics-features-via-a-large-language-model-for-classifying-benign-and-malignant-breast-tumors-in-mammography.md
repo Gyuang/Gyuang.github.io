@@ -4,9 +4,9 @@ title: "Enhancing radiomics features via a large language model for classifying 
 excerpt: "Enhancing radiomics features via a large language model for classifying benign and malignant breast tumors in mammography 논문 요약"
 
 categories:
-  - VLM
+  - Paper
 tags:
-  - [VLM, Vision-Language, Vision-Language, Computer Methods and Programs in Biomedicine]
+  - [LLM, Radiomics, Breast Cancer, Mammography, Medical Imaging, Classification]
 
 toc: true
 toc_sticky: true
