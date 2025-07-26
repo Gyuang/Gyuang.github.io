@@ -47,9 +47,6 @@ ChatCAD는 다중 CAD 네트워크와 LLM을 통합하는 혁신적인 아키텍
 3. **Natural Language Interface**: 사용자 친화적 대화형 인터페이스
 4. **Clinical Decision Support**: 종합적 임상 의사결정 지원
 
-<p align="center">
-  <img src="/assets/images/paper/vlm/chatcad_a_comprehensive_clinical_assistant_for_diagnosis_architecture.png" alt="ChatCAD Architecture" style="width: 100%;">
-</p>
 
 ### Key Components
 

@@ -44,9 +44,6 @@ The core innovation of this paper is the Vote-MI (Voting-based Medical Imaging) 
 5. **VLM Processing**: Feed the selected representative 2D slice to existing vision-language models (specifically Med-Flamingo)
 6. **Medical Report Generation**: Generate medical reports or perform downstream tasks using the processed 2D representation
 
-<p align="center">
-  <img src="/assets/images/paper/vlm/enhancing_vision-language_models_for_medical_imaging_bridging_the_3d_gap_with_innovative_slice_selection_architecture.png" alt="Enhancing vision-language models for medical imaging: bridging the 3D gap with innovative slice selection Architecture" style="width: 100%;">
-</p>
 
 ### Key Technical Components
 

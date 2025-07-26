@@ -49,9 +49,6 @@ VoxelPrompt는 언어 에이전트와 비전 네트워크가 상호작용하는 
 3. **Execution Engine**: 언어 지침을 시각적 작업으로 변환
 4. **Analysis Module**: 정량적 측정 및 결과 해석
 
-<p align="center">
-  <img src="/assets/images/paper/vlm/voxelprompt_a_vision-language_agent_for_grounded_medical_image_analysis_architecture.png" alt="VoxelPrompt Architecture" style="width: 100%;">
-</p>
 
 ### Key Components
 

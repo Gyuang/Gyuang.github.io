@@ -53,9 +53,6 @@ The holistic framework for multimodal LLM in 3D brain CT radiology report genera
 
 7. **Clinical Adaptation**: Fine-tune the base model with medical domain knowledge to ensure generated reports follow radiology conventions and diagnostic accuracy standards
 
-<p align="center">
-  <img src="/assets/images/paper/vlm/towards_a_holistic_framework_for_multimodal_llm_in_3d_brain_ct_radiology_report_generation_|_nature_communications_architecture.png" alt="Towards a holistic framework for multimodal LLM in 3D brain CT radiology report generation | Nature Communications Architecture" style="width: 100%;">
-</p>
 
 
 

@@ -46,9 +46,6 @@ MMed-RAG는 Med-LVLMs의 사실적 환각 문제를 해결하기 위한 세 가�
 2. **Adaptive Retrieved Contexts Selection**: 적응형 검색 컨텍스트 선택 방법  
 3. **Provable RAG-based Preference Fine-tuning**: 검증 가능한 RAG 기반 선호도 미세조정
 
-<p align="center">
-  <img src="/assets/images/paper/vlm/mmed-rag_versatile_multimodal_rag_system_for_medical_vision_language_models_architecture.png" alt="MMed-RAG Architecture" style="width: 100%;">
-</p>
 
 ### Key Components
 

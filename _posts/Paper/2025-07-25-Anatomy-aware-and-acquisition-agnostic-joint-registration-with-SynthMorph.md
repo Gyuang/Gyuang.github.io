@@ -41,9 +41,6 @@ The SynthMorph methodology introduces several key innovations for robust medical
 
 7. **Loss Function Design**: Utilize mean squared error loss function to optimize label overlap while maintaining spatial consistency through Jacobian regularization
 
-<p align="center">
-  <img src="/assets/images/paper/vlm/anatomy-aware_and_acquisition-agnostic_joint_registration_with_synthmorph_architecture.png" alt="Anatomy-aware and acquisition-agnostic joint registration with SynthMorph Architecture" style="width: 100%;">
-</p>
 
 ## Dataset
 

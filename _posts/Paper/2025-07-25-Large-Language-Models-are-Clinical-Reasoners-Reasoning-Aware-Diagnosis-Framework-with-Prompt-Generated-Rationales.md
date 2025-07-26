@@ -48,9 +48,6 @@ The reasoning-aware diagnosis framework operates through a two-stage approach th
 
 6. **Self-training Framework**: Iteratively improve rationale quality through pseudo-labeling techniques where high-confidence rationale-diagnosis pairs are used to augment training data without requiring additional clinical annotations
 
-<p align="center">
-  <img src="/assets/images/paper/vlm/large_language_models_are_clinical_reasoners_reasoning-aware_diagnosis_framework_with_prompt-generated_rationales_architecture.png" alt="Large Language Models are Clinical Reasoners: Reasoning-Aware Diagnosis Framework with Prompt-Generated Rationales Architecture" style="width: 100%;">
-</p>
 
 ### Key Technical Components
 

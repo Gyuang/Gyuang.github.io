@@ -43,9 +43,6 @@ RadioRAG는 실시간 온라인 검색을 통해 LLM의 방사선학 진단 능�
 3. **Zero-shot Inference**: 추가 훈련 없이 즉시 적용 가능
 4. **Domain-specific Enhancement**: 방사선학 특화 성능 향상
 
-<p align="center">
-  <img src="/assets/images/paper/vlm/radiorag_factual_large_language_models_for_enhanced_diagnostics_in_radiology_using_online_retrieval_augmented_generation_architecture.png" alt="RadioRAG Architecture" style="width: 100%;">
-</p>
 
 ### Key Components
 

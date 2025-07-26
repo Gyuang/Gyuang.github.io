@@ -42,9 +42,6 @@ Biomed-DPT는 이중 모달리티 접근법을 통해 텍스트와 시각 프롬
 2. **Vision Prompt Integration**: 제로 벡터 기반 소프트 프롬프트로 attention 재가중
 3. **Knowledge Distillation**: 도메인 적응 프롬프트에서 임상 지식 추출
 
-<p align="center">
-  <img src="/assets/images/paper/vlm/biomed-dpt_dual_modality_prompt_tuning_for_biomedical_vision-language_models_architecture.png" alt="Biomed-DPT Architecture" style="width: 100%;">
-</p>
 
 ### Key Components
 

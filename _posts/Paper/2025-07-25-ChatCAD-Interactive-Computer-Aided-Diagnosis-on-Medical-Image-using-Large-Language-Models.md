@@ -42,9 +42,6 @@ ChatCAD integrates LLMs with computer-aided diagnosis networks through a multi-s
 
 7. **Multi-Modal Dialogue Interface**: Users can interact with the system through natural language queries about diagnoses, ask for explanations, or request additional analysis
 
-<p align="center">
-  <img src="/assets/images/paper/vlm/chatcad_interactive_computer-aided_diagnosis_on_medical_image_using_large_language_models_architecture.png" alt="ChatCAD: Interactive Computer-Aided Diagnosis on Medical Image using Large Language Models Architecture" style="width: 100%;">
-</p>
 
 
 

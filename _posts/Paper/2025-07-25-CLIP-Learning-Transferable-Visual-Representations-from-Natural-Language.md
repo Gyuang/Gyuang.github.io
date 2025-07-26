@@ -22,9 +22,6 @@ last_modified_at: 2025-07-25
 
 CLIP의 핵심 아이디어는 **인터넷에서 수집한 4억 개의 이미지-텍스트 쌍**을 사용해 대조 학습을 통해 시각-언어 표현을 학습하는 것입니다.
 
-<p align="center">
-  <img src="/assets/images/paper/vlm/clip_architecture.png" alt="CLIP Architecture" style="width: 100%;">
-</p>
 
 ## Methods
 

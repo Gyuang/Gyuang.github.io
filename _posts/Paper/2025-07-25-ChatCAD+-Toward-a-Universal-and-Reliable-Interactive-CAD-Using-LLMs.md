@@ -47,9 +47,6 @@ ChatCAD+는 방사선과 의사와 가상 가정의의 역할을 통합하는 �
 1. **Reliable Report Generation Module**: 다양한 의료 영상 도메인에서 고품질 의료 보고서 생성
 2. **Reliable Interaction Module**: 신뢰할 수 있는 의료 상담 및 조언 제공
 
-<p align="center">
-  <img src="/assets/images/paper/vlm/chatcad+_toward_a_universal_and_reliable_interactive_cad_using_llms_architecture.png" alt="ChatCAD+ Architecture" style="width: 100%;">
-</p>
 
 ### Key Components
 

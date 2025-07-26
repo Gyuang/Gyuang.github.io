@@ -41,9 +41,6 @@ LLaVA-RadZ는 두 가지 핵심 혁신을 통해 제로샷 방사선학 인식 �
 1. **DFAT (Decoding-Side Feature Alignment Training)**: MLLM 디코더 특성을 활용한 특징 정렬
 2. **DKAM (Domain Knowledge Anchoring Module)**: 도메인 지식 기반 의미적 정렬 강화
 
-<p align="center">
-  <img src="/assets/images/paper/vlm/llava-radz_can_multimodal_large_language_models_effectively_tackle_zero-shot_radiology_recognition?_architecture.png" alt="LLaVA-RadZ Architecture" style="width: 100%;">
-</p>
 
 ### Key Components
 

@@ -42,9 +42,6 @@ AutoRG-Brain은 다음 세 가지 핵심 모듈로 구성됩니다:
 2. **Anomaly Localization Module**: 병리학적 이상 부위를 픽셀 수준에서 식별
 3. **Report Generation Module**: 구조화된 의료 보고서 자동 생성
 
-<p align="center">
-  <img src="/assets/images/paper/vlm/autorg-brain_grounded_report_generation_for_brain_mri_architecture.png" alt="AutoRG-Brain Architecture" style="width: 100%;">
-</p>
 
 ### Key Components
 

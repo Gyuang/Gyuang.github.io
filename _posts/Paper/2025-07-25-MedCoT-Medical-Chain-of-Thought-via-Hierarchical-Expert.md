@@ -22,9 +22,6 @@ Medical Visual Question Answering (Med-VQA)는 의료 영상과 관련된 질문
 
 **MedCoT**는 이러한 한계를 해결하기 위해 **계층적 전문가 검증 추론 체인**을 제안하는 혁신적인 접근법입니다.
 
-<p align="center">
-  <img src="/assets/images/paper/vlm/medcot_medical_chain_of_thought_via_hierarchical_expert_architecture.png" alt="MedCoT Architecture" style="width: 100%;">
-</p>
 
 ## Methods
 

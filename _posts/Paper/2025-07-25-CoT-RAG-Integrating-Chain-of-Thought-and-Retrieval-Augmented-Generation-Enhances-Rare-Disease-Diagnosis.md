@@ -49,9 +49,6 @@ RAG는 외부 지식 베이스를 활용하여 LLM의 한계를 보완하는 방
 3. **Five-question CoT Protocol**: 전문가 추론을 모방하는 체계적 질문 구조
 4. **Multi-source Knowledge Integration**: HPO, OMIM 등 다양한 의학 지식 베이스 활용
 
-<p align="center">
-  <img src="/assets/images/paper/vlm/cot-rag_integrating_chain-of-thought_and_retrieval_augmented_generation_enhances_rare_disease_diagnosis_architecture.png" alt="CoT-RAG Integration Architecture" style="width: 100%;">
-</p>
 
 ### Key Components
 

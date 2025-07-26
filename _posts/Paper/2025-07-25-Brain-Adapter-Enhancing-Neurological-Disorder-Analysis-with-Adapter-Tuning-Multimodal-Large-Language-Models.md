@@ -47,9 +47,6 @@ Brain-Adapter는 다음과 같은 핵심 구조를 가집니다:
 3. **CLIP-based Multimodal Alignment**: 영상-텍스트 정보 통합
 4. **Domain-specific Fine-tuning**: 신경학적 장애 특화 학습
 
-<p align="center">
-  <img src="/assets/images/paper/vlm/brain-adapter_enhancing_neurological_disorder_analysis_with_adapter-tuning_multimodal_large_language_models_architecture.png" alt="Brain-Adapter Architecture" style="width: 100%;">
-</p>
 
 ### Key Components
 

@@ -38,9 +38,6 @@ V2T-CoT implements a three-stage pipeline that mimics clinical diagnostic reason
 
 The framework consists of three integrated components working in sequence to generate both accurate diagnoses and interpretable reasoning pathways.
 
-<p align="center">
-  <img src="/assets/images/paper/vlm/v2t-cot_from_vision_to_text_chain-of-thought_for_medical_reasoning_and_diagnosis_architecture.png" alt="V2T-CoT: From Vision to Text Chain-of-Thought for Medical Reasoning and Diagnosis Architecture" style="width: 100%;">
-</p>
 
 ### Step-by-Step Process
 
