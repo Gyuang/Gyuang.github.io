@@ -44,6 +44,18 @@ CLIP, LLaVA 등이 의료 분야에 적용되기 시작했지만, 대부분 2D �
 
 VoxelPrompt는 언어 에이전트와 비전 네트워크가 상호작용하는 혁신적인 아키텍처를 제시합니다:
 
+```
+[User Prompt] → [Language Agent] → [Executable Instructions]
+                      ↓                        ↓
+[3D Medical Volume] → [Vision Network] → [Analysis Results]
+                      ↓                        ↓
+               [Execution Engine] ← [Analysis Module]
+                      ↓
+            [Quantitative Measurements]
+```
+
+언어 에이전트가 복잡한 의료 분석을 단계별로 분해하여 실행 가능한 지침으로 변환합니다.
+
 1. **Language Agent**: 사용자 프롬프트를 해석하고 실행 가능한 지침 생성
 2. **Vision Network**: 3D 의료 볼륨 처리 및 특징 추출
 3. **Execution Engine**: 언어 지침을 시각적 작업으로 변환

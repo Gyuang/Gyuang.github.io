@@ -28,6 +28,20 @@ last_modified_at: 2025-07-25
 
 ## Methods
 
+### Architecture Overview
+
+MaPLE은 비전과 언어 모든 브랜치에서 프롬프트를 학습합니다:
+
+```
+[Image] → [Vision Prompts + ViT] → [Image Features]
+                ↓ Coupling Function      ↓
+[Text] → [Language Prompts + Transformer] → [Text Features]
+                                            ↓
+                                    [Classification]
+```
+
+비전과 언어 프롬프트가 결합 함수를 통해 상호 작용하며 시너지를 만듭니다.
+
 ### Multi-modal Prompt Architecture
 
 MaPLe의 핵심은 **시각과 언어 브랜치에 대한 별도의 컨텍스트 프롬프트 학습**입니다:

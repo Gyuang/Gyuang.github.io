@@ -24,6 +24,22 @@ last_modified_at: 2025-07-25
 
 ## Methods
 
+### Architecture Overview
+
+CoCoOp의 아키텍처는 CoOp을 확장하여 조건부 프롬프트를 생성합니다:
+
+```
+[Image] → [CLIP Image Encoder] → [Image Features]
+    ↓                                    ↓
+[Meta-Net] → [Conditional Token]         ↓
+    ↓                                    ↓
+[V1][V2]...[VM][Conditional][CLASS] → [CLIP Text Encoder] → [Text Features]
+    ↑ Learnable + Conditional                     ↓
+                                          [Classification]
+```
+
+Meta-Net이 각 이미지에 대해 조건부 토큰을 생성하여 동적 프롬프트를 만듭니다.
+
 CoCoOp은 다음과 같은 핵심 기술 혁신을 통해 CoOp을 확장합니다:
 
 ### 1. Meta-Net Architecture

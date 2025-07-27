@@ -24,6 +24,23 @@ last_modified_at: 2025-07-25
 
 ## Methods
 
+### Architecture Overview
+
+CoOp의 핵심 아키텍처는 다음과 같습니다:
+
+```
+[Image] → [CLIP Image Encoder] → [Image Features]
+                                        ↓
+[V1][V2]...[VM][CLASS] → [CLIP Text Encoder] → [Text Features]
+    ↑ Learnable Context Vectors
+                                        ↓
+                                [Cosine Similarity]
+                                        ↓
+                                [Classification]
+```
+
+여기서 [V1], [V2], ..., [VM]은 학습 가능한 컨텍스트 벡터이고, [CLASS]는 실제 클래스 이름입니다.
+
 ### 1. Learnable Context Vector Framework
 
 CoOp의 핵심은 **수동 텍스트 토큰을 학습 가능한 연속 벡터로 대체**하는 것입니다:

@@ -29,6 +29,20 @@ Test-Time Prompt Tuning (TPT) introduces a novel approach that learns adaptive p
 
 ## Methods
 
+### Architecture Overview
+
+TPT는 테스트 시점에서 각 샘플별로 프롬프트를 최적화합니다:
+
+```
+[Test Image] → [Data Augmentation] → [Multiple Views]
+       ↓                                    ↓
+[Learnable Prompts] → [CLIP Text Encoder] → [Text Features]
+       ↑ Updated per sample                  ↓
+   [Entropy Loss] ← [Confidence Selection] ← [Predictions]
+```
+
+각 테스트 이미지에 대해 entropy minimization으로 프롬프트를 개별 최적화합니다.
+
 ### 1. Test-Time Adaptation Framework
 
 **Single-Sample Adaptation Paradigm**

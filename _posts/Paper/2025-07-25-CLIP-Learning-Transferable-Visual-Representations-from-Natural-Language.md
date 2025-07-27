@@ -29,6 +29,18 @@ CLIP의 핵심 아이디어는 **인터넷에서 수집한 4억 개의 이미지
 
 CLIP는 **dual-encoder 구조**를 기반으로 합니다:
 
+### Architecture Overview
+
+CLIP는 **dual-encoder 구조**를 기반으로 하며, 다음과 같은 핵심 구성 요소로 이루어져 있습니다:
+
+```
+[Images] → [Image Encoder] → [Image Features]
+                                    ↓
+                            [Contrastive Learning]
+                                    ↑
+[Text] → [Text Encoder] → [Text Features]
+```
+
 **Image Encoder**
 - **ResNet-50/101** 또는 **Vision Transformer (ViT)** 사용
 - 입력 이미지를 d차원 특징 벡터로 인코딩
