@@ -4,7 +4,7 @@ title: "Integrating Chain-of-Thought and Retrieval Augmented Generation Enhances
 excerpt: "임상 노트 기반 희귀질환 진단을 위한 CoT와 RAG 통합 프레임워크"
 
 categories:
-  - VLM
+  - Paper
 tags:
   - [VLM, RAG, Chain-of-Thought, Rare Disease, Clinical Notes, Gene Prioritization]
 

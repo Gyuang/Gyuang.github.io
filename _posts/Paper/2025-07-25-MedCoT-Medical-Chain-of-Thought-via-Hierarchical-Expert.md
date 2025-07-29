@@ -4,7 +4,7 @@ title: "MedCoT: Medical Chain of Thought via Hierarchical Expert"
 excerpt: "의료 영상 질의응답을 위한 계층적 전문가 검증 추론 체인 방법론"
 
 categories:
-  - VLM
+  - Paper
 tags:
   - [VLM, Medical VQA, Chain of Thought, Hierarchical Expert, Medical AI]
 
