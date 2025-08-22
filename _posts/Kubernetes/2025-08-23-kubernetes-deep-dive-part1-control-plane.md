@@ -2,7 +2,7 @@
 title: "[Kubernetes 심층 탐구 1부] 컨트롤 플레인 완전 정복"
 date: 2025-08-23 09:00:00 +0900
 categories:
-  - Kubernetes
+  - kubernetes
 tags:
   - kubernetes
   - control-plane

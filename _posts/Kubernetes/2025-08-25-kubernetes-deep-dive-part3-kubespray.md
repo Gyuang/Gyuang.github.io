@@ -2,7 +2,7 @@
 title: "[Kubernetes 심층 탐구 3부] Kubespray 실전 가이드"
 date: 2025-08-25 09:00:00 +0900
 categories:
-  - Kubernetes
+  - kubernetes
 tags:
   - kubernetes
   - kubespray

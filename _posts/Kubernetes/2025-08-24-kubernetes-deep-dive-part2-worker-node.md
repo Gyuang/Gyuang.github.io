@@ -2,7 +2,7 @@
 title: "[Kubernetes 심층 탐구 2부] 워커 노드의 모든 것"
 date: 2025-08-24 09:00:00 +0900
 categories:
-  - Kubernetes
+  - kubernetes
 tags:
   - kubernetes
   - worker-node
