@@ -4,7 +4,7 @@ title: "Large Language Models are Clinical Reasoners: Reasoning-Aware Diagnosis 
 excerpt: "Large Language Models are Clinical Reasoners: Reasoning-Aware Diagnosis Framework with Prompt-Generated Rationales 논문 요약"
 
 categories:
-  - Paper
+  - Medical AI
 tags:
   - [LLM, Clinical Reasoning, Medical AI, Prompt Learning, Diagnosis]
 

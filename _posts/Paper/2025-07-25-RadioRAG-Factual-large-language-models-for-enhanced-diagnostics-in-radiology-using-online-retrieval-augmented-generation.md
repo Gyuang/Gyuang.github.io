@@ -4,7 +4,7 @@ title: "RadioRAG: Factual large language models for enhanced diagnostics in radi
 excerpt: "실시간 온라인 검색 기반 방사선학 진단 정확도 향상을 위한 RAG 프레임워크"
 
 categories:
-  - Paper
+  - RAG
 tags:
   - [VLM, RAG, Radiology, LLM, Online Retrieval, Medical Diagnostics]
 

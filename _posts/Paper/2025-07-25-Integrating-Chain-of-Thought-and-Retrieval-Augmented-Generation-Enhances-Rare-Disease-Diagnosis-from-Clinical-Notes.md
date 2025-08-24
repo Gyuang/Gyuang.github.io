@@ -4,7 +4,7 @@ title: "Integrating Chain-of-Thought and Retrieval Augmented Generation Enhances
 excerpt: "Integrating Chain-of-Thought and Retrieval Augmented Generation Enhances Rare Disease Diagnosis from Clinical Notes 논문 요약"
 
 categories:
-  - Paper
+  - RAG
 tags:
   - [Chain-of-Thought, RAG, Rare Disease, Clinical Notes, Medical AI]
 

@@ -4,7 +4,7 @@ title: "Anatomy-aware and acquisition-agnostic joint registration with SynthMorp
 excerpt: "Anatomy-aware and acquisition-agnostic joint registration with SynthMorph 논문 요약"
 
 categories:
-  - Paper
+  - Medical AI
 tags:
   - [Medical Imaging, Image Registration, Deep Learning, Neuroscience, MRI]
 

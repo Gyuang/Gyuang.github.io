@@ -4,7 +4,7 @@ title: "Multi-modal Topology-embedded Graph Learning for Spatially Resolved Gene
 excerpt: "병리 이미지로부터 공간적으로 분해된 유전자 예측을 위한 다중 모달 위상 임베딩 그래프 학습"
 
 categories:
-  - Paper
+  - Multimodal
 tags:
   - [Computational Pathology, Graph Learning, Spatial Genomics, Multi-modal, Gene Expression, Deep Learning]
 

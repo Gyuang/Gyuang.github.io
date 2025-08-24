@@ -4,7 +4,7 @@ title: "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks"
 excerpt: "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks 논문 요약"
 
 categories:
-  - Paper
+  - RAG
 tags:
   - [RAG, Retrieval, NLP, Language Model]
 

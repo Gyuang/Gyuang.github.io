@@ -4,7 +4,7 @@ title: "CoT-RAG: Integrating Chain of Thought and Retrieval-Augmented Generation
 excerpt: "CoT-RAG: Integrating Chain of Thought and Retrieval-Augmented Generation to Enhance Reasoning in Large Language Models 논문 요약"
 
 categories:
-  - Paper
+  - RAG
 tags:
   - [Chain-of-Thought, RAG, Reasoning, LLM, Knowledge Graph]
 
