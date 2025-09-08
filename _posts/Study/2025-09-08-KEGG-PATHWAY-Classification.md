@@ -3,7 +3,7 @@ title: "KEGG PATHWAY 분류 체계: 생명현상의 분자적 지도"
 excerpt: "KEGG에서 제공하는 500여 개 생물학적 경로들의 체계적 분류와 상세 분석"
 
 categories:
-  - Medical AI
+  - Bioinformatics
 tags:
   - [KEGG, Pathway, Metabolism, Signal Transduction, Systems Biology, Medical AI]
 

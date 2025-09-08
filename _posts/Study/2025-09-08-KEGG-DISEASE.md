@@ -3,7 +3,7 @@ title: "KEGG DISEASE: 질병 정보 데이터베이스 심층 분석"
 excerpt: "분자 수준에서 질병 메커니즘을 이해하기 위한 종합적 질병 지식 베이스"
 
 categories:
-  - Medical AI
+  - Bioinformatics
 tags:
   - [KEGG, Disease, Medical Genomics, Precision Medicine, Systems Medicine, Medical AI]
 

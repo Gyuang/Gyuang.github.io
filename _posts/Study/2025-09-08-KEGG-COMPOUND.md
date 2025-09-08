@@ -3,7 +3,7 @@ title: "KEGG COMPOUND: 생화학적 화합물 데이터베이스 심층 분석"
 excerpt: "대사물질과 생체분자의 구조적, 화학적, 생물학적 정보를 위한 종합적 참조 시스템"
 
 categories:
-  - Medical AI
+  - Bioinformatics
 tags:
   - [KEGG, Compound, Metabolomics, Chemical Biology, Drug Discovery, Medical AI]
 
