@@ -1,19 +1,20 @@
 ---
-published: true
-title: "Brain-Adapter: Enhancing Neurological Disorder Analysis with Adapter-Tuning Multimodal Large Language Models"
-excerpt: "3D 뇌 영상 정보를 활용한 신경학적 장애 분석을 위한 경량 어댑터 튜닝 기법"
-
 categories:
-  - VLM
+- VLM
+date: 2025-07-25
+excerpt: 3D 뇌 영상 정보를 활용한 신경학적 장애 분석을 위한 경량 어댑터 튜닝 기법
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [VLM, Neurological Disorder, 3D Medical Imaging, Adapter Tuning, CLIP]
-
+- - VLM
+  - Neurological Disorder
+  - 3D Medical Imaging
+  - Adapter Tuning
+  - CLIP
+title: 'Brain-Adapter: Enhancing Neurological Disorder Analysis with Adapter-Tuning
+  Multimodal Large Language Models'
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction
@@ -38,7 +39,15 @@ Adapter 기법은 대규모 사전 훈련 모델을 특정 도메인에 효율�
 
 ## Method 
 
+![Figure 5 0](/assets/images/paper/brain-adapter-enhancing-neurological-disorder-analysis-with-adapter-tuning-multimodal-large-language-models/figure_5_0.png)
+*Figure: Figure 5 0*
+
+
 ### Architecture Overview
+
+![Figure 3 0](/assets/images/paper/brain-adapter-enhancing-neurological-disorder-analysis-with-adapter-tuning-multimodal-large-language-models/figure_3_0.png)
+*Figure: Figure 3 0*
+
 
 Brain-Adapter는 다음과 같은 핵심 구조를 가집니다:
 
@@ -90,6 +99,10 @@ L_total = L_classification + λ₁L_contrastive + λ₂L_consistency + λ₃L_re
 
 ## Experiments
 
+![Architecture Overview 2](/assets/images/paper/brain-adapter-enhancing-neurological-disorder-analysis-with-adapter-tuning-multimodal-large-language-models/architecture_overview_2.png)
+*Figure: Architecture Overview 2*
+
+
 ### Datasets
 
 **신경학적 장애 진단 데이터셋**
@@ -104,6 +117,10 @@ L_total = L_classification + λ₁L_contrastive + λ₂L_consistency + λ₃L_re
 - **텍스트 보고서**: 방사선과 판독 소견
 
 ### Results
+
+![Architecture Overview 1](/assets/images/paper/brain-adapter-enhancing-neurological-disorder-analysis-with-adapter-tuning-multimodal-large-language-models/architecture_overview_1.png)
+*Figure: Architecture Overview 1*
+
 
 **진단 성능 비교**
 - **Alzheimer's Disease 분류**: 94.2% (baseline 대비 +8.7%)

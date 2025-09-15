@@ -1,18 +1,18 @@
 ---
-title: "The Power of Scale for Parameter-Efficient Prompt Tuning"
 categories:
-  - Paper
-  - VLM
-tags:
-  - Prompt Tuning
-  - Parameter Efficient
-  - Scale Effects
-  - T5
-toc: true
-toc_sticky: true
-toc_label: "Power of Scale"
+- Paper
+- VLM
 header:
   teaser: /assets/images/paper/power-of-scale-teaser.png
+tags:
+- Prompt Tuning
+- Parameter Efficient
+- Scale Effects
+- T5
+title: The Power of Scale for Parameter-Efficient Prompt Tuning
+toc: true
+toc_label: Power of Scale
+toc_sticky: true
 ---
 
 # The Power of Scale for Parameter-Efficient Prompt Tuning
@@ -203,10 +203,26 @@ config = {
 ### 3. 평가 전략
 ```python
 # 프롬프트 길이 실험
+
+![Architecture Diagram 4 0](/assets/images/paper/power-of-scale-prompt-tuning/architecture_diagram_4_0.png)
+*Figure: Architecture Diagram 4 0*
+
+
+![Results Table 4 0](/assets/images/paper/power-of-scale/results_table_4_0.png)
+*Figure: Results Table 4 0*
+
 for length in [20, 50, 100, 150]:
     score = evaluate_prompt_length(length)
     
 # 위치 실험 (소형 모델만)
+
+![Architecture Diagram 3 0](/assets/images/paper/power-of-scale-prompt-tuning/architecture_diagram_3_0.png)
+*Figure: Architecture Diagram 3 0*
+
+
+![Results Table 3 0](/assets/images/paper/power-of-scale/results_table_3_0.png)
+*Figure: Results Table 3 0*
+
 if model_size < 1e9:
     positions = ['prepend', 'middle', 'append']
     best_pos = optimize_position(positions)

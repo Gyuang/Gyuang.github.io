@@ -1,19 +1,18 @@
 ---
-published: true
-title: "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks"
-excerpt: "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks 논문 요약"
-
 categories:
-  - RAG
+- RAG
+date: 2025-07-25
+excerpt: Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks 논문 요약
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [RAG, Retrieval, NLP, Language Model]
-
+- - RAG
+  - Retrieval
+  - NLP
+  - Language Model
+title: Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction
@@ -54,6 +53,10 @@ All datasets test the system's ability to access external knowledge beyond what'
 
 
 ## Results
+
+![Results Table 16 0](/assets/images/paper/retrieval-augmented-generation-for-knowledge-intensive-nlp-tasks/results_table_16_0.png)
+*Figure: Results Table 16 0*
+
 
 RAG demonstrates significant improvements across knowledge-intensive tasks compared to state-of-the-art parametric models. On open-domain question answering, RAG achieves substantial gains over BART baseline: +6.7% on Natural Questions, +4.4% on WebQuestions, and +2.9% on CuratedTREC. The system particularly excels in scenarios requiring up-to-date factual knowledge, as the non-parametric retrieval component can access current information without retraining. Additionally, RAG provides interpretable results by surfacing the specific passages used for generation, addressing the "black box" limitation of purely parametric approaches while maintaining competitive generation quality.
 

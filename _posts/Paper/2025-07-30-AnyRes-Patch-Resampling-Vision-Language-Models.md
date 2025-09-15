@@ -1,22 +1,27 @@
 ---
-published: true
-title: "AnyRes: 비전-언어 모델의 혁신적 패치 리샘플링 기술 완전 분석"
-excerpt: "임의 해상도 이미지를 효율적으로 처리하는 AnyRes 패치 리샘플링 기술의 원리와 응용"
-
 categories:
-  - VLM
+- VLM
+date: 2025-07-30
+excerpt: 임의 해상도 이미지를 효율적으로 처리하는 AnyRes 패치 리샘플링 기술의 원리와 응용
+last_modified_at: 2025-07-30
+published: true
 tags:
-  - [AnyRes, Patch Resampling, LLaVA-NeXT, Vision-Language Models, High Resolution, Dynamic Resolution]
-
+- - AnyRes
+  - Patch Resampling
+  - LLaVA-NeXT
+  - Vision-Language Models
+  - High Resolution
+  - Dynamic Resolution
+title: 'AnyRes: 비전-언어 모델의 혁신적 패치 리샘플링 기술 완전 분석'
 toc: true
 toc_sticky: true
- 
-date: 2025-07-30
-last_modified_at: 2025-07-30
-
 ---
 
 ## Introduction
+
+![Method Diagram 1 4](/assets/images/paper/anyres-patch-resampling-vision-language-models/method_diagram_1_4.png)
+*Figure: Method Diagram 1 4*
+
 
 현대 비전-언어 모델의 가장 큰 도전 과제 중 하나는 **다양한 해상도의 이미지를 효율적으로 처리**하는 것입니다. 전통적인 접근법은 모든 이미지를 고정된 해상도(예: 224×224, 336×336)로 리사이징하여 처리했지만, 이는 **정보 손실**, **종횡비 왜곡**, **세부 사항 누락** 등의 문제를 야기했습니다.
 
@@ -74,7 +79,15 @@ class VisionTransformer:
 
 ## AnyRes Architecture: 혁신적 패치 리샘플링 설계
 
+![Method Diagram 1 3](/assets/images/paper/anyres-patch-resampling-vision-language-models/method_diagram_1_3.png)
+*Figure: Method Diagram 1 3*
+
+
 ### 핵심 아키텍처 개념
+
+![Method Diagram 1 2](/assets/images/paper/anyres-patch-resampling-vision-language-models/method_diagram_1_2.png)
+*Figure: Method Diagram 1 2*
+
 
 ```python
 class AnyResProcessor:
@@ -159,6 +172,10 @@ def extract_patches(self, image, grid_h, grid_w):
 ```
 
 ## Training Methodology: 위치 인코딩과 학습 전략
+
+![Method Diagram 1 1](/assets/images/paper/anyres-patch-resampling-vision-language-models/method_diagram_1_1.png)
+*Figure: Method Diagram 1 1*
+
 
 ### 2D-RoPE: 2차원 회전 위치 임베딩
 
@@ -418,10 +435,18 @@ class InternVLTileProcessing:
 
 ## Performance Analysis: 성능 분석과 벤치마크
 
+![Results Table 6 2](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_2.png)
+*Figure: Results Table 6 2*
+
+
 ### 해상도별 성능 비교
 
 ```python
 # 성능 벤치마크 결과
+
+![Results Table 6 1](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_1.png)
+*Figure: Results Table 6 1*
+
 resolution_benchmarks = {
     "336x336 (기존)": {
         "InfoVQA": 58.2,
@@ -529,6 +554,10 @@ class DetailPreservationAnalysis:
         return results
 
 # 실제 평가 결과
+
+![Results Table 6 0](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_0.png)
+*Figure: Results Table 6 0*
+
 detail_preservation_results = {
     "small_text_reading": {
         "fixed_resolution": 45.2,
@@ -1058,6 +1087,10 @@ if __name__ == "__main__":
 
 ## Conclusion: 핵심 시사점과 미래 전망
 
+![Architecture Overview 1](/assets/images/paper/anyres-patch-resampling-vision-language-models/architecture_overview_1.png)
+*Figure: Architecture Overview 1*
+
+
 AnyRes 패치 리샘플링 기술은 비전-언어 모델링 분야에서 **해상도 제약의 패러다임을 완전히 바꾼 혁신적 접근법**입니다. 고정된 입력 크기의 한계를 극복하고, **임의 해상도 이미지의 효율적 처리**를 가능하게 하여 실용적 AI 시스템의 새로운 가능성을 열었습니다.
 
 ### 주요 기여점
@@ -1076,3 +1109,265 @@ AnyRes 기술은 **문서 이해**, **의료 영상 분석**, **자율주행**, 
 차세대 AnyRes 기술은 **콘텐츠 인식 적응적 처리**, **경계 없는 패치 융합**, **선형 복잡도 달성** 등의 방향으로 발전할 것으로 예상됩니다. 이를 통해 현재의 한계인 **높은 계산 비용**과 **패치 경계 문제**를 근본적으로 해결하고, **실시간 고해상도 처리**가 가능한 차세대 비전-언어 시스템이 등장할 것입니다.
 
 궁극적으로 AnyRes는 **인공지능의 시각적 이해 능력을 인간 수준으로 끌어올리는 핵심 기술** 중 하나로, 향후 멀티모달 AI 시스템의 필수 구성요소가 될 것으로 전망됩니다.
+
+## Additional Figures
+
+
+![Method Diagram 1 6](/assets/images/paper/anyres-patch-resampling-vision-language-models/method_diagram_1_6.png)
+*Figure: Method Diagram 1 6*
+
+
+![Method Diagram 1 7](/assets/images/paper/anyres-patch-resampling-vision-language-models/method_diagram_1_7.png)
+*Figure: Method Diagram 1 7*
+
+
+![Figure 4 0](/assets/images/paper/anyres-patch-resampling-vision-language-models/figure_4_0.png)
+*Figure: Figure 4 0*
+
+
+![Figure 4 1](/assets/images/paper/anyres-patch-resampling-vision-language-models/figure_4_1.png)
+*Figure: Figure 4 1*
+
+
+![Figure 4 3](/assets/images/paper/anyres-patch-resampling-vision-language-models/figure_4_3.png)
+*Figure: Figure 4 3*
+
+
+![Figure 4 5](/assets/images/paper/anyres-patch-resampling-vision-language-models/figure_4_5.png)
+*Figure: Figure 4 5*
+
+
+![Results Table 6 3](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_3.png)
+*Figure: Results Table 6 3*
+
+
+![Results Table 6 4](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_4.png)
+*Figure: Results Table 6 4*
+
+
+![Results Table 6 5](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_5.png)
+*Figure: Results Table 6 5*
+
+
+![Results Table 6 6](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_6.png)
+*Figure: Results Table 6 6*
+
+
+![Results Table 6 7](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_7.png)
+*Figure: Results Table 6 7*
+
+
+![Results Table 6 8](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_8.png)
+*Figure: Results Table 6 8*
+
+
+![Results Table 6 9](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_9.png)
+*Figure: Results Table 6 9*
+
+
+![Results Table 6 10](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_10.png)
+*Figure: Results Table 6 10*
+
+
+![Results Table 6 11](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_11.png)
+*Figure: Results Table 6 11*
+
+
+![Results Table 6 12](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_12.png)
+*Figure: Results Table 6 12*
+
+
+![Results Table 6 13](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_13.png)
+*Figure: Results Table 6 13*
+
+
+![Results Table 6 14](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_14.png)
+*Figure: Results Table 6 14*
+
+
+![Results Table 6 15](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_15.png)
+*Figure: Results Table 6 15*
+
+
+![Results Table 6 16](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_16.png)
+*Figure: Results Table 6 16*
+
+
+![Results Table 6 17](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_17.png)
+*Figure: Results Table 6 17*
+
+
+![Results Table 6 18](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_18.png)
+*Figure: Results Table 6 18*
+
+
+![Results Table 6 19](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_19.png)
+*Figure: Results Table 6 19*
+
+
+![Results Table 6 20](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_20.png)
+*Figure: Results Table 6 20*
+
+
+![Results Table 6 21](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_21.png)
+*Figure: Results Table 6 21*
+
+
+![Results Table 6 22](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_22.png)
+*Figure: Results Table 6 22*
+
+
+![Results Table 6 23](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_23.png)
+*Figure: Results Table 6 23*
+
+
+![Results Table 6 24](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_24.png)
+*Figure: Results Table 6 24*
+
+
+![Results Table 6 25](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_25.png)
+*Figure: Results Table 6 25*
+
+
+![Results Table 6 26](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_26.png)
+*Figure: Results Table 6 26*
+
+
+![Results Table 6 27](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_27.png)
+*Figure: Results Table 6 27*
+
+
+![Results Table 6 28](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_28.png)
+*Figure: Results Table 6 28*
+
+
+![Results Table 6 29](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_29.png)
+*Figure: Results Table 6 29*
+
+
+![Results Table 6 30](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_30.png)
+*Figure: Results Table 6 30*
+
+
+![Results Table 6 31](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_31.png)
+*Figure: Results Table 6 31*
+
+
+![Results Table 6 32](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_32.png)
+*Figure: Results Table 6 32*
+
+
+![Results Table 6 33](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_33.png)
+*Figure: Results Table 6 33*
+
+
+![Results Table 6 34](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_34.png)
+*Figure: Results Table 6 34*
+
+
+![Results Table 6 35](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_6_35.png)
+*Figure: Results Table 6 35*
+
+
+![Results Table 7 0](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_7_0.png)
+*Figure: Results Table 7 0*
+
+
+![Results Table 7 2](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_7_2.png)
+*Figure: Results Table 7 2*
+
+
+![Results Table 7 3](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_7_3.png)
+*Figure: Results Table 7 3*
+
+
+![Results Table 7 4](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_7_4.png)
+*Figure: Results Table 7 4*
+
+
+![Results Table 7 6](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_7_6.png)
+*Figure: Results Table 7 6*
+
+
+![Results Table 7 7](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_7_7.png)
+*Figure: Results Table 7 7*
+
+
+![Results Table 7 8](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_7_8.png)
+*Figure: Results Table 7 8*
+
+
+![Results Table 7 9](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_7_9.png)
+*Figure: Results Table 7 9*
+
+
+![Results Table 8 0](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_8_0.png)
+*Figure: Results Table 8 0*
+
+
+![Results Table 8 3](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_8_3.png)
+*Figure: Results Table 8 3*
+
+
+![Results Table 8 4](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_8_4.png)
+*Figure: Results Table 8 4*
+
+
+![Results Table 8 5](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_8_5.png)
+*Figure: Results Table 8 5*
+
+
+![Results Table 8 8](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_8_8.png)
+*Figure: Results Table 8 8*
+
+
+![Results Table 8 9](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_8_9.png)
+*Figure: Results Table 8 9*
+
+
+![Results Table 9 0](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_9_0.png)
+*Figure: Results Table 9 0*
+
+
+![Results Table 9 2](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_9_2.png)
+*Figure: Results Table 9 2*
+
+
+![Results Table 9 3](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_9_3.png)
+*Figure: Results Table 9 3*
+
+
+![Results Table 9 5](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_9_5.png)
+*Figure: Results Table 9 5*
+
+
+![Results Table 10 0](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_10_0.png)
+*Figure: Results Table 10 0*
+
+
+![Results Table 10 2](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_10_2.png)
+*Figure: Results Table 10 2*
+
+
+![Results Table 10 4](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_10_4.png)
+*Figure: Results Table 10 4*
+
+
+![Results Table 10 5](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_10_5.png)
+*Figure: Results Table 10 5*
+
+
+![Results Table 11 0](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_11_0.png)
+*Figure: Results Table 11 0*
+
+
+![Results Table 11 1](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_11_1.png)
+*Figure: Results Table 11 1*
+
+
+![Results Table 11 3](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_11_3.png)
+*Figure: Results Table 11 3*
+
+
+![Results Table 11 5](/assets/images/paper/anyres-patch-resampling-vision-language-models/results_table_11_5.png)
+*Figure: Results Table 11 5*

@@ -1,22 +1,29 @@
 ---
-published: true
-title: "Q-Former: 시각-언어 사전 학습의 혁신적 질의 트랜스포머"
-excerpt: "학습 가능한 질의를 통해 시각-언어 표현을 효율적으로 연결하는 Q-Former의 기술적 혁신과 BLIP-2 성능 분석"
-
 categories:
-  - VLM
+- VLM
+date: 2025-07-29
+excerpt: 학습 가능한 질의를 통해 시각-언어 표현을 효율적으로 연결하는 Q-Former의 기술적 혁신과 BLIP-2 성능 분석
+last_modified_at: 2025-07-29
+published: true
 tags:
-  - [VLM, Q-Former, BLIP-2, Querying Transformer, Vision-Language, Bootstrap Learning, Cross-attention, InstructBLIP]
-
+- - VLM
+  - Q-Former
+  - BLIP-2
+  - Querying Transformer
+  - Vision-Language
+  - Bootstrap Learning
+  - Cross-attention
+  - InstructBLIP
+title: 'Q-Former: 시각-언어 사전 학습의 혁신적 질의 트랜스포머'
 toc: true
 toc_sticky: true
- 
-date: 2025-07-29
-last_modified_at: 2025-07-29
-
 ---
 
 ## Introduction
+
+![Figure 2 0](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/figure_2_0.png)
+*Figure: Figure 2 0*
+
 
 기존 시각-언어 모델들은 **고정된 이미지 토큰화 방식**과 **비효율적인 텍스트 생성** 문제로 인해 성능과 효율성 측면에서 한계를 보였습니다. **Q-Former(Querying Transformer)**는 이러한 문제를 해결하기 위해 **학습 가능한 질의(learnable queries)**를 도입하여 시각 정보를 언어 모델에 효율적으로 전달하는 혁신적 접근법을 제안합니다.
 
@@ -25,6 +32,10 @@ Q-Former는 **BLIP-2**의 핵심 구성 요소로, 사전 훈련된 **frozen ima
 Q-Former의 가장 혁신적인 점은 **고정된 개수의 학습 가능한 질의 토큰**을 통해 시각 정보를 압축하고, **2단계 부트스트랩 학습 전략**으로 representation learning과 generative learning을 효과적으로 결합한다는 것입니다.
 
 ## Background: 기존 시각-언어 아키텍처의 한계
+
+![Architecture Diagram 4 2](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/architecture_diagram_4_2.png)
+*Figure: Architecture Diagram 4 2*
+
 
 ### 1. End-to-End 학습의 비효율성
 
@@ -57,6 +68,10 @@ Q-Former의 가장 혁신적인 점은 **고정된 개수의 학습 가능한 �
 - **생성 품질 저하**: 부적절한 시각-텍스트 alignment
 
 ## Q-Former Architecture: 핵심 설계 원리
+
+![Architecture Diagram 4 1](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/architecture_diagram_4_1.png)
+*Figure: Architecture Diagram 4 1*
+
 
 ### 1. Learnable Queries의 혁신
 
@@ -115,6 +130,10 @@ Query → Image Features 정보 추출
 
 ### 3. 아키텍처 다이어그램
 
+![Architecture Diagram 4 0](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/architecture_diagram_4_0.png)
+*Figure: Architecture Diagram 4 0*
+
+
 ```
 Image Encoder (Frozen)     Q-Former                Language Model (Frozen)
     ┌─────────────┐      ┌──────────────────┐         ┌─────────────────┐
@@ -137,6 +156,10 @@ Image Encoder (Frozen)     Q-Former                Language Model (Frozen)
 ```
 
 ## Training Methodology: 2단계 부트스트랩 전략
+
+![Architecture Diagram 3 1](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/architecture_diagram_3_1.png)
+*Figure: Architecture Diagram 3 1*
+
 
 ### Stage 1: Vision-Language Representation Learning
 
@@ -275,6 +298,10 @@ def total_loss(stage1_outputs, stage2_outputs, alpha=1.0, beta=1.0, gamma=1.0):
 
 ## Technical Deep Dive: 핵심 메커니즘 분석
 
+![Architecture Overview 2](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/architecture_overview_2.png)
+*Figure: Architecture Overview 2*
+
+
 ### 1. Cross-Attention의 정보 선택 전략
 
 Q-Former의 cross-attention은 단순한 feature extraction을 넘어 **adaptive information selection**을 수행합니다:
@@ -378,6 +405,10 @@ class QFormerMasking:
 ```
 
 ## Performance Analysis: 벤치마크 비교 및 효율성 지표
+
+![Results Table 11 0](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/results_table_11_0.png)
+*Figure: Results Table 11 0*
+
 
 ### 1. 주요 벤치마크 성능 비교
 
@@ -498,6 +529,10 @@ def inference_benchmark():
 ```
 
 ### 3. Ablation Studies: 핵심 구성 요소 분석
+
+![Architecture Overview 0](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/architecture_overview_0.png)
+*Figure: Architecture Overview 0*
+
 
 ```python
 def ablation_results():
@@ -1839,6 +1874,10 @@ Q-Former는 시각-언어 모델링 분야에서 **paradigm shift**를 가져온
 
 ### 1. 핵심 기여와 혁신
 
+![Figure 0 0](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/figure_0_0.png)
+*Figure: Figure 0 0*
+
+
 **아키텍처 혁신:**
 - **Modular Design**: 사전 훈련된 컴포넌트들을 효율적으로 연결하는 경량 모듈
 - **Information Bottleneck**: 고정된 개수의 질의를 통한 최적 정보 압축
@@ -2024,3 +2063,69 @@ Q-Former는 단순히 하나의 기술적 혁신을 넘어, **미래 AI 시스�
 - **응용 사례**: 의료 AI, 자율주행, 로보틱스 분야의 최신 연구들
 
 Q-Former의 혁신은 계속되고 있으며, 이 기술을 기반으로 한 더욱 진보된 시각-언어 AI의 시대가 열리고 있습니다.
+
+## Additional Figures
+
+
+![Figure 3 0](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/figure_3_0.png)
+*Figure: Figure 3 0*
+
+
+![Architecture Diagram 4 3](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/architecture_diagram_4_3.png)
+*Figure: Architecture Diagram 4 3*
+
+
+![Figure 4 4](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/figure_4_4.png)
+*Figure: Figure 4 4*
+
+
+![Figure 4 5](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/figure_4_5.png)
+*Figure: Figure 4 5*
+
+
+![Figure 4 6](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/figure_4_6.png)
+*Figure: Figure 4 6*
+
+
+![Architecture Diagram 4 7](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/architecture_diagram_4_7.png)
+*Figure: Architecture Diagram 4 7*
+
+
+![Figure 4 8](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/figure_4_8.png)
+*Figure: Figure 4 8*
+
+
+![Architecture Diagram 4 9](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/architecture_diagram_4_9.png)
+*Figure: Architecture Diagram 4 9*
+
+
+![Architecture Diagram 4 10](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/architecture_diagram_4_10.png)
+*Figure: Architecture Diagram 4 10*
+
+
+![Figure 4 11](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/figure_4_11.png)
+*Figure: Figure 4 11*
+
+
+![Architecture Diagram 4 12](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/architecture_diagram_4_12.png)
+*Figure: Architecture Diagram 4 12*
+
+
+![Results Table 11 1](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/results_table_11_1.png)
+*Figure: Results Table 11 1*
+
+
+![Results Table 11 2](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/results_table_11_2.png)
+*Figure: Results Table 11 2*
+
+
+![Results Table 11 3](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/results_table_11_3.png)
+*Figure: Results Table 11 3*
+
+
+![Results Table 12 0](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/results_table_12_0.png)
+*Figure: Results Table 12 0*
+
+
+![Results Table 12 1](/assets/images/paper/q-former-querying-transformer-vision-language-pre-training/results_table_12_1.png)
+*Figure: Results Table 12 1*

@@ -1,19 +1,22 @@
 ---
-published: true
-title: "Prompt Tuning for Vision-Language Models: A Comprehensive Survey"
-excerpt: "비전-언어 모델을 위한 프롬프트 튜닝 방법론들의 포괄적 조사 연구"
-
 categories:
-  - VLM
+- VLM
+date: 2025-07-25
+excerpt: 비전-언어 모델을 위한 프롬프트 튜닝 방법론들의 포괄적 조사 연구
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [VLM, Prompt Tuning, Survey, Vision-Language Models, CLIP, Few-shot Learning, Zero-shot Learning, Parameter-Efficient Fine-tuning]
-
+- - VLM
+  - Prompt Tuning
+  - Survey
+  - Vision-Language Models
+  - CLIP
+  - Few-shot Learning
+  - Zero-shot Learning
+  - Parameter-Efficient Fine-tuning
+title: 'Prompt Tuning for Vision-Language Models: A Comprehensive Survey'
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction
@@ -128,6 +131,10 @@ last_modified_at: 2025-07-25
 
 ### Test-Time Methods (2 papers)
 
+![Figure 1 2](/assets/images/paper/prompt-tuning-survey/figure_1_2.png)
+*Figure: Figure 1 2*
+
+
 | 논문 제목 | 저자 | 년도 | arXiv |
 |-----------|------|------|-------|
 | Test-Time Prompt Tuning for Zero-Shot Generalization in Vision-Language Models | Shu et al. | 2022 | [2209.07511](https://arxiv.org/abs/2209.07511) |
@@ -135,12 +142,20 @@ last_modified_at: 2025-07-25
 
 ### Domain-Specific Methods (2 papers)
 
+![Figure 1 1](/assets/images/paper/prompt-tuning-survey/figure_1_1.png)
+*Figure: Figure 1 1*
+
+
 | 논문 제목 | 저자 | 년도 | arXiv |
 |-----------|------|------|-------|
 | Domain Prompt Learning for Efficiently Adapting CLIP to Unseen Domains | Ge et al. | 2022 | [2212.04196](https://arxiv.org/abs/2212.04196) |
 | Learning Domain-Specific Prompts for Vision-Language Models | Ramos et al. | 2023 | [2308.04875](https://arxiv.org/abs/2308.04875) |
 
 ### Feature Adaptation Methods (3 papers)
+
+![Architecture Diagram 3 0](/assets/images/paper/prompt-tuning-survey/architecture_diagram_3_0.png)
+*Figure: Architecture Diagram 3 0*
+
 
 | 논문 제목 | 저자 | 년도 | arXiv |
 |-----------|------|------|-------|
@@ -169,6 +184,10 @@ last_modified_at: 2025-07-25
 - **Distribution Robustness**: Natural shift에 대한 견고성 향상
 
 ## Performance Trends
+
+![Figure 1 0](/assets/images/paper/prompt-tuning-survey/figure_1_0.png)
+*Figure: Figure 1 0*
+
 
 프롬프트 튜닝 방법들의 성능 발전 추이:
 

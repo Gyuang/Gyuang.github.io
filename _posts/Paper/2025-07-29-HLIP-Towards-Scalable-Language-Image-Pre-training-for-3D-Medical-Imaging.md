@@ -1,22 +1,27 @@
 ---
-published: true
-title: "HLIP: Towards Scalable Language-Image Pre-training for 3D Medical Imaging"
-excerpt: "3D 의료 영상을 위한 확장 가능한 언어-이미지 사전훈련 프레임워크"
-
 categories:
-  - VLM
+- VLM
+date: 2025-07-29
+excerpt: 3D 의료 영상을 위한 확장 가능한 언어-이미지 사전훈련 프레임워크
+last_modified_at: 2025-07-29
+published: true
 tags:
-  - [VLM, Vision-Language, 3D Medical Imaging, Hierarchical Attention, CLIP, Medical AI]
-
+- - VLM
+  - Vision-Language
+  - 3D Medical Imaging
+  - Hierarchical Attention
+  - CLIP
+  - Medical AI
+title: 'HLIP: Towards Scalable Language-Image Pre-training for 3D Medical Imaging'
 toc: true
 toc_sticky: true
- 
-date: 2025-07-29
-last_modified_at: 2025-07-29
-
 ---
 
 ## Introduction
+
+![Results Table 8 11](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_11.png)
+*Figure: Results Table 8 11*
+
 
 **3D 의료 영상 분석**은 현대 의료 AI에서 가장 중요한 도전 과제 중 하나입니다. CT, MRI, PET 스캔과 같은 **3차원 의료 데이터**는 질병 진단과 치료 계획에 핵심적인 역할을 하지만, 기존의 2D 기반 vision-language 모델들은 이러한 **3D 구조의 복잡성을 효과적으로 처리하지 못**했습니다.
 
@@ -70,9 +75,17 @@ last_modified_at: 2025-07-29
 
 ### 핵심 아이디어: 계층적 주의 메커니즘
 
+![Results Table 8 10](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_10.png)
+*Figure: Results Table 8 10*
+
+
 HLIP의 핵심은 **계층적 주의(Hierarchical Attention) 메커니즘**을 통해 3D 의료 영상의 다중 스케일 특징을 효과적으로 학습하는 것입니다.
 
 ### Architecture Overview
+
+![Results Table 8 9](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_9.png)
+*Figure: Results Table 8 9*
+
 
 ```
 3D Medical Volume → Multi-scale Feature Extraction → Hierarchical Attention → Joint Embedding
@@ -87,6 +100,10 @@ Medical Report ← Text Encoder ← Tokenization ← Raw Text Description
 **3D Convolutional Backbone**
 ```python
 # Hierarchical 3D CNN Architecture
+
+![Results Table 8 8](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_8.png)
+*Figure: Results Table 8 8*
+
 class HierarchicalEncoder(nn.Module):
     def __init__(self):
         # Local features (high resolution, small receptive field)
@@ -188,6 +205,10 @@ class HLIPContrastiveLoss(nn.Module):
 
 ### Architecture Details
 
+![Results Table 8 7](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_7.png)
+*Figure: Results Table 8 7*
+
+
 **1. 3D Vision Encoder**
 ```
 Input: 3D Medical Volume [B, 1, H, W, D]
@@ -212,6 +233,10 @@ Hierarchical Attention:
 - **온도 매개변수**: 학습 가능한 τ=0.07
 
 ### Training Methodology
+
+![Results Table 8 6](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_6.png)
+*Figure: Results Table 8 6*
+
 
 **1. Multi-stage Training Strategy**
 
@@ -307,7 +332,15 @@ for epoch, (H, W, D) in enumerate(resolution_schedule):
 
 ## Experimental Results
 
+![Results Table 8 5](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_5.png)
+*Figure: Results Table 8 5*
+
+
 ### Performance Benchmarks
+
+![Results Table 8 4](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_4.png)
+*Figure: Results Table 8 4*
+
 
 **1. 3D Medical Image-Text Retrieval**
 
@@ -473,6 +506,10 @@ from hlip.model import HLIPModel
 from hlip.trainer import HLIPTrainer
 
 # Initialize model
+
+![Results Table 8 3](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_3.png)
+*Figure: Results Table 8 3*
+
 model = HLIPModel(
     vision_encoder='resnet3d-50',
     text_encoder='clinicalbert',
@@ -502,6 +539,10 @@ import torch
 from hlip import HLIP
 
 # Load pre-trained model
+
+![Results Table 8 2](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_2.png)
+*Figure: Results Table 8 2*
+
 model = HLIP.from_pretrained('hlip-base-medical')
 
 # Prepare your 3D medical volume
@@ -593,6 +634,10 @@ task_dataset = CustomMedicalDataset(
 )
 
 # Fine-tune model
+
+![Results Table 8 1](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_1.png)
+*Figure: Results Table 8 1*
+
 finetuned_model = finetuner.finetune(
     dataset=task_dataset,
     epochs=20,
@@ -685,6 +730,10 @@ HLIP 적용 워크플로우:
 **1. 다중 모달리티 통합**
 ```python
 # Future multi-modal architecture
+
+![Results Table 8 0](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_0.png)
+*Figure: Results Table 8 0*
+
 class UnifiedMedicalVLM(nn.Module):
     def __init__(self):
         # Multi-modal encoders
@@ -749,6 +798,10 @@ class ExplainableHLIP(HLIP):
 **1. 데이터 프라이버시 보호**
 ```python
 # Federated learning approach for medical data
+
+![Method Diagram 1](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/method_diagram_1.png)
+*Figure: Method Diagram 1*
+
 class FederatedHLIP:
     def __init__(self, num_hospitals):
         self.local_models = [HLIP() for _ in range(num_hospitals)]
@@ -783,6 +836,10 @@ class FederatedHLIP:
 
 ### 핵심 기여도
 
+![Figure 1 3](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/figure_1_3.png)
+*Figure: Figure 1 3*
+
+
 1. **3D 의료 영상 특화 아키텍처**: 다중 스케일 해부학적 구조를 효과적으로 모델링
 2. **계층적 주의 메커니즘**: local, regional, global 정보의 통합적 활용
 3. **계산 효율성**: 기존 방법 대비 50% 메모리 절약, 2.6배 처리량 향상
@@ -816,3 +873,21 @@ HLIP는 **3D 의료 영상 AI의 새로운 장을 여는 기술**로서, 향후 
 - Code: https://github.com/Zch0414/hlip
 - CLIP: Radford et al., "Learning Transferable Visual Representations from Natural Language Supervision"
 - Medical Vision-Language: Zhang et al., "Contrastive Learning of Medical Visual Representations from Paired Images and Text"
+
+## Additional Figures
+
+
+![Results Table 8 12](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_12.png)
+*Figure: Results Table 8 12*
+
+
+![Results Table 8 13](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_13.png)
+*Figure: Results Table 8 13*
+
+
+![Results Table 8 14](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_14.png)
+*Figure: Results Table 8 14*
+
+
+![Results Table 8 15](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_15.png)
+*Figure: Results Table 8 15*

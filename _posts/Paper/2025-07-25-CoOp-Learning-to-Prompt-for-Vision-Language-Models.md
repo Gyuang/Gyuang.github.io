@@ -1,22 +1,26 @@
 ---
-published: true
-title: "Learning to Prompt for Vision-Language Models (CoOp)"
-excerpt: "비전-언어 모델을 위한 자동 프롬프트 학습 방법론"
-
 categories:
-  - VLM
+- VLM
+date: 2025-07-25
+excerpt: 비전-언어 모델을 위한 자동 프롬프트 학습 방법론
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [VLM, Vision-Language, Prompt Learning, Few-shot Learning, CLIP]
-
+- - VLM
+  - Vision-Language
+  - Prompt Learning
+  - Few-shot Learning
+  - CLIP
+title: Learning to Prompt for Vision-Language Models (CoOp)
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction
+
+![Figure 3 0](/assets/images/paper/coop-learning-to-prompt-for-vision-language-models/figure_3_0.png)
+*Figure: Figure 3 0*
+
 
 기존 비전-언어 모델들은 **수동적인 프롬프트 엔지니어링**에 의존해왔습니다. 특히 CLIP과 같은 모델에서는 올바른 프롬프트 설계가 성능에 결정적 영향을 미치지만, 이는 **도메인 전문 지식이 필요하고 극도로 시간 소모적**이며, 단어 하나의 변화만으로도 성능이 크게 달라지는 문제가 있었습니다.
 
@@ -24,7 +28,15 @@ last_modified_at: 2025-07-25
 
 ## Methods
 
+![Method Diagram 1 2](/assets/images/paper/coop-learning-to-prompt-for-vision-language-models/method_diagram_1_2.png)
+*Figure: Method Diagram 1 2*
+
+
 ### Architecture Overview
+
+![Method Diagram 1 1](/assets/images/paper/coop-learning-to-prompt-for-vision-language-models/method_diagram_1_1.png)
+*Figure: Method Diagram 1 1*
+
 
 CoOp의 핵심 아키텍처는 다음과 같습니다:
 
@@ -103,6 +115,10 @@ CoOp은 **11개의 다양한 이미지 인식 데이터셋**에서 평가되었�
 - Real-world 적용 시나리오 반영
 
 ## Results
+
+![Architecture Overview 1](/assets/images/paper/coop-learning-to-prompt-for-vision-language-models/architecture_overview_1.png)
+*Figure: Architecture Overview 1*
+
 
 CoOp은 수동 프롬프트 엔지니어링 대비 **현저한 성능 향상**을 달성했습니다:
 

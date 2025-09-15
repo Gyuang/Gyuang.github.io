@@ -1,19 +1,23 @@
 ---
-published: true
-title: "Qwen: 알리바바의 차세대 대형 언어 모델 패밀리 종합 분석"
-excerpt: "GQA, DCA, M-RoPE 등 혁신적 기술로 무장한 Qwen 모델 패밀리의 기술적 혁신과 성능 분석"
-
 categories:
-  - VLM
+- VLM
+date: 2025-07-29
+excerpt: GQA, DCA, M-RoPE 등 혁신적 기술로 무장한 Qwen 모델 패밀리의 기술적 혁신과 성능 분석
+last_modified_at: 2025-07-29
+published: true
 tags:
-  - [LLM, Qwen, Alibaba, GQA, DCA, M-RoPE, MoE, Multimodal, Open Source]
-
+- - LLM
+  - Qwen
+  - Alibaba
+  - GQA
+  - DCA
+  - M-RoPE
+  - MoE
+  - Multimodal
+  - Open Source
+title: 'Qwen: 알리바바의 차세대 대형 언어 모델 패밀리 종합 분석'
 toc: true
 toc_sticky: true
- 
-date: 2025-07-29
-last_modified_at: 2025-07-29
-
 ---
 
 ## Introduction
@@ -67,6 +71,10 @@ Qwen 베타 (2023.04) → Qwen 1.0 (2023.09)
 ```
 
 ## Core Architecture: 핵심 기술 혁신
+
+![Results Table 17 3](/assets/images/paper/qwen-comprehensive-analysis/results_table_17_3.png)
+*Figure: Results Table 17 3*
+
 
 ### Grouped Query Attention (GQA)
 
@@ -165,7 +173,15 @@ def compute_rope_frequencies(dim, max_position_embeddings=2048):
 
 ## Model Variants: 다양한 특화 모델
 
+![Results Table 17 2](/assets/images/paper/qwen-comprehensive-analysis/results_table_17_2.png)
+*Figure: Results Table 17 2*
+
+
 ### Base Models
+
+![Results Table 17 1](/assets/images/paper/qwen-comprehensive-analysis/results_table_17_1.png)
+*Figure: Results Table 17 1*
+
 ```
 모델 크기별 사양:
 - Qwen2.5-0.5B: 모바일/엣지 디바이스용
@@ -178,6 +194,10 @@ def compute_rope_frequencies(dim, max_position_embeddings=2048):
 ```
 
 ### Specialized Models
+
+![Results Table 17 0](/assets/images/paper/qwen-comprehensive-analysis/results_table_17_0.png)
+*Figure: Results Table 17 0*
+
 
 #### Qwen2.5-Coder
 코딩 전용으로 특화된 모델:
@@ -231,6 +251,10 @@ class MathSolver:
 - **이중 언어 지원**: 영어/중국어
 
 ## Training Methodology: 훈련 혁신
+
+![Figure 0 4](/assets/images/paper/qwen-comprehensive-analysis/figure_0_4.png)
+*Figure: Figure 0 4*
+
 
 ### Self-Improvement Pipeline
 
@@ -287,6 +311,10 @@ Qwen2.5: 18조 토큰 (2.6배 증가)
 
 ### Architecture Overview
 
+![Figure 0 2](/assets/images/paper/qwen-comprehensive-analysis/figure_0_2.png)
+*Figure: Figure 0 2*
+
+
 ```python
 class Qwen2VLModel:
     def __init__(self):
@@ -335,6 +363,10 @@ class Qwen2VLModel:
 
 ## Performance Analysis: 성능 벤치마크
 
+![Results Table 16 1](/assets/images/paper/qwen-comprehensive-analysis/results_table_16_1.png)
+*Figure: Results Table 16 1*
+
+
 ### General Language Understanding
 
 ```
@@ -378,6 +410,10 @@ MATH 벤치마크 (고등학교/대학 수학):
 ```
 
 ## MoE Architecture: 효율성의 혁신
+
+![Architecture Overview 0](/assets/images/paper/qwen-comprehensive-analysis/architecture_overview_0.png)
+*Figure: Architecture Overview 0*
+
 
 ### Expert Design Philosophy
 
@@ -601,6 +637,10 @@ def multimodal_inference(image_path, question):
 ```
 
 ## Conclusion: 핵심 시사점
+
+![Figure 0 0](/assets/images/paper/qwen-comprehensive-analysis/figure_0_0.png)
+*Figure: Figure 0 0*
+
 
 Qwen 모델 패밀리는 단순한 오픈소스 LLM을 넘어서, **아키텍처 혁신**, **효율성 최적화**, **개방성** 측면에서 AI 분야에 중요한 패러다임 변화를 가져오고 있습니다.
 

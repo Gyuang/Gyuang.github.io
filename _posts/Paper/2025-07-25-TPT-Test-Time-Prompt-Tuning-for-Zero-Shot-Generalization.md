@@ -1,22 +1,29 @@
 ---
-published: true
-title: "Test-Time Prompt Tuning for Zero-Shot Generalization in Vision-Language Models (TPT)"
-excerpt: "Test-time adaptation through single-sample prompt optimization for improved zero-shot generalization"
-
 categories:
-  - VLM
+- VLM
+date: 2025-07-25
+excerpt: Test-time adaptation through single-sample prompt optimization for improved
+  zero-shot generalization
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [VLM, Vision-Language, Test-Time Adaptation, Zero-shot Learning, Prompt Tuning, CLIP]
-
+- - VLM
+  - Vision-Language
+  - Test-Time Adaptation
+  - Zero-shot Learning
+  - Prompt Tuning
+  - CLIP
+title: Test-Time Prompt Tuning for Zero-Shot Generalization in Vision-Language Models
+  (TPT)
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction
+
+![Figure 1 3](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/figure_1_3.png)
+*Figure: Figure 1 3*
+
 
 Test-Time Prompt Tuning (TPT) introduces a novel approach that learns adaptive prompts on-the-fly with single test samples, addressing the limitation that training on domain-specific data reduces generalization capability to unseen domains. Unlike traditional prompt tuning methods that require additional training data, TPT maintains the zero-shot setting while improving model performance through test-time adaptation.
 
@@ -29,7 +36,15 @@ Test-Time Prompt Tuning (TPT) introduces a novel approach that learns adaptive p
 
 ## Methods
 
+![Architecture Diagram 5 5](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/architecture_diagram_5_5.png)
+*Figure: Architecture Diagram 5 5*
+
+
 ### Architecture Overview
+
+![Method Diagram 1](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/method_diagram_1.png)
+*Figure: Method Diagram 1*
+
 
 TPT는 테스트 시점에서 각 샘플별로 프롬프트를 최적화합니다:
 
@@ -101,6 +116,10 @@ Where:
 
 ### 5. Integration with CLIP Architecture
 
+![Architecture Overview 1](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/architecture_overview_1.png)
+*Figure: Architecture Overview 1*
+
+
 **Seamless Framework Integration**
 - Work within existing vision-language model frameworks
 - Tune only the prompt embeddings while keeping pre-trained model weights frozen
@@ -131,6 +150,10 @@ The evaluation covers multiple datasets testing different aspects of generalizat
 - **Standard benchmarks**: Various computer vision datasets for comprehensive evaluation
 
 ## Results
+
+![Results Table 7 0](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/results_table_7_0.png)
+*Figure: Results Table 7 0*
+
 
 TPT demonstrates significant improvements in zero-shot performance across multiple challenging scenarios:
 
@@ -170,3 +193,69 @@ TPT demonstrates significant improvements in zero-shot performance across multip
 4. **Zero-Shot Preservation**: The method successfully improves performance while maintaining the zero-shot setting, making it practical for real-world deployment
 
 The key innovation lies in the test-time adaptation mechanism that dynamically optimizes prompts for individual samples, enabling better generalization compared to static prompts learned during training time.
+
+## Additional Figures
+
+
+![Figure 1 9](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/figure_1_9.png)
+*Figure: Figure 1 9*
+
+
+![Figure 1 11](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/figure_1_11.png)
+*Figure: Figure 1 11*
+
+
+![Figure 1 12](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/figure_1_12.png)
+*Figure: Figure 1 12*
+
+
+![Figure 1 13](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/figure_1_13.png)
+*Figure: Figure 1 13*
+
+
+![Figure 5 0](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/figure_5_0.png)
+*Figure: Figure 5 0*
+
+
+![Figure 5 2](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/figure_5_2.png)
+*Figure: Figure 5 2*
+
+
+![Figure 5 4](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/figure_5_4.png)
+*Figure: Figure 5 4*
+
+
+![Architecture Diagram 5 6](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/architecture_diagram_5_6.png)
+*Figure: Architecture Diagram 5 6*
+
+
+![Architecture Diagram 5 7](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/architecture_diagram_5_7.png)
+*Figure: Architecture Diagram 5 7*
+
+
+![Architecture Diagram 5 8](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/architecture_diagram_5_8.png)
+*Figure: Architecture Diagram 5 8*
+
+
+![Architecture Diagram 5 9](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/architecture_diagram_5_9.png)
+*Figure: Architecture Diagram 5 9*
+
+
+![Results Table 7 1](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/results_table_7_1.png)
+*Figure: Results Table 7 1*
+
+
+![Results Table 18 0](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/results_table_18_0.png)
+*Figure: Results Table 18 0*
+
+
+![Results Table 19 0](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/results_table_19_0.png)
+*Figure: Results Table 19 0*
+
+
+![Results Table 19 1](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/results_table_19_1.png)
+*Figure: Results Table 19 1*
+
+
+![Results Table 19 2](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/results_table_19_2.png)
+*Figure: Results Table 19 2*

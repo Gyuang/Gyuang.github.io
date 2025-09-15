@@ -1,22 +1,27 @@
 ---
-published: true
-title: "VoxelPrompt: A Vision-Language Agent for Grounded Medical Image Analysis"
-excerpt: "수백 개의 해부학적 특징을 분할하는 범용 의료 영상 분석 언어 에이전트"
-
 categories:
-  - VLM
+- VLM
+date: 2025-07-25
+excerpt: 수백 개의 해부학적 특징을 분할하는 범용 의료 영상 분석 언어 에이전트
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [VLM, Medical Imaging, 3D Analysis, Language Agent, Neuroimaging, Segmentation]
-
+- - VLM
+  - Medical Imaging
+  - 3D Analysis
+  - Language Agent
+  - Neuroimaging
+  - Segmentation
+title: 'VoxelPrompt: A Vision-Language Agent for Grounded Medical Image Analysis'
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction
+
+![Method Diagram 1 3](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_3.png)
+*Figure: Method Diagram 1 3*
+
 
 의료 영상 분석 분야는 각 특정 태스크에 특화된 모델들이 필요한 상황이었습니다. 하지만 이는 임상 현장에서 다양한 분석 요구를 충족하기에는 비효율적이고 제한적이었습니다. 
 
@@ -32,6 +37,10 @@ last_modified_at: 2025-07-25
 
 ### Vision-Language Models in Medical Domain
 
+![Method Diagram 1 2](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_2.png)
+*Figure: Method Diagram 1 2*
+
+
 CLIP, LLaVA 등이 의료 분야에 적용되기 시작했지만, 대부분 2D 이미지와 간단한 질의응답에 제한되어 있었습니다. 3D 의료 볼륨의 복잡한 분석과 정량적 측정을 지원하는 통합 시스템은 부족했습니다.
 
 ### Agent-based AI Systems
@@ -40,7 +49,15 @@ CLIP, LLaVA 등이 의료 분야에 적용되기 시작했지만, 대부분 2D �
 
 ## Method 
 
+![Method Diagram 1 1](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_1.png)
+*Figure: Method Diagram 1 1*
+
+
 ### Architecture Overview
+
+![Architecture Overview 1](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/architecture_overview_1.png)
+*Figure: Architecture Overview 1*
+
 
 VoxelPrompt는 언어 에이전트와 비전 네트워크가 상호작용하는 혁신적인 아키텍처를 제시합니다:
 
@@ -166,6 +183,10 @@ VoxelPrompt는 다양한 의료 영상 태스크를 동시에 학습하는 멀�
 
 ## Experiments
 
+![Results Table 7 1](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/results_table_7_1.png)
+*Figure: Results Table 7 1*
+
+
 ### Datasets
 
 **신경영상 데이터셋**
@@ -182,6 +203,10 @@ VoxelPrompt는 다양한 의료 영상 태스크를 동시에 학습하는 멀�
 - **개방형 VQA**: 의료 영상에 대한 자연어 질의응답
 
 ### Results
+
+![Results Table 7 0](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/results_table_7_0.png)
+*Figure: Results Table 7 0*
+
 
 **해부학적 구조 분할 성능**
 - **전체 분할 정확도**: Dice score 0.89 (FreeSurfer 대비 +0.07)
@@ -253,3 +278,161 @@ VoxelPrompt는 의료 영상 분석 분야에 패러다임 변화를 제시합�
 6. **실용적 설계**: 연구실 성능뿐만 아니라 실제 임상 워크플로우 통합 고려가 필수
 7. **확장 가능성**: 새로운 태스크와 모달리티를 쉽게 추가할 수 있는 확장 가능한 아키텍처의 중요성
 8. **인간-AI 협업**: AI가 의료진을 대체하는 것이 아닌 강력한 보조 도구 역할의 최적화
+
+## Additional Figures
+
+
+![Method Diagram 1 4](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_4.png)
+*Figure: Method Diagram 1 4*
+
+
+![Method Diagram 1 5](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_5.png)
+*Figure: Method Diagram 1 5*
+
+
+![Method Diagram 1 6](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_6.png)
+*Figure: Method Diagram 1 6*
+
+
+![Method Diagram 1 7](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_7.png)
+*Figure: Method Diagram 1 7*
+
+
+![Method Diagram 1 8](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_8.png)
+*Figure: Method Diagram 1 8*
+
+
+![Method Diagram 1 9](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_9.png)
+*Figure: Method Diagram 1 9*
+
+
+![Method Diagram 1 10](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_10.png)
+*Figure: Method Diagram 1 10*
+
+
+![Method Diagram 1 11](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_11.png)
+*Figure: Method Diagram 1 11*
+
+
+![Method Diagram 1 12](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_12.png)
+*Figure: Method Diagram 1 12*
+
+
+![Method Diagram 1 13](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_13.png)
+*Figure: Method Diagram 1 13*
+
+
+![Method Diagram 1 14](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_14.png)
+*Figure: Method Diagram 1 14*
+
+
+![Method Diagram 1 15](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_15.png)
+*Figure: Method Diagram 1 15*
+
+
+![Method Diagram 1 16](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_16.png)
+*Figure: Method Diagram 1 16*
+
+
+![Method Diagram 1 17](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_17.png)
+*Figure: Method Diagram 1 17*
+
+
+![Method Diagram 1 18](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_18.png)
+*Figure: Method Diagram 1 18*
+
+
+![Method Diagram 1 19](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_19.png)
+*Figure: Method Diagram 1 19*
+
+
+![Method Diagram 1 20](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_20.png)
+*Figure: Method Diagram 1 20*
+
+
+![Method Diagram 1 21](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_21.png)
+*Figure: Method Diagram 1 21*
+
+
+![Method Diagram 1 22](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_22.png)
+*Figure: Method Diagram 1 22*
+
+
+![Method Diagram 1 23](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_23.png)
+*Figure: Method Diagram 1 23*
+
+
+![Method Diagram 1 24](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_24.png)
+*Figure: Method Diagram 1 24*
+
+
+![Method Diagram 1 25](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_25.png)
+*Figure: Method Diagram 1 25*
+
+
+![Method Diagram 1 26](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_26.png)
+*Figure: Method Diagram 1 26*
+
+
+![Method Diagram 1 27](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_27.png)
+*Figure: Method Diagram 1 27*
+
+
+![Method Diagram 1 28](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_28.png)
+*Figure: Method Diagram 1 28*
+
+
+![Method Diagram 1 29](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_29.png)
+*Figure: Method Diagram 1 29*
+
+
+![Method Diagram 1 30](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_30.png)
+*Figure: Method Diagram 1 30*
+
+
+![Method Diagram 1 31](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_31.png)
+*Figure: Method Diagram 1 31*
+
+
+![Method Diagram 1 32](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_32.png)
+*Figure: Method Diagram 1 32*
+
+
+![Method Diagram 1 33](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_33.png)
+*Figure: Method Diagram 1 33*
+
+
+![Method Diagram 1 34](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_34.png)
+*Figure: Method Diagram 1 34*
+
+
+![Method Diagram 1 35](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/method_diagram_1_35.png)
+*Figure: Method Diagram 1 35*
+
+
+![Results Table 7 2](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/results_table_7_2.png)
+*Figure: Results Table 7 2*
+
+
+![Results Table 7 3](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/results_table_7_3.png)
+*Figure: Results Table 7 3*
+
+
+![Results Table 7 4](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/results_table_7_4.png)
+*Figure: Results Table 7 4*
+
+
+![Results Table 7 5](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/results_table_7_5.png)
+*Figure: Results Table 7 5*
+
+
+![Results Table 7 6](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/results_table_7_6.png)
+*Figure: Results Table 7 6*
+
+
+![Results Table 7 7](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/results_table_7_7.png)
+*Figure: Results Table 7 7*
+
+
+![Results Table 7 8](/assets/images/paper/voxelprompt-a-vision-language-agent-for-grounded-medical-image-analysis/results_table_7_8.png)
+*Figure: Results Table 7 8*

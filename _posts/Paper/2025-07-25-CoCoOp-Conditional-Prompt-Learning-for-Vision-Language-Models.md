@@ -1,22 +1,27 @@
 ---
-published: true
-title: "Conditional Prompt Learning for Vision-Language Models (CoCoOp)"
-excerpt: "입력별 조건부 프롬프트 학습을 통한 비전-언어 모델의 일반화 성능 향상"
-
 categories:
-  - VLM
+- VLM
+date: 2025-07-25
+excerpt: 입력별 조건부 프롬프트 학습을 통한 비전-언어 모델의 일반화 성능 향상
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [VLM, Vision-Language, Prompt Learning, Conditional Learning, Generalization, CLIP]
-
+- - VLM
+  - Vision-Language
+  - Prompt Learning
+  - Conditional Learning
+  - Generalization
+  - CLIP
+title: Conditional Prompt Learning for Vision-Language Models (CoCoOp)
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction
+
+![Architecture Overview 2](/assets/images/paper/cocoop-conditional-prompt-learning-for-vision-language-models/architecture_overview_2.png)
+*Figure: Architecture Overview 2*
+
 
 **Context Optimization (CoOp)**은 수동 프롬프트 엔지니어링의 한계를 해결했지만, **학습된 컨텍스트 벡터가 베이스 클래스에 과적합되어 새로운 클래스에 대한 일반화 성능이 저하**되는 문제가 있었습니다. 
 
@@ -24,7 +29,15 @@ last_modified_at: 2025-07-25
 
 ## Methods
 
+![Method Diagram 1 3](/assets/images/paper/cocoop-conditional-prompt-learning-for-vision-language-models/method_diagram_1_3.png)
+*Figure: Method Diagram 1 3*
+
+
 ### Architecture Overview
+
+![Method Diagram 1 2](/assets/images/paper/cocoop-conditional-prompt-learning-for-vision-language-models/method_diagram_1_2.png)
+*Figure: Method Diagram 1 2*
+
 
 CoCoOp의 아키텍처는 CoOp을 확장하여 조건부 프롬프트를 생성합니다:
 
@@ -43,6 +56,10 @@ Meta-Net이 각 이미지에 대해 조건부 토큰을 생성하여 동적 프�
 CoCoOp은 다음과 같은 핵심 기술 혁신을 통해 CoOp을 확장합니다:
 
 ### 1. Meta-Net Architecture
+
+![Method Diagram 1 1](/assets/images/paper/cocoop-conditional-prompt-learning-for-vision-language-models/method_diagram_1_1.png)
+*Figure: Method Diagram 1 1*
+
 
 **경량 신경망 구조**
 - **Two-layer bottleneck 설계**: Linear-ReLU-Linear 구조
@@ -143,6 +160,10 @@ CoCoOp의 실험은 **비전-언어 모델 평가에 널리 사용되는 11개 �
 - 클래스 분포 변화에 대한 강건성 검증
 
 ## Results
+
+![Architecture Overview 1](/assets/images/paper/cocoop-conditional-prompt-learning-for-vision-language-models/architecture_overview_1.png)
+*Figure: Architecture Overview 1*
+
 
 CoCoOp은 CoOp 대비 **새로운 클래스에 대한 일반화 성능에서 현저한 향상**을 달성했습니다:
 

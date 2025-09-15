@@ -1,18 +1,18 @@
 ---
-title: "Prefix-Tuning: Optimizing Continuous Prompts for Generation"
 categories:
-  - Paper
-  - VLM
-tags:
-  - Prefix Tuning
-  - Parameter Efficient
-  - Generation
-  - NLP
-toc: true
-toc_sticky: true
-toc_label: "Prefix-Tuning"
+- Paper
+- VLM
 header:
   teaser: /assets/images/paper/prefix-tuning-teaser.png
+tags:
+- Prefix Tuning
+- Parameter Efficient
+- Generation
+- NLP
+title: 'Prefix-Tuning: Optimizing Continuous Prompts for Generation'
+toc: true
+toc_label: Prefix-Tuning
+toc_sticky: true
 ---
 
 # Prefix-Tuning: 생성 태스크를 위한 Continuous Prompt 최적화
@@ -34,6 +34,10 @@ Prefix-Tuning은 언어 모델의 파라미터를 고정한 채로, **시퀀스 
 - **학습**: Prefix 벡터만 학습, 나머지 모델 파라미터는 고정
 
 ### 2. 아키텍처별 적용
+
+![Architecture Overview 0](/assets/images/paper/prefix-tuning/architecture_overview_0.png)
+*Figure: Architecture Overview 0*
+
 
 #### GPT-2/GPT-3 (Autoregressive)
 ```
@@ -62,6 +66,10 @@ P_idx : [PREFIX_1, PREFIX_2, ..., PREFIX_n, x_1, x_2, ..., x_m]
 - **분산 배치**: 일관성 있는 가이던스 어려움
 
 ## 실험 결과
+
+![Results Table 3 0](/assets/images/paper/prefix-tuning/results_table_3_0.png)
+*Figure: Results Table 3 0*
+
 
 ### Table-to-Text 생성 (WebNLG, DART)
 - **Full Fine-tuning**: BLEU 45.6 (WebNLG)
