@@ -2,7 +2,7 @@
 title: "The Power of Scale for Parameter-Efficient Prompt Tuning"
 categories:
   - Paper
-  - Medical AI
+  - VLM
 tags:
   - Prompt Tuning
   - Parameter Efficient

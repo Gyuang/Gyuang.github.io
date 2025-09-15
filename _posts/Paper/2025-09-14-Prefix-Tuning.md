@@ -2,7 +2,7 @@
 title: "Prefix-Tuning: Optimizing Continuous Prompts for Generation"
 categories:
   - Paper
-  - Medical AI
+  - VLM
 tags:
   - Prefix Tuning
   - Parameter Efficient
