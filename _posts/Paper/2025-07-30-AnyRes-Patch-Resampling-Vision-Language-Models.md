@@ -68,8 +68,28 @@ AnyRes: 비전-언어 모델의 혁신적 패치 리샘플링 기술 완전 분�
 ![Architecture Overview 1](/assets/images/paper/anyres-patch-resampling-vision-language-models/architecture_overview_1.png)
 *Figure: Model architecture and component design*
 *Figure: Architecture Overview 1*
-AnyRes 패치 리샘플링 기술은 비전-언어 모델링 분야에서 **해상도 제약의 패러다임을 완전히 바꾼 혁신적 접근법**입니다. 고정된 입력 크기의 한계를 극복하고, **임의 해상도 이미지의 효율적 처리**를 가능하게 하여 실용적 AI 시스템의 새로운 가능성을 열었습니다.
-AnyRes 기술은 **문서 이해**, **의료 영상 분석**, **자율주행**, **산업 검사** 등 고해상도 시각 정보가 중요한 실제 응용 분야에서 획기적인 성능 향상을 가져왔습니다. 특히 **50%+ 성능 향상**을 보인 세밀한 텍스트 읽기와 정밀한 객체 인식 능력은 실용적 AI 시스템의 현실적 배포를 가능하게 했습니다.
+AnyRes는 **비전-언어 모델의 해상도 제약을 근본적으로 해결**하며, 실용적 AI 시스템의 새로운 가능성을 열었습니다.
+
+**이론적 기여:**
+1. **Resolution-Agnostic Processing**: 임의 해상도 이미지의 효율적 처리 방법론
+2. **Patch-based Architecture**: 지역 특징과 전체 컨텍스트의 수학적 균형
+3. **Scalable Framework**: 메모리 효율성과 성능의 최적 트레이드오프
+4. **Modular Design**: 기존 아키텍처에 쉽게 통합 가능한 디자인
+
+**실용적 영향:**
+- **문서 AI**: OCR, 레이아웃 분석, 정보 추출에서 혁신적 성능
+- **의료 영상**: 고해상도 의료 이미지의 정밀 분석 가능
+- **자율주행**: 세밀한 도로 환경 인식으로 안전성 향상
+- **산업 검사**: 미세한 결함 감지로 품질 관리 개선
+
+**산업 표준화:**
+- **LLaVA-NeXT**: 대표적 비전-언어 모델에 전면 도입
+- **GPT-4V 영감**: 상용 모델들에서 유사 기술 채택
+- **오픈소스 생태계**: Transformers, MMPretrain 등에 표준 라이브러리로 포함
+- **벤치마크 표준**: DocVQA, ChartQA 등에서 새로운 성능 기준 제시
+
+**후속 연구 촉진:**
+AnyRes의 아이디어는 **MiniGPT-v2, InstructBLIP, Qwen-VL** 등 다양한 후속 모델들에 영감을 주었으며, 현재 **고해상도 이미지 처리**의 데 팩토 표준으로 자리잡았습니다.
 
 ## 6. 개인적 평가
 
