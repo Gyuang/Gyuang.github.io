@@ -19,6 +19,7 @@ toc_sticky: true
 ## Introduction
 
 ![Method Diagram 1 3](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/method_diagram_1_3.png)
+*Figure: System architecture and methodology overview*
 *Figure: Method Diagram 1 3*
 
 
@@ -30,12 +31,14 @@ CLIP의 핵심 아이디어는 **인터넷에서 수집한 4억 개의 이미지
 ## Methods
 
 ![Method Diagram 1 2](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/method_diagram_1_2.png)
+*Figure: System architecture and methodology overview*
 *Figure: Method Diagram 1 2*
 
 
 ### Core Architecture
 
 ![Method Diagram 1 1](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/method_diagram_1_1.png)
+*Figure: System architecture and methodology overview*
 *Figure: Method Diagram 1 1*
 
 
@@ -44,6 +47,7 @@ CLIP는 **dual-encoder 구조**를 기반으로 합니다:
 ### Architecture Overview
 
 ![Architecture Overview 1](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/architecture_overview_1.png)
+*Figure: Model architecture and component design*
 *Figure: Architecture Overview 1*
 
 
@@ -141,6 +145,7 @@ L = -log(exp(sim(I_i, T_i)/τ) / Σ_j exp(sim(I_i, T_j)/τ))
 ## Results
 
 ![Results Table 14 0](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_0.png)
+*Figure: Experimental results and performance metrics*
 *Figure: Results Table 14 0*
 
 
@@ -168,296 +173,163 @@ L = -log(exp(sim(I_i, T_i)/τ) / Σ_j exp(sim(I_i, T_j)/τ))
 
 
 ![Method Diagram 1 4](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/method_diagram_1_4.png)
+*Figure: System architecture and methodology overview*
 *Figure: Method Diagram 1 4*
 
 
 ![Results Table 14 1](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_1.png)
+*Figure: Experimental results and performance metrics*
 *Figure: Results Table 14 1*
 
 
 ![Results Table 14 2](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_2.png)
+*Figure: Experimental results and performance metrics*
 *Figure: Results Table 14 2*
 
 
-![Results Table 14 3](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_3.png)
-*Figure: Results Table 14 3*
 
 
-![Results Table 14 4](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_4.png)
-*Figure: Results Table 14 4*
 
 
-![Results Table 14 5](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_5.png)
-*Figure: Results Table 14 5*
 
 
-![Results Table 14 6](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_6.png)
-*Figure: Results Table 14 6*
 
 
-![Results Table 14 7](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_7.png)
-*Figure: Results Table 14 7*
 
 
-![Results Table 14 8](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_8.png)
-*Figure: Results Table 14 8*
 
 
-![Results Table 14 9](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_9.png)
-*Figure: Results Table 14 9*
 
 
-![Results Table 14 10](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_10.png)
-*Figure: Results Table 14 10*
 
 
-![Results Table 14 11](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_11.png)
-*Figure: Results Table 14 11*
 
 
-![Results Table 14 12](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_12.png)
-*Figure: Results Table 14 12*
 
 
-![Results Table 14 13](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_13.png)
-*Figure: Results Table 14 13*
 
 
-![Results Table 14 14](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_14.png)
-*Figure: Results Table 14 14*
 
 
-![Results Table 14 15](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_15.png)
-*Figure: Results Table 14 15*
 
 
-![Results Table 14 16](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_16.png)
-*Figure: Results Table 14 16*
 
 
-![Results Table 14 17](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_17.png)
-*Figure: Results Table 14 17*
 
 
-![Results Table 14 18](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_18.png)
-*Figure: Results Table 14 18*
 
 
-![Results Table 14 19](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_19.png)
-*Figure: Results Table 14 19*
 
 
-![Results Table 14 20](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_20.png)
-*Figure: Results Table 14 20*
 
 
-![Results Table 14 21](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_21.png)
-*Figure: Results Table 14 21*
 
 
-![Results Table 14 22](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_22.png)
-*Figure: Results Table 14 22*
 
 
-![Results Table 14 23](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_23.png)
-*Figure: Results Table 14 23*
 
 
-![Results Table 14 24](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_24.png)
-*Figure: Results Table 14 24*
 
 
-![Results Table 14 25](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_25.png)
-*Figure: Results Table 14 25*
 
 
-![Results Table 14 26](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_26.png)
-*Figure: Results Table 14 26*
 
 
-![Results Table 14 27](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_27.png)
-*Figure: Results Table 14 27*
 
 
-![Results Table 14 28](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_28.png)
-*Figure: Results Table 14 28*
 
 
-![Results Table 14 29](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_29.png)
-*Figure: Results Table 14 29*
 
 
-![Results Table 14 30](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_30.png)
-*Figure: Results Table 14 30*
 
 
-![Results Table 14 31](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_31.png)
-*Figure: Results Table 14 31*
 
 
-![Results Table 14 32](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_32.png)
-*Figure: Results Table 14 32*
 
 
-![Results Table 14 33](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_33.png)
-*Figure: Results Table 14 33*
 
 
-![Results Table 14 34](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_34.png)
-*Figure: Results Table 14 34*
 
 
-![Results Table 14 35](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_35.png)
-*Figure: Results Table 14 35*
 
 
-![Results Table 37 0](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_37_0.png)
-*Figure: Results Table 37 0*
 
 
-![Results Table 37 1](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_37_1.png)
-*Figure: Results Table 37 1*
 
 
-![Results Table 41 0](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_0.png)
-*Figure: Results Table 41 0*
 
 
-![Results Table 41 1](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_1.png)
-*Figure: Results Table 41 1*
 
 
-![Results Table 41 2](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_2.png)
-*Figure: Results Table 41 2*
 
 
-![Results Table 41 3](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_3.png)
-*Figure: Results Table 41 3*
 
 
-![Results Table 41 4](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_4.png)
-*Figure: Results Table 41 4*
 
 
-![Results Table 41 5](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_5.png)
-*Figure: Results Table 41 5*
 
 
-![Results Table 41 6](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_6.png)
-*Figure: Results Table 41 6*
 
 
-![Results Table 41 7](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_7.png)
-*Figure: Results Table 41 7*
 
 
-![Results Table 41 8](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_8.png)
-*Figure: Results Table 41 8*
 
 
-![Results Table 41 9](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_9.png)
-*Figure: Results Table 41 9*
 
 
-![Results Table 41 10](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_10.png)
-*Figure: Results Table 41 10*
 
 
-![Results Table 41 11](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_11.png)
-*Figure: Results Table 41 11*
 
 
-![Results Table 41 12](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_12.png)
-*Figure: Results Table 41 12*
 
 
-![Results Table 41 13](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_13.png)
-*Figure: Results Table 41 13*
 
 
-![Results Table 41 14](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_14.png)
-*Figure: Results Table 41 14*
 
 
-![Results Table 41 15](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_15.png)
-*Figure: Results Table 41 15*
 
 
-![Results Table 41 16](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_16.png)
-*Figure: Results Table 41 16*
 
 
-![Results Table 41 17](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_17.png)
-*Figure: Results Table 41 17*
 
 
-![Results Table 41 18](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_18.png)
-*Figure: Results Table 41 18*
 
 
-![Results Table 41 19](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_19.png)
-*Figure: Results Table 41 19*
 
 
-![Results Table 41 20](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_20.png)
-*Figure: Results Table 41 20*
 
 
-![Results Table 41 21](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_21.png)
-*Figure: Results Table 41 21*
 
 
-![Results Table 41 22](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_22.png)
-*Figure: Results Table 41 22*
 
 
-![Results Table 41 23](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_23.png)
-*Figure: Results Table 41 23*
 
 
-![Results Table 41 24](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_24.png)
-*Figure: Results Table 41 24*
 
 
-![Results Table 41 25](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_25.png)
-*Figure: Results Table 41 25*
 
 
-![Results Table 41 26](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_26.png)
-*Figure: Results Table 41 26*
 
 
-![Results Table 41 27](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_27.png)
-*Figure: Results Table 41 27*
 
 
-![Results Table 41 28](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_28.png)
-*Figure: Results Table 41 28*
 
 
-![Results Table 41 29](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_29.png)
-*Figure: Results Table 41 29*
 
 
-![Results Table 41 30](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_30.png)
-*Figure: Results Table 41 30*
 
 
-![Results Table 41 31](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_31.png)
-*Figure: Results Table 41 31*
 
 
-![Results Table 41 32](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_32.png)
-*Figure: Results Table 41 32*
 
 
-![Results Table 41 33](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_33.png)
-*Figure: Results Table 41 33*
 
 
 ![Results Table 41 34](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_34.png)
+*Figure: Experimental results and performance metrics*
 *Figure: Results Table 41 34*
 
 
 ![Results Table 41 35](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_35.png)
+*Figure: Experimental results and performance metrics*
 *Figure: Results Table 41 35*

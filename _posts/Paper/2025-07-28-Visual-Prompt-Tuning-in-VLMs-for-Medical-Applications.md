@@ -21,10 +21,12 @@ toc_sticky: true
 ## Introduction
 
 ![Architecture Overview 1](/assets/images/paper/visual-prompt-tuning/architecture_overview_1.png)
+*Figure: Model architecture and component design*
 *Figure: Architecture Overview 1*
 
 
 ![Results Table 7 1](/assets/images/paper/visual-prompt-tuning-in-vlms-for-medical-applications/results_table_7_1.png)
+*Figure: Experimental results and performance metrics*
 *Figure: Results Table 7 1*
 
 
@@ -585,10 +587,12 @@ def analyze_parameter_efficiency():
 # 결과 예시:
 
 ![Results Table 9 0](/assets/images/paper/visual-prompt-tuning/results_table_9_0.png)
+*Figure: Experimental results and performance metrics*
 *Figure: Results Table 9 0*
 
 
 ![Results Table 7 0](/assets/images/paper/visual-prompt-tuning-in-vlms-for-medical-applications/results_table_7_0.png)
+*Figure: Experimental results and performance metrics*
 *Figure: Results Table 7 0*
 
 # Full Fine-tuning: 100.0%
@@ -1383,283 +1387,7 @@ Visual Prompt Tuning은 **정밀 의료**의 핵심 기술로 발전할 것으�
 ## Additional Figures
 
 
-![Results Table 13 0](/assets/images/paper/visual-prompt-tuning-in-vlms-for-medical-applications/results_table_13_0.png)
-*Figure: Results Table 13 0*
 
 
-![Results Table 14 0](/assets/images/paper/visual-prompt-tuning-in-vlms-for-medical-applications/results_table_14_0.png)
-*Figure: Results Table 14 0*
 
 
-![Results Table 16 0](/assets/images/paper/visual-prompt-tuning-in-vlms-for-medical-applications/results_table_16_0.png)
-*Figure: Results Table 16 0*
-
-## Additional Figures
-
-
-![Method Diagram 1 1](/assets/images/paper/visual-prompt-tuning/method_diagram_1_1.png)
-*Figure: Method Diagram 1 1*
-
-
-![Method Diagram 1 2](/assets/images/paper/visual-prompt-tuning/method_diagram_1_2.png)
-*Figure: Method Diagram 1 2*
-
-
-![Method Diagram 1 3](/assets/images/paper/visual-prompt-tuning/method_diagram_1_3.png)
-*Figure: Method Diagram 1 3*
-
-
-![Method Diagram 1 4](/assets/images/paper/visual-prompt-tuning/method_diagram_1_4.png)
-*Figure: Method Diagram 1 4*
-
-
-![Method Diagram 1 5](/assets/images/paper/visual-prompt-tuning/method_diagram_1_5.png)
-*Figure: Method Diagram 1 5*
-
-
-![Method Diagram 1 6](/assets/images/paper/visual-prompt-tuning/method_diagram_1_6.png)
-*Figure: Method Diagram 1 6*
-
-
-![Method Diagram 1 7](/assets/images/paper/visual-prompt-tuning/method_diagram_1_7.png)
-*Figure: Method Diagram 1 7*
-
-
-![Method Diagram 1 8](/assets/images/paper/visual-prompt-tuning/method_diagram_1_8.png)
-*Figure: Method Diagram 1 8*
-
-
-![Method Diagram 1 9](/assets/images/paper/visual-prompt-tuning/method_diagram_1_9.png)
-*Figure: Method Diagram 1 9*
-
-
-![Method Diagram 1 10](/assets/images/paper/visual-prompt-tuning/method_diagram_1_10.png)
-*Figure: Method Diagram 1 10*
-
-
-![Method Diagram 1 11](/assets/images/paper/visual-prompt-tuning/method_diagram_1_11.png)
-*Figure: Method Diagram 1 11*
-
-
-![Method Diagram 1 12](/assets/images/paper/visual-prompt-tuning/method_diagram_1_12.png)
-*Figure: Method Diagram 1 12*
-
-
-![Method Diagram 1 15](/assets/images/paper/visual-prompt-tuning/method_diagram_1_15.png)
-*Figure: Method Diagram 1 15*
-
-
-![Method Diagram 1 18](/assets/images/paper/visual-prompt-tuning/method_diagram_1_18.png)
-*Figure: Method Diagram 1 18*
-
-
-![Method Diagram 1 21](/assets/images/paper/visual-prompt-tuning/method_diagram_1_21.png)
-*Figure: Method Diagram 1 21*
-
-
-![Method Diagram 1 22](/assets/images/paper/visual-prompt-tuning/method_diagram_1_22.png)
-*Figure: Method Diagram 1 22*
-
-
-![Method Diagram 1 23](/assets/images/paper/visual-prompt-tuning/method_diagram_1_23.png)
-*Figure: Method Diagram 1 23*
-
-
-![Method Diagram 1 24](/assets/images/paper/visual-prompt-tuning/method_diagram_1_24.png)
-*Figure: Method Diagram 1 24*
-
-
-![Method Diagram 1 25](/assets/images/paper/visual-prompt-tuning/method_diagram_1_25.png)
-*Figure: Method Diagram 1 25*
-
-
-![Method Diagram 1 26](/assets/images/paper/visual-prompt-tuning/method_diagram_1_26.png)
-*Figure: Method Diagram 1 26*
-
-
-![Method Diagram 1 27](/assets/images/paper/visual-prompt-tuning/method_diagram_1_27.png)
-*Figure: Method Diagram 1 27*
-
-
-![Figure 3 0](/assets/images/paper/visual-prompt-tuning/figure_3_0.png)
-*Figure: Figure 3 0*
-
-
-![Results Table 11 0](/assets/images/paper/visual-prompt-tuning/results_table_11_0.png)
-*Figure: Results Table 11 0*
-
-
-![Results Table 11 1](/assets/images/paper/visual-prompt-tuning/results_table_11_1.png)
-*Figure: Results Table 11 1*
-
-
-![Results Table 11 2](/assets/images/paper/visual-prompt-tuning/results_table_11_2.png)
-*Figure: Results Table 11 2*
-
-
-![Results Table 16 0](/assets/images/paper/visual-prompt-tuning/results_table_16_0.png)
-*Figure: Results Table 16 0*
-
-
-![Results Table 16 1](/assets/images/paper/visual-prompt-tuning/results_table_16_1.png)
-*Figure: Results Table 16 1*
-
-
-![Results Table 16 2](/assets/images/paper/visual-prompt-tuning/results_table_16_2.png)
-*Figure: Results Table 16 2*
-
-
-![Results Table 16 3](/assets/images/paper/visual-prompt-tuning/results_table_16_3.png)
-*Figure: Results Table 16 3*
-
-
-![Results Table 16 4](/assets/images/paper/visual-prompt-tuning/results_table_16_4.png)
-*Figure: Results Table 16 4*
-
-
-![Results Table 16 5](/assets/images/paper/visual-prompt-tuning/results_table_16_5.png)
-*Figure: Results Table 16 5*
-
-
-![Results Table 16 6](/assets/images/paper/visual-prompt-tuning/results_table_16_6.png)
-*Figure: Results Table 16 6*
-
-
-![Results Table 16 7](/assets/images/paper/visual-prompt-tuning/results_table_16_7.png)
-*Figure: Results Table 16 7*
-
-
-![Results Table 16 8](/assets/images/paper/visual-prompt-tuning/results_table_16_8.png)
-*Figure: Results Table 16 8*
-
-
-![Results Table 16 9](/assets/images/paper/visual-prompt-tuning/results_table_16_9.png)
-*Figure: Results Table 16 9*
-
-
-![Results Table 16 10](/assets/images/paper/visual-prompt-tuning/results_table_16_10.png)
-*Figure: Results Table 16 10*
-
-
-![Results Table 16 11](/assets/images/paper/visual-prompt-tuning/results_table_16_11.png)
-*Figure: Results Table 16 11*
-
-
-![Results Table 16 12](/assets/images/paper/visual-prompt-tuning/results_table_16_12.png)
-*Figure: Results Table 16 12*
-
-
-![Results Table 16 13](/assets/images/paper/visual-prompt-tuning/results_table_16_13.png)
-*Figure: Results Table 16 13*
-
-
-![Results Table 16 14](/assets/images/paper/visual-prompt-tuning/results_table_16_14.png)
-*Figure: Results Table 16 14*
-
-
-![Results Table 16 15](/assets/images/paper/visual-prompt-tuning/results_table_16_15.png)
-*Figure: Results Table 16 15*
-
-
-![Results Table 16 16](/assets/images/paper/visual-prompt-tuning/results_table_16_16.png)
-*Figure: Results Table 16 16*
-
-
-![Results Table 16 17](/assets/images/paper/visual-prompt-tuning/results_table_16_17.png)
-*Figure: Results Table 16 17*
-
-
-![Results Table 16 18](/assets/images/paper/visual-prompt-tuning/results_table_16_18.png)
-*Figure: Results Table 16 18*
-
-
-![Results Table 16 19](/assets/images/paper/visual-prompt-tuning/results_table_16_19.png)
-*Figure: Results Table 16 19*
-
-
-![Results Table 16 20](/assets/images/paper/visual-prompt-tuning/results_table_16_20.png)
-*Figure: Results Table 16 20*
-
-
-![Results Table 16 21](/assets/images/paper/visual-prompt-tuning/results_table_16_21.png)
-*Figure: Results Table 16 21*
-
-
-![Results Table 16 22](/assets/images/paper/visual-prompt-tuning/results_table_16_22.png)
-*Figure: Results Table 16 22*
-
-
-![Results Table 16 23](/assets/images/paper/visual-prompt-tuning/results_table_16_23.png)
-*Figure: Results Table 16 23*
-
-
-![Results Table 18 0](/assets/images/paper/visual-prompt-tuning/results_table_18_0.png)
-*Figure: Results Table 18 0*
-
-
-![Results Table 19 0](/assets/images/paper/visual-prompt-tuning/results_table_19_0.png)
-*Figure: Results Table 19 0*
-
-
-![Results Table 23 0](/assets/images/paper/visual-prompt-tuning/results_table_23_0.png)
-*Figure: Results Table 23 0*
-
-
-![Results Table 23 1](/assets/images/paper/visual-prompt-tuning/results_table_23_1.png)
-*Figure: Results Table 23 1*
-
-
-![Results Table 23 2](/assets/images/paper/visual-prompt-tuning/results_table_23_2.png)
-*Figure: Results Table 23 2*
-
-
-![Results Table 23 3](/assets/images/paper/visual-prompt-tuning/results_table_23_3.png)
-*Figure: Results Table 23 3*
-
-
-![Results Table 23 4](/assets/images/paper/visual-prompt-tuning/results_table_23_4.png)
-*Figure: Results Table 23 4*
-
-
-![Results Table 23 5](/assets/images/paper/visual-prompt-tuning/results_table_23_5.png)
-*Figure: Results Table 23 5*
-
-
-![Results Table 23 6](/assets/images/paper/visual-prompt-tuning/results_table_23_6.png)
-*Figure: Results Table 23 6*
-
-
-![Results Table 27 0](/assets/images/paper/visual-prompt-tuning/results_table_27_0.png)
-*Figure: Results Table 27 0*
-
-
-![Results Table 27 1](/assets/images/paper/visual-prompt-tuning/results_table_27_1.png)
-*Figure: Results Table 27 1*
-
-
-![Results Table 27 2](/assets/images/paper/visual-prompt-tuning/results_table_27_2.png)
-*Figure: Results Table 27 2*
-
-
-![Results Table 27 3](/assets/images/paper/visual-prompt-tuning/results_table_27_3.png)
-*Figure: Results Table 27 3*
-
-
-![Results Table 27 4](/assets/images/paper/visual-prompt-tuning/results_table_27_4.png)
-*Figure: Results Table 27 4*
-
-
-![Results Table 27 5](/assets/images/paper/visual-prompt-tuning/results_table_27_5.png)
-*Figure: Results Table 27 5*
-
-
-![Results Table 27 6](/assets/images/paper/visual-prompt-tuning/results_table_27_6.png)
-*Figure: Results Table 27 6*
-
-
-![Results Table 27 7](/assets/images/paper/visual-prompt-tuning/results_table_27_7.png)
-*Figure: Results Table 27 7*
-
-
-![Results Table 27 8](/assets/images/paper/visual-prompt-tuning/results_table_27_8.png)
-*Figure: Results Table 27 8*

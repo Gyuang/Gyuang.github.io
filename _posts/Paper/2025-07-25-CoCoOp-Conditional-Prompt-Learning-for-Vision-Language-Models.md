@@ -20,6 +20,7 @@ toc_sticky: true
 ## Introduction
 
 ![Architecture Overview 2](/assets/images/paper/cocoop-conditional-prompt-learning-for-vision-language-models/architecture_overview_2.png)
+*Figure: Model architecture and component design*
 *Figure: Architecture Overview 2*
 
 
@@ -30,12 +31,14 @@ toc_sticky: true
 ## Methods
 
 ![Method Diagram 1 3](/assets/images/paper/cocoop-conditional-prompt-learning-for-vision-language-models/method_diagram_1_3.png)
+*Figure: System architecture and methodology overview*
 *Figure: Method Diagram 1 3*
 
 
 ### Architecture Overview
 
 ![Method Diagram 1 2](/assets/images/paper/cocoop-conditional-prompt-learning-for-vision-language-models/method_diagram_1_2.png)
+*Figure: System architecture and methodology overview*
 *Figure: Method Diagram 1 2*
 
 
@@ -58,6 +61,7 @@ CoCoOp은 다음과 같은 핵심 기술 혁신을 통해 CoOp을 확장합니�
 ### 1. Meta-Net Architecture
 
 ![Method Diagram 1 1](/assets/images/paper/cocoop-conditional-prompt-learning-for-vision-language-models/method_diagram_1_1.png)
+*Figure: System architecture and methodology overview*
 *Figure: Method Diagram 1 1*
 
 
@@ -162,6 +166,7 @@ CoCoOp의 실험은 **비전-언어 모델 평가에 널리 사용되는 11개 �
 ## Results
 
 ![Architecture Overview 1](/assets/images/paper/cocoop-conditional-prompt-learning-for-vision-language-models/architecture_overview_1.png)
+*Figure: Model architecture and component design*
 *Figure: Architecture Overview 1*
 
 

@@ -19,6 +19,7 @@ toc_sticky: true
 ## Introduction
 
 ![Figure 3 0](/assets/images/paper/coop-learning-to-prompt-for-vision-language-models/figure_3_0.png)
+![Figure 3 0](/assets/images/paper/coop-learning-to-prompt-for-vision-language-models/figure_3_0.png)
 *Figure: Figure 3 0*
 
 
@@ -29,12 +30,14 @@ toc_sticky: true
 ## Methods
 
 ![Method Diagram 1 2](/assets/images/paper/coop-learning-to-prompt-for-vision-language-models/method_diagram_1_2.png)
+*Figure: System architecture and methodology overview*
 *Figure: Method Diagram 1 2*
 
 
 ### Architecture Overview
 
 ![Method Diagram 1 1](/assets/images/paper/coop-learning-to-prompt-for-vision-language-models/method_diagram_1_1.png)
+*Figure: System architecture and methodology overview*
 *Figure: Method Diagram 1 1*
 
 
@@ -117,6 +120,7 @@ CoOp은 **11개의 다양한 이미지 인식 데이터셋**에서 평가되었�
 ## Results
 
 ![Architecture Overview 1](/assets/images/paper/coop-learning-to-prompt-for-vision-language-models/architecture_overview_1.png)
+*Figure: Model architecture and component design*
 *Figure: Architecture Overview 1*
 
 
