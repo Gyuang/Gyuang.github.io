@@ -2,14 +2,15 @@
 categories:
 - RAG
 date: 2025-07-25
-excerpt: Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks 논문 요약
+excerpt: "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks \uB17C\uBB38\
+  \ \uC694\uC57D"
 last_modified_at: 2025-07-25
 published: true
 tags:
-- - RAG
-  - Retrieval
-  - NLP
-  - Language Model
+- RAG
+- Retrieval
+- NLP
+- Language Model
 title: Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks
 toc: true
 toc_sticky: true
@@ -55,6 +56,7 @@ All datasets test the system's ability to access external knowledge beyond what'
 ## Results
 
 ![Results Table 16 0](/assets/images/paper/retrieval-augmented-generation-for-knowledge-intensive-nlp-tasks/results_table_16_0.png)
+*Figure: Experimental results and performance metrics*
 *Figure: Results Table 16 0*
 
 

@@ -2,18 +2,21 @@
 categories:
 - VLM
 date: 2025-07-28
-excerpt: 의료 영상 분석을 위한 비전-언어 모델의 시각적 프롬프트 튜닝 기법들과 최신 연구 동향
+excerpt: "\uC758\uB8CC \uC601\uC0C1 \uBD84\uC11D\uC744 \uC704\uD55C \uBE44\uC804-\uC5B8\
+  \uC5B4 \uBAA8\uB378\uC758 \uC2DC\uAC01\uC801 \uD504\uB86C\uD504\uD2B8 \uD29C\uB2DD\
+  \ \uAE30\uBC95\uB4E4\uACFC \uCD5C\uC2E0 \uC5F0\uAD6C \uB3D9\uD5A5"
 last_modified_at: 2025-07-28
 published: true
 tags:
-- - VLM
-  - Visual Prompt Tuning
-  - Medical Imaging
-  - Vision-Language Models
-  - Parameter-Efficient Fine-tuning
-  - Medical AI
-  - Clinical Applications
-title: '의료 분야에서의 Visual Prompt Tuning: VLM 적응을 위한 혁신적 접근법'
+- VLM
+- Visual Prompt Tuning
+- Medical Imaging
+- Vision-Language Models
+- Parameter-Efficient Fine-tuning
+- Medical AI
+- Clinical Applications
+title: "\uC758\uB8CC \uBD84\uC57C\uC5D0\uC11C\uC758 Visual Prompt Tuning: VLM \uC801\
+  \uC751\uC744 \uC704\uD55C \uD601\uC2E0\uC801 \uC811\uADFC\uBC95"
 toc: true
 toc_sticky: true
 ---

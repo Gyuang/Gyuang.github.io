@@ -1,19 +1,21 @@
 ---
-published: true
-title:  "Evidence fusion with contextual discounting for multi-modality medical image segmentation" 
-excerpt: "논문요약"
-
 categories:
-  - Multimodal
+- Multimodal
+date: 2024-04-04
+excerpt: "\uB17C\uBB38\uC694\uC57D"
+last_modified_at: 2024-04-04
+published: true
 tags:
-  - [Multimodal, Dempster-Shafer theory, Uncertainty quantification, Segmentation, Brain, Miccai]
-
+- Multimodal
+- Dempster-Shafer theory
+- Uncertainty quantification
+- Segmentation
+- Brain
+- Miccai
+title: Evidence fusion with contextual discounting for multi-modality medical image
+  segmentation
 toc: true
 toc_sticky: true
- 
-date: 2024-04-04
-last_modified_at: 2024-04-04
-
 ---
 
 ## Related Work 

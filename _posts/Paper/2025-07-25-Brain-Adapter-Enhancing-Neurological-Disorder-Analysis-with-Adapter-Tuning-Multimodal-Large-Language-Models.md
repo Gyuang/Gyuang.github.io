@@ -2,15 +2,17 @@
 categories:
 - VLM
 date: 2025-07-25
-excerpt: 3D 뇌 영상 정보를 활용한 신경학적 장애 분석을 위한 경량 어댑터 튜닝 기법
+excerpt: "3D \uB1CC \uC601\uC0C1 \uC815\uBCF4\uB97C \uD65C\uC6A9\uD55C \uC2E0\uACBD\
+  \uD559\uC801 \uC7A5\uC560 \uBD84\uC11D\uC744 \uC704\uD55C \uACBD\uB7C9 \uC5B4\uB311\
+  \uD130 \uD29C\uB2DD \uAE30\uBC95"
 last_modified_at: 2025-07-25
 published: true
 tags:
-- - VLM
-  - Neurological Disorder
-  - 3D Medical Imaging
-  - Adapter Tuning
-  - CLIP
+- VLM
+- Neurological Disorder
+- 3D Medical Imaging
+- Adapter Tuning
+- CLIP
 title: 'Brain-Adapter: Enhancing Neurological Disorder Analysis with Adapter-Tuning
   Multimodal Large Language Models'
 toc: true
@@ -40,11 +42,13 @@ Adapter 기법은 대규모 사전 훈련 모델을 특정 도메인에 효율�
 ## Method 
 
 ![Figure 5 0](/assets/images/paper/brain-adapter-enhancing-neurological-disorder-analysis-with-adapter-tuning-multimodal-large-language-models/figure_5_0.png)
+![Figure 5 0](/assets/images/paper/brain-adapter-enhancing-neurological-disorder-analysis-with-adapter-tuning-multimodal-large-language-models/figure_5_0.png)
 *Figure: Figure 5 0*
 
 
 ### Architecture Overview
 
+![Figure 3 0](/assets/images/paper/brain-adapter-enhancing-neurological-disorder-analysis-with-adapter-tuning-multimodal-large-language-models/figure_3_0.png)
 ![Figure 3 0](/assets/images/paper/brain-adapter-enhancing-neurological-disorder-analysis-with-adapter-tuning-multimodal-large-language-models/figure_3_0.png)
 *Figure: Figure 3 0*
 
@@ -100,6 +104,7 @@ L_total = L_classification + λ₁L_contrastive + λ₂L_consistency + λ₃L_re
 ## Experiments
 
 ![Architecture Overview 2](/assets/images/paper/brain-adapter-enhancing-neurological-disorder-analysis-with-adapter-tuning-multimodal-large-language-models/architecture_overview_2.png)
+*Figure: Model architecture and component design*
 *Figure: Architecture Overview 2*
 
 
@@ -119,6 +124,7 @@ L_total = L_classification + λ₁L_contrastive + λ₂L_consistency + λ₃L_re
 ### Results
 
 ![Architecture Overview 1](/assets/images/paper/brain-adapter-enhancing-neurological-disorder-analysis-with-adapter-tuning-multimodal-large-language-models/architecture_overview_1.png)
+*Figure: Model architecture and component design*
 *Figure: Architecture Overview 1*
 
 

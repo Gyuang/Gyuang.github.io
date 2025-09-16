@@ -1,19 +1,16 @@
 ---
-published: true
-title:  "Full Contextual Attention for Multi-resolution Transformers in Semantic Segmentation" 
-excerpt: "논문요약"
-
 categories:
-  - Transformer
+- Transformer
+date: 2024-04-14
+excerpt: "\uB17C\uBB38\uC694\uC57D"
+last_modified_at: 2024-04-14
+published: true
 tags:
-  - [Transformer, Multi-resolution, ]
-
+- Transformer
+- Multi-resolution
+title: Full Contextual Attention for Multi-resolution Transformers in Semantic Segmentation
 toc: true
 toc_sticky: true
- 
-date: 2024-04-14
-last_modified_at: 2024-04-14
-
 ---
 
 ## Introduction

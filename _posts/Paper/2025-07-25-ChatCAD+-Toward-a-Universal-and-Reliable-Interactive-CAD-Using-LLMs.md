@@ -1,19 +1,22 @@
 ---
-published: true
-title: "ChatCAD+: Toward a Universal and Reliable Interactive CAD Using LLMs"
-excerpt: "방사선과 의사와 가상 가정의 역할을 통합한 범용 신뢰성 대화형 CAD 시스템"
-
 categories:
-  - VLM
+- VLM
+date: 2025-07-25
+excerpt: "\uBC29\uC0AC\uC120\uACFC \uC758\uC0AC\uC640 \uAC00\uC0C1 \uAC00\uC815\uC758\
+  \ \uC5ED\uD560\uC744 \uD1B5\uD569\uD55C \uBC94\uC6A9 \uC2E0\uB8B0\uC131 \uB300\uD654\
+  \uD615 CAD \uC2DC\uC2A4\uD15C"
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [VLM, CAD, LLM, Medical Imaging, Interactive Diagnosis, IEEE TMI]
-
+- VLM
+- CAD
+- LLM
+- Medical Imaging
+- Interactive Diagnosis
+- IEEE TMI
+title: 'ChatCAD+: Toward a Universal and Reliable Interactive CAD Using LLMs'
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction

@@ -1,19 +1,21 @@
 ---
-published: true
-title: "ChatCAD: Interactive Computer-Aided Diagnosis on Medical Image using Large Language Models"
-excerpt: "ChatCAD: Interactive Computer-Aided Diagnosis on Medical Image using Large Language Models 논문 요약"
-
 categories:
-  - VLM
+- VLM
+date: 2025-07-25
+excerpt: "ChatCAD: Interactive Computer-Aided Diagnosis on Medical Image using Large\
+  \ Language Models \uB17C\uBB38 \uC694\uC57D"
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [VLM, LLM, CAD, Medical Imaging, Interactive Diagnosis]
-
+- VLM
+- LLM
+- CAD
+- Medical Imaging
+- Interactive Diagnosis
+title: 'ChatCAD: Interactive Computer-Aided Diagnosis on Medical Image using Large
+  Language Models'
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction

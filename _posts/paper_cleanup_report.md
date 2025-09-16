@@ -6,11 +6,11 @@ Generated on: #오후
 
 - **Total files analyzed**: 45
 - **Files with issues**: 45
-- **Total issues found**: 91
+- **Total issues found**: 86
 
-- **High issues**: 25
-- **Medium issues**: 54
-- **Low issues**: 12
+- **High issues**: 22
+- **Medium issues**: 53
+- **Low issues**: 11
 
 ## High Priority Issues
 
@@ -18,7 +18,7 @@ Generated on: #오후
 
 - **2025-09-14-P-Tuning.md** ⭐: Most images have generic captions (1/1)
 - **2025-07-25-Retrieval-Augmented-Generation-for-Knowledge-Intensive-NLP-Tasks.md**: Most images have generic captions (1/1)
-- **2025-07-25-CLIP-Learning-Transferable-Visual-Representations-from-Natural-Language.md** ⭐: Most images have generic captions (79/79)
+- **2025-07-25-CLIP-Learning-Transferable-Visual-Representations-from-Natural-Language.md** ⭐: Most images have generic captions (10/10)
 - **2025-07-25-VoxelPrompt-A-Vision-Language-Agent-for-Grounded-Medical-Image-Analysis.md** ⭐: Most images have generic captions (45/45)
 - **2025-09-14-P-Tuning-v2.md** ⭐: Most images have generic captions (6/6)
 - ... and 9 more files
@@ -33,15 +33,9 @@ Generated on: #오후
 
 ### Excessive Results Tables
 
-- **2025-07-25-CLIP-Learning-Transferable-Visual-Representations-from-Natural-Language.md** ⭐: Too many results tables (74), should limit to 3-5 most important ones
 - **2025-07-29-HLIP-Towards-Scalable-Language-Image-Pre-training-for-3D-Medical-Imaging.md**: Too many results tables (16), should limit to 3-5 most important ones
-- **2025-07-28-Visual-Prompt-Tuning-in-VLMs-for-Medical-Applications.md** ⭐: Too many results tables (51), should limit to 3-5 most important ones
 - **2025-07-29-Repurposing-Scientific-Literature-Vision-Language-Models.md**: Too many results tables (13), should limit to 3-5 most important ones
 - **2025-07-30-AnyRes-Patch-Resampling-Vision-Language-Models.md**: Too many results tables (62), should limit to 3-5 most important ones
-
-### Duplicate Sections
-
-- **2025-07-28-Visual-Prompt-Tuning-in-VLMs-for-Medical-Applications.md** ⭐: Duplicate sections found: ['Additional Figures']
 
 ## Medium Priority Issues
 
@@ -66,18 +60,17 @@ Generated on: #오후
 ### Excessive Method Diagrams
 
 - **2025-07-25-VoxelPrompt-A-Vision-Language-Agent-for-Grounded-Medical-Image-Analysis.md** ⭐: Too many method diagrams (35), should consolidate
-- **2025-07-28-Visual-Prompt-Tuning-in-VLMs-for-Medical-Applications.md** ⭐: Too many method diagrams (21), should consolidate
 
 ## Low Priority Issues
 
 ### Excessive Whitespace
 
-- **2025-07-25-CLIP-Learning-Transferable-Visual-Representations-from-Natural-Language.md** ⭐: Excessive whitespace in 80 places
+- **2025-07-25-CLIP-Learning-Transferable-Visual-Representations-from-Natural-Language.md** ⭐: Excessive whitespace in 11 places
 - **2025-07-25-TPT-Test-Time-Prompt-Tuning-for-Zero-Shot-Generalization.md**: Excessive whitespace in 21 places
 - **2025-07-25-VoxelPrompt-A-Vision-Language-Agent-for-Grounded-Medical-Image-Analysis.md** ⭐: Excessive whitespace in 46 places
 - **2025-07-25-MaPLE-Multi-modal-Prompt-Learning.md** ⭐: Excessive whitespace in 35 places
 - **2025-09-14-P-Tuning-v2.md** ⭐: Excessive whitespace in 6 places
-- ... and 7 more files
+- ... and 6 more files
 
 ## High-Value Papers Requiring Attention
 
@@ -88,10 +81,10 @@ These papers have high research value and should be cleaned first:
 - Missing required fields: ['published']
 
 ### 2025-07-25-CLIP-Learning-Transferable-Visual-Representations-from-Natural-Language.md
-- Too many results tables (74), should limit to 3-5 most important ones
-- Most images have generic captions (79/79)
+- Most images have generic captions (10/10)
 - Empty sections found: 1
-- ... and 2 more issues
+- Tags are in nested list format (should be flat)
+- ... and 1 more issues
 
 ### 2025-07-25-VoxelPrompt-A-Vision-Language-Agent-for-Grounded-Medical-Image-Analysis.md
 - Most images have generic captions (45/45)
@@ -110,13 +103,12 @@ These papers have high research value and should be cleaned first:
 - Tags are in nested list format (should be flat)
 
 ### 2025-07-28-Visual-Prompt-Tuning-in-VLMs-for-Medical-Applications.md
-- Too many results tables (51), should limit to 3-5 most important ones
-- Most images have generic captions (74/74)
-- Duplicate sections found: ['Additional Figures']
-- ... and 4 more issues
+- Most images have generic captions (4/4)
+- Empty sections found: 1
+- Tags are in nested list format (should be flat)
 
 ### 2025-07-25-CoOp-Learning-to-Prompt-for-Vision-Language-Models.md
-- Most images have generic captions (4/4)
+- Most images have generic captions (5/5)
 - Tags are in nested list format (should be flat)
 
 ### 2025-07-25-ChatCAD+-Toward-a-Universal-and-Reliable-Interactive-CAD-Using-LLMs.md

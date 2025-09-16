@@ -1,19 +1,21 @@
 ---
-published: true
-title: "Biomed-DPT: Dual Modality Prompt Tuning for Biomedical Vision-Language Models"
-excerpt: "지식 향상형 이중 모달리티 프롬프트 튜닝으로 의료 영상 분류 성능 대폭 개선"
-
 categories:
-  - VLM
+- VLM
+date: 2025-07-25
+excerpt: "\uC9C0\uC2DD \uD5A5\uC0C1\uD615 \uC774\uC911 \uBAA8\uB2EC\uB9AC\uD2F0 \uD504\
+  \uB86C\uD504\uD2B8 \uD29C\uB2DD\uC73C\uB85C \uC758\uB8CC \uC601\uC0C1 \uBD84\uB958\
+  \ \uC131\uB2A5 \uB300\uD3ED \uAC1C\uC120"
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [VLM, Prompt Learning, Medical AI, Few-shot Learning, Knowledge Distillation]
-
+- VLM
+- Prompt Learning
+- Medical AI
+- Few-shot Learning
+- Knowledge Distillation
+title: 'Biomed-DPT: Dual Modality Prompt Tuning for Biomedical Vision-Language Models'
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction

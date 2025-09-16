@@ -2,18 +2,20 @@
 categories:
 - VLM
 date: 2025-07-25
-excerpt: 비전-언어 모델을 위한 프롬프트 튜닝 방법론들의 포괄적 조사 연구
+excerpt: "\uBE44\uC804-\uC5B8\uC5B4 \uBAA8\uB378\uC744 \uC704\uD55C \uD504\uB86C\uD504\
+  \uD2B8 \uD29C\uB2DD \uBC29\uBC95\uB860\uB4E4\uC758 \uD3EC\uAD04\uC801 \uC870\uC0AC\
+  \ \uC5F0\uAD6C"
 last_modified_at: 2025-07-25
 published: true
 tags:
-- - VLM
-  - Prompt Tuning
-  - Survey
-  - Vision-Language Models
-  - CLIP
-  - Few-shot Learning
-  - Zero-shot Learning
-  - Parameter-Efficient Fine-tuning
+- VLM
+- Prompt Tuning
+- Survey
+- Vision-Language Models
+- CLIP
+- Few-shot Learning
+- Zero-shot Learning
+- Parameter-Efficient Fine-tuning
 title: 'Prompt Tuning for Vision-Language Models: A Comprehensive Survey'
 toc: true
 toc_sticky: true

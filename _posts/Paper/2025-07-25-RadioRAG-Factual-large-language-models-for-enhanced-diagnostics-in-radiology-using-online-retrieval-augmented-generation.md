@@ -1,19 +1,23 @@
 ---
-published: true
-title: "RadioRAG: Factual large language models for enhanced diagnostics in radiology using online retrieval augmented generation"
-excerpt: "실시간 온라인 검색 기반 방사선학 진단 정확도 향상을 위한 RAG 프레임워크"
-
 categories:
-  - RAG
+- RAG
+date: 2025-07-25
+excerpt: "\uC2E4\uC2DC\uAC04 \uC628\uB77C\uC778 \uAC80\uC0C9 \uAE30\uBC18 \uBC29\uC0AC\
+  \uC120\uD559 \uC9C4\uB2E8 \uC815\uD655\uB3C4 \uD5A5\uC0C1\uC744 \uC704\uD55C RAG\
+  \ \uD504\uB808\uC784\uC6CC\uD06C"
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [VLM, RAG, Radiology, LLM, Online Retrieval, Medical Diagnostics]
-
+- VLM
+- RAG
+- Radiology
+- LLM
+- Online Retrieval
+- Medical Diagnostics
+title: 'RadioRAG: Factual large language models for enhanced diagnostics in radiology
+  using online retrieval augmented generation'
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction

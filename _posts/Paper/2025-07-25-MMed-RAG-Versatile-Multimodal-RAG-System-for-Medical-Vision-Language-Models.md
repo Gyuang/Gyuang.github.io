@@ -1,19 +1,22 @@
 ---
-published: true
-title: "MMed-RAG: Versatile Multimodal RAG System for Medical Vision Language Models"
-excerpt: "의료 VLM의 사실적 환각 문제 해결을 위한 범용 멀티모달 RAG 시스템"
-
 categories:
-  - VLM
+- VLM
+date: 2025-07-25
+excerpt: "\uC758\uB8CC VLM\uC758 \uC0AC\uC2E4\uC801 \uD658\uAC01 \uBB38\uC81C \uD574\
+  \uACB0\uC744 \uC704\uD55C \uBC94\uC6A9 \uBA40\uD2F0\uBAA8\uB2EC RAG \uC2DC\uC2A4\
+  \uD15C"
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [VLM, RAG, Medical AI, Factual Accuracy, Multimodal, Hallucination]
-
+- VLM
+- RAG
+- Medical AI
+- Factual Accuracy
+- Multimodal
+- Hallucination
+title: 'MMed-RAG: Versatile Multimodal RAG System for Medical Vision Language Models'
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction

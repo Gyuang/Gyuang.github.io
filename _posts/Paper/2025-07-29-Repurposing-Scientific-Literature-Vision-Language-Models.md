@@ -2,17 +2,19 @@
 categories:
 - VLM
 date: 2025-07-29
-excerpt: CNS-Obsidian 34B 매개변수 모델을 통한 과학 문헌의 재목적화와 의료 AI 혁신
+excerpt: "CNS-Obsidian 34B \uB9E4\uAC1C\uBCC0\uC218 \uBAA8\uB378\uC744 \uD1B5\uD55C\
+  \ \uACFC\uD559 \uBB38\uD5CC\uC758 \uC7AC\uBAA9\uC801\uD654\uC640 \uC758\uB8CC AI\
+  \ \uD601\uC2E0"
 last_modified_at: 2025-07-29
 published: true
 tags:
-- - VLM
-  - Vision-Language
-  - Scientific Literature
-  - CNS-Obsidian
-  - Medical AI
-  - NeuroPubs
-  - Graphical Abstract
+- VLM
+- Vision-Language
+- Scientific Literature
+- CNS-Obsidian
+- Medical AI
+- NeuroPubs
+- Graphical Abstract
 title: Repurposing the scientific literature with vision-language models
 toc: true
 toc_sticky: true
@@ -21,8 +23,8 @@ toc_sticky: true
 ## Introduction
 
 ![Results Table 27 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_27_0.png)
+*Figure: Experimental results and performance metrics*
 *Figure: Results Table 27 0*
-
 
 **과학 문헌의 멀티모달 이해**는 현대 연구에서 가장 중요한 도전 과제 중 하나입니다. 매년 수백만 편의 과학 논문이 발표되지만, 기존의 텍스트 중심 분석 방법은 **과학 논문에 포함된 그림, 도표, 다이어그램 등의 시각적 정보를 효과적으로 활용하지 못**했습니다.
 
@@ -242,14 +244,14 @@ image_type_distribution = {
 ## CNS-Obsidian Architecture
 
 ![Results Table 26 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_26_0.png)
+*Figure: Experimental results and performance metrics*
 *Figure: Results Table 26 0*
-
 
 ### 모델 아키텍처 개요
 
 ![Results Table 25 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_25_0.png)
+*Figure: Experimental results and performance metrics*
 *Figure: Results Table 25 0*
-
 
 **CNS-Obsidian**은 과학 문헌 이해를 위해 특별히 설계된 34B 매개변수 vision-language 모델입니다.
 
@@ -274,10 +276,6 @@ Input: Scientific Paper (Text + Images)
 ```
 
 ### 핵심 컴포넌트 상세 분석
-
-![Results Table 24 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_24_0.png)
-*Figure: Results Table 24 0*
-
 
 **1. Scientific Vision Encoder**
 ```python
@@ -465,10 +463,6 @@ class DomainSpecificAdapter(nn.Module):
 ```
 
 ### 훈련 방법론
-
-![Results Table 23 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_23_0.png)
-*Figure: Results Table 23 0*
-
 
 **1. 다단계 훈련 전략**
 ```python
@@ -1007,8 +1001,8 @@ class AutomatedPeerReviewAssistant:
 ### RCT 방법론 설계
 
 ![Figure 5 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/figure_5_0.png)
+![Figure 5 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/figure_5_0.png)
 *Figure: Figure 5 0*
-
 
 CNS-Obsidian의 임상적 유효성을 검증하기 위해 **무작위 대조 임상시험(RCT)**이 설계되었습니다.
 
@@ -1202,10 +1196,6 @@ class SecondaryOutcomeMeasures:
 
 ### 임상시험 결과
 
-![Results Table 22 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_22_0.png)
-*Figure: Results Table 22 0*
-
-
 **1. 주요 결과 (Primary Results)**
 
 | 지표 | CNS-Obsidian | GPT-4o | 차이 (95% CI) | p-값 | Effect Size (Cohen's d) |
@@ -1219,9 +1209,6 @@ class SecondaryOutcomeMeasures:
 
 ```python
 # 임상시험 결과 상세 분석
-
-![Results Table 21 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_21_0.png)
-*Figure: Results Table 21 0*
 
 clinical_results = {
     "participant_demographics": {
@@ -1310,9 +1297,6 @@ def subgroup_analysis(results_data):
 
 # 하위그룹 분석 결과
 
-![Results Table 8 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_8_0.png)
-*Figure: Results Table 8 0*
-
 subgroup_results = {
     "by_experience": {
         "junior_doctors": {
@@ -1395,8 +1379,8 @@ class SafetyReliabilityAssessment:
 ### 멀티모달 처리의 핵심 혁신
 
 ![Architecture Diagram 4 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/architecture_diagram_4_0.png)
+![Architecture Diagram 4 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/architecture_diagram_4_0.png)
 *Figure: Architecture Diagram 4 0*
-
 
 **1. 과학적 시각 정보 이해**
 
@@ -1788,10 +1772,6 @@ class DecisionProcessTracker:
 ```
 
 ## Results and Impact
-
-![Results Table 7 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_7_0.png)
-*Figure: Results Table 7 0*
-
 
 ### 성능 지표 종합 분석
 
@@ -2463,8 +2443,8 @@ class PrivacySecurityFramework:
 ### 핵심 기여도 및 혁신점
 
 ![Architecture Overview 2](/assets/images/paper/repurposing-scientific-literature-vision-language-models/architecture_overview_2.png)
+*Figure: Model architecture and component design*
 *Figure: Architecture Overview 2*
-
 
 **1. 기술적 혁신**
 - **34B 매개변수 규모**의 과학 문헌 특화 vision-language 모델
@@ -2565,18 +2545,10 @@ CNS-Obsidian이 제시한 방향은 **인간의 창의성과 AI의 분석 능력
 
 ## Additional Figures
 
-
-![Results Table 28 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_28_0.png)
-*Figure: Results Table 28 0*
-
-
-![Results Table 29 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_29_0.png)
-*Figure: Results Table 29 0*
-
-
 ![Results Table 30 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_30_0.png)
+*Figure: Experimental results and performance metrics*
 *Figure: Results Table 30 0*
 
-
 ![Results Table 31 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_31_0.png)
+*Figure: Experimental results and performance metrics*
 *Figure: Results Table 31 0*

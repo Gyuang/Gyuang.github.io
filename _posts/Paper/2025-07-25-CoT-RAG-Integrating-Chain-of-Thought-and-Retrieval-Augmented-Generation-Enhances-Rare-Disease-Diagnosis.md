@@ -1,19 +1,22 @@
 ---
-published: true
-title: "Integrating Chain-of-Thought and Retrieval Augmented Generation Enhances Rare Disease Diagnosis from Clinical Notes"
-excerpt: "임상 노트 기반 희귀질환 진단을 위한 CoT와 RAG 통합 프레임워크"
-
 categories:
-  - RAG
+- RAG
+date: 2025-07-25
+excerpt: "\uC784\uC0C1 \uB178\uD2B8 \uAE30\uBC18 \uD76C\uADC0\uC9C8\uD658 \uC9C4\uB2E8\
+  \uC744 \uC704\uD55C CoT\uC640 RAG \uD1B5\uD569 \uD504\uB808\uC784\uC6CC\uD06C"
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [VLM, RAG, Chain-of-Thought, Rare Disease, Clinical Notes, Gene Prioritization]
-
+- VLM
+- RAG
+- Chain-of-Thought
+- Rare Disease
+- Clinical Notes
+- Gene Prioritization
+title: Integrating Chain-of-Thought and Retrieval Augmented Generation Enhances Rare
+  Disease Diagnosis from Clinical Notes
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction

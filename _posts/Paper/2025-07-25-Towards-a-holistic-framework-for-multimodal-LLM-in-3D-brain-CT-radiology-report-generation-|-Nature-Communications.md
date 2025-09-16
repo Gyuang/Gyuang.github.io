@@ -1,19 +1,21 @@
 ---
-published: true
-title: "Towards a holistic framework for multimodal LLM in 3D brain CT radiology report generation | Nature Communications"
-excerpt: "Towards a holistic framework for multimodal LLM in 3D brain CT radiology report generation | Nature Communications 논문 요약"
-
 categories:
-  - VLM
+- VLM
+date: 2025-07-25
+excerpt: "Towards a holistic framework for multimodal LLM in 3D brain CT radiology\
+  \ report generation | Nature Communications \uB17C\uBB38 \uC694\uC57D"
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [VLM, Multimodal LLM, 3D Brain CT, Radiology Report, Medical AI]
-
+- VLM
+- Multimodal LLM
+- 3D Brain CT
+- Radiology Report
+- Medical AI
+title: Towards a holistic framework for multimodal LLM in 3D brain CT radiology report
+  generation | Nature Communications
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction

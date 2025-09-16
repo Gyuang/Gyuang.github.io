@@ -1,19 +1,21 @@
 ---
-published: true
-title: "(PDF) Integrating Chain-of-Thought and Retrieval Augmented Generation Enhances Rare Disease Diagnosis from Clinical Notes"
-excerpt: "(PDF) Integrating Chain-of-Thought and Retrieval Augmented Generation Enhances Rare Disease Diagnosis from Clinical Notes 논문 요약"
-
 categories:
-  - RAG
+- RAG
+date: 2025-07-25
+excerpt: "(PDF) Integrating Chain-of-Thought and Retrieval Augmented Generation Enhances\
+  \ Rare Disease Diagnosis from Clinical Notes \uB17C\uBB38 \uC694\uC57D"
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [Chain-of-Thought, RAG, Rare Disease, Clinical NLP, LLM]
-
+- Chain-of-Thought
+- RAG
+- Rare Disease
+- Clinical NLP
+- LLM
+title: (PDF) Integrating Chain-of-Thought and Retrieval Augmented Generation Enhances
+  Rare Disease Diagnosis from Clinical Notes
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction

@@ -1,19 +1,23 @@
 ---
-published: true
-title: "LLaVA-RadZ: Can Multimodal Large Language Models Effectively Tackle Zero-shot Radiology Recognition?"
-excerpt: "제로샷 방사선학 질환 인식을 위한 혁신적인 멀티모달 대규모 언어 모델 프레임워크"
-
 categories:
-  - VLM
+- VLM
+date: 2025-07-25
+excerpt: "\uC81C\uB85C\uC0F7 \uBC29\uC0AC\uC120\uD559 \uC9C8\uD658 \uC778\uC2DD\uC744\
+  \ \uC704\uD55C \uD601\uC2E0\uC801\uC778 \uBA40\uD2F0\uBAA8\uB2EC \uB300\uADDC\uBAA8\
+  \ \uC5B8\uC5B4 \uBAA8\uB378 \uD504\uB808\uC784\uC6CC\uD06C"
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [VLM, Zero-shot Learning, Radiology, Medical AI, CLIP, Domain Knowledge]
-
+- VLM
+- Zero-shot Learning
+- Radiology
+- Medical AI
+- CLIP
+- Domain Knowledge
+title: 'LLaVA-RadZ: Can Multimodal Large Language Models Effectively Tackle Zero-shot
+  Radiology Recognition?'
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction

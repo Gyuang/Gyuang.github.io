@@ -1,19 +1,21 @@
 ---
-published: true
-title: "Enhancing vision-language models for medical imaging: bridging the 3D gap with innovative slice selection"
-excerpt: "Enhancing vision-language models for medical imaging: bridging the 3D gap with innovative slice selection 논문 요약"
-
 categories:
-  - VLM
+- VLM
+date: 2025-07-25
+excerpt: "Enhancing vision-language models for medical imaging: bridging the 3D gap\
+  \ with innovative slice selection \uB17C\uBB38 \uC694\uC57D"
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [VLM, Vision-Language, 3D Medical Imaging, Slice Selection, Medical AI]
-
+- VLM
+- Vision-Language
+- 3D Medical Imaging
+- Slice Selection
+- Medical AI
+title: 'Enhancing vision-language models for medical imaging: bridging the 3D gap
+  with innovative slice selection'
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction

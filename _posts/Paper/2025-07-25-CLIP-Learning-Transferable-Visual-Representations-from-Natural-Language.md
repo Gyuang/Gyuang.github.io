@@ -2,15 +2,17 @@
 categories:
 - VLM
 date: 2025-07-25
-excerpt: 자연어 감독을 통한 전이 가능한 시각 표현 학습의 혁신적 접근법
+excerpt: "\uC790\uC5F0\uC5B4 \uAC10\uB3C5\uC744 \uD1B5\uD55C \uC804\uC774 \uAC00\uB2A5\
+  \uD55C \uC2DC\uAC01 \uD45C\uD604 \uD559\uC2B5\uC758 \uD601\uC2E0\uC801 \uC811\uADFC\
+  \uBC95"
 last_modified_at: 2025-07-25
 published: true
 tags:
-- - VLM
-  - Vision-Language
-  - Contrastive Learning
-  - Zero-shot
-  - Transfer Learning
+- VLM
+- Vision-Language
+- Contrastive Learning
+- Zero-shot
+- Transfer Learning
 title: 'CLIP: Learning Transferable Visual Representations from Natural Language'
 toc: true
 toc_sticky: true
@@ -22,11 +24,9 @@ toc_sticky: true
 *Figure: System architecture and methodology overview*
 *Figure: Method Diagram 1 3*
 
-
 기존 컴퓨터 비전 모델들은 **고정된 객체 카테고리에만 제한**되어 있었고, 새로운 태스크나 도메인에 적용하려면 막대한 라벨링 비용이 필요했습니다. **CLIP(Contrastive Language-Image Pre-training)**은 이러한 한계를 해결하기 위해 **자연어 설명으로부터 시각적 개념을 학습**하는 혁신적 접근법을 제안합니다.
 
 CLIP의 핵심 아이디어는 **인터넷에서 수집한 4억 개의 이미지-텍스트 쌍**을 사용해 대조 학습을 통해 시각-언어 표현을 학습하는 것입니다.
-
 
 ## Methods
 
@@ -34,13 +34,11 @@ CLIP의 핵심 아이디어는 **인터넷에서 수집한 4억 개의 이미지
 *Figure: System architecture and methodology overview*
 *Figure: Method Diagram 1 2*
 
-
 ### Core Architecture
 
 ![Method Diagram 1 1](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/method_diagram_1_1.png)
 *Figure: System architecture and methodology overview*
 *Figure: Method Diagram 1 1*
-
 
 CLIP는 **dual-encoder 구조**를 기반으로 합니다:
 
@@ -49,7 +47,6 @@ CLIP는 **dual-encoder 구조**를 기반으로 합니다:
 ![Architecture Overview 1](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/architecture_overview_1.png)
 *Figure: Model architecture and component design*
 *Figure: Architecture Overview 1*
-
 
 CLIP는 **dual-encoder 구조**를 기반으로 하며, 다음과 같은 핵심 구성 요소로 이루어져 있습니다:
 
@@ -148,7 +145,6 @@ L = -log(exp(sim(I_i, T_i)/τ) / Σ_j exp(sim(I_i, T_j)/τ))
 *Figure: Experimental results and performance metrics*
 *Figure: Results Table 14 0*
 
-
 **Zero-shot Performance**
 - ImageNet에서 **ResNet-50 supervised 모델과 유사한 성능** 달성
 - 별도 훈련 없이 30개 이상 데이터셋에서 경쟁력 있는 결과
@@ -171,164 +167,21 @@ L = -log(exp(sim(I_i, T_i)/τ) / Σ_j exp(sim(I_i, T_j)/τ))
 
 ## Additional Figures
 
-
 ![Method Diagram 1 4](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/method_diagram_1_4.png)
 *Figure: System architecture and methodology overview*
 *Figure: Method Diagram 1 4*
-
 
 ![Results Table 14 1](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_1.png)
 *Figure: Experimental results and performance metrics*
 *Figure: Results Table 14 1*
 
-
 ![Results Table 14 2](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_14_2.png)
 *Figure: Experimental results and performance metrics*
 *Figure: Results Table 14 2*
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ![Results Table 41 34](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_34.png)
 *Figure: Experimental results and performance metrics*
 *Figure: Results Table 41 34*
-
 
 ![Results Table 41 35](/assets/images/paper/clip-learning-transferable-visual-representations-from-natural-language/results_table_41_35.png)
 *Figure: Experimental results and performance metrics*

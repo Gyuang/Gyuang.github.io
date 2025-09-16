@@ -1,19 +1,21 @@
 ---
-published: true
-title: "MedCoT: Medical Chain of Thought via Hierarchical Expert"
-excerpt: "의료 영상 질의응답을 위한 계층적 전문가 검증 추론 체인 방법론"
-
 categories:
-  - Medical AI
+- Medical AI
+date: 2025-07-25
+excerpt: "\uC758\uB8CC \uC601\uC0C1 \uC9C8\uC758\uC751\uB2F5\uC744 \uC704\uD55C \uACC4\
+  \uCE35\uC801 \uC804\uBB38\uAC00 \uAC80\uC99D \uCD94\uB860 \uCCB4\uC778 \uBC29\uBC95\
+  \uB860"
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [VLM, Medical VQA, Chain of Thought, Hierarchical Expert, Medical AI]
-
+- VLM
+- Medical VQA
+- Chain of Thought
+- Hierarchical Expert
+- Medical AI
+title: 'MedCoT: Medical Chain of Thought via Hierarchical Expert'
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction

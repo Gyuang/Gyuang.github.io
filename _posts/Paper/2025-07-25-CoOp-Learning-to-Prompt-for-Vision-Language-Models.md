@@ -2,15 +2,16 @@
 categories:
 - VLM
 date: 2025-07-25
-excerpt: 비전-언어 모델을 위한 자동 프롬프트 학습 방법론
+excerpt: "\uBE44\uC804-\uC5B8\uC5B4 \uBAA8\uB378\uC744 \uC704\uD55C \uC790\uB3D9 \uD504\
+  \uB86C\uD504\uD2B8 \uD559\uC2B5 \uBC29\uBC95\uB860"
 last_modified_at: 2025-07-25
 published: true
 tags:
-- - VLM
-  - Vision-Language
-  - Prompt Learning
-  - Few-shot Learning
-  - CLIP
+- VLM
+- Vision-Language
+- Prompt Learning
+- Few-shot Learning
+- CLIP
 title: Learning to Prompt for Vision-Language Models (CoOp)
 toc: true
 toc_sticky: true

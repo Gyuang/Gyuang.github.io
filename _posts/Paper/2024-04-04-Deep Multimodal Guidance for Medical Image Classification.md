@@ -1,19 +1,18 @@
 ---
-
-title:  "Deep Multimodal Guidance for Medical Image Classification" 
-excerpt: "논문요약"
-
 categories:
-  - Multimodal
+- Multimodal
+date: 2024-04-04
+excerpt: "\uB17C\uBB38\uC694\uC57D"
+last_modified_at: 2024-04-04
 tags:
-  - [Multimodal, Brain,WSI, Classification, Miccai]
-
+- Multimodal
+- Brain
+- WSI
+- Classification
+- Miccai
+title: Deep Multimodal Guidance for Medical Image Classification
 toc: true
 toc_sticky: true
- 
-date: 2024-04-04
-last_modified_at: 2024-04-04
-
 ---
 
 ## Related Work 

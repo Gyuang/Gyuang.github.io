@@ -1,19 +1,18 @@
 ---
-published: true
-title:  "Medical Transformer: Gated Axial-Attention for Medical Image Segmentation" 
-excerpt: "논문요약"
-
 categories:
-  - Transformer
+- Transformer
+date: 2024-04-06
+excerpt: "\uB17C\uBB38\uC694\uC57D"
+last_modified_at: 2024-04-06
+published: true
 tags:
-  - [Transformer, attention, Brain, Segmentation]
-
+- Transformer
+- attention
+- Brain
+- Segmentation
+title: 'Medical Transformer: Gated Axial-Attention for Medical Image Segmentation'
 toc: true
 toc_sticky: true
- 
-date: 2024-04-06
-last_modified_at: 2024-04-06
-
 ---
 ## Introduction
 

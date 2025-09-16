@@ -1,19 +1,21 @@
 ---
-published: true
-title: "ChatCAD: A Comprehensive Clinical Assistant for Diagnosis"
-excerpt: "LLM과 CAD 네트워크를 통합한 포괄적 임상 진단 보조 시스템"
-
 categories:
-  - VLM
+- VLM
+date: 2025-07-25
+excerpt: "LLM\uACFC CAD \uB124\uD2B8\uC6CC\uD06C\uB97C \uD1B5\uD569\uD55C \uD3EC\uAD04\
+  \uC801 \uC784\uC0C1 \uC9C4\uB2E8 \uBCF4\uC870 \uC2DC\uC2A4\uD15C"
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [VLM, CAD, LLM, Medical Imaging, Clinical Assistant, Diagnosis]
-
+- VLM
+- CAD
+- LLM
+- Medical Imaging
+- Clinical Assistant
+- Diagnosis
+title: 'ChatCAD: A Comprehensive Clinical Assistant for Diagnosis'
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction

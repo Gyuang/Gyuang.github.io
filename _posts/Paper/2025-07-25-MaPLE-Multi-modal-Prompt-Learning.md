@@ -2,15 +2,17 @@
 categories:
 - VLM
 date: 2025-07-25
-excerpt: 시각-언어 프롬프트의 동시 학습을 통한 다중 모달 적응 프레임워크
+excerpt: "\uC2DC\uAC01-\uC5B8\uC5B4 \uD504\uB86C\uD504\uD2B8\uC758 \uB3D9\uC2DC \uD559\
+  \uC2B5\uC744 \uD1B5\uD55C \uB2E4\uC911 \uBAA8\uB2EC \uC801\uC751 \uD504\uB808\uC784\
+  \uC6CC\uD06C"
 last_modified_at: 2025-07-25
 published: true
 tags:
-- - VLM
-  - Prompt Learning
-  - CLIP
-  - Multi-modal
-  - Few-shot Learning
+- VLM
+- Prompt Learning
+- CLIP
+- Multi-modal
+- Few-shot Learning
 title: 'MaPLe: Multi-modal Prompt Learning'
 toc: true
 toc_sticky: true
@@ -20,7 +22,6 @@ toc_sticky: true
 
 ![Figure 1 0](/assets/images/paper/maple-multi-modal-prompt-learning/figure_1_0.png)
 *Figure: Figure 1 0*
-
 
 기존의 프롬프트 학습 방법들은 **CLIP의 시각 또는 언어 브랜치 중 하나만을 적응**시키는 한계가 있었습니다. 이로 인해 두 모달리티 간의 정렬이 충분하지 않아 새로운 클래스, 데이터셋, 도메인 변화에 대한 일반화 성능이 제한적이었습니다.
 
@@ -35,12 +36,10 @@ toc_sticky: true
 ![Architecture Diagram 3 0](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_0.png)
 *Figure: Architecture Diagram 3 0*
 
-
 ### Architecture Overview
 
 ![Method Diagram 2](/assets/images/paper/maple-multi-modal-prompt-learning/method_diagram_2.png)
 *Figure: Method Diagram 2*
-
 
 MaPLE은 비전과 언어 모든 브랜치에서 프롬프트를 학습합니다:
 
@@ -58,7 +57,6 @@ MaPLE은 비전과 언어 모든 브랜치에서 프롬프트를 학습합니다
 
 ![Architecture Overview 1](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_overview_1.png)
 *Figure: Architecture Overview 1*
-
 
 MaPLe의 핵심은 **시각과 언어 브랜치에 대한 별도의 컨텍스트 프롬프트 학습**입니다:
 
@@ -141,7 +139,6 @@ MaPLe의 핵심은 **시각과 언어 브랜치에 대한 별도의 컨텍스트
 ![Results Table 7 0](/assets/images/paper/maple-multi-modal-prompt-learning/results_table_7_0.png)
 *Figure: Results Table 7 0*
 
-
 **State-of-the-art Performance**
 - 기존 최고 성능 방법인 **Co-CoOp 대비 3.45% 절대 성능 향상** (novel class 일반화)
 - **전체 조화 평균 성능에서 2.72% 개선**
@@ -166,122 +163,92 @@ MaPLe의 핵심은 **시각과 언어 브랜치에 대한 별도의 컨텍스트
 
 ## Additional Figures
 
-
 ![Figure 1 2](/assets/images/paper/maple-multi-modal-prompt-learning/figure_1_2.png)
 *Figure: Figure 1 2*
-
 
 ![Figure 1 3](/assets/images/paper/maple-multi-modal-prompt-learning/figure_1_3.png)
 *Figure: Figure 1 3*
 
-
 ![Figure 1 5](/assets/images/paper/maple-multi-modal-prompt-learning/figure_1_5.png)
 *Figure: Figure 1 5*
-
 
 ![Figure 2 0](/assets/images/paper/maple-multi-modal-prompt-learning/figure_2_0.png)
 *Figure: Figure 2 0*
 
-
 ![Figure 2 1](/assets/images/paper/maple-multi-modal-prompt-learning/figure_2_1.png)
 *Figure: Figure 2 1*
-
 
 ![Figure 2 3](/assets/images/paper/maple-multi-modal-prompt-learning/figure_2_3.png)
 *Figure: Figure 2 3*
 
-
 ![Architecture Diagram 3 1](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_1.png)
 *Figure: Architecture Diagram 3 1*
-
 
 ![Architecture Diagram 3 2](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_2.png)
 *Figure: Architecture Diagram 3 2*
 
-
 ![Architecture Diagram 3 3](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_3.png)
 *Figure: Architecture Diagram 3 3*
-
 
 ![Architecture Diagram 3 4](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_4.png)
 *Figure: Architecture Diagram 3 4*
 
-
 ![Architecture Diagram 3 5](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_5.png)
 *Figure: Architecture Diagram 3 5*
-
 
 ![Architecture Diagram 3 6](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_6.png)
 *Figure: Architecture Diagram 3 6*
 
-
 ![Architecture Diagram 3 7](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_7.png)
 *Figure: Architecture Diagram 3 7*
-
 
 ![Architecture Diagram 3 8](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_8.png)
 *Figure: Architecture Diagram 3 8*
 
-
 ![Architecture Diagram 3 9](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_9.png)
 *Figure: Architecture Diagram 3 9*
-
 
 ![Architecture Diagram 3 10](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_10.png)
 *Figure: Architecture Diagram 3 10*
 
-
 ![Architecture Diagram 3 11](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_11.png)
 *Figure: Architecture Diagram 3 11*
-
 
 ![Architecture Diagram 3 12](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_12.png)
 *Figure: Architecture Diagram 3 12*
 
-
 ![Architecture Diagram 3 13](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_13.png)
 *Figure: Architecture Diagram 3 13*
-
 
 ![Architecture Diagram 3 14](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_14.png)
 *Figure: Architecture Diagram 3 14*
 
-
 ![Architecture Diagram 3 15](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_15.png)
 *Figure: Architecture Diagram 3 15*
-
 
 ![Architecture Diagram 3 16](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_16.png)
 *Figure: Architecture Diagram 3 16*
 
-
 ![Architecture Diagram 3 17](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_17.png)
 *Figure: Architecture Diagram 3 17*
-
 
 ![Architecture Diagram 3 18](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_18.png)
 *Figure: Architecture Diagram 3 18*
 
-
 ![Architecture Diagram 3 19](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_19.png)
 *Figure: Architecture Diagram 3 19*
-
 
 ![Architecture Diagram 3 20](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_20.png)
 *Figure: Architecture Diagram 3 20*
 
-
 ![Architecture Diagram 3 21](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_21.png)
 *Figure: Architecture Diagram 3 21*
-
 
 ![Architecture Diagram 3 22](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_22.png)
 *Figure: Architecture Diagram 3 22*
 
-
 ![Architecture Diagram 3 23](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_23.png)
 *Figure: Architecture Diagram 3 23*
-
 
 ![Results Table 7 1](/assets/images/paper/maple-multi-modal-prompt-learning/results_table_7_1.png)
 *Figure: Results Table 7 1*

@@ -36,6 +36,7 @@ Prefix-Tuning은 언어 모델의 파라미터를 고정한 채로, **시퀀스 
 ### 2. 아키텍처별 적용
 
 ![Architecture Overview 0](/assets/images/paper/prefix-tuning/architecture_overview_0.png)
+*Figure: Model architecture and component design*
 *Figure: Architecture Overview 0*
 
 
@@ -68,6 +69,7 @@ P_idx : [PREFIX_1, PREFIX_2, ..., PREFIX_n, x_1, x_2, ..., x_m]
 ## 실험 결과
 
 ![Results Table 3 0](/assets/images/paper/prefix-tuning/results_table_3_0.png)
+*Figure: Experimental results and performance metrics*
 *Figure: Results Table 3 0*
 
 

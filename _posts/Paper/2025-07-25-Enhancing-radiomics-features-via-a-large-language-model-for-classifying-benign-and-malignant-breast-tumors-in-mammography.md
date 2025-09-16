@@ -1,19 +1,22 @@
 ---
-published: true
-title: "Enhancing radiomics features via a large language model for classifying benign and malignant breast tumors in mammography"
-excerpt: "Enhancing radiomics features via a large language model for classifying benign and malignant breast tumors in mammography 논문 요약"
-
 categories:
-  - Medical AI
+- Medical AI
+date: 2025-07-25
+excerpt: "Enhancing radiomics features via a large language model for classifying\
+  \ benign and malignant breast tumors in mammography \uB17C\uBB38 \uC694\uC57D"
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [LLM, Radiomics, Breast Cancer, Mammography, Medical Imaging, Classification]
-
+- LLM
+- Radiomics
+- Breast Cancer
+- Mammography
+- Medical Imaging
+- Classification
+title: Enhancing radiomics features via a large language model for classifying benign
+  and malignant breast tumors in mammography
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction

@@ -1,19 +1,21 @@
 ---
-published: true
-title: "Diagnostic reasoning prompts reveal the potential for large language model interpretability in medicine"
-excerpt: "Diagnostic reasoning prompts reveal the potential for large language model interpretability in medicine 논문 요약"
-
 categories:
-  - Medical AI
+- Medical AI
+date: 2025-07-25
+excerpt: "Diagnostic reasoning prompts reveal the potential for large language model\
+  \ interpretability in medicine \uB17C\uBB38 \uC694\uC57D"
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [LLM, Medical AI, Interpretability, Clinical Reasoning, Diagnostic Prompts]
-
+- LLM
+- Medical AI
+- Interpretability
+- Clinical Reasoning
+- Diagnostic Prompts
+title: Diagnostic reasoning prompts reveal the potential for large language model
+  interpretability in medicine
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction

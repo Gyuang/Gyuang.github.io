@@ -2,16 +2,18 @@
 categories:
 - VLM
 date: 2025-07-25
-excerpt: 입력별 조건부 프롬프트 학습을 통한 비전-언어 모델의 일반화 성능 향상
+excerpt: "\uC785\uB825\uBCC4 \uC870\uAC74\uBD80 \uD504\uB86C\uD504\uD2B8 \uD559\uC2B5\
+  \uC744 \uD1B5\uD55C \uBE44\uC804-\uC5B8\uC5B4 \uBAA8\uB378\uC758 \uC77C\uBC18\uD654\
+  \ \uC131\uB2A5 \uD5A5\uC0C1"
 last_modified_at: 2025-07-25
 published: true
 tags:
-- - VLM
-  - Vision-Language
-  - Prompt Learning
-  - Conditional Learning
-  - Generalization
-  - CLIP
+- VLM
+- Vision-Language
+- Prompt Learning
+- Conditional Learning
+- Generalization
+- CLIP
 title: Conditional Prompt Learning for Vision-Language Models (CoCoOp)
 toc: true
 toc_sticky: true

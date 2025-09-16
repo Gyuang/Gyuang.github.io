@@ -1,19 +1,21 @@
 ---
-published: true
-title: "AutoRG-Brain: Grounded Report Generation for Brain MRI"
-excerpt: "픽셀 수준 시각적 단서를 활용한 최초의 뇌 MRI 자동 보고서 생성 시스템"
-
 categories:
-  - VLM
+- VLM
+date: 2025-07-25
+excerpt: "\uD53D\uC140 \uC218\uC900 \uC2DC\uAC01\uC801 \uB2E8\uC11C\uB97C \uD65C\uC6A9\
+  \uD55C \uCD5C\uCD08\uC758 \uB1CC MRI \uC790\uB3D9 \uBCF4\uACE0\uC11C \uC0DD\uC131\
+  \ \uC2DC\uC2A4\uD15C"
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [VLM, Medical AI, Brain MRI, Report Generation, Radiology]
-
+- VLM
+- Medical AI
+- Brain MRI
+- Report Generation
+- Radiology
+title: 'AutoRG-Brain: Grounded Report Generation for Brain MRI'
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction

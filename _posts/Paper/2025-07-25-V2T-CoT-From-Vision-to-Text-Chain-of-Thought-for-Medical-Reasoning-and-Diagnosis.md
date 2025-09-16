@@ -1,19 +1,20 @@
 ---
-published: true
-title: "V2T-CoT: From Vision to Text Chain-of-Thought for Medical Reasoning and Diagnosis"
-excerpt: "V2T-CoT: From Vision to Text Chain-of-Thought for Medical Reasoning and Diagnosis 논문 요약"
-
 categories:
-  - VLM
+- VLM
+date: 2025-07-25
+excerpt: "V2T-CoT: From Vision to Text Chain-of-Thought for Medical Reasoning and\
+  \ Diagnosis \uB17C\uBB38 \uC694\uC57D"
+last_modified_at: 2025-07-25
+published: true
 tags:
-  - [VLM, Chain-of-Thought, Medical VQA, Medical Reasoning, Visual Diagnosis]
-
+- VLM
+- Chain-of-Thought
+- Medical VQA
+- Medical Reasoning
+- Visual Diagnosis
+title: 'V2T-CoT: From Vision to Text Chain-of-Thought for Medical Reasoning and Diagnosis'
 toc: true
 toc_sticky: true
- 
-date: 2025-07-25
-last_modified_at: 2025-07-25
-
 ---
 
 ## Introduction
