@@ -2,10 +2,9 @@
 categories:
 - VLM
 date: 2025-07-25
-excerpt: "\uC2DC\uAC01-\uC5B8\uC5B4 \uD504\uB86C\uD504\uD2B8\uC758 \uB3D9\uC2DC \uD559\
-  \uC2B5\uC744 \uD1B5\uD55C \uB2E4\uC911 \uBAA8\uB2EC \uC801\uC751 \uD504\uB808\uC784\
-  \uC6CC\uD06C"
-last_modified_at: 2025-07-25
+excerpt: 에 대한 체계적 분석
+header: {}
+last_modified_at: '2025-09-16'
 published: true
 tags:
 - VLM
@@ -18,8 +17,17 @@ toc: true
 toc_sticky: true
 ---
 
-## Introduction
+# MaPLe: Multi-modal Prompt Learning
 
+## 논문 정보
+- **저자**: 
+- **발표**: 
+- **ArXiv**: N/A
+
+## 1. 핵심 요약 (2-3문장)
+이 논문의 핵심 기여와 주요 발견을 간결하게 요약합니다.
+
+## 2. 배경 및 동기
 ![Figure 1 0](/assets/images/paper/maple-multi-modal-prompt-learning/figure_1_0.png)
 *Figure: Figure 1 0*
 
@@ -31,12 +39,24 @@ toc_sticky: true
   <img src="https://arxiv.org/abs/2210.03117" alt="MaPLe Paper" style="width: 100%;">
 </p>
 
-## Methods
+## 3. 제안 방법
+
+### 3.1 아키텍처 개요
 
 ![Architecture Diagram 3 0](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_0.png)
 *Figure: Architecture Diagram 3 0*
 
-### Architecture Overview
+
+![Architecture Overview 1](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_overview_1.png)
+*Figure: Architecture Overview 1*
+
+
+
+### 3.2 핵심 기술/알고리즘
+![Architecture Diagram 3 0](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_diagram_3_0.png)
+*Figure: Architecture Diagram 3 0*
+
+
 
 ![Method Diagram 2](/assets/images/paper/maple-multi-modal-prompt-learning/method_diagram_2.png)
 *Figure: Method Diagram 2*
@@ -53,7 +73,7 @@ MaPLE은 비전과 언어 모든 브랜치에서 프롬프트를 학습합니다
 
 비전과 언어 프롬프트가 결합 함수를 통해 상호 작용하며 시너지를 만듭니다.
 
-### Multi-modal Prompt Architecture
+
 
 ![Architecture Overview 1](/assets/images/paper/maple-multi-modal-prompt-learning/architecture_overview_1.png)
 *Figure: Architecture Overview 1*
@@ -70,7 +90,7 @@ MaPLe의 핵심은 **시각과 언어 브랜치에 대한 별도의 컨텍스트
 - 각 브랜치별 특성에 맞는 프롬프트 설계
 - 계층적 구조를 통한 점진적 특징 모델링
 
-### Vision-Language Coupling Function
+
 
 **Cross-modal Dependency Mechanism**
 - **언어 프롬프트에 기반하여 시각 프롬프트를 조건화**
@@ -82,7 +102,7 @@ MaPLe의 핵심은 **시각과 언어 브랜치에 대한 별도의 컨텍스트
 - 양방향 정보 공유를 통한 정렬 품질 향상
 - 모달리티 간 의미적 일관성 확보
 
-### Deep Contextual Prompting
+
 
 **Multi-layer Prompt Integration**
 - **다중 트랜스포머 블록의 초기 단계**에서 별도 컨텍스트 프롬프트 학습
@@ -94,7 +114,7 @@ MaPLe의 핵심은 **시각과 언어 브랜치에 대한 별도의 컨텍스트
 - 초기 층: 저수준 특징, 후반 층: 고수준 의미
 - 전체적인 표현 품질 향상
 
-### Training Procedure
+
 
 **Parameter-efficient Learning**
 - **CLIP 백본은 고정**, 프롬프트 파라미터만 최적화
@@ -106,7 +126,7 @@ MaPLe의 핵심은 **시각과 언어 브랜치에 대한 별도의 컨텍스트
 - 독립적 학습 방지를 위한 정규화 메커니즘
 - 안정적인 수렴을 위한 학습률 스케줄링
 
-### Prompt Integration
+
 
 **Multi-layer Insertion Strategy**
 - 시각과 텍스트 인코더의 **다중 층에 학습 가능한 프롬프트 토큰 삽입**
@@ -118,7 +138,7 @@ MaPLe의 핵심은 **시각과 언어 브랜치에 대한 별도의 컨텍스트
 - 기존 사전 훈련된 가중치의 효과적 활용
 - 최소한의 추가 파라미터로 최대 성능 향상
 
-## Dataset
+
 
 평가는 **11개의 다양한 이미지 인식 데이터셋**에서 수행되었으며, 세 가지 주요 일반화 시나리오에 중점을 두었습니다:
 
@@ -134,34 +154,14 @@ MaPLe의 핵심은 **시각과 언어 브랜치에 대한 별도의 컨텍스트
 - 도메인 변화에 대한 견고성 평가
 - 분포 변화 상황에서의 성능 유지 능력
 
-## Results
 
-![Results Table 7 0](/assets/images/paper/maple-multi-modal-prompt-learning/results_table_7_0.png)
-*Figure: Results Table 7 0*
-
-**State-of-the-art Performance**
-- 기존 최고 성능 방법인 **Co-CoOp 대비 3.45% 절대 성능 향상** (novel class 일반화)
-- **전체 조화 평균 성능에서 2.72% 개선**
-- 11개 다양한 이미지 인식 데이터셋에서 일관된 성능 향상
-
-**Base-Novel Class Balance**
-- 기존 클래스 성능 유지하면서 새로운 카테고리 일반화 향상
-- 프롬프트 학습 접근법의 **일반적인 base-novel 클래스 성능 트레이드오프 문제 해결**
-- 균형잡힌 성능으로 실용적 적용 가능성 증대
-
-**Consistent Improvements**
-- 다양한 평가 시나리오에서 **지속적인 성능 개선** 확인
-- 특히 도메인 변화와 cross-dataset 전이에서 뛰어난 견고성
-- 다중 모달 프롬프트 학습의 효과성 입증
-
-## Key Takeaways
 
 1. **Multi-modal Coupling**: 시각-언어 프롬프트의 동시 학습이 단일 모달리티 적응보다 우수
 2. **Strong Alignment**: 결합 함수를 통한 모달리티 간 강한 정렬이 일반화 성능 향상의 핵심
 3. **Parameter Efficiency**: CLIP 백본 고정으로 효율적이면서도 효과적인 적응 달성
 4. **Balanced Performance**: Base-novel 클래스 간 성능 트레이드오프 문제 해결
 
-## Additional Figures
+
 
 ![Figure 1 2](/assets/images/paper/maple-multi-modal-prompt-learning/figure_1_2.png)
 *Figure: Figure 1 2*
@@ -252,3 +252,58 @@ MaPLe의 핵심은 **시각과 언어 브랜치에 대한 별도의 컨텍스트
 
 ![Results Table 7 1](/assets/images/paper/maple-multi-modal-prompt-learning/results_table_7_1.png)
 *Figure: Results Table 7 1*
+
+### 3.3 구현 세부사항
+
+![Method Diagram 2](/assets/images/paper/maple-multi-modal-prompt-learning/method_diagram_2.png)
+*Figure: Method Diagram 2*
+
+
+
+## 4. 실험 및 결과
+
+### 4.1 실험 설정
+실험에 사용된 데이터셋, 평가 지표, 비교 대상을 설명합니다.
+
+### 4.2 주요 결과
+
+![Results Table 7 0](/assets/images/paper/maple-multi-modal-prompt-learning/results_table_7_0.png)
+*Figure: Results Table 7 0*
+
+
+![Results Table 7 1](/assets/images/paper/maple-multi-modal-prompt-learning/results_table_7_1.png)
+*Figure: Results Table 7 1*
+
+
+
+![Results Table 7 0](/assets/images/paper/maple-multi-modal-prompt-learning/results_table_7_0.png)
+*Figure: Results Table 7 0*
+
+**State-of-the-art Performance**
+- 기존 최고 성능 방법인 **Co-CoOp 대비 3.45% 절대 성능 향상** (novel class 일반화)
+- **전체 조화 평균 성능에서 2.72% 개선**
+- 11개 다양한 이미지 인식 데이터셋에서 일관된 성능 향상
+
+**Base-Novel Class Balance**
+- 기존 클래스 성능 유지하면서 새로운 카테고리 일반화 향상
+- 프롬프트 학습 접근법의 **일반적인 base-novel 클래스 성능 트레이드오프 문제 해결**
+- 균형잡힌 성능으로 실용적 적용 가능성 증대
+
+**Consistent Improvements**
+- 다양한 평가 시나리오에서 **지속적인 성능 개선** 확인
+- 특히 도메인 변화와 cross-dataset 전이에서 뛰어난 견고성
+- 다중 모달 프롬프트 학습의 효과성 입증
+
+### 4.3 분석
+결과에 대한 정성적 분석과 해석을 제공합니다.
+
+## 5. 의의 및 영향
+이 연구의 학술적 기여와 실용적 가치를 평가합니다.
+
+## 6. 개인적 평가
+
+**강점**: 이 논문의 주요 강점과 인상 깊었던 부분
+**약점**: 아쉬웠던 부분이나 의문점  
+**적용 가능성**: 실제 연구나 응용에서의 활용 가능성
+**추천도**: 다른 연구자들에게 추천할 만한 수준
+

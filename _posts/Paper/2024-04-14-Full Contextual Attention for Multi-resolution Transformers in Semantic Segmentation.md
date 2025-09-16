@@ -2,8 +2,9 @@
 categories:
 - Transformer
 date: 2024-04-14
-excerpt: "\uB17C\uBB38\uC694\uC57D"
-last_modified_at: 2024-04-14
+excerpt: 에 대한 체계적 분석
+header: {}
+last_modified_at: '2025-09-16'
 published: true
 tags:
 - Transformer
@@ -13,8 +14,17 @@ toc: true
 toc_sticky: true
 ---
 
-## Introduction
+# Full Contextual Attention for Multi-resolution Transformers in Semantic Segmentation
 
+## 논문 정보
+- **저자**: 
+- **발표**: 
+- **ArXiv**: N/A
+
+## 1. 핵심 요약 (2-3문장)
+이 논문의 핵심 기여와 주요 발견을 간결하게 요약합니다.
+
+## 2. 배경 및 동기
 transformer의 효과성: transformer는 입력 요소 간의 장거리 상호작용을 모델링 할 수 있는 능력 덕분에 다양한 분야에서 매우 효과적이었습니다. 이는 의미론적 segmentation과 같은 작업에 필수적인 요소입니다.
 
 고해상도 이미지의 도전: transformer를 고해상도 이미지에 적용할 때의 확장성은 attention 메커니즘의 제곱 복잡도로 인해 제한됩니다. 이미지 패치의 수가 증가함에 따라 계산 비용이 많이 듭니다.
@@ -25,9 +35,12 @@ GLAM (다중 해상도 transformer에서의 글로벌 attention): GLAM의 도입
 
 Swin 아키텍처 통합: GLAM을 Swin transformer 아키텍처에 통합함으로써 작은 지역 window을 넘어 확장된 범위의 상호작용이 가능해집니다. 이 통합은 보행자, 자동차, 건물과 같은 다양한 요소에 대한 attention를 제공함으로써 기본 Swin 모델에 비해 더 나은 segmentation 성능을 가능하게 합니다. 이러한 방법은 복잡한 환경에서의 의미론적 segmentation 작업에 필수적인 상세하고 대규모 이미지 데이터를 효과적으로 처리할 수 있는 모델의 능력을 향상시키는 중요한 발전을 나타냅니다.
 
+## 3. 제안 방법
 
-## Related Work 
+### 3.1 아키텍처 개요
 
+
+### 3.2 핵심 기술/알고리즘
 **Multi-resolution transformers**
 
   최근 인공지능 분야에서는 transformer 기반의 아키텍처가 이미지 인식과 처리 분야에서 두각을 나타내고 있습니다. 이 중에서도 다중 해상도를 활용한 transformer 아키텍처는 보다 효율적이고 정교한 방식으로 이미지를 분석할 수 있는 새로운 가능성을 제시하고 있습니다. 이러한 아키텍처들은 기존의 단일 해상도를 사용하는 Vision Transformer (ViT)의 한계를 극복하고자 개발되었습니다.
@@ -70,13 +83,13 @@ Transformer 모델에서 긴 시퀀스를 처리하는 것은 오랜 도전 과�
 
   이러한 다양한 효율적인 self attention 기법은 transformer가 더 긴 시퀀스를 효과적으로 처리할 수 있도록 도와주며, NLP 작업 뿐만 아니라 이미지 처리와 같은 다른 분야에서도 그 효용성을 발휘하고 있습니다.
 
-## Method 
+
 
 <p align="center">
   <img src="/assets/images/paper/transformer/GLAM.png" alt="GLAM Architecture" style="width: 100%;">
 </p>
 
-### Global Tokens      
+
   
 각 transformer 블록에 대한 입력으로서, $$ z_l $$은 각 window의 토큰과 해당 글로벌 토큰이 결합된 배치를 포함합니다. 입력 구조는 다음과 같이 표현됩니다:      
 
@@ -90,7 +103,7 @@ $$ z_l \in \mathbb{R}^{Nr \times (Ng + Np) \times C} $$
 
 $$     \forall k \in [1..Nr], \quad z_k =      \begin{bmatrix}     g_k' \\     w_k'     \end{bmatrix}     \in \mathbb{R}^{(Ng + Np) \times C}.     $$
 
-### GLAM-Transformer
+
 <p align="center">
   <img src="/assets/images/paper/transformer/GLAM-Transformer.png" alt="GLAM-Transformer Architecture" style="width: 100%;">
 </p>
@@ -125,7 +138,7 @@ $$ [G_k]_{r',i} = \sum_{j=1}^{N_g} b_{k,r,j,r'} a_{j,r',(i+N_g)} + \sum_{j=1}^{N
 위의 식은 $$ l $$번째 GLAM-transformer 블록에서 $$ k $$번째 글로벌 토큰 $$ g_{k,r}^l $$의 임베딩을 제공하며, 모든 특징 맵 창의 시각적 토큰 $$ w_{i,r'}^{l-1} $$ (첫 번째 행)과 모든 글로벌 토큰 $$ g_{i,r'}^{l-1} $$ (두 번째 행)에 대해 나타냅니다. 이 두 항은 은 글로벌 임베딩 $$ g_{k,r}^l $$이 해상도에 관계없이 모든 이미지 영역 간의 상호작용을 포착한다는 것을 보여줍니다. 분해된 다양한 항목은 각 이미지 영역과 관련된 attention 맵으로 해석됩니다. 
 
 
-### Non-Local Upsampling
+
 <p align="center">
   <img src="/assets/images/paper/transformer/GLAM-NLU.png" alt="Non-Local Upsampling Architecture" style="width: 100%;">
 </p>
@@ -138,3 +151,30 @@ NLU 모듈은 skip connection을 쿼리 행렬 $$ Q $$로 변환하고, 저해�
 - attention 행렬: $$ A \in \mathbb{R}^{(4N_p) \times N_p} $$
 
 업샘플링된 저해상도 특징은 채널 수를 조정하는 linear projection을 거쳐 합산되고, Feed Forward (FF) 레이어가 적용됩니다. 최종적으로, skip connection과 업샘플링된 의미적 특징이 결합되어, 표준 U-Net 아키텍처와 유사한 방식으로 NLU를 마무리짓습니다.
+
+### 3.3 구현 세부사항
+
+
+## 4. 실험 및 결과
+
+### 4.1 실험 설정
+실험에 사용된 데이터셋, 평가 지표, 비교 대상을 설명합니다.
+
+### 4.2 주요 결과
+
+
+실험 결과와 성능 분석을 제시합니다.
+
+### 4.3 분석
+결과에 대한 정성적 분석과 해석을 제공합니다.
+
+## 5. 의의 및 영향
+이 연구의 학술적 기여와 실용적 가치를 평가합니다.
+
+## 6. 개인적 평가
+
+**강점**: 이 논문의 주요 강점과 인상 깊었던 부분
+**약점**: 아쉬웠던 부분이나 의문점  
+**적용 가능성**: 실제 연구나 응용에서의 활용 가능성
+**추천도**: 다른 연구자들에게 추천할 만한 수준
+

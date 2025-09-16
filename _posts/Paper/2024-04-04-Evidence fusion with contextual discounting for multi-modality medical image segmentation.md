@@ -2,8 +2,9 @@
 categories:
 - Multimodal
 date: 2024-04-04
-excerpt: "\uB17C\uBB38\uC694\uC57D"
-last_modified_at: 2024-04-04
+excerpt: 에 대한 체계적 분석
+header: {}
+last_modified_at: '2025-09-16'
 published: true
 tags:
 - Multimodal
@@ -18,26 +19,38 @@ toc: true
 toc_sticky: true
 ---
 
-## Related Work 
+# Evidence fusion with contextual discounting for multi-modality medical image segmentation
+
+## 논문 정보
+- **저자**: 
+- **발표**: 
+- **ArXiv**: N/A
+
+## 1. 핵심 요약 (2-3문장)
+이 논문의 핵심 기여와 주요 발견을 간결하게 요약합니다.
+
+## 2. 배경 및 동기
+기존 방법의 한계점과 연구의 필요성을 설명합니다.
+
+## 3. 제안 방법
+
+### 3.1 아키텍처 개요
 
 
-## Method 
-
-
-
+### 3.2 핵심 기술/알고리즘
 <p align="center">
   <img src="/assets/images/paper/multimodal/Evidence fusion with contextual discounting for multi-modality medical image segmentation.png" alt="deep multimodal guidance" style="width: 100%;">
 </p>
  
 본 논문에서 제안된 방법은 contextual discounting과 evidence fusion을 통합한 새로운 딥러닝 프레임워크를 도입하여 다양한 모달리티에서 의료 이미지의 segmentation 성능을 향상시킵니다. 이 프레임워크는 Encoder-Decoder Feature Extraction Module, Evidential Segmentation Module, 그리고 Multi-modality Evidence Fusion Module의 세 가지 주요 구성 요소로 이루어져 있습니다.
 
-### Encoder-Decoder Feature Extraction Module
+
 인코더-디코더 구조는 다양한 모달리티에서 의료 이미지의 특징을 포착하고 재구성하기 위해 설계되었습니다. 인코더는 입력 이미지를 낮은 차원의 특징 공간으로 압축하여 segmentation에 필요한 핵심 정보를 포착합니다. 디코더는 그 특징 공간에서 segmentation된 이미지를 재구성합니다.
 
 - Input: Multi-modality medical images.
 - Output: Feature maps representing the images.
 
-### Evidential Segmentation Module
+
 이 모듈은 Dempster-Shafer 이론(DST)을 적용하여 추출된 특징에 기반한 각 픽셀(또는 복셀)의 segmentation 클래스에 대한 불확실성을 정량화합니다. 각 픽셀에 대해 각 모달리티별로 신념 함수를 계산하여 각 가능한 segmentation 클래스에 대한 신뢰도를 나타냅니다.
 
 Evidential Segmentation (ES) 모듈은 input layer, 두 개의 hidden layer, 그리고 output layer으로 구성되어 있습니다. 이 구조는 입력 벡터를 처리하고 각 복셀의 분할 클래스에 대한 불확실성을 정량화하는 신념 함수를 출력하는 과정을 담당합니다. 
@@ -62,7 +75,7 @@ Evidential Segmentation (ES) 모듈은 input layer, 두 개의 hidden layer, 그
 
 이 구조를 통해 ES 모듈은 입력 벡터를 처리하여 각 복셀에 대한 분할 클래스의 불확실성을 정량화하는 신념 함수를 효과적으로 출력할 수 있습니다. 여러 프로토타입에서의 evidence를 결합함으로써, 불확실성을 정량화하고 통합하여 분할 작업의 정확성과 견고성을 향상시키는 데 기여합니다.
 
-### Basic Concepts of DST(Dempster-Shafer Theory)
+
 
 > [DST 참고 자료](https://gyuang.github.io/math/Dempster-Shafer/)
 
@@ -79,13 +92,13 @@ Bel(A) = \sum_{\emptyset \neq B \subseteq A} m(B)
 Pl(A) = \sum_{B \cap A \neq \emptyset} m(B)
 $$
 
-### Mass Function Computation
+
 각 픽셀과 각 모달리티에 대해, Mass Function는 특징 벡터와 각 클래스의 전형적인 특징을 나타내는 미리 정의된 프로토타입 중심 사이의 거리를 기반으로 계산됩니다.
 
 - Input: Feature vectors from the encoder-decoder module.
 - Output: Mass functions representing the evidence of segmentation classes.
 
-### Multi-modality Evidence Fusion Module
+
 이 통합 모듈은 맥락적 정보와 Dempster의 결합 규칙을 기반으로 하는 discount 메커니즘을 적용하여 각 픽셀에 대해 모든 모달리티의 evidence를 결합합니다.
 
 이 논문에서는 DST의 discounting operation을 통해  source 신뢰도를 정량화하는 문제를 다룹니다. 질량 함수 $$m$$이 $$\Omega$$에 대해 정의되고 $$\beta$$가 $$[0,1]$$ 내의 계수일 때, discount rate $$1-\beta$$를 사용하는 discounting operation은 $$m$$을 더 약하고 정보가 적은 질량 함수 $$\beta m$$으로 변환합니다. 
@@ -100,13 +113,13 @@ $${}^\beta pl(\{\omega_k\}) = 1-\beta_k + \beta_k pl(\{\omega_k\}),  k= 1,...,K$
 
 독립적인 evidence에 의해 제공되는 여러  source가 있을 때, discount된 evidence는 Dempster의 규칙에 의해 결합될 수 있습니다. 정보의 두  source가 있고, 각각 $$S_1$$과 $$S_2$$에 의해 제공된 discount된 contour 함수가 $$\beta_1 pl_{S_1}$$과 $$\beta_2 pl_{S_2}$$이며, discount rate 벡터가 $$1-\beta_1$$과 $$1-\beta_2$$일 경우, 결합된 contour 함수는 $$\beta_1 pl_{S_1} \beta_2 pl_{S_2}$$의 곱에 비례합니다.
 
-### Contextual Discounting
+
 각 모달리티의 evidence는 맥락을 고려하여 다른 클래스에 대한 신뢰성을 반영하는 discount rate 벡터에 의해 discount됩니다.
 
 $$m_i'(A) = \alpha_i \cdot m_i(A) + (1 - \alpha_i) \cdot m(\Omega)$$
 
 
-### Dempster’s Rule of Combination
+
 모든 모달리티에서 discount된 evidence는 Dempster의 규칙을 사용하여 결합되어 각 픽셀에 대한 최종적인 집계된 belief function를 생성하며, 이는 그 픽셀의 segmentation 클래스에 대한 불확실성을 정량화합니다.
 
 
@@ -117,7 +130,7 @@ $$(m_1 \oplus m_2)(A) = \frac{1}{1 - \kappa} \sum_{B \cap C = A} m_1(B) \cdot m_
 
 여기서 $$\kappa = \sum_{B \cap C = \emptyset} m_1(B) \cdot m_2(C)$$는 두 질량 함수 간의 degree of conflict를 나타냅니다.
 
-### Loss Function
+
 discounted Dice 지수를 기반으로 한 새로운 손실 함수가 전체 프레임워크를 훈련시키기 위해 도입되었습니다. 이 손실 함수는 segmentation 결과와 그 결과에 대한 신뢰도를 모두 고려함으로써 segmentation 정확도와 신뢰성을 극대화하려는 목표를 가집니다.
 
 $$
@@ -135,3 +148,30 @@ $$\beta_{S_n} = \frac{\prod_{h=1}^{H} \beta_h pl_{S_h}(\{\omega_k\})}{\sum_{k=1}
 - 이 손실 함수는 모델이 정확하게 segmentation할 뿐만 아니라 높은 확률 영역에서 자신감을 가지고 불확실한 영역에서는 신중하게 행동하도록 장려합니다.
 
 evidence 통합과 맥락적 discount을 통합함으로써, 제안된 방법은 여러 모달리티에서 보완적인 정보를 효과적으로 활용하여, 특히 모호하거나 충돌하는 evidence가 존재할 때 segmentation 정확도와 견고성을 향상시킵니다.
+
+### 3.3 구현 세부사항
+
+
+## 4. 실험 및 결과
+
+### 4.1 실험 설정
+실험에 사용된 데이터셋, 평가 지표, 비교 대상을 설명합니다.
+
+### 4.2 주요 결과
+
+
+실험 결과와 성능 분석을 제시합니다.
+
+### 4.3 분석
+결과에 대한 정성적 분석과 해석을 제공합니다.
+
+## 5. 의의 및 영향
+이 연구의 학술적 기여와 실용적 가치를 평가합니다.
+
+## 6. 개인적 평가
+
+**강점**: 이 논문의 주요 강점과 인상 깊었던 부분
+**약점**: 아쉬웠던 부분이나 의문점  
+**적용 가능성**: 실제 연구나 응용에서의 활용 가능성
+**추천도**: 다른 연구자들에게 추천할 만한 수준
+

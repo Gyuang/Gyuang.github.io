@@ -2,9 +2,9 @@
 categories:
 - VLM
 date: 2025-07-25
-excerpt: Test-time adaptation through single-sample prompt optimization for improved
-  zero-shot generalization
-last_modified_at: 2025-07-25
+excerpt: 에 대한 체계적 분석
+header: {}
+last_modified_at: '2025-09-16'
 published: true
 tags:
 - VLM
@@ -19,8 +19,17 @@ toc: true
 toc_sticky: true
 ---
 
-## Introduction
+# Test-Time Prompt Tuning for Zero-Shot Generalization in Vision-Language Models (TPT)
 
+## 논문 정보
+- **저자**: 
+- **발표**: 
+- **ArXiv**: N/A
+
+## 1. 핵심 요약 (2-3문장)
+이 논문의 핵심 기여와 주요 발견을 간결하게 요약합니다.
+
+## 2. 배경 및 동기
 ![Figure 1 3](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/figure_1_3.png)
 *Figure: Figure 1 3*
 
@@ -33,12 +42,24 @@ Test-Time Prompt Tuning (TPT) introduces a novel approach that learns adaptive p
 - **Publication**: NeurIPS 2022
 - **arXiv**: [https://arxiv.org/abs/2209.07511](https://arxiv.org/abs/2209.07511)
 
-## Methods
+## 3. 제안 방법
+
+### 3.1 아키텍처 개요
 
 ![Architecture Diagram 5 5](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/architecture_diagram_5_5.png)
 *Figure: Architecture Diagram 5 5*
 
-### Architecture Overview
+
+![Architecture Overview 1](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/architecture_overview_1.png)
+*Figure: Architecture Overview 1*
+
+
+
+### 3.2 핵심 기술/알고리즘
+![Architecture Diagram 5 5](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/architecture_diagram_5_5.png)
+*Figure: Architecture Diagram 5 5*
+
+
 
 ![Method Diagram 1](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/method_diagram_1.png)
 *Figure: Method Diagram 1*
@@ -55,7 +76,7 @@ TPT는 테스트 시점에서 각 샘플별로 프롬프트를 최적화합니�
 
 각 테스트 이미지에 대해 entropy minimization으로 프롬프트를 개별 최적화합니다.
 
-### 1. Test-Time Adaptation Framework
+
 
 **Single-Sample Adaptation Paradigm**
 - Adapt prompts individually for each test sample without requiring additional training data
@@ -67,7 +88,7 @@ TPT는 테스트 시점에서 각 샘플별로 프롬프트를 최적화합니�
 - Optimize prompts based on consistency across augmented views of the same sample
 - Enable dynamic adaptation to distribution shifts at inference time
 
-### 2. Entropy Minimization Objective
+
 
 **Marginal Entropy Minimization**
 ```
@@ -85,7 +106,7 @@ Where:
 - Minimize entropy across these predictions to improve consistency
 - Update learnable prompt parameters to reduce prediction uncertainty
 
-### 3. Confidence Selection Mechanism
+
 
 **Reliability-Based Filtering**
 - Filter out noisy or unreliable augmentations during prompt optimization
@@ -97,7 +118,7 @@ Where:
 - Use confidence threshold to filter unreliable samples
 - Weighted combination of reliable predictions for stable optimization
 
-### 4. Single-Sample Adaptation Process
+
 
 **Iterative Optimization**
 1. Generate multiple augmented views of the input test image
@@ -111,7 +132,7 @@ Where:
 - Maintain semantic content while introducing visual variations
 - Create sufficient diversity for meaningful entropy minimization
 
-### 5. Integration with CLIP Architecture
+
 
 ![Architecture Overview 1](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/architecture_overview_1.png)
 *Figure: Architecture Overview 1*
@@ -126,7 +147,7 @@ Where:
 - Only prompt parameters require optimization during test time
 - Preserve pre-trained knowledge while enabling task-specific adaptation
 
-## Dataset
+
 
 The evaluation covers multiple datasets testing different aspects of generalization:
 
@@ -145,39 +166,7 @@ The evaluation covers multiple datasets testing different aspects of generalizat
 - **Bongard-HOI**: Context-dependent visual reasoning tasks
 - **Standard benchmarks**: Various computer vision datasets for comprehensive evaluation
 
-## Results
 
-![Results Table 7 0](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/results_table_7_0.png)
-*Figure: Results Table 7 0*
-
-TPT demonstrates significant improvements in zero-shot performance across multiple challenging scenarios:
-
-**Overall Performance Gains**
-- Improves CLIP's zero-shot top-1 accuracy by **3.6% on average** across natural distribution shifts
-- Outperforms existing prompt tuning methods like CoOp and CoCoOp that require additional training data
-- Maintains competitive performance on cross-dataset generalization tasks
-
-**Distribution Shift Robustness**
-- Shows consistent gains across different types of distribution shifts
-- Particularly effective on challenging datasets like ImageNet-A and ImageNet-Sketch
-- Demonstrates improved handling of domain gaps compared to static prompts
-
-**Zero-Shot Preservation**
-- Achieves these improvements while preserving the zero-shot setting
-- Does not require any task-specific training data
-- More practical for real-world deployment scenarios where training data may not be available
-
-**Method Comparison**
-- Outperforms manual prompt engineering approaches
-- Shows superior performance compared to training-time prompt optimization methods
-- Demonstrates the effectiveness of test-time adaptation over static approaches
-
-**Key Performance Highlights**
-- Significant accuracy improvements on challenging distribution shifts
-- Robust performance across diverse visual domains
-- Consistent gains without sacrificing generalization capability
-
-## Key Takeaways
 
 1. **Test-Time Adaptation**: Dynamic prompt optimization at inference time can significantly improve zero-shot performance without requiring additional training data
 
@@ -189,7 +178,7 @@ TPT demonstrates significant improvements in zero-shot performance across multip
 
 The key innovation lies in the test-time adaptation mechanism that dynamically optimizes prompts for individual samples, enabling better generalization compared to static prompts learned during training time.
 
-## Additional Figures
+
 
 ![Figure 1 9](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/figure_1_9.png)
 *Figure: Figure 1 9*
@@ -238,3 +227,74 @@ The key innovation lies in the test-time adaptation mechanism that dynamically o
 
 ![Results Table 19 2](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/results_table_19_2.png)
 *Figure: Results Table 19 2*
+
+### 3.3 구현 세부사항
+
+![Method Diagram 1](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/method_diagram_1.png)
+*Figure: Method Diagram 1*
+
+
+
+## 4. 실험 및 결과
+
+### 4.1 실험 설정
+실험에 사용된 데이터셋, 평가 지표, 비교 대상을 설명합니다.
+
+### 4.2 주요 결과
+
+![Results Table 7 0](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/results_table_7_0.png)
+*Figure: Results Table 7 0*
+
+
+![Results Table 7 1](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/results_table_7_1.png)
+*Figure: Results Table 7 1*
+
+
+![Results Table 18 0](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/results_table_18_0.png)
+*Figure: Results Table 18 0*
+
+
+
+![Results Table 7 0](/assets/images/paper/tpt-test-time-prompt-tuning-for-zero-shot-generalization/results_table_7_0.png)
+*Figure: Results Table 7 0*
+
+TPT demonstrates significant improvements in zero-shot performance across multiple challenging scenarios:
+
+**Overall Performance Gains**
+- Improves CLIP's zero-shot top-1 accuracy by **3.6% on average** across natural distribution shifts
+- Outperforms existing prompt tuning methods like CoOp and CoCoOp that require additional training data
+- Maintains competitive performance on cross-dataset generalization tasks
+
+**Distribution Shift Robustness**
+- Shows consistent gains across different types of distribution shifts
+- Particularly effective on challenging datasets like ImageNet-A and ImageNet-Sketch
+- Demonstrates improved handling of domain gaps compared to static prompts
+
+**Zero-Shot Preservation**
+- Achieves these improvements while preserving the zero-shot setting
+- Does not require any task-specific training data
+- More practical for real-world deployment scenarios where training data may not be available
+
+**Method Comparison**
+- Outperforms manual prompt engineering approaches
+- Shows superior performance compared to training-time prompt optimization methods
+- Demonstrates the effectiveness of test-time adaptation over static approaches
+
+**Key Performance Highlights**
+- Significant accuracy improvements on challenging distribution shifts
+- Robust performance across diverse visual domains
+- Consistent gains without sacrificing generalization capability
+
+### 4.3 분석
+결과에 대한 정성적 분석과 해석을 제공합니다.
+
+## 5. 의의 및 영향
+이 연구의 학술적 기여와 실용적 가치를 평가합니다.
+
+## 6. 개인적 평가
+
+**강점**: 이 논문의 주요 강점과 인상 깊었던 부분
+**약점**: 아쉬웠던 부분이나 의문점  
+**적용 가능성**: 실제 연구나 응용에서의 활용 가능성
+**추천도**: 다른 연구자들에게 추천할 만한 수준
+

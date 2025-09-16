@@ -2,10 +2,9 @@
 categories:
 - VLM
 date: 2025-07-29
-excerpt: "CNS-Obsidian 34B \uB9E4\uAC1C\uBCC0\uC218 \uBAA8\uB378\uC744 \uD1B5\uD55C\
-  \ \uACFC\uD559 \uBB38\uD5CC\uC758 \uC7AC\uBAA9\uC801\uD654\uC640 \uC758\uB8CC AI\
-  \ \uD601\uC2E0"
-last_modified_at: 2025-07-29
+excerpt: 일반 VLM의 과학 문헌 처리 예시에 대한 체계적 분석
+header: {}
+last_modified_at: '2025-09-16'
 published: true
 tags:
 - VLM
@@ -20,8 +19,17 @@ toc: true
 toc_sticky: true
 ---
 
-## Introduction
+# Repurposing the scientific literature with vision-language models
 
+## 논문 정보
+- **저자**: 
+- **발표**: 되지만, 기존의 텍스트 중심 분석 방법은 **과학 논문에 포함된 그림, 도표, 다이어그램 등의 시각적 정보를 효과적으로 활용하지 못**했습니다.
+- **ArXiv**: N/A
+
+## 1. 핵심 요약 (2-3문장)
+이 논문의 핵심 기여와 주요 발견을 간결하게 요약합니다.
+
+## 2. 배경 및 동기
 ![Results Table 27 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_27_0.png)
 *Figure: Experimental results and performance metrics*
 *Figure: Results Table 27 0*
@@ -40,10 +48,20 @@ toc_sticky: true
 - **arXiv**: https://arxiv.org/abs/2502.19546
 - **기관**: 다수 연구기관 공동 연구
 
-## Background
+## 3. 제안 방법
 
-### 과학 문헌 분석의 현재 한계
+### 3.1 아키텍처 개요
 
+![Architecture Diagram 4 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/architecture_diagram_4_0.png)
+*Figure: Architecture Diagram 4 0*
+
+
+![Architecture Diagram 4 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/architecture_diagram_4_0.png)
+*Figure: Architecture Diagram 4 0*
+
+
+
+### 3.2 핵심 기술/알고리즘
 **1. 텍스트 중심의 제한적 접근**
 기존의 과학 문헌 분석 도구들은 주로 텍스트 정보에만 의존하여 다음과 같은 한계를 보입니다:
 
@@ -68,18 +86,18 @@ toc_sticky: true
 - **전문성 요구**: 도메인 지식 필요
 - **시간 소모**: 대량 문헌 분석의 비효율성
 
-### 기존 Vision-Language 모델의 한계
+
 
 **1. 일반 도메인 모델의 문제점**
 ```python
-# 일반 VLM의 과학 문헌 처리 예시
+
 general_vlm_output = {
     "image_description": "A diagram with boxes and arrows",
     "confidence": 0.3,
     "scientific_understanding": "Limited"
 }
 
-# 필요한 과학적 이해
+
 required_output = {
     "model_architecture": "Transformer-based encoder-decoder",
     "data_flow": "Input → Encoder → Attention → Decoder → Output",
@@ -93,9 +111,9 @@ required_output = {
 - **의학 영상**: MRI, CT, X-ray 판독
 - **공학 도면**: 회로도, 기계 설계도
 
-## NeuroPubs Dataset
 
-### 데이터셋 구성 및 특징
+
+
 
 **NeuroPubs**는 과학 문헌 분석을 위해 특별히 구축된 대규모 멀티모달 데이터셋입니다.
 
@@ -109,11 +127,11 @@ NeuroPubs Dataset Structure:
 └── 커버 분야: 신경과학, 의학, 생물학, AI
 ```
 
-### 데이터 수집 및 전처리 과정
+
 
 **1. 논문 선별 기준**
 ```python
-# 논문 선별 알고리즘
+
 def select_papers(paper_database):
     criteria = {
         "publication_venues": ["Nature", "Science", "Cell", "PNAS", "Nature Neuroscience"],
@@ -187,7 +205,7 @@ def quality_assessment(image_caption_pair):
     return quality_scores
 ```
 
-### 데이터셋 다양성 분석
+
 
 **1. 분야별 분포**
 ```
@@ -241,13 +259,13 @@ image_type_distribution = {
 └── 수식 포함률: 31.2%
 ```
 
-## CNS-Obsidian Architecture
+
 
 ![Results Table 26 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_26_0.png)
 *Figure: Experimental results and performance metrics*
 *Figure: Results Table 26 0*
 
-### 모델 아키텍처 개요
+
 
 ![Results Table 25 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_25_0.png)
 *Figure: Experimental results and performance metrics*
@@ -275,7 +293,7 @@ Input: Scientific Paper (Text + Images)
     └── Output Generation: 34B parameters
 ```
 
-### 핵심 컴포넌트 상세 분석
+
 
 **1. Scientific Vision Encoder**
 ```python
@@ -397,7 +415,7 @@ class ScientificMultimodalFusion(nn.Module):
         return output
 ```
 
-### 과학적 지식 통합 메커니즘
+
 
 **1. Scientific Knowledge Base**
 ```python
@@ -462,7 +480,7 @@ class DomainSpecificAdapter(nn.Module):
         return expert_output
 ```
 
-### 훈련 방법론
+
 
 **1. 다단계 훈련 전략**
 ```python
@@ -540,9 +558,9 @@ class MultiTaskLoss(nn.Module):
         return total_loss
 ```
 
-## Domain-Specific Training
 
-### 전문 분야 특화 훈련의 중요성
+
+
 
 **일반 VLM vs 도메인 특화 모델 성능 비교**
 
@@ -556,7 +574,7 @@ Method Description      49.8%     33.7%     73.2%
 Result Interpretation   54.1%     42.6%     79.7%
 ```
 
-### 도메인별 전문화 전략
+
 
 **1. 신경과학 특화 모듈**
 ```python
@@ -645,7 +663,7 @@ class MedicalImagingExpert(nn.Module):
         }
 ```
 
-### 지식 증강 학습 (Knowledge-Augmented Learning)
+
 
 **1. 외부 지식 통합**
 ```python
@@ -734,9 +752,9 @@ class HierarchicalConceptLearning:
         return standard_loss + 0.1 * hierarchy_loss
 ```
 
-## Key Applications
 
-### 1. 그래픽 초록 생성 (Graphical Abstract Generation)
+
+
 
 **그래픽 초록의 중요성**
 현대 과학 출판에서 그래픽 초록은 연구 내용을 시각적으로 요약하는 핵심 도구입니다. CNS-Obsidian은 논문 내용을 분석하여 자동으로 그래픽 초록을 생성할 수 있습니다.
@@ -785,7 +803,7 @@ class GraphicalAbstractGenerator:
         
         return final_abstract
 
-# 사용 예시
+
 def create_graphical_abstract_example():
     # 논문 내용 로드
     paper = load_paper("path/to/scientific_paper.pdf")
@@ -823,7 +841,7 @@ Step 3: Element Creation
 └── Text Labels: [Key Terms, Percentages, Conclusions]
 ```
 
-### 2. 교육 콘텐츠 자동 생성
+
 
 **맞춤형 교육 자료 제작**
 ```python
@@ -889,7 +907,7 @@ class EducationalContentGenerator:
         }
 ```
 
-### 3. 연구 동향 분석 및 예측
+
 
 **대규모 문헌 분석을 통한 연구 트렌드 발견**
 ```python
@@ -940,7 +958,7 @@ class ResearchTrendAnalyzer:
         }
 ```
 
-### 4. 자동 동료 검토 지원
+
 
 **논문 품질 평가 및 개선 제안**
 ```python
@@ -996,9 +1014,9 @@ class AutomatedPeerReviewAssistant:
         return verification_results
 ```
 
-## Clinical Evaluation
 
-### RCT 방법론 설계
+
+
 
 ![Figure 5 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/figure_5_0.png)
 ![Figure 5 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/figure_5_0.png)
@@ -1017,7 +1035,7 @@ RCT Study Design:
 └── 통계 방법: Mixed-effects model, Cohen's d
 ```
 
-### 연구 프로토콜
+
 
 **1. 참가자 선별 기준**
 ```python
@@ -1104,221 +1122,7 @@ class RandomizationProtocol:
         return blinded_interfaces
 ```
 
-### 성능 평가 지표
 
-**1. 주요 평가 지표 (Primary Endpoints)**
-```python
-class PrimaryOutcomeMeasures:
-    def __init__(self):
-        self.accuracy_metrics = AccuracyMetrics()
-        self.efficiency_metrics = EfficiencyMetrics()
-        self.clinical_utility_metrics = ClinicalUtilityMetrics()
-    
-    def measure_diagnostic_accuracy(self, predictions, ground_truth):
-        """진단 정확도 측정"""
-        metrics = {
-            "sensitivity": self.calculate_sensitivity(predictions, ground_truth),
-            "specificity": self.calculate_specificity(predictions, ground_truth),
-            "ppv": self.calculate_ppv(predictions, ground_truth),
-            "npv": self.calculate_npv(predictions, ground_truth),
-            "f1_score": self.calculate_f1(predictions, ground_truth),
-            "auc_roc": self.calculate_auc_roc(predictions, ground_truth)
-        }
-        return metrics
-    
-    def measure_time_to_diagnosis(self, start_times, end_times):
-        """진단 소요 시간 측정"""
-        time_deltas = [end - start for start, end in zip(start_times, end_times)]
-        
-        return {
-            "mean_time": np.mean(time_deltas),
-            "median_time": np.median(time_deltas),
-            "std_time": np.std(time_deltas),
-            "percentile_95": np.percentile(time_deltas, 95)
-        }
-    
-    def measure_clinical_confidence(self, confidence_ratings):
-        """임상적 확신도 측정"""
-        return {
-            "mean_confidence": np.mean(confidence_ratings),
-            "confidence_distribution": np.histogram(confidence_ratings, bins=10),
-            "high_confidence_rate": np.mean(np.array(confidence_ratings) >= 4.0)  # 5-point scale
-        }
-```
-
-**2. 보조 평가 지표 (Secondary Endpoints)**
-```python
-class SecondaryOutcomeMeasures:
-    def __init__(self):
-        self.usability_assessor = UsabilityAssessor()
-        self.learning_curve_analyzer = LearningCurveAnalyzer()
-        self.error_analyzer = ErrorAnalyzer()
-    
-    def assess_user_satisfaction(self, satisfaction_surveys):
-        """사용자 만족도 평가"""
-        domains = {
-            "ease_of_use": [item for item in satisfaction_surveys if "ease" in item.question],
-            "usefulness": [item for item in satisfaction_surveys if "useful" in item.question],
-            "interface_quality": [item for item in satisfaction_surveys if "interface" in item.question],
-            "overall_satisfaction": [item for item in satisfaction_surveys if "overall" in item.question]
-        }
-        
-        satisfaction_scores = {}
-        for domain, items in domains.items():
-            scores = [item.rating for item in items]
-            satisfaction_scores[domain] = {
-                "mean": np.mean(scores),
-                "std": np.std(scores),
-                "median": np.median(scores)
-            }
-        
-        return satisfaction_scores
-    
-    def analyze_learning_curves(self, performance_over_time):
-        """학습 곡선 분석"""
-        learning_metrics = {}
-        
-        for participant_id, time_series in performance_over_time.items():
-            # Fit learning curve
-            time_points = list(range(len(time_series)))
-            curve_fit = self.fit_learning_curve(time_points, time_series)
-            
-            learning_metrics[participant_id] = {
-                "initial_performance": time_series[0],
-                "final_performance": time_series[-1],
-                "improvement_rate": curve_fit['slope'],
-                "plateau_reached": curve_fit['plateau_time'],
-                "total_improvement": time_series[-1] - time_series[0]
-            }
-        
-        return learning_metrics
-```
-
-### 임상시험 결과
-
-**1. 주요 결과 (Primary Results)**
-
-| 지표 | CNS-Obsidian | GPT-4o | 차이 (95% CI) | p-값 | Effect Size (Cohen's d) |
-|------|--------------|--------|---------------|------|-------------------------|
-| **진단 정확도** | 87.3% ± 4.2% | 78.1% ± 5.8% | 9.2% (6.8-11.6%) | <0.001 | 1.83 |
-| **민감도** | 89.7% ± 3.9% | 81.4% ± 6.1% | 8.3% (5.7-10.9%) | <0.001 | 1.65 |
-| **특이도** | 84.9% ± 5.1% | 74.8% ± 7.2% | 10.1% (7.2-13.0%) | <0.001 | 1.58 |
-| **평균 진단 시간** | 3.2 ± 0.8분 | 4.7 ± 1.3분 | -1.5분 (-1.8 to -1.2분) | <0.001 | -1.41 |
-
-**2. 세부 분석 결과**
-
-```python
-# 임상시험 결과 상세 분석
-
-clinical_results = {
-    "participant_demographics": {
-        "total_enrolled": 240,
-        "completed_study": 228,
-        "dropout_rate": 5.0,
-        "demographics": {
-            "mean_age": 38.4,
-            "gender_distribution": {"male": 58.8, "female": 41.2},
-            "experience_years": {"mean": 8.7, "median": 6.5}
-        }
-    },
-    
-    "primary_outcomes": {
-        "diagnostic_accuracy": {
-            "cns_obsidian": {"mean": 87.3, "std": 4.2, "n": 114},
-            "gpt_4o": {"mean": 78.1, "std": 5.8, "n": 114},
-            "statistical_test": "independent_t_test",
-            "p_value": 0.0001,
-            "effect_size": 1.83,
-            "clinical_significance": "large_effect"
-        },
-        
-        "time_efficiency": {
-            "cns_obsidian": {"mean_minutes": 3.2, "std": 0.8},
-            "gpt_4o": {"mean_minutes": 4.7, "std": 1.3},
-            "time_saved_percentage": 31.9,
-            "p_value": 0.0001
-        }
-    },
-    
-    "secondary_outcomes": {
-        "user_satisfaction": {
-            "ease_of_use": {"cns_obsidian": 4.3, "gpt_4o": 3.7},
-            "usefulness": {"cns_obsidian": 4.5, "gpt_4o": 3.9},
-            "overall_satisfaction": {"cns_obsidian": 4.4, "gpt_4o": 3.8}
-        },
-        
-        "error_analysis": {
-            "false_positive_rate": {"cns_obsidian": 7.8, "gpt_4o": 12.3},
-            "false_negative_rate": {"cns_obsidian": 5.1, "gpt_4o": 9.4},
-            "critical_errors": {"cns_obsidian": 2, "gpt_4o": 7}
-        }
-    }
-}
-```
-
-**3. 하위그룹 분석**
-
-```python
-def subgroup_analysis(results_data):
-    """하위그룹별 성능 분석"""
-    subgroups = {
-        "by_experience": {
-            "junior_doctors": {"years": "≤5", "n": 89},
-            "senior_doctors": {"years": ">5", "n": 139}
-        },
-        "by_specialty": {
-            "radiology": {"n": 76},
-            "pathology": {"n": 73},
-            "internal_medicine": {"n": 79}
-        },
-        "by_case_complexity": {
-            "simple_cases": {"complexity_score": "≤3", "n": 92},
-            "complex_cases": {"complexity_score": ">3", "n": 136}
-        }
-    }
-    
-    subgroup_results = {}
-    
-    for group_type, groups in subgroups.items():
-        subgroup_results[group_type] = {}
-        
-        for group_name, group_info in groups.items():
-            group_data = filter_data_by_group(results_data, group_info)
-            
-            subgroup_results[group_type][group_name] = {
-                "accuracy_cns": calculate_accuracy(group_data, "CNS_Obsidian"),
-                "accuracy_gpt": calculate_accuracy(group_data, "GPT_4o"),
-                "time_cns": calculate_mean_time(group_data, "CNS_Obsidian"),
-                "time_gpt": calculate_mean_time(group_data, "GPT_4o"),
-                "effect_size": calculate_effect_size(group_data)
-            }
-    
-    return subgroup_results
-
-# 하위그룹 분석 결과
-
-subgroup_results = {
-    "by_experience": {
-        "junior_doctors": {
-            "accuracy_improvement": 11.4,  # CNS-Obsidian이 더 큰 개선
-            "time_reduction": 38.2,
-            "learning_benefit": "high"
-        },
-        "senior_doctors": {
-            "accuracy_improvement": 7.8,
-            "time_reduction": 28.1,
-            "learning_benefit": "moderate"
-        }
-    },
-    "by_specialty": {
-        "radiology": {"accuracy_improvement": 9.8, "time_reduction": 29.3},
-        "pathology": {"accuracy_improvement": 8.1, "time_reduction": 35.7},
-        "internal_medicine": {"accuracy_improvement": 9.9, "time_reduction": 30.8}
-    }
-}
-```
-
-### 안전성 및 신뢰성 평가
 
 **1. 오류 분석 및 위험 평가**
 ```python
@@ -1374,9 +1178,9 @@ class SafetyReliabilityAssessment:
 | **위음성률** | 5.1% | 9.4% | 0.54 (0.31-0.93) | 0.027 |
 | **임상적 부정확성** | 3.2% | 8.7% | 0.37 (0.19-0.72) | 0.004 |
 
-## Technical Innovations
 
-### 멀티모달 처리의 핵심 혁신
+
+
 
 ![Architecture Diagram 4 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/architecture_diagram_4_0.png)
 ![Architecture Diagram 4 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/architecture_diagram_4_0.png)
@@ -1551,7 +1355,7 @@ class BiologicalImageAnalyzer:
         return pathway_components
 ```
 
-### 도메인 지식 통합 메커니즘
+
 
 **1. 동적 지식 검색 및 통합**
 
@@ -1670,7 +1474,7 @@ class RealTimeFactChecker:
         return verification_results
 ```
 
-### 설명 가능한 AI 구현
+
 
 **1. 시각적 주의 메커니즘 해석**
 
@@ -1771,154 +1575,7 @@ class DecisionProcessTracker:
         return reasoning_explanation
 ```
 
-## Results and Impact
 
-### 성능 지표 종합 분석
-
-**1. 다양한 태스크에서의 성능 비교**
-
-```python
-comprehensive_results = {
-    "scientific_qa": {
-        "dataset": "ScienceQA-VL",
-        "metric": "accuracy",
-        "results": {
-            "CNS-Obsidian": 78.9,
-            "GPT-4V": 62.3,
-            "CLIP": 45.1,
-            "LLaVA": 58.7,
-            "improvement_over_best_baseline": 16.6
-        }
-    },
-    
-    "figure_captioning": {
-        "dataset": "NeuroPubs-Caption",
-        "metric": "BLEU-4/CIDEr/ROUGE-L",
-        "results": {
-            "CNS-Obsidian": {"BLEU-4": 0.847, "CIDEr": 2.34, "ROUGE-L": 0.762},
-            "GPT-4V": {"BLEU-4": 0.612, "CIDEr": 1.87, "ROUGE-L": 0.634},
-            "baseline_avg": {"BLEU-4": 0.423, "CIDEr": 1.24, "ROUGE-L": 0.487}
-        }
-    },
-    
-    "data_extraction": {
-        "task": "chart_data_extraction",
-        "metric": "extraction_accuracy",
-        "results": {
-            "CNS-Obsidian": 75.6,
-            "GPT-4V": 51.2,
-            "specialized_tools": 68.3,
-            "human_baseline": 92.1
-        }
-    },
-    
-    "method_understanding": {
-        "task": "methodology_description",
-        "metric": "semantic_similarity",
-        "results": {
-            "CNS-Obsidian": 0.732,
-            "GPT-4V": 0.498,
-            "scientific_bert": 0.567,
-            "human_agreement": 0.856
-        }
-    }
-}
-```
-
-**2. 도메인별 성능 분석**
-
-| 연구 분야 | 논문 수 | CNS-Obsidian 정확도 | GPT-4V 정확도 | 성능 향상 | 특화 효과 |
-|-----------|---------|---------------------|---------------|-----------|-----------|
-| **신경과학** | 8,050 | 82.4% | 64.7% | +17.7% | 매우 높음 |
-| **의료 영상** | 5,750 | 85.1% | 68.2% | +16.9% | 매우 높음 |
-| **분자생물학** | 4,600 | 79.8% | 63.5% | +16.3% | 높음 |
-| **머신러닝** | 3,450 | 76.3% | 61.9% | +14.4% | 보통 |
-| **기타 과학** | 1,150 | 71.2% | 58.3% | +12.9% | 보통 |
-
-### 실제 활용 사례 및 영향
-
-**1. 연구 효율성 개선 사례**
-
-```python
-class ResearchEfficiencyImpact:
-    def __init__(self):
-        self.case_studies = self.load_case_studies()
-        self.metrics_calculator = ResearchMetricsCalculator()
-    
-    def analyze_literature_review_efficiency(self):
-        """문헌 리뷰 효율성 분석"""
-        before_cns_obsidian = {
-            "papers_reviewed_per_day": 12,
-            "key_insights_extracted": 3.2,
-            "time_per_paper_minutes": 35,
-            "accuracy_of_extraction": 0.73
-        }
-        
-        after_cns_obsidian = {
-            "papers_reviewed_per_day": 28,
-            "key_insights_extracted": 7.8,
-            "time_per_paper_minutes": 15,
-            "accuracy_of_extraction": 0.89
-        }
-        
-        efficiency_improvements = {
-            "review_speed_increase": "133%",
-            "insight_extraction_increase": "144%",
-            "time_reduction": "57%",
-            "accuracy_improvement": "22%"
-        }
-        
-        return efficiency_improvements
-    
-    def calculate_research_impact(self, usage_data):
-        """연구 영향도 계산"""
-        impact_metrics = {
-            "papers_accelerated": len([p for p in usage_data if p.completion_time_reduced]),
-            "new_discoveries_enabled": len([p for p in usage_data if p.led_to_discovery]),
-            "collaboration_facilitated": len([p for p in usage_data if p.enabled_collaboration]),
-            "student_learning_improved": len([p for p in usage_data if p.educational_benefit])
-        }
-        
-        return impact_metrics
-```
-
-**2. 구체적 성공 사례**
-
-**Case Study 1: 알츠하이머 연구 가속화**
-```
-연구진: Stanford Medicine 신경퇴행성질환 연구팀
-기간: 2024년 6개월간 사용
-
-Before CNS-Obsidian:
-- 주간 문헌 리뷰: 45편 논문 처리
-- 핵심 인사이트 추출: 평균 주당 8개
-- 메타분석 준비 시간: 3주
-
-After CNS-Obsidian:
-- 주간 문헌 리뷰: 127편 논문 처리 (+182%)
-- 핵심 인사이트 추출: 평균 주당 23개 (+188%)
-- 메타분석 준비 시간: 1.2주 (-60%)
-
-결과: 3개월 앞당겨진 연구 완료, 2편의 추가 논문 발표
-```
-
-**Case Study 2: 의료진 교육 프로그램**
-```
-기관: Johns Hopkins Medical School
-대상: 레지던트 120명
-
-교육 효과 측정:
-- 논문 이해도 평가 점수: 73점 → 89점 (+22%)
-- 학습 시간 단축: 평균 40% 감소
-- 복잡한 그래프 해석 능력: 65% → 87% 향상
-- 학습 만족도: 4.2/5.0 → 4.7/5.0
-
-추가 효과:
-- 자기주도학습 증가: 67%
-- 최신 연구 동향 인지: 89% 향상
-```
-
-### 사회적 영향 및 접근성 개선
 
 **1. 연구 민주화 효과**
 
@@ -1990,7 +1647,7 @@ class ResearchDemocratizationImpact:
 - 연구 역량 향상: 67%
 ```
 
-### 경제적 파급효과
+
 
 **1. 연구개발 비용 절감**
 
@@ -2050,9 +1707,9 @@ economic_impact = {
 - 다운로드: 45,000회
 ```
 
-## Future Implications
 
-### 과학 연구 패러다임의 변화
+
+
 
 **1. AI 기반 연구 방법론의 표준화**
 
@@ -2180,7 +1837,7 @@ class InterdisciplinaryResearchAcceleration:
         return breakthrough_predictions
 ```
 
-### 의료 분야의 혁신적 변화
+
 
 **1. 차세대 임상 의사결정 지원 시스템**
 
@@ -2265,7 +1922,7 @@ class MedicalEducationRevolution:
         return future_education
 ```
 
-### 글로벌 과학 생태계 변화
+
 
 **1. 연구 접근성 및 형평성 개선**
 
@@ -2333,7 +1990,7 @@ class GlobalScienceEquity:
         return infrastructure
 ```
 
-### 윤리적 고려사항 및 대응 방안
+
 
 **1. AI 의존성 및 인간 전문성 보존**
 
@@ -2436,11 +2093,7 @@ class PrivacySecurityFramework:
         return privacy_mechanisms
 ```
 
-## Conclusion
 
-**CNS-Obsidian과 NeuroPubs 데이터셋**은 과학 문헌 분석 분야에서 **획기적인 도약**을 이루어냈습니다. 이 연구는 단순한 기술적 진보를 넘어서 **과학 연구 패러다임 자체의 변화**를 이끌어내는 중요한 이정표가 되었습니다.
-
-### 핵심 기여도 및 혁신점
 
 ![Architecture Overview 2](/assets/images/paper/repurposing-scientific-literature-vision-language-models/architecture_overview_2.png)
 *Figure: Model architecture and component design*
@@ -2464,7 +2117,7 @@ class PrivacySecurityFramework:
 - **연구 동향 분석**: 대규모 문헌 기반 트렌드 예측
 - **동료 검토 지원**: 논문 품질 평가 및 개선 제안
 
-### 임상적 검증 및 실제 효과
+
 
 **RCT 결과가 입증한 우수성:**
 - **진단 정확도**: 87.3% vs GPT-4o 78.1% (**9.2%p 향상**)
@@ -2477,7 +2130,7 @@ class PrivacySecurityFramework:
 - **교육 개선**: 학습 성과 **28% 향상**
 - **접근성 확대**: 개발도상국 연구자 참여 **127% 증가**
 
-### 사회적 파급효과
+
 
 **1. 연구 민주화**
 CNS-Obsidian은 **연구 접근성의 획기적 개선**을 통해 글로벌 과학 생태계의 형평성을 크게 향상시켰습니다. 언어 장벽 해소, 자원 제약 극복, 지식 격차 완화를 통해 **과학 연구의 민주화**를 실현했습니다.
@@ -2488,7 +2141,7 @@ CNS-Obsidian은 **연구 접근성의 획기적 개선**을 통해 글로벌 과
 **3. 경제적 기여**
 제약업계 신약 개발 비용 **$450M 절감**, 의료기기 규제 승인 시간 **35% 단축** 등 **실질적인 경제적 가치**를 창출했습니다. 23개 스타트업 창업과 $127M 투자 유치를 통해 **혁신 생태계 조성**에도 기여했습니다.
 
-### 미래 전망 및 발전 방향
+
 
 **1. 기술적 진화**
 - **다중 모달리티 통합**: CT, MRI, PET 등 다양한 의료 영상 통합 처리
@@ -2505,7 +2158,7 @@ CNS-Obsidian은 **연구 접근성의 획기적 개선**을 통해 글로벌 과
 **3. 글로벌 확산**
 향후 5년 내 **전 세계 주요 의료기관의 80% 이상**이 CNS-Obsidian 기반 시스템을 도입할 것으로 예상됩니다. 이를 통해 **의료 서비스 품질의 전 지구적 표준화**와 **건강 형평성 개선**이 실현될 것입니다.
 
-### 도전과제 및 대응 방안
+
 
 **1. 윤리적 고려사항**
 - **AI 의존성 관리**: 인간 전문성과의 균형 유지
@@ -2519,7 +2172,405 @@ CNS-Obsidian은 **연구 접근성의 획기적 개선**을 통해 글로벌 과
 - **일반화 성능**: 도메인 간 전이 학습 개선
 - **신뢰성 확보**: 견고성 및 안전성 강화
 
-### 결론: 과학의 미래를 여는 열쇠
+
+
+![Results Table 30 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_30_0.png)
+*Figure: Experimental results and performance metrics*
+*Figure: Results Table 30 0*
+
+![Results Table 31 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_31_0.png)
+*Figure: Experimental results and performance metrics*
+*Figure: Results Table 31 0*
+
+### 3.3 구현 세부사항
+
+
+## 4. 실험 및 결과
+
+### 4.1 실험 설정
+실험에 사용된 데이터셋, 평가 지표, 비교 대상을 설명합니다.
+
+### 4.2 주요 결과
+
+![Results Table 27 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_27_0.png)
+*Figure: Results Table 27 0*
+
+
+![Results Table 26 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_26_0.png)
+*Figure: Results Table 26 0*
+
+
+![Results Table 25 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_25_0.png)
+*Figure: Results Table 25 0*
+
+
+
+**1. 주요 평가 지표 (Primary Endpoints)**
+```python
+class PrimaryOutcomeMeasures:
+    def __init__(self):
+        self.accuracy_metrics = AccuracyMetrics()
+        self.efficiency_metrics = EfficiencyMetrics()
+        self.clinical_utility_metrics = ClinicalUtilityMetrics()
+    
+    def measure_diagnostic_accuracy(self, predictions, ground_truth):
+        """진단 정확도 측정"""
+        metrics = {
+            "sensitivity": self.calculate_sensitivity(predictions, ground_truth),
+            "specificity": self.calculate_specificity(predictions, ground_truth),
+            "ppv": self.calculate_ppv(predictions, ground_truth),
+            "npv": self.calculate_npv(predictions, ground_truth),
+            "f1_score": self.calculate_f1(predictions, ground_truth),
+            "auc_roc": self.calculate_auc_roc(predictions, ground_truth)
+        }
+        return metrics
+    
+    def measure_time_to_diagnosis(self, start_times, end_times):
+        """진단 소요 시간 측정"""
+        time_deltas = [end - start for start, end in zip(start_times, end_times)]
+        
+        return {
+            "mean_time": np.mean(time_deltas),
+            "median_time": np.median(time_deltas),
+            "std_time": np.std(time_deltas),
+            "percentile_95": np.percentile(time_deltas, 95)
+        }
+    
+    def measure_clinical_confidence(self, confidence_ratings):
+        """임상적 확신도 측정"""
+        return {
+            "mean_confidence": np.mean(confidence_ratings),
+            "confidence_distribution": np.histogram(confidence_ratings, bins=10),
+            "high_confidence_rate": np.mean(np.array(confidence_ratings) >= 4.0)  # 5-point scale
+        }
+```
+
+**2. 보조 평가 지표 (Secondary Endpoints)**
+```python
+class SecondaryOutcomeMeasures:
+    def __init__(self):
+        self.usability_assessor = UsabilityAssessor()
+        self.learning_curve_analyzer = LearningCurveAnalyzer()
+        self.error_analyzer = ErrorAnalyzer()
+    
+    def assess_user_satisfaction(self, satisfaction_surveys):
+        """사용자 만족도 평가"""
+        domains = {
+            "ease_of_use": [item for item in satisfaction_surveys if "ease" in item.question],
+            "usefulness": [item for item in satisfaction_surveys if "useful" in item.question],
+            "interface_quality": [item for item in satisfaction_surveys if "interface" in item.question],
+            "overall_satisfaction": [item for item in satisfaction_surveys if "overall" in item.question]
+        }
+        
+        satisfaction_scores = {}
+        for domain, items in domains.items():
+            scores = [item.rating for item in items]
+            satisfaction_scores[domain] = {
+                "mean": np.mean(scores),
+                "std": np.std(scores),
+                "median": np.median(scores)
+            }
+        
+        return satisfaction_scores
+    
+    def analyze_learning_curves(self, performance_over_time):
+        """학습 곡선 분석"""
+        learning_metrics = {}
+        
+        for participant_id, time_series in performance_over_time.items():
+            # Fit learning curve
+            time_points = list(range(len(time_series)))
+            curve_fit = self.fit_learning_curve(time_points, time_series)
+            
+            learning_metrics[participant_id] = {
+                "initial_performance": time_series[0],
+                "final_performance": time_series[-1],
+                "improvement_rate": curve_fit['slope'],
+                "plateau_reached": curve_fit['plateau_time'],
+                "total_improvement": time_series[-1] - time_series[0]
+            }
+        
+        return learning_metrics
+```
+
+
+
+**1. 주요 결과 (Primary Results)**
+
+| 지표 | CNS-Obsidian | GPT-4o | 차이 (95% CI) | p-값 | Effect Size (Cohen's d) |
+|------|--------------|--------|---------------|------|-------------------------|
+| **진단 정확도** | 87.3% ± 4.2% | 78.1% ± 5.8% | 9.2% (6.8-11.6%) | <0.001 | 1.83 |
+| **민감도** | 89.7% ± 3.9% | 81.4% ± 6.1% | 8.3% (5.7-10.9%) | <0.001 | 1.65 |
+| **특이도** | 84.9% ± 5.1% | 74.8% ± 7.2% | 10.1% (7.2-13.0%) | <0.001 | 1.58 |
+| **평균 진단 시간** | 3.2 ± 0.8분 | 4.7 ± 1.3분 | -1.5분 (-1.8 to -1.2분) | <0.001 | -1.41 |
+
+**2. 세부 분석 결과**
+
+```python
+
+
+clinical_results = {
+    "participant_demographics": {
+        "total_enrolled": 240,
+        "completed_study": 228,
+        "dropout_rate": 5.0,
+        "demographics": {
+            "mean_age": 38.4,
+            "gender_distribution": {"male": 58.8, "female": 41.2},
+            "experience_years": {"mean": 8.7, "median": 6.5}
+        }
+    },
+    
+    "primary_outcomes": {
+        "diagnostic_accuracy": {
+            "cns_obsidian": {"mean": 87.3, "std": 4.2, "n": 114},
+            "gpt_4o": {"mean": 78.1, "std": 5.8, "n": 114},
+            "statistical_test": "independent_t_test",
+            "p_value": 0.0001,
+            "effect_size": 1.83,
+            "clinical_significance": "large_effect"
+        },
+        
+        "time_efficiency": {
+            "cns_obsidian": {"mean_minutes": 3.2, "std": 0.8},
+            "gpt_4o": {"mean_minutes": 4.7, "std": 1.3},
+            "time_saved_percentage": 31.9,
+            "p_value": 0.0001
+        }
+    },
+    
+    "secondary_outcomes": {
+        "user_satisfaction": {
+            "ease_of_use": {"cns_obsidian": 4.3, "gpt_4o": 3.7},
+            "usefulness": {"cns_obsidian": 4.5, "gpt_4o": 3.9},
+            "overall_satisfaction": {"cns_obsidian": 4.4, "gpt_4o": 3.8}
+        },
+        
+        "error_analysis": {
+            "false_positive_rate": {"cns_obsidian": 7.8, "gpt_4o": 12.3},
+            "false_negative_rate": {"cns_obsidian": 5.1, "gpt_4o": 9.4},
+            "critical_errors": {"cns_obsidian": 2, "gpt_4o": 7}
+        }
+    }
+}
+```
+
+**3. 하위그룹 분석**
+
+```python
+def subgroup_analysis(results_data):
+    """하위그룹별 성능 분석"""
+    subgroups = {
+        "by_experience": {
+            "junior_doctors": {"years": "≤5", "n": 89},
+            "senior_doctors": {"years": ">5", "n": 139}
+        },
+        "by_specialty": {
+            "radiology": {"n": 76},
+            "pathology": {"n": 73},
+            "internal_medicine": {"n": 79}
+        },
+        "by_case_complexity": {
+            "simple_cases": {"complexity_score": "≤3", "n": 92},
+            "complex_cases": {"complexity_score": ">3", "n": 136}
+        }
+    }
+    
+    subgroup_results = {}
+    
+    for group_type, groups in subgroups.items():
+        subgroup_results[group_type] = {}
+        
+        for group_name, group_info in groups.items():
+            group_data = filter_data_by_group(results_data, group_info)
+            
+            subgroup_results[group_type][group_name] = {
+                "accuracy_cns": calculate_accuracy(group_data, "CNS_Obsidian"),
+                "accuracy_gpt": calculate_accuracy(group_data, "GPT_4o"),
+                "time_cns": calculate_mean_time(group_data, "CNS_Obsidian"),
+                "time_gpt": calculate_mean_time(group_data, "GPT_4o"),
+                "effect_size": calculate_effect_size(group_data)
+            }
+    
+    return subgroup_results
+
+
+
+subgroup_results = {
+    "by_experience": {
+        "junior_doctors": {
+            "accuracy_improvement": 11.4,  # CNS-Obsidian이 더 큰 개선
+            "time_reduction": 38.2,
+            "learning_benefit": "high"
+        },
+        "senior_doctors": {
+            "accuracy_improvement": 7.8,
+            "time_reduction": 28.1,
+            "learning_benefit": "moderate"
+        }
+    },
+    "by_specialty": {
+        "radiology": {"accuracy_improvement": 9.8, "time_reduction": 29.3},
+        "pathology": {"accuracy_improvement": 8.1, "time_reduction": 35.7},
+        "internal_medicine": {"accuracy_improvement": 9.9, "time_reduction": 30.8}
+    }
+}
+```
+
+
+
+
+
+**1. 다양한 태스크에서의 성능 비교**
+
+```python
+comprehensive_results = {
+    "scientific_qa": {
+        "dataset": "ScienceQA-VL",
+        "metric": "accuracy",
+        "results": {
+            "CNS-Obsidian": 78.9,
+            "GPT-4V": 62.3,
+            "CLIP": 45.1,
+            "LLaVA": 58.7,
+            "improvement_over_best_baseline": 16.6
+        }
+    },
+    
+    "figure_captioning": {
+        "dataset": "NeuroPubs-Caption",
+        "metric": "BLEU-4/CIDEr/ROUGE-L",
+        "results": {
+            "CNS-Obsidian": {"BLEU-4": 0.847, "CIDEr": 2.34, "ROUGE-L": 0.762},
+            "GPT-4V": {"BLEU-4": 0.612, "CIDEr": 1.87, "ROUGE-L": 0.634},
+            "baseline_avg": {"BLEU-4": 0.423, "CIDEr": 1.24, "ROUGE-L": 0.487}
+        }
+    },
+    
+    "data_extraction": {
+        "task": "chart_data_extraction",
+        "metric": "extraction_accuracy",
+        "results": {
+            "CNS-Obsidian": 75.6,
+            "GPT-4V": 51.2,
+            "specialized_tools": 68.3,
+            "human_baseline": 92.1
+        }
+    },
+    
+    "method_understanding": {
+        "task": "methodology_description",
+        "metric": "semantic_similarity",
+        "results": {
+            "CNS-Obsidian": 0.732,
+            "GPT-4V": 0.498,
+            "scientific_bert": 0.567,
+            "human_agreement": 0.856
+        }
+    }
+}
+```
+
+**2. 도메인별 성능 분석**
+
+| 연구 분야 | 논문 수 | CNS-Obsidian 정확도 | GPT-4V 정확도 | 성능 향상 | 특화 효과 |
+|-----------|---------|---------------------|---------------|-----------|-----------|
+| **신경과학** | 8,050 | 82.4% | 64.7% | +17.7% | 매우 높음 |
+| **의료 영상** | 5,750 | 85.1% | 68.2% | +16.9% | 매우 높음 |
+| **분자생물학** | 4,600 | 79.8% | 63.5% | +16.3% | 높음 |
+| **머신러닝** | 3,450 | 76.3% | 61.9% | +14.4% | 보통 |
+| **기타 과학** | 1,150 | 71.2% | 58.3% | +12.9% | 보통 |
+
+### 4.3 분석
+결과에 대한 정성적 분석과 해석을 제공합니다.
+
+## 5. 의의 및 영향
+**1. 연구 효율성 개선 사례**
+
+```python
+class ResearchEfficiencyImpact:
+    def __init__(self):
+        self.case_studies = self.load_case_studies()
+        self.metrics_calculator = ResearchMetricsCalculator()
+    
+    def analyze_literature_review_efficiency(self):
+        """문헌 리뷰 효율성 분석"""
+        before_cns_obsidian = {
+            "papers_reviewed_per_day": 12,
+            "key_insights_extracted": 3.2,
+            "time_per_paper_minutes": 35,
+            "accuracy_of_extraction": 0.73
+        }
+        
+        after_cns_obsidian = {
+            "papers_reviewed_per_day": 28,
+            "key_insights_extracted": 7.8,
+            "time_per_paper_minutes": 15,
+            "accuracy_of_extraction": 0.89
+        }
+        
+        efficiency_improvements = {
+            "review_speed_increase": "133%",
+            "insight_extraction_increase": "144%",
+            "time_reduction": "57%",
+            "accuracy_improvement": "22%"
+        }
+        
+        return efficiency_improvements
+    
+    def calculate_research_impact(self, usage_data):
+        """연구 영향도 계산"""
+        impact_metrics = {
+            "papers_accelerated": len([p for p in usage_data if p.completion_time_reduced]),
+            "new_discoveries_enabled": len([p for p in usage_data if p.led_to_discovery]),
+            "collaboration_facilitated": len([p for p in usage_data if p.enabled_collaboration]),
+            "student_learning_improved": len([p for p in usage_data if p.educational_benefit])
+        }
+        
+        return impact_metrics
+```
+
+**2. 구체적 성공 사례**
+
+**Case Study 1: 알츠하이머 연구 가속화**
+```
+연구진: Stanford Medicine 신경퇴행성질환 연구팀
+기간: 2024년 6개월간 사용
+
+Before CNS-Obsidian:
+- 주간 문헌 리뷰: 45편 논문 처리
+- 핵심 인사이트 추출: 평균 주당 8개
+- 메타분석 준비 시간: 3주
+
+After CNS-Obsidian:
+- 주간 문헌 리뷰: 127편 논문 처리 (+182%)
+- 핵심 인사이트 추출: 평균 주당 23개 (+188%)
+- 메타분석 준비 시간: 1.2주 (-60%)
+
+결과: 3개월 앞당겨진 연구 완료, 2편의 추가 논문 발표
+```
+
+**Case Study 2: 의료진 교육 프로그램**
+```
+기관: Johns Hopkins Medical School
+대상: 레지던트 120명
+
+교육 효과 측정:
+- 논문 이해도 평가 점수: 73점 → 89점 (+22%)
+- 학습 시간 단축: 평균 40% 감소
+- 복잡한 그래프 해석 능력: 65% → 87% 향상
+- 학습 만족도: 4.2/5.0 → 4.7/5.0
+
+추가 효과:
+- 자기주도학습 증가: 67%
+- 최신 연구 동향 인지: 89% 향상
+```
+
+
+
+**CNS-Obsidian과 NeuroPubs 데이터셋**은 과학 문헌 분석 분야에서 **획기적인 도약**을 이루어냈습니다. 이 연구는 단순한 기술적 진보를 넘어서 **과학 연구 패러다임 자체의 변화**를 이끌어내는 중요한 이정표가 되었습니다.
+
+
 
 CNS-Obsidian은 **과학 문헌과 인공지능의 만남**을 통해 연구의 새로운 지평을 열었습니다. 이는 단순한 도구를 넘어서 **과학 지식 창출과 전파의 패러다임을 근본적으로 변화**시키는 혁신적 플랫폼입니다.
 
@@ -2543,12 +2594,10 @@ CNS-Obsidian이 제시한 방향은 **인간의 창의성과 AI의 분석 능력
 
 *이 포스트는 과학 문헌 분석 분야의 혁신적 발전을 다룬 최신 연구를 종합적으로 분석한 내용입니다. CNS-Obsidian과 NeuroPubs 데이터셋이 가져올 과학 연구의 변화와 의료 AI의 미래에 대해 깊이 있게 탐구했습니다.*
 
-## Additional Figures
+## 6. 개인적 평가
 
-![Results Table 30 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_30_0.png)
-*Figure: Experimental results and performance metrics*
-*Figure: Results Table 30 0*
+**강점**: 이 논문의 주요 강점과 인상 깊었던 부분
+**약점**: 아쉬웠던 부분이나 의문점  
+**적용 가능성**: 실제 연구나 응용에서의 활용 가능성
+**추천도**: 다른 연구자들에게 추천할 만한 수준
 
-![Results Table 31 0](/assets/images/paper/repurposing-scientific-literature-vision-language-models/results_table_31_0.png)
-*Figure: Experimental results and performance metrics*
-*Figure: Results Table 31 0*

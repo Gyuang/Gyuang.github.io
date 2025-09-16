@@ -2,10 +2,9 @@
 categories:
 - VLM
 date: 2025-07-25
-excerpt: "3D \uB1CC \uC601\uC0C1 \uC815\uBCF4\uB97C \uD65C\uC6A9\uD55C \uC2E0\uACBD\
-  \uD559\uC801 \uC7A5\uC560 \uBD84\uC11D\uC744 \uC704\uD55C \uACBD\uB7C9 \uC5B4\uB311\
-  \uD130 \uD29C\uB2DD \uAE30\uBC95"
-last_modified_at: 2025-07-25
+excerpt: 에 대한 체계적 분석
+header: {}
+last_modified_at: '2025-09-16'
 published: true
 tags:
 - VLM
@@ -19,34 +18,53 @@ toc: true
 toc_sticky: true
 ---
 
-## Introduction
+# Brain-Adapter: Enhancing Neurological Disorder Analysis with Adapter-Tuning Multimodal Large Language Models
 
+## 논문 정보
+- **저자**: 
+- **발표**: 
+- **ArXiv**: N/A
+
+## 1. 핵심 요약 (2-3문장)
+이 논문의 핵심 기여와 주요 발견을 간결하게 요약합니다.
+
+## 2. 배경 및 동기
 뇌 질환의 이해는 정확한 임상 진단과 치료를 위해 매우 중요합니다. 최근 Multimodal Large Language Models (MLLMs)의 발전은 텍스트 설명과 함께 의료 영상을 해석하는 유망한 접근법을 제시하고 있습니다. 하지만 기존 연구들은 주로 2D 의료 영상에 집중하여 3D 영상의 풍부한 공간 정보를 충분히 활용하지 못했으며, 단일 모달리티 기반 방법들은 다른 모달리티에 포함된 중요한 임상 정보를 간과하는 한계가 있었습니다.
 
 본 연구는 **Brain-Adapter**라는 새로운 접근법을 제안합니다. 이는 **경량 병목 레이어(bottleneck layer)**를 추가하여 새로운 지식을 학습하고 기존 사전 훈련된 지식에 주입하는 방식입니다. **CLIP 전략을 활용하여 멀티모달 데이터를 통합 표현 공간에서 정렬**시켜 높은 계산 비용 없이도 진단 정확도를 크게 향상시켰습니다.
 
-## Related Work 
+## 3. 제안 방법
 
-### Multimodal Large Language Models in Medical Domain
+### 3.1 아키텍처 개요
 
+![Architecture Overview 2](/assets/images/paper/brain-adapter-enhancing-neurological-disorder-analysis-with-adapter-tuning-multimodal-large-language-models/architecture_overview_2.png)
+*Figure: Architecture Overview 2*
+
+
+![Architecture Overview 1](/assets/images/paper/brain-adapter-enhancing-neurological-disorder-analysis-with-adapter-tuning-multimodal-large-language-models/architecture_overview_1.png)
+*Figure: Architecture Overview 1*
+
+
+
+### 3.2 핵심 기술/알고리즘
 기존 의료 분야의 MLLM들은 주로 2D 영상(X-ray, CT 슬라이스)에 집중해왔습니다. LLaVA-Med, Med-Flamingo 등의 연구들이 있었지만, 3D 의료 영상의 공간적 정보와 멀티모달 융합의 잠재력을 충분히 탐구하지 못했습니다.
 
-### Adapter-based Transfer Learning
+
 
 Adapter 기법은 대규모 사전 훈련 모델을 특정 도메인에 효율적으로 적응시키는 방법으로 주목받고 있습니다. 특히 의료 분야에서는 데이터 제약과 계산 자원 한계로 인해 이러한 경량 튜닝 기법이 더욱 중요합니다.
 
-### 3D Medical Image Analysis
+
 
 뇌 MRI, PET, fMRI 등 3D 신경영상은 신경학적 장애 진단에 핵심적인 정보를 제공합니다. 하지만 기존 VLM들은 3D 구조를 2D 슬라이스로 단순화하여 처리함으로써 중요한 공간적 관계 정보를 손실하는 문제가 있었습니다.
 
-## Method 
+
 
 ![Figure 5 0](/assets/images/paper/brain-adapter-enhancing-neurological-disorder-analysis-with-adapter-tuning-multimodal-large-language-models/figure_5_0.png)
 ![Figure 5 0](/assets/images/paper/brain-adapter-enhancing-neurological-disorder-analysis-with-adapter-tuning-multimodal-large-language-models/figure_5_0.png)
 *Figure: Figure 5 0*
 
 
-### Architecture Overview
+
 
 ![Figure 3 0](/assets/images/paper/brain-adapter-enhancing-neurological-disorder-analysis-with-adapter-tuning-multimodal-large-language-models/figure_3_0.png)
 ![Figure 3 0](/assets/images/paper/brain-adapter-enhancing-neurological-disorder-analysis-with-adapter-tuning-multimodal-large-language-models/figure_3_0.png)
@@ -61,7 +79,7 @@ Brain-Adapter는 다음과 같은 핵심 구조를 가집니다:
 4. **Domain-specific Fine-tuning**: 신경학적 장애 특화 학습
 
 
-### Key Components
+
 
 **1. Bottleneck Adapter Design**
 - **Parameter-efficient tuning**: 전체 모델의 < 1% 파라미터만 학습
@@ -83,7 +101,7 @@ Brain-Adapter는 다음과 같은 핵심 구조를 가집니다:
 - **Diagnostic reasoning chain**: 진단 논리 체계 모델링
 - **Uncertainty quantification**: 진단 신뢰도 추정
 
-### Training Strategy
+
 
 **Multi-stage Training Process**
 1. **Pre-training Phase**: 일반 도메인 MLLM 로드
@@ -101,14 +119,7 @@ L_total = L_classification + λ₁L_contrastive + λ₂L_consistency + λ₃L_re
 - **L_consistency**: 모달리티 간 일관성 손실
 - **L_regularization**: 어댑터 정규화 손실
 
-## Experiments
 
-![Architecture Overview 2](/assets/images/paper/brain-adapter-enhancing-neurological-disorder-analysis-with-adapter-tuning-multimodal-large-language-models/architecture_overview_2.png)
-*Figure: Model architecture and component design*
-*Figure: Architecture Overview 2*
-
-
-### Datasets
 
 **신경학적 장애 진단 데이터셋**
 - **ADNI (Alzheimer's Disease Neuroimaging Initiative)**: 치매 진단
@@ -121,7 +132,52 @@ L_total = L_classification + λ₁L_contrastive + λ₂L_consistency + λ₃L_re
 - **임상 메타데이터**: 나이, 성별, 인지 평가 점수
 - **텍스트 보고서**: 방사선과 판독 소견
 
-### Results
+
+
+**어댑터 구성 요소별 분석**
+- Bottleneck layer 제거: -5.2% 성능 저하
+- CLIP alignment 제거: -7.8% 성능 저하
+- 3D processing 제거: -9.1% 성능 저하
+- **Full Brain-Adapter**: 최고 성능
+
+**어댑터 크기별 성능**
+- 8차원 bottleneck: 89.1%
+- 16차원 bottleneck: 92.7%
+- **32차원 bottleneck**: 94.2% (최적)
+- 64차원 bottleneck: 94.0% (과적합 징후)
+
+**데이터 크기별 성능**
+- 100 samples: 78.3%
+- 500 samples: 87.9%
+- 1000 samples: 92.1%
+- **전체 데이터**: 94.2%
+
+
+
+1. **3D 정보의 가치**: 뇌 영상 분석에서 3D 공간 정보 활용이 진단 성능에 결정적 영향
+2. **어댑터 튜닝의 효과**: 경량 구조로도 충분한 도메인 적응 가능
+3. **멀티모달 융합의 중요성**: 단일 모달리티 대비 현저한 성능 향상
+4. **실용적 효율성**: 연구실 환경을 넘어 실제 임상 적용 가능한 계산 효율성
+5. **확장 가능성**: 다양한 신경학적 장애와 의료 도메인으로 확장 적용 가능
+6. **AI 보조 진단의 미래**: 의사의 전문성을 보완하는 지능형 진단 지원 시스템의 방향성 제시
+
+### 3.3 구현 세부사항
+
+
+## 4. 실험 및 결과
+
+### 4.1 실험 설정
+실험에 사용된 데이터셋, 평가 지표, 비교 대상을 설명합니다.
+
+### 4.2 주요 결과
+
+
+![Architecture Overview 2](/assets/images/paper/brain-adapter-enhancing-neurological-disorder-analysis-with-adapter-tuning-multimodal-large-language-models/architecture_overview_2.png)
+*Figure: Model architecture and component design*
+*Figure: Architecture Overview 2*
+
+
+
 
 ![Architecture Overview 1](/assets/images/paper/brain-adapter-enhancing-neurological-disorder-analysis-with-adapter-tuning-multimodal-large-language-models/architecture_overview_1.png)
 *Figure: Model architecture and component design*
@@ -144,28 +200,10 @@ L_total = L_classification + λ₁L_contrastive + λ₂L_consistency + λ₃L_re
 - **Multimodal fusion**: 94.2%
 - Text reports 추가: +2.8% 향상
 
-### Ablation Studies
+### 4.3 분석
+결과에 대한 정성적 분석과 해석을 제공합니다.
 
-**어댑터 구성 요소별 분석**
-- Bottleneck layer 제거: -5.2% 성능 저하
-- CLIP alignment 제거: -7.8% 성능 저하
-- 3D processing 제거: -9.1% 성능 저하
-- **Full Brain-Adapter**: 최고 성능
-
-**어댑터 크기별 성능**
-- 8차원 bottleneck: 89.1%
-- 16차원 bottleneck: 92.7%
-- **32차원 bottleneck**: 94.2% (최적)
-- 64차원 bottleneck: 94.0% (과적합 징후)
-
-**데이터 크기별 성능**
-- 100 samples: 78.3%
-- 500 samples: 87.9%
-- 1000 samples: 92.1%
-- **전체 데이터**: 94.2%
-
-## Conclusion
-
+## 5. 의의 및 영향
 Brain-Adapter는 신경학적 장애 분석을 위한 효율적이고 효과적인 멀티모달 학습 프레임워크를 제시합니다. 경량 어댑터 구조와 CLIP 기반 멀티모달 융합을 통해 높은 계산 비용 없이도 뛰어난 진단 성능을 달성했습니다.
 
 **주요 혁신점:**
@@ -179,11 +217,10 @@ Brain-Adapter는 신경학적 장애 분석을 위한 효율적이고 효과적�
 - 의료진의 진단 의사결정 보조 도구로 활용 가능
 - 조기 진단을 통한 치료 효과 개선 기대
 
-## Key Takeaways
+## 6. 개인적 평가
 
-1. **3D 정보의 가치**: 뇌 영상 분석에서 3D 공간 정보 활용이 진단 성능에 결정적 영향
-2. **어댑터 튜닝의 효과**: 경량 구조로도 충분한 도메인 적응 가능
-3. **멀티모달 융합의 중요성**: 단일 모달리티 대비 현저한 성능 향상
-4. **실용적 효율성**: 연구실 환경을 넘어 실제 임상 적용 가능한 계산 효율성
-5. **확장 가능성**: 다양한 신경학적 장애와 의료 도메인으로 확장 적용 가능
-6. **AI 보조 진단의 미래**: 의사의 전문성을 보완하는 지능형 진단 지원 시스템의 방향성 제시
+**강점**: 이 논문의 주요 강점과 인상 깊었던 부분
+**약점**: 아쉬웠던 부분이나 의문점  
+**적용 가능성**: 실제 연구나 응용에서의 활용 가능성
+**추천도**: 다른 연구자들에게 추천할 만한 수준
+

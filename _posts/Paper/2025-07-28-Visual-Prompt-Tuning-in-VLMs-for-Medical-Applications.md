@@ -2,10 +2,9 @@
 categories:
 - VLM
 date: 2025-07-28
-excerpt: "\uC758\uB8CC \uC601\uC0C1 \uBD84\uC11D\uC744 \uC704\uD55C \uBE44\uC804-\uC5B8\
-  \uC5B4 \uBAA8\uB378\uC758 \uC2DC\uAC01\uC801 \uD504\uB86C\uD504\uD2B8 \uD29C\uB2DD\
-  \ \uAE30\uBC95\uB4E4\uACFC \uCD5C\uC2E0 \uC5F0\uAD6C \uB3D9\uD5A5"
-last_modified_at: 2025-07-28
+excerpt: 입력 이미지에 직접 시각적 프롬프트 추가에 대한 체계적 분석
+header: {}
+last_modified_at: '2025-09-16'
 published: true
 tags:
 - VLM
@@ -15,14 +14,22 @@ tags:
 - Parameter-Efficient Fine-tuning
 - Medical AI
 - Clinical Applications
-title: "\uC758\uB8CC \uBD84\uC57C\uC5D0\uC11C\uC758 Visual Prompt Tuning: VLM \uC801\
-  \uC751\uC744 \uC704\uD55C \uD601\uC2E0\uC801 \uC811\uADFC\uBC95"
+title: '의료 분야에서의 Visual Prompt Tuning: VLM 적응을 위한 혁신적 접근법'
 toc: true
 toc_sticky: true
 ---
 
-## Introduction
+# 의료 분야에서의 Visual Prompt Tuning: VLM 적응을 위한 혁신적 접근법
 
+## 논문 정보
+- **저자**: 
+- **발표**: 
+- **ArXiv**: N/A
+
+## 1. 핵심 요약 (2-3문장)
+이 논문의 핵심 기여와 주요 발견을 간결하게 요약합니다.
+
+## 2. 배경 및 동기
 ![Architecture Overview 1](/assets/images/paper/visual-prompt-tuning/architecture_overview_1.png)
 *Figure: Model architecture and component design*
 *Figure: Architecture Overview 1*
@@ -47,15 +54,21 @@ toc_sticky: true
 
 이 포스트에서는 **의료 분야 특화 Visual Prompt Tuning 기법들부터 일반 도메인의 기초적 연구들까지 포괄적으로 분석**하고, 향후 연구 방향을 제시합니다.
 
-## Technical Background
+## 3. 제안 방법
 
-### Visual Prompt Tuning 기본 개념
+### 3.1 아키텍처 개요
 
+![Architecture Overview 1](/assets/images/paper/visual-prompt-tuning/architecture_overview_1.png)
+*Figure: Architecture Overview 1*
+
+
+
+### 3.2 핵심 기술/알고리즘
 **Visual Prompt Tuning**은 입력 이미지나 모델의 중간 특징 표현에 학습 가능한 시각적 프롬프트를 추가하는 방법론입니다. 이는 다음과 같은 주요 접근법들로 구현됩니다:
 
 **1. Input-level Visual Prompts**
 ```python
-# 입력 이미지에 직접 시각적 프롬프트 추가
+
 def add_visual_prompt(image, prompt_tokens):
     """
     이미지 주변이나 특정 위치에 학습 가능한 시각적 토큰 추가
@@ -68,7 +81,7 @@ def add_visual_prompt(image, prompt_tokens):
 
 **2. Feature-level Visual Prompts**
 ```python
-# 모델 내부 특징 공간에 프롬프트 주입
+
 def inject_feature_prompt(features, layer_prompts):
     """
     각 Transformer 레이어에 학습 가능한 프롬프트 토큰 주입
@@ -81,7 +94,7 @@ def inject_feature_prompt(features, layer_prompts):
 
 **3. Adapter-based Visual Prompts**
 ```python
-# 기존 모델에 경량 어댑터 모듈 추가
+
 class VisualPromptAdapter(nn.Module):
     def __init__(self, feature_dim, prompt_length):
         super().__init__()
@@ -100,7 +113,7 @@ class VisualPromptAdapter(nn.Module):
         return adapted_x
 ```
 
-### 의료 분야 특화 고려사항
+
 
 의료 영상에서의 Visual Prompt Tuning은 다음과 같은 도메인 특화 요소들을 고려해야 합니다:
 
@@ -116,9 +129,9 @@ class VisualPromptAdapter(nn.Module):
 - CT, MRI, X-ray 등 다양한 영상 모달리티에서의 프롬프트 일반화
 - 모달리티별 특성을 반영한 적응적 프롬프트 생성
 
-## Medical Domain Applications
 
-### Biomed-DPT: 의료 VLM을 위한 듀얼 모달리티 프롬프트 튜닝
+
+
 
 **[Biomed-DPT: Dual-Modality Prompt Tuning for Biomedical Vision-Language Models](https://arxiv.org/abs/2312.17080)** 연구는 의료 분야에서 Visual Prompt Tuning의 대표적 사례입니다.
 
@@ -163,7 +176,7 @@ class BiomedDualPromptTuning(nn.Module):
 - **피부병변 진단**: Few-shot 설정에서 12.3% 정확도 개선
 - **병리 영상 분석**: 5개 미만 샘플로도 전문의 수준 성능 달성
 
-### VoxelPrompt: 의료 영상 분석을 위한 언어 에이전트
+
 
 **[VoxelPrompt: A Vision-Language Agent for Grounded Medical Image Analysis](https://arxiv.org/abs/2410.08397)**는 3D 의료 볼륨에 특화된 Visual Prompt 접근법을 제시합니다.
 
@@ -215,7 +228,7 @@ class VoxelPromptAgent(nn.Module):
 - **종양 감지**: 94.7% 정확도로 전문의 수준 성능
 - **처리 효율성**: 기존 방법 대비 5배 빠른 처리 속도
 
-### Brain-Adapter: 신경학적 질환 분석을 위한 어댑터 튜닝
+
 
 **[Brain-Adapter: Enhancing Neurological Disorder Analysis with Adapter Tuning](https://arxiv.org/abs/2312.15413)**는 신경영상 특화 Visual Prompt 접근법을 제시합니다.
 
@@ -281,9 +294,9 @@ class BrainAdapterPrompts(nn.Module):
 - **뇌졸중 병변 분할**: Dice score 0.87, Hausdorff distance 2.3mm
 - **다중 질환 동시 분석**: 단일 모델로 5개 질환 분류
 
-## General Domain Foundations
 
-### Visual Prompt Tuning (VPT)
+
+
 
 **[Visual Prompt Tuning](https://arxiv.org/abs/2203.12119)** 연구는 Visual Prompt Tuning 분야의 기초를 확립한 선구적 연구입니다.
 
@@ -351,7 +364,7 @@ class VisualPromptTuning(nn.Module):
 - **VTAB**: 평균 73.2% 정확도로 경쟁 방법들 대비 우수
 - **파라미터 효율성**: 전체 모델의 0.1% 파라미터만 업데이트
 
-### EVP: Exploring Visual Prompts
+
 
 **[Exploring Visual Prompts for Adapting Large-Scale Models](https://arxiv.org/abs/2203.17274)**는 다양한 Visual Prompt 설계 방법을 체계적으로 탐구합니다.
 
@@ -441,7 +454,7 @@ def initialize_prompts(prompts, init_strategy='random'):
 3. **프롬프트 길이**: 태스크별로 최적 길이 상이 (일반적으로 10-50)
 4. **깊이별 효과**: Deep prompting이 복잡한 태스크에서 유리
 
-### Diversity-Aware Meta Visual Prompting
+
 
 **[Diversity-Aware Meta Visual Prompting](https://arxiv.org/abs/2303.08138)**는 다양한 태스크에 대한 메타 학습 기반 프롬프트 생성을 제안합니다.
 
@@ -548,9 +561,9 @@ def meta_train_visual_prompts(model, meta_generator, tasks, epochs=1000):
 - **태스크 일반화**: 새로운 태스크에 대해 빠른 적응 (3-5 gradient steps)
 - **다양성 향상**: 태스크 간 프롬프트 유사도 32% 감소
 
-## Comparative Analysis
 
-### Medical vs General Domain 접근법 비교
+
+
 
 | 구분 | 일반 도메인 | 의료 도메인 |
 |------|-------------|-------------|
@@ -560,7 +573,7 @@ def meta_train_visual_prompts(model, meta_generator, tasks, epochs=1000):
 | **정규화 전략** | Dropout, Weight decay | Domain adaptation, Clinical validation |
 | **평가 방법** | 표준 벤치마크 | 임상 데이터셋, 전문의 평가 |
 
-### 프롬프트 튜닝 효율성 비교
+
 
 **파라미터 효율성 분석:**
 
@@ -587,23 +600,7 @@ def analyze_parameter_efficiency():
     
     return efficiency_ratios
 
-# 결과 예시:
 
-![Results Table 9 0](/assets/images/paper/visual-prompt-tuning/results_table_9_0.png)
-*Figure: Experimental results and performance metrics*
-*Figure: Results Table 9 0*
-
-
-![Results Table 7 0](/assets/images/paper/visual-prompt-tuning-in-vlms-for-medical-applications/results_table_7_0.png)
-*Figure: Experimental results and performance metrics*
-*Figure: Results Table 7 0*
-
-# Full Fine-tuning: 100.0%
-# Linear Probing: 0.001%
-# VPT-Shallow: 0.045%
-# VPT-Deep: 0.537%
-# Medical VPT: 0.147%
-# Adapter Tuning: 0.233%
 ```
 
 **성능 대비 효율성 비교:**
@@ -616,93 +613,9 @@ def analyze_parameter_efficiency():
 | Medical VPT | 0.147% | 95.3% | 98.7% | 18% |
 | Biomed-DPT | 0.285% | 96.1% | 99.3% | 25% |
 
-### 의료 도메인에서의 성능 분석
 
-**태스크별 성능 비교:**
 
-```python
-def medical_task_performance_analysis():
-    """
-    의료 태스크별 Visual Prompt Tuning 성능 분석
-    """
-    tasks = {
-        'chest_xray_classification': {
-            'baseline': 0.847,
-            'vpt_shallow': 0.863,
-            'vpt_deep': 0.879,
-            'medical_vpt': 0.912,
-            'biomed_dpt': 0.934
-        },
-        'skin_lesion_segmentation': {
-            'baseline': 0.782,
-            'vpt_shallow': 0.798,
-            'vpt_deep': 0.815,
-            'medical_vpt': 0.841,
-            'biomed_dpt': 0.856
-        },
-        'brain_tumor_detection': {
-            'baseline': 0.891,
-            'vpt_shallow': 0.897,
-            'vpt_deep': 0.908,
-            'medical_vpt': 0.925,
-            'biomed_dpt': 0.943
-        },
-        'retinal_disease_grading': {
-            'baseline': 0.734,
-            'vpt_shallow': 0.751,
-            'vpt_deep': 0.769,
-            'medical_vpt': 0.798,
-            'biomed_dpt': 0.823
-        }
-    }
-    
-    # 개선율 계산
-    improvements = {}
-    for task, scores in tasks.items():
-        baseline = scores['baseline']
-        improvements[task] = {
-            method: (score - baseline) / baseline * 100
-            for method, score in scores.items() if method != 'baseline'
-        }
-    
-    return improvements
-```
 
-**Few-shot 학습 성능:**
-
-의료 분야에서의 Few-shot 학습은 특히 중요합니다. 희귀 질환이나 새로운 영상 모달리티에 대한 빠른 적응이 필요하기 때문입니다.
-
-```python
-def few_shot_medical_analysis():
-    """
-    의료 분야 Few-shot 학습 성능 분석
-    """
-    shot_sizes = [1, 5, 10, 20, 50]
-    methods = ['baseline', 'vpt', 'medical_vpt', 'biomed_dpt']
-    
-    # 흉부 X-ray 분류 결과 (예시)
-    chest_xray_results = {
-        1: {'baseline': 0.612, 'vpt': 0.643, 'medical_vpt': 0.687, 'biomed_dpt': 0.723},
-        5: {'baseline': 0.734, 'vpt': 0.756, 'medical_vpt': 0.798, 'biomed_dpt': 0.834},
-        10: {'baseline': 0.789, 'vpt': 0.812, 'medical_vpt': 0.847, 'biomed_dpt': 0.871},
-        20: {'baseline': 0.823, 'vpt': 0.841, 'medical_vpt': 0.879, 'biomed_dpt': 0.896},
-        50: {'baseline': 0.847, 'vpt': 0.863, 'medical_vpt': 0.901, 'biomed_dpt': 0.918}
-    }
-    
-    return chest_xray_results
-```
-
-**데이터 효율성 분석:**
-
-의료 도메인 특화 Visual Prompt Tuning은 제한된 데이터로도 높은 성능을 달성합니다:
-
-1. **1-shot 학습**: 의료 특화 방법이 일반 방법 대비 평균 11.7% 향상
-2. **5-shot 학습**: 전체 데이터셋의 95% 수준 성능 달성
-3. **도메인 전이**: 다른 의료 영상 모달리티로의 전이에서 우수한 성능
-
-## Future Directions
-
-### 1. 자동화된 의료 프롬프트 설계
 
 **Neural Architecture Search for Medical Prompts:**
 
@@ -851,7 +764,7 @@ class EvolutionaryPromptOptimization:
         return individual
 ```
 
-### 2. 멀티모달 의료 프롬프트 통합
+
 
 **크로스 모달 프롬프트 정렬:**
 
@@ -926,7 +839,7 @@ class CrossModalMedicalPrompts(nn.Module):
         return unified_prompts, modal_embeddings
 ```
 
-### 3. 연속 학습을 위한 프롬프트 진화
+
 
 **의료 도메인 지속적 학습:**
 
@@ -1042,7 +955,7 @@ class ContinualMedicalPromptLearning(nn.Module):
         return combined_prompt
 ```
 
-### 4. 설명 가능한 의료 Visual Prompts
+
 
 **해석 가능한 프롬프트 시각화:**
 
@@ -1176,7 +1089,7 @@ class ExplainableMedicalPrompts(nn.Module):
         return report
 ```
 
-### 5. 실시간 임상 배포를 위한 최적화
+
 
 **효율적인 프롬프트 추론:**
 
@@ -1292,11 +1205,7 @@ class EfficientClinicalPromptSystem(nn.Module):
         return complexity.item()
 ```
 
-## Conclusion
 
-**Visual Prompt Tuning**은 의료 분야에서 비전-언어 모델의 효율적 적응을 위한 혁신적 패러다임으로 자리잡았습니다. 이 포스트에서 살펴본 바와 같이, 의료 도메인 특화 Visual Prompt Tuning은 다음과 같은 주요 발전을 이루어왔습니다:
-
-### 주요 성과와 혁신
 
 **1. 의료 특화 기술 혁신**
 - **Biomed-DPT**: 듀얼 모달리티 프롬프트 튜닝으로 8.7% AUC 향상
@@ -1314,7 +1223,7 @@ class EfficientClinicalPromptSystem(nn.Module):
 - **질병 감지**: 종양, 병변, 이상 조직 탐지
 - **정량적 분석**: 볼륨 측정, 형태학적 지표 계산
 
-### 일반 도메인 vs 의료 도메인 비교
+
 
 **기술적 차별점:**
 1. **도메인 특화 설계**: 해부학적 지식과 병리학적 패턴을 반영한 프롬프트
@@ -1326,7 +1235,7 @@ class EfficientClinicalPromptSystem(nn.Module):
 - **도메인 적응**: 일반→의료 도메인 전이에서 **98.7% 성능** 달성
 - **임상 유용성**: 전문의 수준의 진단 정확도와 신뢰성 확보
 
-### 미래 연구 방향
+
 
 **1. 자동화된 프롬프트 설계**
 - Neural Architecture Search와 진화 알고리즘을 통한 최적 프롬프트 탐색
@@ -1348,7 +1257,7 @@ class EfficientClinicalPromptSystem(nn.Module):
 - 프롬프트 압축과 양자화를 통한 추론 속도 최적화
 - 적응적 추론과 우선순위 기반 처리
 
-### 임상적 가치와 전망
+
 
 **현재 달성된 임상적 가치:**
 - **진단 정확도 향상**: 전문의 수준의 성능으로 오진 위험 감소
@@ -1359,7 +1268,7 @@ class EfficientClinicalPromptSystem(nn.Module):
 **미래 전망:**
 Visual Prompt Tuning은 **정밀 의료**의 핵심 기술로 발전할 것으로 예상됩니다. 개인별 맞춤형 프롬프트를 통한 **개인화된 진단과 치료 계획 수립**, **다기관 협업 연구**를 위한 표준화된 프롬프트 라이브러리 구축, 그리고 **AI 의료기기 인허가**를 위한 검증 가능한 설명 시스템이 주요 발전 방향이 될 것입니다.
 
-### Key Takeaways
+
 
 1. **효율성의 혁신**: 의료 분야에서 대규모 모델의 효율적 적응이 현실화
 2. **도메인 특화의 중요성**: 일반 도메인 기법의 의료 특화 개선이 성능 향상의 핵심
@@ -1387,10 +1296,132 @@ Visual Prompt Tuning은 **정밀 의료**의 핵심 기술로 발전할 것으�
 - [MaPLe: Multi-modal Prompt Learning](/paper/MaPLE-Multi-modal-Prompt-Learning/)
 - [VoxelPrompt: A Vision-Language Agent for Grounded Medical Image Analysis](/paper/VoxelPrompt-A-Vision-Language-Agent-for-Grounded-Medical-Image-Analysis/)
 
-## Additional Figures
+### 3.3 구현 세부사항
+
+
+## 4. 실험 및 결과
+
+### 4.1 실험 설정
+실험에 사용된 데이터셋, 평가 지표, 비교 대상을 설명합니다.
+
+### 4.2 주요 결과
+
+![Results Table 7 1](/assets/images/paper/visual-prompt-tuning-in-vlms-for-medical-applications/results_table_7_1.png)
+*Figure: Results Table 7 1*
+
+
+![Results Table 9 0](/assets/images/paper/visual-prompt-tuning/results_table_9_0.png)
+*Figure: Results Table 9 0*
+
+
+![Results Table 7 0](/assets/images/paper/visual-prompt-tuning-in-vlms-for-medical-applications/results_table_7_0.png)
+*Figure: Results Table 7 0*
 
 
 
+![Results Table 9 0](/assets/images/paper/visual-prompt-tuning/results_table_9_0.png)
+*Figure: Experimental results and performance metrics*
+*Figure: Results Table 9 0*
 
 
+![Results Table 7 0](/assets/images/paper/visual-prompt-tuning-in-vlms-for-medical-applications/results_table_7_0.png)
+*Figure: Experimental results and performance metrics*
+*Figure: Results Table 7 0*
+
+
+
+**태스크별 성능 비교:**
+
+```python
+def medical_task_performance_analysis():
+    """
+    의료 태스크별 Visual Prompt Tuning 성능 분석
+    """
+    tasks = {
+        'chest_xray_classification': {
+            'baseline': 0.847,
+            'vpt_shallow': 0.863,
+            'vpt_deep': 0.879,
+            'medical_vpt': 0.912,
+            'biomed_dpt': 0.934
+        },
+        'skin_lesion_segmentation': {
+            'baseline': 0.782,
+            'vpt_shallow': 0.798,
+            'vpt_deep': 0.815,
+            'medical_vpt': 0.841,
+            'biomed_dpt': 0.856
+        },
+        'brain_tumor_detection': {
+            'baseline': 0.891,
+            'vpt_shallow': 0.897,
+            'vpt_deep': 0.908,
+            'medical_vpt': 0.925,
+            'biomed_dpt': 0.943
+        },
+        'retinal_disease_grading': {
+            'baseline': 0.734,
+            'vpt_shallow': 0.751,
+            'vpt_deep': 0.769,
+            'medical_vpt': 0.798,
+            'biomed_dpt': 0.823
+        }
+    }
+    
+    # 개선율 계산
+    improvements = {}
+    for task, scores in tasks.items():
+        baseline = scores['baseline']
+        improvements[task] = {
+            method: (score - baseline) / baseline * 100
+            for method, score in scores.items() if method != 'baseline'
+        }
+    
+    return improvements
+```
+
+**Few-shot 학습 성능:**
+
+의료 분야에서의 Few-shot 학습은 특히 중요합니다. 희귀 질환이나 새로운 영상 모달리티에 대한 빠른 적응이 필요하기 때문입니다.
+
+```python
+def few_shot_medical_analysis():
+    """
+    의료 분야 Few-shot 학습 성능 분석
+    """
+    shot_sizes = [1, 5, 10, 20, 50]
+    methods = ['baseline', 'vpt', 'medical_vpt', 'biomed_dpt']
+    
+    # 흉부 X-ray 분류 결과 (예시)
+    chest_xray_results = {
+        1: {'baseline': 0.612, 'vpt': 0.643, 'medical_vpt': 0.687, 'biomed_dpt': 0.723},
+        5: {'baseline': 0.734, 'vpt': 0.756, 'medical_vpt': 0.798, 'biomed_dpt': 0.834},
+        10: {'baseline': 0.789, 'vpt': 0.812, 'medical_vpt': 0.847, 'biomed_dpt': 0.871},
+        20: {'baseline': 0.823, 'vpt': 0.841, 'medical_vpt': 0.879, 'biomed_dpt': 0.896},
+        50: {'baseline': 0.847, 'vpt': 0.863, 'medical_vpt': 0.901, 'biomed_dpt': 0.918}
+    }
+    
+    return chest_xray_results
+```
+
+**데이터 효율성 분석:**
+
+의료 도메인 특화 Visual Prompt Tuning은 제한된 데이터로도 높은 성능을 달성합니다:
+
+1. **1-shot 학습**: 의료 특화 방법이 일반 방법 대비 평균 11.7% 향상
+2. **5-shot 학습**: 전체 데이터셋의 95% 수준 성능 달성
+3. **도메인 전이**: 다른 의료 영상 모달리티로의 전이에서 우수한 성능
+
+### 4.3 분석
+결과에 대한 정성적 분석과 해석을 제공합니다.
+
+## 5. 의의 및 영향
+**Visual Prompt Tuning**은 의료 분야에서 비전-언어 모델의 효율적 적응을 위한 혁신적 패러다임으로 자리잡았습니다. 이 포스트에서 살펴본 바와 같이, 의료 도메인 특화 Visual Prompt Tuning은 다음과 같은 주요 발전을 이루어왔습니다:
+
+## 6. 개인적 평가
+
+**강점**: 이 논문의 주요 강점과 인상 깊었던 부분
+**약점**: 아쉬웠던 부분이나 의문점  
+**적용 가능성**: 실제 연구나 응용에서의 활용 가능성
+**추천도**: 다른 연구자들에게 추천할 만한 수준
 

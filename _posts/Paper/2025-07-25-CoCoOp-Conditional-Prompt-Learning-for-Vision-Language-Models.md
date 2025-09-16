@@ -2,10 +2,9 @@
 categories:
 - VLM
 date: 2025-07-25
-excerpt: "\uC785\uB825\uBCC4 \uC870\uAC74\uBD80 \uD504\uB86C\uD504\uD2B8 \uD559\uC2B5\
-  \uC744 \uD1B5\uD55C \uBE44\uC804-\uC5B8\uC5B4 \uBAA8\uB378\uC758 \uC77C\uBC18\uD654\
-  \ \uC131\uB2A5 \uD5A5\uC0C1"
-last_modified_at: 2025-07-25
+excerpt: 에 대한 체계적 분석
+header: {}
+last_modified_at: '2025-09-16'
 published: true
 tags:
 - VLM
@@ -19,8 +18,17 @@ toc: true
 toc_sticky: true
 ---
 
-## Introduction
+# Conditional Prompt Learning for Vision-Language Models (CoCoOp)
 
+## 논문 정보
+- **저자**: 
+- **발표**: 
+- **ArXiv**: N/A
+
+## 1. 핵심 요약 (2-3문장)
+이 논문의 핵심 기여와 주요 발견을 간결하게 요약합니다.
+
+## 2. 배경 및 동기
 ![Architecture Overview 2](/assets/images/paper/cocoop-conditional-prompt-learning-for-vision-language-models/architecture_overview_2.png)
 *Figure: Model architecture and component design*
 *Figure: Architecture Overview 2*
@@ -30,14 +38,26 @@ toc_sticky: true
 
 **CoCoOp(Conditional Prompt Learning)**은 이러한 CoOp의 한계를 해결하기 위해 **입력 이미지에 조건부인 동적 프롬프트**를 생성하는 혁신적 접근법을 제안합니다. 각 이미지에 대해 **개별 인스턴스에 적응하는 조건부 토큰**을 생성하여 정적 프롬프트의 과적합 문제를 해결하고, 미지의 클래스에 대한 일반화 성능을 크게 향상시킵니다.
 
-## Methods
+## 3. 제안 방법
 
+### 3.1 아키텍처 개요
+
+![Architecture Overview 2](/assets/images/paper/cocoop-conditional-prompt-learning-for-vision-language-models/architecture_overview_2.png)
+*Figure: Architecture Overview 2*
+
+
+![Architecture Overview 1](/assets/images/paper/cocoop-conditional-prompt-learning-for-vision-language-models/architecture_overview_1.png)
+*Figure: Architecture Overview 1*
+
+
+
+### 3.2 핵심 기술/알고리즘
 ![Method Diagram 1 3](/assets/images/paper/cocoop-conditional-prompt-learning-for-vision-language-models/method_diagram_1_3.png)
 *Figure: System architecture and methodology overview*
 *Figure: Method Diagram 1 3*
 
 
-### Architecture Overview
+
 
 ![Method Diagram 1 2](/assets/images/paper/cocoop-conditional-prompt-learning-for-vision-language-models/method_diagram_1_2.png)
 *Figure: System architecture and methodology overview*
@@ -60,7 +80,7 @@ Meta-Net이 각 이미지에 대해 조건부 토큰을 생성하여 동적 프�
 
 CoCoOp은 다음과 같은 핵심 기술 혁신을 통해 CoOp을 확장합니다:
 
-### 1. Meta-Net Architecture
+
 
 ![Method Diagram 1 1](/assets/images/paper/cocoop-conditional-prompt-learning-for-vision-language-models/method_diagram_1_1.png)
 *Figure: System architecture and methodology overview*
@@ -84,7 +104,7 @@ f_meta(φ(x)) = v_cond
 - `f_meta`: 메타 네트워크 함수
 - `v_cond`: 생성된 조건부 토큰
 
-### 2. Input-Conditional Token Generation
+
 
 **인스턴스별 적응 토큰**
 - 각 입력 이미지마다 **고유한 조건부 토큰 벡터** 생성
@@ -97,7 +117,7 @@ f_meta(φ(x)) = v_cond
 - 학습 가능한 파라미터를 통해 최적화
 - 텍스트 인코더의 임베딩 공간과 호환
 
-### 3. Dynamic Prompt Construction
+
 
 **조건부 프롬프트 구성**
 ```
@@ -115,7 +135,7 @@ Dynamic Prompt = [v_cond] [V]₁ [V]₂ ... [V]ₘ [CLASS]
 - **CoCoOp**: 입력별로 조건부 토큰을 통해 동적 조정
 - **인스턴스 적응성**: 개별 이미지 특성에 맞춘 프롬프트
 
-### 4. Instance-Adaptive Mechanism
+
 
 **적응적 프롬프트 생성**
 - **이미지별 특화**: 각 입력의 고유한 시각적 특성 반영
@@ -123,7 +143,7 @@ Dynamic Prompt = [v_cond] [V]₁ [V]₂ ... [V]ₘ [CLASS]
 - **동적 조정**: 입력 내용에 따른 자동 프롬프트 최적화
 - **일반화 향상**: 새로운 클래스에 대한 적응성 증가
 
-### 5. End-to-End Training
+
 
 **통합 최적화**
 - Meta-Net과 컨텍스트 벡터의 **공동 학습**
@@ -141,7 +161,7 @@ L = -log P(y|x) = -log exp(sim(I, T_y)/τ) / Σ_c exp(sim(I, T_c)/τ)
 - `T_y`: 동적으로 생성된 정답 클래스 프롬프트 특징
 - `T_c`: 모든 클래스에 대한 프롬프트 특징
 
-### 6. Prompt Template Integration
+
 
 **CLIP 호환성**
 - 기존 CLIP 프롬프트 템플릿 구조 유지
@@ -149,7 +169,7 @@ L = -log P(y|x) = -log exp(sim(I, T_y)/τ) / Σ_c exp(sim(I, T_c)/τ)
 - 다양한 프롬프트 템플릿에 적용 가능
 - **"a photo of a {class}"** 등 표준 템플릿 지원
 
-## Dataset
+
 
 CoCoOp의 실험은 **비전-언어 모델 평가에 널리 사용되는 11개 데이터셋**에서 수행되었습니다:
 
@@ -165,7 +185,35 @@ CoCoOp의 실험은 **비전-언어 모델 평가에 널리 사용되는 11개 �
 - Real-world 적용 시나리오 반영
 - 클래스 분포 변화에 대한 강건성 검증
 
-## Results
+
+
+1. **Conditional Prompting**: 입력별 조건부 토큰이 정적 프롬프트의 과적합 문제 해결
+2. **Instance Adaptation**: 개별 이미지 특성에 맞춘 동적 프롬프트가 일반화 성능 향상
+3. **Meta-Network Efficiency**: 경량 메타 네트워크로 효율적인 조건부 토큰 생성
+4. **Generalization Bridge**: 학습된 프롬프트와 수동 프롬프트 간 일반화 격차 해소
+
+### 3.3 구현 세부사항
+
+![Method Diagram 1 3](/assets/images/paper/cocoop-conditional-prompt-learning-for-vision-language-models/method_diagram_1_3.png)
+*Figure: Method Diagram 1 3*
+
+
+![Method Diagram 1 2](/assets/images/paper/cocoop-conditional-prompt-learning-for-vision-language-models/method_diagram_1_2.png)
+*Figure: Method Diagram 1 2*
+
+
+![Method Diagram 1 1](/assets/images/paper/cocoop-conditional-prompt-learning-for-vision-language-models/method_diagram_1_1.png)
+*Figure: Method Diagram 1 1*
+
+
+
+## 4. 실험 및 결과
+
+### 4.1 실험 설정
+실험에 사용된 데이터셋, 평가 지표, 비교 대상을 설명합니다.
+
+### 4.2 주요 결과
+
 
 ![Architecture Overview 1](/assets/images/paper/cocoop-conditional-prompt-learning-for-vision-language-models/architecture_overview_1.png)
 *Figure: Model architecture and component design*
@@ -204,9 +252,16 @@ CoCoOp은 CoOp 대비 **새로운 클래스에 대한 일반화 성능에서 현
 - Few-shot 프롬프트 학습의 **효율성 장점을 유지**하면서 일반화 성능 크게 향상
 - 입력별 적응이 **클래스 분포 변화에 대한 강건성** 제공
 
-## Key Takeaways
+### 4.3 분석
+결과에 대한 정성적 분석과 해석을 제공합니다.
 
-1. **Conditional Prompting**: 입력별 조건부 토큰이 정적 프롬프트의 과적합 문제 해결
-2. **Instance Adaptation**: 개별 이미지 특성에 맞춘 동적 프롬프트가 일반화 성능 향상
-3. **Meta-Network Efficiency**: 경량 메타 네트워크로 효율적인 조건부 토큰 생성
-4. **Generalization Bridge**: 학습된 프롬프트와 수동 프롬프트 간 일반화 격차 해소
+## 5. 의의 및 영향
+이 연구의 학술적 기여와 실용적 가치를 평가합니다.
+
+## 6. 개인적 평가
+
+**강점**: 이 논문의 주요 강점과 인상 깊었던 부분
+**약점**: 아쉬웠던 부분이나 의문점  
+**적용 가능성**: 실제 연구나 응용에서의 활용 가능성
+**추천도**: 다른 연구자들에게 추천할 만한 수준
+

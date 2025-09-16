@@ -2,9 +2,9 @@
 categories:
 - RAG
 date: 2025-07-25
-excerpt: "\uC784\uC0C1 \uB178\uD2B8 \uAE30\uBC18 \uD76C\uADC0\uC9C8\uD658 \uC9C4\uB2E8\
-  \uC744 \uC704\uD55C CoT\uC640 RAG \uD1B5\uD569 \uD504\uB808\uC784\uC6CC\uD06C"
-last_modified_at: 2025-07-25
+excerpt: 에 대한 체계적 분석
+header: {}
+last_modified_at: '2025-09-16'
 published: true
 tags:
 - VLM
@@ -19,31 +19,42 @@ toc: true
 toc_sticky: true
 ---
 
-## Introduction
+# Integrating Chain-of-Thought and Retrieval Augmented Generation Enhances Rare Disease Diagnosis from Clinical Notes
 
+## 논문 정보
+- **저자**: 
+- **발표**: 
+- **ArXiv**: N/A
+
+## 1. 핵심 요약 (2-3문장)
+이 논문의 핵심 기여와 주요 발견을 간결하게 요약합니다.
+
+## 2. 배경 및 동기
 희귀질환 진단은 의료 분야에서 가장 도전적인 과제 중 하나입니다. 기존 연구들은 Large Language Models (LLMs)가 표현형 기반 유전자 우선순위 결정에서 어려움을 겪는다는 것을 보여주었습니다. 이러한 연구들은 주로 Human Phenotype Ontology (HPO) 용어를 사용하여 GPT나 LLaMA 같은 기반 모델에 후보 유전자를 예측하도록 하였습니다.
 
 하지만 **실제 임상 환경에서는 기반 모델들이 임상 진단과 같은 도메인 특화 태스크에 최적화되어 있지 않으며, 입력은 표준화된 용어가 아닌 비구조화된 임상 노트**입니다. 이러한 비구조화된 임상 노트에서 후보 유전자나 질환 진단을 예측하도록 LLM을 지시하는 방법은 여전히 주요한 도전 과제입니다.
 
 본 연구는 **RAG-driven CoT와 CoT-driven RAG**라는 두 가지 혁신적인 방법을 제안합니다. 이 방법들은 **Chain-of-Thought (CoT)와 Retrieval Augmented Generation (RAG)를 결합하여 임상 노트를 분석**하며, **Phenopacket 기반 임상 노트에서 40% 이상의 top-10 유전자 정확도**를 달성했습니다.
 
-## Related Work 
+## 3. 제안 방법
 
-### Rare Disease Diagnosis with LLMs
+### 3.1 아키텍처 개요
 
+
+### 3.2 핵심 기술/알고리즘
 기존 희귀질환 진단 연구들은 주로 표준화된 HPO 용어를 사용한 접근법에 의존했습니다. 하지만 실제 임상 환경에서는 의료진이 작성하는 비구조화된 임상 노트가 주요 데이터 소스이며, 이러한 노트에서 유용한 정보를 추출하는 것은 매우 어려운 과제였습니다.
 
-### Chain-of-Thought Reasoning in Medicine
+
 
 CoT 추론은 복잡한 의학적 추론을 단계별로 분해하여 해결하는 접근법입니다. 하지만 기존 방법들은 도메인 특화 지식의 부족과 최신 의학 정보 반영의 한계가 있었습니다.
 
-### Retrieval Augmented Generation in Healthcare
+
 
 RAG는 외부 지식 베이스를 활용하여 LLM의 한계를 보완하는 방법입니다. 의료 분야에서도 활용되기 시작했지만, 희귀질환 진단과 같은 고도로 전문적인 영역에서의 체계적 적용은 부족했습니다.
 
-## Method 
 
-### Architecture Overview
+
+
 
 본 연구는 두 가지 혁신적인 접근법을 제시합니다:
 
@@ -53,7 +64,7 @@ RAG는 외부 지식 베이스를 활용하여 LLM의 한계를 보완하는 방
 4. **Multi-source Knowledge Integration**: HPO, OMIM 등 다양한 의학 지식 베이스 활용
 
 
-### Key Components
+
 
 **1. RAG-driven Chain-of-Thought**
 
@@ -122,9 +133,7 @@ RAG는 외부 지식 베이스를 활용하여 LLM의 한계를 보완하는 방
   - 표현형-유전자 연관성 분석
   - 우선순위 기반 유전자 목록 생성
 
-## Experiments
 
-### Datasets
 
 **임상 노트 데이터셋 구성**
 
@@ -143,7 +152,47 @@ RAG는 외부 지식 베이스를 활용하여 LLM의 한계를 보완하는 방
    - Children's Hospital of Philadelphia 제공
    - 현실적 복잡성과 불완전성 반영
 
-### Results
+
+
+**구성 요소별 기여도 분석**
+
+1. **Five-question Protocol Impact**:
+   - Full Protocol: 40.2% accuracy
+   - 3-question reduced: 35.7% (-4.5%)
+   - Single-step reasoning: 28.9% (-11.3%)
+
+2. **Knowledge Source Contribution**:
+   - HPO + OMIM: 40.2% (최고 성능)
+   - HPO only: 36.8% (-3.4%)
+   - OMIM only: 34.1% (-6.1%)
+   - No external knowledge: 28.7% (-11.5%)
+
+3. **RAG Integration Timing**:
+   - RAG-driven CoT: 42.3% (고품질 노트)
+   - CoT-driven RAG: 37.6% (복잡한 노트)
+   - No integration: 28.7%
+
+
+
+1. **통합 접근법의 우수성**: CoT와 RAG의 단순 결합을 넘어 상호 보완적 통합이 핵심
+2. **데이터 품질 적응성**: 임상 노트의 품질에 따른 최적 방법론 선택의 중요성
+3. **도메인 지식의 가치**: HPO, OMIM 같은 전문 지식 베이스 활용이 성능 향상의 결정적 요소
+4. **실용적 적용 가능성**: 실제 임상 환경에서의 검증을 통한 실용성 입증
+5. **모델 규모의 영향**: 대형 언어 모델이 희귀질환 진단에서 확실한 우위
+6. **구조화된 추론**: 5단계 질문 프로토콜이 진단 정확도 향상에 핵심적 역할
+7. **다중 평가 데이터**: 다양한 임상 환경을 반영한 포괄적 평가의 중요성
+8. **지속적 개선 가능성**: 추론과 검색 과정의 상호 피드백을 통한 성능 향상 잠재력
+
+### 3.3 구현 세부사항
+
+
+## 4. 실험 및 결과
+
+### 4.1 실험 설정
+실험에 사용된 데이터셋, 평가 지표, 비교 대상을 설명합니다.
+
+### 4.2 주요 결과
+
 
 **전체 성능 비교**
 
@@ -175,28 +224,10 @@ RAG는 외부 지식 베이스를 활용하여 LLM의 한계를 보완하는 방
 - **GPT-4**: 39.2%
 - **GPT-3.5**: 31.4%
 
-### Ablation Studies
+### 4.3 분석
+결과에 대한 정성적 분석과 해석을 제공합니다.
 
-**구성 요소별 기여도 분석**
-
-1. **Five-question Protocol Impact**:
-   - Full Protocol: 40.2% accuracy
-   - 3-question reduced: 35.7% (-4.5%)
-   - Single-step reasoning: 28.9% (-11.3%)
-
-2. **Knowledge Source Contribution**:
-   - HPO + OMIM: 40.2% (최고 성능)
-   - HPO only: 36.8% (-3.4%)
-   - OMIM only: 34.1% (-6.1%)
-   - No external knowledge: 28.7% (-11.5%)
-
-3. **RAG Integration Timing**:
-   - RAG-driven CoT: 42.3% (고품질 노트)
-   - CoT-driven RAG: 37.6% (복잡한 노트)
-   - No integration: 28.7%
-
-## Conclusion
-
+## 5. 의의 및 영향
 본 연구는 희귀질환 진단 분야에서 CoT와 RAG의 혁신적 통합을 통해 임상 노트 기반 유전자 우선순위 결정의 새로운 패러다임을 제시했습니다. RAG-driven CoT와 CoT-driven RAG라는 두 가지 접근법을 통해 다양한 임상 노트 품질에 적응할 수 있는 유연한 프레임워크를 구현했습니다.
 
 **주요 성과:**
@@ -217,13 +248,10 @@ RAG는 외부 지식 베이스를 활용하여 LLM의 한계를 보완하는 방
 - 다중 의학 지식 베이스의 통합 활용
 - 전문가 추론 과정의 체계적 모델링
 
-## Key Takeaways
+## 6. 개인적 평가
 
-1. **통합 접근법의 우수성**: CoT와 RAG의 단순 결합을 넘어 상호 보완적 통합이 핵심
-2. **데이터 품질 적응성**: 임상 노트의 품질에 따른 최적 방법론 선택의 중요성
-3. **도메인 지식의 가치**: HPO, OMIM 같은 전문 지식 베이스 활용이 성능 향상의 결정적 요소
-4. **실용적 적용 가능성**: 실제 임상 환경에서의 검증을 통한 실용성 입증
-5. **모델 규모의 영향**: 대형 언어 모델이 희귀질환 진단에서 확실한 우위
-6. **구조화된 추론**: 5단계 질문 프로토콜이 진단 정확도 향상에 핵심적 역할
-7. **다중 평가 데이터**: 다양한 임상 환경을 반영한 포괄적 평가의 중요성
-8. **지속적 개선 가능성**: 추론과 검색 과정의 상호 피드백을 통한 성능 향상 잠재력
+**강점**: 이 논문의 주요 강점과 인상 깊었던 부분
+**약점**: 아쉬웠던 부분이나 의문점  
+**적용 가능성**: 실제 연구나 응용에서의 활용 가능성
+**추천도**: 다른 연구자들에게 추천할 만한 수준
+

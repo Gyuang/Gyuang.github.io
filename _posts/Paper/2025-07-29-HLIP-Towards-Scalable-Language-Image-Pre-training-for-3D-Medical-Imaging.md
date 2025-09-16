@@ -2,10 +2,9 @@
 categories:
 - VLM
 date: 2025-07-29
-excerpt: "3D \uC758\uB8CC \uC601\uC0C1\uC744 \uC704\uD55C \uD655\uC7A5 \uAC00\uB2A5\
-  \uD55C \uC5B8\uC5B4-\uC774\uBBF8\uC9C0 \uC0AC\uC804\uD6C8\uB828 \uD504\uB808\uC784\
-  \uC6CC\uD06C"
-last_modified_at: 2025-07-29
+excerpt: Hierarchical 3D CNN Architecture에 대한 체계적 분석
+header: {}
+last_modified_at: '2025-09-16'
 published: true
 tags:
 - VLM
@@ -19,8 +18,17 @@ toc: true
 toc_sticky: true
 ---
 
-## Introduction
+# HLIP: Towards Scalable Language-Image Pre-training for 3D Medical Imaging
 
+## 논문 정보
+- **저자**: 
+- **발표**: 
+- **ArXiv**: N/A
+
+## 1. 핵심 요약 (2-3문장)
+이 논문의 핵심 기여와 주요 발견을 간결하게 요약합니다.
+
+## 2. 배경 및 동기
 ![Results Table 8 11](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_11.png)
 *Figure: Experimental results and performance metrics*
 *Figure: Results Table 8 11*
@@ -39,10 +47,12 @@ toc_sticky: true
 - **arXiv**: https://arxiv.org/abs/2505.21862
 - **GitHub**: https://github.com/Zch0414/hlip
 
-## Background
+## 3. 제안 방법
 
-### 기존 2D CLIP 모델의 한계
+### 3.1 아키텍처 개요
 
+
+### 3.2 핵심 기술/알고리즘
 기존의 **CLIP과 같은 2D vision-language 모델**들은 3D 의료 영상에 적용할 때 여러 근본적인 한계를 보입니다:
 
 **1. 3D 구조 정보 손실**
@@ -61,7 +71,7 @@ toc_sticky: true
 - GPU 메모리 제약으로 인한 **배치 크기 제한**
 - **훈련 시간 및 추론 속도** 저하
 
-### 3D 의료 영상의 고유한 특성
+
 
 **Multi-scale 해부학적 구조**
 - **Global**: 전체 장기의 형태와 위치
@@ -73,9 +83,9 @@ toc_sticky: true
 - **진행성 병변**의 3D 분포 패턴
 - **다중 평면** (axial, sagittal, coronal) 정보 통합
 
-## HLIP Framework
 
-### 핵심 아이디어: 계층적 주의 메커니즘
+
+
 
 ![Results Table 8 10](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_10.png)
 *Figure: Experimental results and performance metrics*
@@ -83,7 +93,7 @@ toc_sticky: true
 
 HLIP의 핵심은 **계층적 주의(Hierarchical Attention) 메커니즘**을 통해 3D 의료 영상의 다중 스케일 특징을 효과적으로 학습하는 것입니다.
 
-### Architecture Overview
+
 
 ![Results Table 8 9](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_9.png)
 *Figure: Experimental results and performance metrics*
@@ -97,11 +107,11 @@ HLIP의 핵심은 **계층적 주의(Hierarchical Attention) 메커니즘**을 �
 Medical Report ← Text Encoder ← Tokenization ← Raw Text Description
 ```
 
-### 1. Multi-scale Feature Extraction
+
 
 **3D Convolutional Backbone**
 ```python
-# Hierarchical 3D CNN Architecture
+
 
 class HierarchicalEncoder(nn.Module):
     def __init__(self):
@@ -127,7 +137,7 @@ class HierarchicalEncoder(nn.Module):
 - **Regional Level**: 5×5×5 커널로 중간 규모 해부학적 구조 파악
 - **Global Level**: 7×7×7 커널로 전체적인 형태와 배치 이해
 
-### 2. Hierarchical Attention Mechanism
+
 
 **Cross-scale Attention**
 ```python
@@ -175,7 +185,7 @@ Local Details (High-res, Low Semantic)
 Final Representation = α₁×Local + α₂×Regional + α₃×Global
 ```
 
-### 3. Text-Vision Alignment
+
 
 **Contrastive Learning with Hierarchical Features**
 ```python
@@ -200,9 +210,9 @@ class HLIPContrastiveLoss(nn.Module):
         return (loss_i2t + loss_t2i) / 2
 ```
 
-## Technical Deep Dive
 
-### Architecture Details
+
+
 
 **1. 3D Vision Encoder**
 ```
@@ -227,13 +237,13 @@ Hierarchical Attention:
 - **L2 정규화**: 코사인 유사도 계산을 위한 단위 벡터 변환
 - **온도 매개변수**: 학습 가능한 τ=0.07
 
-### Training Methodology
+
 
 **1. Multi-stage Training Strategy**
 
 **Stage 1: Individual Scale Pre-training**
 ```python
-# Pre-train each scale separately
+
 for scale in ['local', 'regional', 'global']:
     model = ScaleSpecificEncoder(scale)
     train_contrastive(model, medical_dataset, epochs=50)
@@ -241,14 +251,14 @@ for scale in ['local', 'regional', 'global']:
 
 **Stage 2: Hierarchical Integration**
 ```python  
-# Joint training with hierarchical attention
+
 full_model = HLIPModel(pretrained_encoders)
 train_hierarchical(full_model, medical_dataset, epochs=100)
 ```
 
 **Stage 3: Task-specific Fine-tuning**
 ```python
-# Fine-tune for downstream tasks
+
 finetune_model = add_task_head(full_model, task_type)
 finetune(finetune_model, task_dataset, epochs=20)
 ```
@@ -266,7 +276,7 @@ finetune(finetune_model, task_dataset, epochs=20)
 - **Report Segmentation**: 긴 보고서를 의미 단위로 분할
 - **Template Variation**: 다양한 의료 보고서 형식 적용
 
-### Computational Efficiency
+
 
 **1. Memory Optimization**
 
@@ -282,7 +292,7 @@ def forward_with_checkpointing(self, x):
 
 **Mixed Precision Training**
 ```python
-# Use FP16 for forward pass, FP32 for gradients
+
 scaler = GradScaler()
 with autocast():
     loss = model(images, texts)
@@ -309,7 +319,7 @@ def sparse_attention(query, key, value, sparsity_ratio=0.1):
 
 **3. Progressive Resolution Training**
 ```python
-# Start with low resolution, gradually increase
+
 resolution_schedule = [
     (64, 64, 32),   # Early epochs
     (96, 96, 48),   # Mid epochs  
@@ -321,9 +331,7 @@ for epoch, (H, W, D) in enumerate(resolution_schedule):
     train_epoch(model, train_data)
 ```
 
-## Experimental Results
 
-### Performance Benchmarks
 
 **1. 3D Medical Image-Text Retrieval**
 
@@ -374,7 +382,7 @@ Accuracy (%)
 - **5-shot**: HLIP 74.8% vs MedCLIP 63.7%  
 - **10-shot**: HLIP 81.3% vs MedCLIP 72.1%
 
-### Ablation Studies
+
 
 **1. Hierarchical Attention Components**
 
@@ -395,7 +403,7 @@ Accuracy (%)
 **2. Attention Mechanism Analysis**
 
 ```python
-# Attention weight analysis across different anatomical regions
+
 attention_weights = {
     'lung_nodules': {'local': 0.45, 'regional': 0.35, 'global': 0.20},
     'brain_tumors': {'local': 0.40, 'regional': 0.40, 'global': 0.20},
@@ -409,7 +417,7 @@ attention_weights = {
 - **중간 크기 병변** (liver lesions): Regional attention 우세
 - **모든 경우**: Global context는 보조적 역할
 
-### Computational Efficiency
+
 
 **1. Training Time Comparison**
 
@@ -435,21 +443,21 @@ Volume Size     CLIP    MedCLIP    HLIP
 512³          34.2     24.1       12.8
 ```
 
-## Code and Implementation
 
-### Installation and Setup
+
+
 
 **1. Environment Setup**
 ```bash
-# Clone the repository
+
 git clone https://github.com/Zch0414/hlip.git
 cd hlip
 
-# Create conda environment
+
 conda create -n hlip python=3.8
 conda activate hlip
 
-# Install dependencies
+
 pip install torch torchvision torchaudio
 pip install transformers numpy pandas
 pip install nibabel pydicom SimpleITK
@@ -458,10 +466,10 @@ pip install wandb tensorboard
 
 **2. Data Preparation**
 ```python
-# Prepare 3D medical imaging dataset
+
 from hlip.data import MedicalDataset
 
-# Load CT/MRI volumes and corresponding reports
+
 dataset = MedicalDataset(
     image_dir='/path/to/medical/images',
     text_dir='/path/to/reports',
@@ -469,7 +477,7 @@ dataset = MedicalDataset(
     transform=get_3d_transforms()
 )
 
-# Data preprocessing pipeline
+
 def preprocess_volume(volume):
     # Normalize intensity values
     volume = normalize_intensity(volume)
@@ -488,7 +496,7 @@ def preprocess_volume(volume):
 from hlip.model import HLIPModel
 from hlip.trainer import HLIPTrainer
 
-# Initialize model
+
 
 model = HLIPModel(
     vision_encoder='resnet3d-50',
@@ -497,7 +505,7 @@ model = HLIPModel(
     hierarchical_attention=True
 )
 
-# Setup trainer
+
 trainer = HLIPTrainer(
     model=model,
     train_dataset=train_dataset,
@@ -507,26 +515,26 @@ trainer = HLIPTrainer(
     num_epochs=100
 )
 
-# Start training
+
 trainer.train()
 ```
 
-### Usage Examples
+
 
 **1. Zero-shot Classification**
 ```python
 import torch
 from hlip import HLIP
 
-# Load pre-trained model
+
 
 model = HLIP.from_pretrained('hlip-base-medical')
 
-# Prepare your 3D medical volume
+
 volume = load_medical_volume('path/to/ct_scan.nii.gz')  # Shape: [H, W, D]
 volume = preprocess_volume(volume)
 
-# Define class descriptions
+
 class_descriptions = [
     "CT scan showing normal lung tissue",
     "CT scan with pulmonary nodule",
@@ -534,7 +542,7 @@ class_descriptions = [
     "CT scan with lung cancer"
 ]
 
-# Perform zero-shot classification
+
 with torch.no_grad():
     # Extract image features
     image_features = model.encode_image(volume.unsqueeze(0))
@@ -559,7 +567,7 @@ with torch.no_grad():
 
 **2. Medical Image-Text Retrieval**
 ```python
-# Retrieve relevant text reports for a given medical image
+
 def retrieve_reports(query_image, report_database, top_k=5):
     # Encode query image
     query_features = model.encode_image(query_image.unsqueeze(0))
@@ -583,7 +591,7 @@ def retrieve_reports(query_image, report_database, top_k=5):
     
     return retrieved_reports
 
-# Example usage
+
 ct_volume = load_medical_volume('chest_ct.nii.gz')
 similar_reports = retrieve_reports(ct_volume, medical_report_database)
 
@@ -595,7 +603,7 @@ for i, report in enumerate(similar_reports):
 ```python
 from hlip.finetune import FineTuner
 
-# Setup fine-tuning for specific medical task
+
 finetuner = FineTuner(
     base_model='hlip-base-medical',
     task_type='classification',  # or 'segmentation', 'detection'
@@ -603,14 +611,14 @@ finetuner = FineTuner(
     learning_rate=1e-5
 )
 
-# Prepare task-specific dataset
+
 task_dataset = CustomMedicalDataset(
     images=custom_images,
     labels=custom_labels,
     transform=get_task_transforms()
 )
 
-# Fine-tune model
+
 
 finetuned_model = finetuner.finetune(
     dataset=task_dataset,
@@ -618,16 +626,16 @@ finetuned_model = finetuner.finetune(
     save_path='./models/finetuned_hlip'
 )
 
-# Evaluate on test set
+
 results = finetuner.evaluate(test_dataset)
 print(f"Fine-tuned Accuracy: {results['accuracy']:.3f}")
 ```
 
-### Advanced Features
+
 
 **1. Multi-modal Fusion**
 ```python
-# Combine multiple imaging modalities
+
 class MultiModalHLIP(nn.Module):
     def __init__(self):
         super().__init__()
@@ -674,36 +682,13 @@ def visualize_hierarchical_attention(model, volume, text):
     plt.show()
 ```
 
-## Future Implications
 
-### Medical AI 분야에 미치는 영향
 
-**1. 진단 정확도 향상**
-- **3D 해부학적 구조** 이해를 통한 정밀 진단
-- **다중 스케일 병변 검출** 능력 강화
-- **의료진 판독 보조** 도구로서의 활용 가능성
 
-**2. 의료 데이터 활용도 증대**
-- **대규모 unlabeled 3D 데이터** 효율적 활용
-- **의료 보고서와 영상** 간 자동 매칭
-- **데이터 부족 문제** 완화를 통한 rare disease 연구 촉진
-
-**3. 임상 워크플로우 개선**
-```
-기존 워크플로우:
-영상 촬영 → 전문의 판독 → 보고서 작성 → 진단 결정
-
-HLIP 적용 워크플로우:  
-영상 촬영 → HLIP 사전 분석 → 전문의 검토 → 신속 진단
-            ↓
-    자동 보고서 초안 생성
-```
-
-### 향후 연구 방향
 
 **1. 다중 모달리티 통합**
 ```python
-# Future multi-modal architecture
+
 
 class UnifiedMedicalVLM(nn.Module):
     def __init__(self):
@@ -735,7 +720,7 @@ class UnifiedMedicalVLM(nn.Module):
 
 **3. 설명 가능한 AI (XAI) 통합**
 ```python
-# Explainable medical AI with HLIP
+
 class ExplainableHLIP(HLIP):
     def explain_diagnosis(self, volume, predicted_text):
         # Generate attention-based explanations
@@ -764,11 +749,11 @@ class ExplainableHLIP(HLIP):
 - **Mobile Healthcare**: 웨어러블 기기 연동
 - **Telemedicine**: 원격 진료 지원 시스템
 
-### 기술적 도전과제와 해결 방안
+
 
 **1. 데이터 프라이버시 보호**
 ```python
-# Federated learning approach for medical data
+
 
 ![Method Diagram 1](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/method_diagram_1.png)
 *Figure: System architecture and methodology overview*
@@ -802,11 +787,7 @@ class FederatedHLIP:
 - **의료 기기 인증**을 위한 품질 관리 시스템
 - **국제 표준** (DICOM, HL7) 준수
 
-## Conclusion
 
-**HLIP**은 3D 의료 영상 분야에서 **vision-language 모델의 새로운 패러다임**을 제시합니다. **계층적 주의 메커니즘**을 통해 기존 2D 모델의 한계를 극복하고, **확장 가능한 사전훈련 프레임워크**를 통해 의료 AI 시스템의 실용성을 크게 향상시켰습니다.
-
-### 핵심 기여도
 
 ![Figure 1 3](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/figure_1_3.png)
 ![Figure 1 3](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/figure_1_3.png)
@@ -817,7 +798,7 @@ class FederatedHLIP:
 3. **계산 효율성**: 기존 방법 대비 50% 메모리 절약, 2.6배 처리량 향상
 4. **강력한 일반화 성능**: zero-shot 및 few-shot 학습에서 일관된 우수성
 
-### 의료 AI의 미래
+
 
 HLIP는 단순한 기술적 진보를 넘어서 **의료 현장의 실질적 변화**를 이끌 수 있는 잠재력을 보여줍니다:
 
@@ -826,7 +807,7 @@ HLIP는 단순한 기술적 진보를 넘어서 **의료 현장의 실질적 변
 - **접근성 개선**: 전문의 부족 지역의 의료 서비스 품질 향상
 - **연구 가속화**: 대규모 의료 데이터의 체계적 활용
 
-### 향후 과제
+
 
 **기술적 측면:**
 - 다중 모달리티 통합 및 시간적 변화 모델링
@@ -846,7 +827,7 @@ HLIP는 **3D 의료 영상 AI의 새로운 장을 여는 기술**로서, 향후 
 - CLIP: Radford et al., "Learning Transferable Visual Representations from Natural Language Supervision"
 - Medical Vision-Language: Zhang et al., "Contrastive Learning of Medical Visual Representations from Paired Images and Text"
 
-## Additional Figures
+
 
 ![Results Table 8 14](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_14.png)
 *Figure: Experimental results and performance metrics*
@@ -855,3 +836,69 @@ HLIP는 **3D 의료 영상 AI의 새로운 장을 여는 기술**로서, 향후 
 ![Results Table 8 15](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_15.png)
 *Figure: Experimental results and performance metrics*
 *Figure: Results Table 8 15*
+
+### 3.3 구현 세부사항
+
+![Method Diagram 1](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/method_diagram_1.png)
+*Figure: Method Diagram 1*
+
+
+
+## 4. 실험 및 결과
+
+### 4.1 실험 설정
+실험에 사용된 데이터셋, 평가 지표, 비교 대상을 설명합니다.
+
+### 4.2 주요 결과
+
+![Results Table 8 11](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_11.png)
+*Figure: Results Table 8 11*
+
+
+![Results Table 8 10](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_10.png)
+*Figure: Results Table 8 10*
+
+
+![Results Table 8 9](/assets/images/paper/hlip-towards-scalable-language-image-pre-training-for-3d-medical-imaging/results_table_8_9.png)
+*Figure: Results Table 8 9*
+
+
+
+실험 결과와 성능 분석을 제시합니다.
+
+### 4.3 분석
+결과에 대한 정성적 분석과 해석을 제공합니다.
+
+## 5. 의의 및 영향
+**1. 진단 정확도 향상**
+- **3D 해부학적 구조** 이해를 통한 정밀 진단
+- **다중 스케일 병변 검출** 능력 강화
+- **의료진 판독 보조** 도구로서의 활용 가능성
+
+**2. 의료 데이터 활용도 증대**
+- **대규모 unlabeled 3D 데이터** 효율적 활용
+- **의료 보고서와 영상** 간 자동 매칭
+- **데이터 부족 문제** 완화를 통한 rare disease 연구 촉진
+
+**3. 임상 워크플로우 개선**
+```
+기존 워크플로우:
+영상 촬영 → 전문의 판독 → 보고서 작성 → 진단 결정
+
+HLIP 적용 워크플로우:  
+영상 촬영 → HLIP 사전 분석 → 전문의 검토 → 신속 진단
+            ↓
+    자동 보고서 초안 생성
+```
+
+
+
+**HLIP**은 3D 의료 영상 분야에서 **vision-language 모델의 새로운 패러다임**을 제시합니다. **계층적 주의 메커니즘**을 통해 기존 2D 모델의 한계를 극복하고, **확장 가능한 사전훈련 프레임워크**를 통해 의료 AI 시스템의 실용성을 크게 향상시켰습니다.
+
+## 6. 개인적 평가
+
+**강점**: 이 논문의 주요 강점과 인상 깊었던 부분
+**약점**: 아쉬웠던 부분이나 의문점  
+**적용 가능성**: 실제 연구나 응용에서의 활용 가능성
+**추천도**: 다른 연구자들에게 추천할 만한 수준
+
