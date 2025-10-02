@@ -1,27 +1,17 @@
 ---
+title: TEMPLATE TITLE
+excerpt: 핵심 기여 한 줄 요약 (120자 이내)
+date: YYYY-MM-DD
 categories:
-- paper
-- multimodal
-date: 2024-04-04
-excerpt: Evidence fusion with contextual discounting for multi-modality medical image
-  segmentation에 대한 체계적 분석과 핵심 기여 요약
-header: {}
-last_modified_at: '2025-09-16'
-published: true
+  - paper
+  - CATEGORY-SLUG
+published: false
 tags:
-- Multimodal
-- Dempster-Shafer theory
-- Uncertainty quantification
-- Segmentation
-- Brain
-- Miccai
-title: Evidence fusion with contextual discounting for multi-modality medical image
-  segmentation
-toc: true
-toc_sticky: true
+  - placeholder
+last_modified_at: YYYY-MM-DD
 ---
 
-# Evidence fusion with contextual discounting for multi-modality medical image segmentation
+# TEMPLATE TITLE
 
 ## 0. 체크리스트
 - [ ] `categories` 두 번째 값이 `medical-ai`, `vlm`, `rag`, `multimodal`, `transformer` 등 실제 분류인지 확인했나요?

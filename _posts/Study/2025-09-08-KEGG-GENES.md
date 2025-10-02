@@ -1,18 +1,20 @@
 ---
-title: "KEGG GENES: 유전자 정보 데이터베이스 심층 분석"
-excerpt: "다종 비교 유전체학과 기능 주석을 위한 포괄적 유전자 정보 시스템"
-
+title: 'KEGG GENES: 유전자 정보 데이터베이스 심층 분석'
+excerpt: 다종 비교 유전체학과 기능 주석을 위한 포괄적 유전자 정보 시스템
 categories:
-  - Bioinformatics
+- study
+- bioinformatics
 tags:
-  - [KEGG, Genes, Genomics, Functional Annotation, Orthology, Medical AI]
-
+- - KEGG
+  - Genes
+  - Genomics
+  - Functional Annotation
+  - Orthology
+  - Medical AI
 toc: true
 toc_sticky: true
-
 date: 2025-09-08
 last_modified_at: 2025-09-08
-
 ---
 
 ## KEGG GENES 개요

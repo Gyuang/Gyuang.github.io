@@ -1,18 +1,20 @@
 ---
-title: "KEGG PATHWAY: 생물학적 경로 데이터베이스 심층 분석"
-excerpt: "분자 수준에서 세포, 조직, 개체 수준까지 생물학적 경로의 체계적 분석"
-
+title: 'KEGG PATHWAY: 생물학적 경로 데이터베이스 심층 분석'
+excerpt: 분자 수준에서 세포, 조직, 개체 수준까지 생물학적 경로의 체계적 분석
 categories:
-  - Bioinformatics
+- study
+- bioinformatics
 tags:
-  - [KEGG, Pathway, Systems Biology, Metabolic Networks, Signal Transduction, Medical AI]
-
+- - KEGG
+  - Pathway
+  - Systems Biology
+  - Metabolic Networks
+  - Signal Transduction
+  - Medical AI
 toc: true
 toc_sticky: true
-
 date: 2025-09-08
 last_modified_at: 2025-09-08
-
 ---
 
 ## KEGG PATHWAY 개요

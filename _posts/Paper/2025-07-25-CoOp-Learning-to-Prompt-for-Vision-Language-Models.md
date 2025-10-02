@@ -1,102 +1,86 @@
 ---
 categories:
-- VLM
+- paper
+- vlm
 date: 2025-07-25
-excerpt: Learning to Prompt for Vision-Language Models (CoOp)에 대한 체계적 분석과 핵심 기여 요약
+excerpt: 'CoOp는 CLIP 프롬프트 컨텍스트를 학습 가능한 벡터로 바꿔 base 클래스 정확도를 평균 82.69%까지 올렸지만, novel 클래스에서는 63.22%로 떨어져 과적합 문제가 드러납니다.'
 header: {}
 last_modified_at: '2025-09-16'
 published: true
 tags:
-- VLM
-- Vision-Language
+- CoOp
 - Prompt Learning
-- Few-shot Learning
-- CLIP
-title: Learning to Prompt for Vision-Language Models (CoOp)
+- CLIP Adaptation
+- Few-Shot
+title: 'CoOp: Learning to Prompt for Vision-Language Models'
 toc: true
 toc_sticky: true
 ---
+# CoOp: Learning to Prompt for Vision-Language Models
 
-# Learning to Prompt for Vision-Language Models (CoOp)
+## 0. 체크리스트
+- [x] `categories` 두 번째 값이 `vlm`으로 설정돼 있나요?
+- [x] `excerpt`에 핵심 수치를 포함했나요?
+- [x] 모든 섹션이 논문 내용을 반영하나요?
+- [x] 결과 표는 필요 지표만 요약했나요?
+- [x] 참고 링크를 정리했나요?
 
-## 논문 정보
-- **저자**: Kaiyang Zhou, Jingkang Yang, Chen Change Loy, Ziwei Liu
-- **발표**: IJCV 2022
-- **ArXiv**: [2109.01134](https://arxiv.org/abs/2109.01134)
+## 1. 핵심 요약 (3문장 이하)
+- CoOp는 CLIP 텍스트 프롬프트의 컨텍스트 단어를 학습 가능한 벡터로 바꿔, 수작업 템플릿 없이도 few-shot 환경에서 프롬프트를 최적화합니다.
+- base 클래스 평균 정확도는 69.34%→82.69%로 상승했지만 novel 클래스 평균은 63.22%로 낮아져 조화 평균 71.66%로 CLIP와 비슷한 수준에 머물렀습니다.
+- Flowers102(97.60% base vs 59.67% novel), EuroSAT(92.19% vs 54.74%) 등에서 큰 격차가 나타나, 프롬프트가 학습 분포에 과적합됨을 보여줍니다.
 
-## 1. 핵심 요약 (2-3문장)
-CoOp은 수동적인 프롬프트 엔지니어링의 한계를 극복하기 위해 학습 가능한 연속 벡터로 프롬프트 컨텍스트를 자동 최적화하는 방법을 제안합니다.
+## 2. 배경 & 동기
+- CLIP는 class name 앞뒤에 어떤 단어를 넣느냐에 따라 zero-shot 성능이 크게 달라져 prompt engineering 비용이 큽니다.
+- NLP에서 발전한 prompt tuning을 비전 도메인으로 가져와 자동으로 최적 컨텍스트를 찾고자 했습니다.
+- CoOp는 backbone을 동결하고 프롬프트 벡터만 학습해 파라미터 효율성을 유지합니다.
 
-## 2. 배경 및 동기
-![Figure 3 0](/assets/images/paper/coop-learning-to-prompt-for-vision-language-models/figure_3_0.png)
-![Figure 3 0](/assets/images/paper/coop-learning-to-prompt-for-vision-language-models/figure_3_0.png)
-*Figure: Figure 3 0*
-기존 비전-언어 모델들은 **수동적인 프롬프트 엔지니어링**에 의존해왔습니다. 특히 CLIP과 같은 모델에서는 올바른 프롬프트 설계가 성능에 결정적 영향을 미치지만, 이는 **도메인 전문 지식이 필요하고 극도로 시간 소모적**이며, 단어 하나의 변화만으로도 성능이 크게 달라지는 문제가 있었습니다.
-**CoOp(Context Optimization)**은 이러한 한계를 해결하기 위해 **학습 가능한 연속 벡터로 프롬프트 컨텍스트를 모델링**하는 자동화된 접근법을 제안합니다. 사전 훈련된 모델 파라미터는 고정한 채, 프롬프트 부분만을 학습하여 downstream 이미지 인식 작업에 효율적으로 적응할 수 있습니다.
+## 3. 방법론
+### 3.1 전체 구조
+- CLIP 텍스트 인코더 입력인 “[V]1 [V]2 … [V]M [CLASS]” 중 [V] 토큰을 learnable embedding으로 바꾸고, 나머지 구성은 유지합니다.
+- 학습 시 base 클래스 이미지와 레이블만 사용해 cross-entropy로 컨텍스트 벡터를 업데이트합니다.
+- 추론에서는 동일한 컨텍스트를 모든 샘플에 적용하므로, 간결하지만 정적(default) 프롬프트가 됩니다.
 
-## 3. 제안 방법
+### 3.2 핵심 기법
+- **Context Optimization**: 컨텍스트 길이 M(보통 16)을 설정한 후, classifier를 학습하면서 동시에 컨텍스트를 최적화합니다.
+- **Backbone Freezing**: 이미지/텍스트 인코더를 고정해 미세 조정 비용과 catastrophic forgetting을 줄였습니다.
+- **Few-shot Friendly**: 클래스당 K(=16) 이미지로 충분한 성능 향상을 얻을 수 있도록 설계했습니다.
 
-### 3.1 아키텍처 개요
-CoOp은 CLIP의 사전 훈련된 시각 및 텍스트 인코더를 고정한 채, **학습 가능한 연속 벡터로 프롬프트 컨텍스트를 모델링**합니다. 기존의 하드코딩된 프롬프트 "a photo of a [CLASS]" 대신, **M개의 학습 가능한 컨텍스트 토큰**을 도입하여 자동으로 최적화합니다.
+### 3.3 학습 및 구현 세부
+- optimizer: SGD, 학습률 0.002, 배치 4, 에폭 10.
+- 이미지 인코더는 ViT-B/16 CLIP를 사용했고, 컨텍스트 길이 16으로 고정했습니다.
+- 데이터셋은 ImageNet, Caltech101, OxfordPets 등 11개로 구성됐습니다.
 
-**아키텍처 구성:**
-- **Vision Encoder**: 고정된 CLIP ViT 백본
-- **Text Encoder**: 고정된 CLIP 텍스트 트랜스포머  
-- **Learnable Context**: M개의 연속 임베딩 벡터 (V₁, V₂, ..., Vₘ)
-- **Classification Head**: 코사인 유사도 기반 분류기
+## 4. 실험 & 결과
+### 4.1 설정
+- few-shot 학습(각 클래스 16샘플)을 통해 base 클래스에서 컨텍스트를 학습하고, novel 클래스 성능을 별도로 측정했습니다.
+- 비교: Zero-shot CLIP, 수작업 프롬프트, CoOp.
+- 평가: Base/New/Harmonic(%) 지표 중심.
 
-### 3.2 핵심 기술/알고리즘
-**연속 프롬프트 학습 (Continuous Prompt Learning):**
-- 기존 discrete tokens 대신 **continuous embedding space**에서 프롬프트 최적화
-- 클래스별 프롬프트 템플릿: [V₁][V₂]...[Vₘ][CLASS]
-- **End-to-end 학습**: 프롬프트 컨텍스트만 업데이트하며 백본 모델은 고정
+### 4.2 주요 결과표
+| 데이터셋 | CLIP H | **CoOp Base** | CoOp New | CoOp H |
+| --- | --- | --- | --- | --- |
+| 평균(11개) | 71.70 | **82.69** | 63.22 | 71.66 |
+| Flowers102 | 74.83 | **97.60** | 59.67 | 74.06 |
+| EuroSAT | 60.03 | **92.19** | 54.74 | 68.69 |
+| StanfordCars | 68.65 | **78.12** | 60.40 | 68.13 |
 
-**최적화 전략:**
-- **Cross-entropy loss**: 예측 클래스와 실제 라벨 간 손실 최소화
-- **SGD 기반 최적화**: 소규모 파라미터만 학습하여 효율적 훈련
-- **Class-specific vs Unified**: 클래스별 개별 컨텍스트 vs 공통 컨텍스트 비교
+### 4.3 추가 분석
+- base 분포에선 수작업 템플릿보다 큰 폭의 성능 향상을 얻었지만, novel 클래스로 전환하면 오히려 제로샷 성능보다 낮아졌습니다.
+- base에서 얻은 고정 프롬프트가 novel 이미지에 맞춰지지 않아 FGVCAircraft, DTD 등 도메인에서 큰 하락(-18pt 이상)이 관측됐습니다.
+- 이러한 한계는 이후 CoCoOp에서 조건부 토큰을 도입하는 동기가 되었습니다.
 
-### 3.3 구현 세부사항
-구현과 관련된 중요한 기술적 세부사항들을 다룹니다.
+## 5. 의의 & 한계
+- 프롬프트 학습을 vision-language 전이에 처음 확장해 자동화 가능성을 열었습니다.
+- base 클래스에선 큰 성능 향상을 보이지만, novel 클래스 일반화가 제한돼 후속 연구 필요성을 남겼습니다.
+- CLIP backbone을 고정하므로 학습은 안정적이지만, 다양한 도메인 전이에 적용하려면 추가 설계가 필요합니다.
 
-## 4. 실험 및 결과
+## 6. 개인 평가
+**강점**: 단순한 구조로 prompt engineering 비용을 크게 줄이고, few-shot 학습에서 즉각적인 성능 향상을 제공합니다.  
+**약점**: 정적 프롬프트라 novel 분포에 취약하며, 실제 응용에서는 추가 일반화 전략이 필수입니다.  
+**적용 가능성**: 동일 도메인 내 편향이 적은 상황이나, base 클래스만 관심 있는 경우에 유용한 시작점입니다.  
+**추천도**: ★★★☆☆ (Prompt 학습 개념을 익히고 싶은 연구자에게 좋지만, 실전 전이는 CoCoOp 등 후속 기법이 더 적합)
 
-### 4.1 실험 설정
-![Architecture Overview 1](/assets/images/paper/coop-learning-to-prompt-for-vision-language-models/architecture_overview_1.png)
-*Figure: Model architecture and component design*
-*Figure: Architecture Overview 1*
-
-### 4.2 주요 결과
-**Peak Performance**
-- 특정 데이터셋에서 **45% 이상의 최고 성능 향상** 달성
-- 도메인에 따라 극적인 성능 개선 효과
-- 시간 소모적인 수동 프롬프트 튜닝 프로세스 **완전 제거**
-- 다양한 이미지 인식 작업과 도메인에서 **일관된 성능 향상**
-
-### 4.3 분석
-실험 결과에 대한 정성적 분석과 해석을 제공합니다.
-
-## 5. 의의 및 영향
-CoOp은 **prompt engineering의 자동화**라는 새로운 패러다임을 제시하며, 비전-언어 모델의 실용적 활용에 혁명적 변화를 가져왔습니다.
-
-**학술적 기여:**
-1. **연속 프롬프트 학습**: Discrete에서 continuous space로의 패러다임 전환
-2. **Parameter-efficient Adaptation**: 전체 모델 대신 프롬프트만 학습하는 효율적 방법론
-3. **Few-shot Learning 개선**: 제한된 데이터로도 강력한 성능 달성
-4. **일반화 능력**: 다양한 downstream 태스크에서 일관된 성능 향상
-
-**실용적 영향:**
-- **개발 효율성**: 수동 프롬프트 설계 시간 대폭 단축
-- **성능 일관성**: 도메인별 최적 프롬프트 자동 발견
-- **확장성**: 새로운 태스크에 빠른 적응 가능
-- **비용 효율성**: 대규모 모델 재훈련 없이 성능 향상
-
-**후속 연구 촉진:**
-CoOp은 이후 CoCoOp, MaPLe, ProGrad 등 다양한 프롬프트 학습 방법론의 기초가 되었으며, **vision-language prompt tuning** 분야의 표준을 확립했습니다.
-
-## 6. 개인적 평가
-
-**강점**: 혁신적인 접근법과 우수한 실험 결과
-**약점**: 일부 제한사항과 개선 가능한 영역 존재  
-**적용 가능성**: 다양한 실제 응용 분야에서 활용 가능
-**추천도**: 해당 분야 연구자들에게 적극 추천
+## 7. 참고 자료
+- 원문: [Learning to Prompt for Vision-Language Models](https://arxiv.org/abs/2109.01134)
+- 코드: [CoOp GitHub](https://github.com/KaiyangZhou/CoOp)

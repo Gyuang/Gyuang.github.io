@@ -1,18 +1,17 @@
 ---
-title:  "Dempster-Shafer Theory" 
-excerpt: "불확실성 이론"
-
+title: Dempster-Shafer Theory
+excerpt: 불확실성 이론
 categories:
-  - Math
+- study
+- math
 tags:
-  - [Math, Plausibility, Theory ]
-
+- - Math
+  - Plausibility
+  - Theory
 toc: true
 toc_sticky: true
- 
 date: 2024-04-04
 last_modified_at: 2024-04-04
-
 ---
 
 ## Dempster-Shafer 이론

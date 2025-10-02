@@ -1,18 +1,19 @@
 ---
-title: "[Kubernetes 심층 탐구 4부] DeepOps로 MLOps 플랫폼 구축하기"
+title: '[Kubernetes 심층 탐구 4부] DeepOps로 MLOps 플랫폼 구축하기'
 date: 2025-08-26 09:00:00 +0900
 categories:
-  - kubernetes
+- server
+- kubernetes
 tags:
-  - kubernetes
-  - deepops
-  - MLOps
-  - gpu-operator
-  - slurm
-  - monitoring
+- kubernetes
+- deepops
+- MLOps
+- gpu-operator
+- slurm
+- monitoring
 author_profile: true
 sidebar:
-  nav: "docs"
+  nav: docs
 toc: true
 toc_sticky: true
 ---

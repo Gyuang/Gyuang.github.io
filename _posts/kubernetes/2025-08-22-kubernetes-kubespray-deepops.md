@@ -1,19 +1,20 @@
 ---
-title: "[심층 분석] 쿠버네티스, Kubespray, DeepOps: 아키텍처부터 MLOps 플랫폼 구축까지"
+title: '[심층 분석] 쿠버네티스, Kubespray, DeepOps: 아키텍처부터 MLOps 플랫폼 구축까지'
 date: 2025-08-22 11:00:00 +0900
 categories:
-  - kubernetes
+- server
+- kubernetes
 tags:
-  - kubernetes
-  - kubespray
-  - deepops
-  - infrastructure
-  - MLOps
-  - ansible
-  - gpu
+- kubernetes
+- kubespray
+- deepops
+- infrastructure
+- MLOps
+- ansible
+- gpu
 author_profile: true
 sidebar:
-  nav: "docs"
+  nav: docs
 toc: true
 toc_sticky: true
 ---

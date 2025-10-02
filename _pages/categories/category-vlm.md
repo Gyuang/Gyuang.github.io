@@ -6,7 +6,7 @@ author_profile: true
 sidebar_main: true
 ---
 
-{% assign posts = site.categories.VLM | sort: 'date' | reverse %}
+{% assign posts = site.categories.vlm | sort: 'date' | reverse %}
 {% for post in posts %}
   {% include archive-single.html %}
 {% endfor %}

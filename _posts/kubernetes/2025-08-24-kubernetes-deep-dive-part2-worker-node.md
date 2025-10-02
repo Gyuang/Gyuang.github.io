@@ -1,18 +1,19 @@
 ---
-title: "[Kubernetes 심층 탐구 2부] 워커 노드의 모든 것"
+title: '[Kubernetes 심층 탐구 2부] 워커 노드의 모든 것'
 date: 2025-08-24 09:00:00 +0900
 categories:
-  - kubernetes
+- server
+- kubernetes
 tags:
-  - kubernetes
-  - worker-node
-  - kubelet
-  - kube-proxy
-  - cri
-  - cni
+- kubernetes
+- worker-node
+- kubelet
+- kube-proxy
+- cri
+- cni
 author_profile: true
 sidebar:
-  nav: "docs"
+  nav: docs
 toc: true
 toc_sticky: true
 ---

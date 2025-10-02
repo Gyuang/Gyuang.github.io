@@ -1,18 +1,19 @@
 ---
-title: "[Kubernetes 심층 탐구 1부] 컨트롤 플레인 완전 정복"
+title: '[Kubernetes 심층 탐구 1부] 컨트롤 플레인 완전 정복'
 date: 2025-08-23 09:00:00 +0900
 categories:
-  - kubernetes
+- server
+- kubernetes
 tags:
-  - kubernetes
-  - control-plane
-  - apiserver
-  - etcd
-  - scheduler
-  - controller-manager
+- kubernetes
+- control-plane
+- apiserver
+- etcd
+- scheduler
+- controller-manager
 author_profile: true
 sidebar:
-  nav: "docs"
+  nav: docs
 toc: true
 toc_sticky: true
 ---

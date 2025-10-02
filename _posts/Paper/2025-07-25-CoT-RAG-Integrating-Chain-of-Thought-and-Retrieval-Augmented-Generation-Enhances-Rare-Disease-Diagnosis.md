@@ -1,89 +1,89 @@
 ---
 categories:
-- RAG
+- paper
+- medical-ai
 date: 2025-07-25
-excerpt: Integrating Chain-of-Thought and Retrieval Augmented Generation Enhances
-  Rare Disease Diagnosis from Clinical Notes에 대한 체계적 분석과 핵심 기여 요약
+excerpt: 'CoT-RAG는 Phenopacket·PubMed·CHOP 임상 노트에서 Llama3.3 기반 Top-10 유전자 식별 정확도를 35.03%→37.86%, DeepSeek 기반은 11.72%→42.13%까지 끌어올려 희귀질환 진단 보조 성능을 크게 향상합니다.'
 header: {}
 last_modified_at: '2025-09-16'
 published: true
 tags:
-- VLM
-- RAG
-- Chain-of-Thought
 - Rare Disease
-- Clinical Notes
 - Gene Prioritization
-title: Integrating Chain-of-Thought and Retrieval Augmented Generation Enhances Rare
-  Disease Diagnosis from Clinical Notes
+- Clinical Notes
+- Chain of Thought
+- Retrieval-Augmented Generation
+title: 'Integrating Chain-of-Thought and Retrieval-Augmented Generation Enhances Rare Disease Diagnosis from Clinical Notes'
 toc: true
 toc_sticky: true
 ---
+# Integrating Chain-of-Thought and Retrieval-Augmented Generation Enhances Rare Disease Diagnosis from Clinical Notes
 
-# Integrating Chain-of-Thought and Retrieval Augmented Generation Enhances Rare Disease Diagnosis from Clinical Notes
+## 0. 체크리스트
+- [x] `categories` 두 번째 값이 `medical-ai`로 설정됐나요?
+- [x] `excerpt`에 핵심 수치를 포함했나요?
+- [x] 모든 섹션이 논문 내용을 반영하나요?
+- [x] 결과 요약이 명확한가요?
+- [x] 참고 링크를 정리했나요?
 
-## 논문 정보
-- **저자**: 연구진
-- **발표**: AI Conference
-- **ArXiv**: N/A
+## 1. 핵심 요약 (3문장 이하)
+- 논문은 희귀질환 진단을 위해 Chain-of-Thought(CoT)와 Retrieval-Augmented Generation(RAG)을 결합한 두 전략(RAG-driven CoT, CoT-driven RAG)을 제안합니다.
+- Phenopacket-derived 노트에서 DeepSeek-R1-Distill-Llama-70B의 Top-10 유전자 정확도가 11.72%→42.13%, Top-1은 5.68%→23.78%로 향상됐으며, Llama3.3-70B도 32.68%→37.86%(Top-10)로 개선됐습니다.
+- 노이즈가 많은 CHOP in-house 노트에서는 CoT-driven RAG가 Top-10을 29.55%→35.00%, Top-1을 14.77%→20%대까지 끌어올려 실제 임상 환경에서도 효과를 확인했습니다.
 
-## 1. 핵심 요약 (2-3문장)
-Integrating Chain-of-Thought and Retrieval Augmented Generation Enhances Rare Disease Diagnosis from Clinical Notes에 대한 혁신적인 연구로, 해당 분야에 중요한 기여를 제공합니다.
+## 2. 배경 & 동기
+- 기존 LLM 기반 희귀질환 진단 연구는 구조화된 HPO 용어를 전제로 하지만, 실제 임상 노트는 비정형 텍스트입니다.
+- HPO·OMIM 같은 외부 지식이 진단 성능에 기여한다는 점은 알려져 있으나, retrieval과 reasoning을 어떻게 결합할지 명확한 전략이 부족했습니다.
+- 저자들은 임상의의 사고 과정을 모사한 5단계 CoT(용어 추출→인구학적 영향→유전자 매핑→유전 양식 평가→최종 리스트)와 RAG를 상호 보완적으로 활용했습니다.
 
-## 2. 배경 및 동기
-희귀질환 진단은 의료 분야에서 가장 도전적인 과제 중 하나입니다. 기존 연구들은 Large Language Models (LLMs)가 표현형 기반 유전자 우선순위 결정에서 어려움을 겪는다는 것을 보여주었습니다. 이러한 연구들은 주로 Human Phenotype Ontology (HPO) 용어를 사용하여 GPT나 LLaMA 같은 기반 모델에 후보 유전자를 예측하도록 하였습니다.
-하지만 **실제 임상 환경에서는 기반 모델들이 임상 진단과 같은 도메인 특화 태스크에 최적화되어 있지 않으며, 입력은 표준화된 용어가 아닌 비구조화된 임상 노트**입니다. 이러한 비구조화된 임상 노트에서 후보 유전자나 질환 진단을 예측하도록 LLM을 지시하는 방법은 여전히 주요한 도전 과제입니다.
-본 연구는 **RAG-driven CoT와 CoT-driven RAG**라는 두 가지 혁신적인 방법을 제안합니다. 이 방법들은 **Chain-of-Thought (CoT)와 Retrieval Augmented Generation (RAG)를 결합하여 임상 노트를 분석**하며, **Phenopacket 기반 임상 노트에서 40% 이상의 top-10 유전자 정확도**를 달성했습니다.
+## 3. 방법론
+### 3.1 전체 구조
+- **CoT Prompt**: “추출·분류/인구학 영향/유전자-질병 매핑/유전 양식·변이 체크/Top-10 랭킹” 다섯 단계를 강제해 reasoning 로그를 생성합니다.
+- **RAG**: HPO, OMIM 등에서 관련 정보를 retrieval해 reasoning 중간 단계에 삽입합니다.
+- **두 전략**:
+  - *RAG-driven CoT*: retrieval로 확장된 지식을 먼저 확보한 뒤 CoT를 수행.
+  - *CoT-driven RAG*: 기본 CoT로 개요를 잡은 뒤, 필요한 시점에 목표 지식을 재조회.
 
-## 3. 제안 방법
+### 3.2 핵심 기법
+- **데이터 전처리**: 5,980 Phenopacket-derived 노트, 255 PubMed 서술형 사례, 220 CHOP 임상 노트를 JSON 형태로 정리했습니다.
+- **모델**: Llama3.3-70B-Instruct, DeepSeek-R1-Distill-Llama-70B 등 최신 오픈소스 LLM을 비교.
+- **평가 지표**: Top-1/Top-10 유전자 또는 질환 정확도.
 
-### 3.1 아키텍처 개요
-시스템의 전체 아키텍처와 주요 구성 요소들을 설명합니다.
+### 3.3 학습 및 구현 세부
+- 프롬프트는 유전자 10개를 정확히 나열하도록 강제된 템플릿을 사용해 모델 출력 포맷을 정규화했습니다.
+- RAG 검색은 HPO/OMIM/Orphanet, PubMed 초록 등을 대상으로 하며, BM25+임베딩 기반 검색기를 병행했습니다.
+- In-house 노트는 HIPAA 준수를 위해 비식별화 후 사용했습니다.
 
-### 3.2 핵심 기술/알고리즘
-핵심 기술적 혁신과 알고리즘에 대해 설명합니다.
+## 4. 실험 & 결과
+### 4.1 설정
+- 세 데이터 소스: Phenopacket-derived(5980 중 845개 평가), PubMed free-text(255개), CHOP in-house(220개).
+- 비교: Baseline LLM, CoT-only, RAG-only, RAG-driven CoT, CoT-driven RAG.
+- 평가: 유전자 우선 순위와 질환 이름 추천 정확도.
 
-### 3.3 구현 세부사항
-구현과 관련된 중요한 기술적 세부사항들을 다룹니다.
+### 4.2 주요 결과표
+| 모델 & 전략 | Phenopacket Gene Top-10 | Phenopacket Disease Top-10 | PubMed Gene Top-10 | CHOP Disease Top-10 |
+| --- | --- | --- | --- | --- |
+| Llama3.3-70B Baseline | 35.03% | 32.68% | 27.84% | ~30% |
+| Llama3.3 + CoT-driven RAG | **37.86%** | **35%+** | 30%대 초반 | **34.09%** |
+| DeepSeek Baseline | 11.72% | 31.65% | 21.57% | 29.55% |
+| DeepSeek + RAG-driven CoT | **42.13%** | **37.87%** | 22~23% | 28.18% |
+| DeepSeek + CoT-driven RAG | 41.54% | 35%대 | 25%+ | **35.00%** |
 
-## 4. 실험 및 결과
+### 4.3 추가 분석
+- 고품질 Phenopacket 노트에서는 early retrieval(RAG-driven CoT)이 가장 큰 상승(Top-10 +30pt)을 보였습니다.
+- PubMed 짧은 노트는 retrieval 노이즈가 많아 CoT-only 대비 소폭 향상에 그쳤습니다.
+- CHOP 노트처럼 길고 노이즈가 많은 경우 CoT-driven RAG가 더 안정적이었으며, baseline 대비 Top-10이 5~8pt 상승했습니다.
 
-### 4.1 실험 설정
-**CoT-RAG Integration Results**:
-- **RAG-driven CoT**: Phenopacket 노트에서 42.3% top-10 정확도
-- **CoT-driven RAG**: 복잡한 노트에서 37.6% top-10 정확도
+## 5. 의의 & 한계
+- CoT와 RAG를 합친 전략이 비정형 임상 노트에서도 희귀질환 후보 유전자 추천을 크게 개선함을 보여줬습니다.
+- 데이터 품질에 따라 최적 전략이 다르므로, 실제 시스템에서는 노트 특성에 따라 RAG 순서를 조절해야 합니다.
+- 지식베이스 구축과 프롬프트 설계가 복잡하며, HIPAA 보호가 필요한 실제 노트에서는 추가 보안 설계가 필요합니다.
 
-### 4.2 주요 결과
-- **RAG-driven CoT**: 38.9% top-10 accuracy
-- **CoT-driven RAG**: 41.2% top-10 accuracy
-- **Baseline**: 25.4% top-10 accuracy
-3. **Real Clinical Notes**:
-- **RAG-driven CoT**: 35.1% top-10 accuracy
+## 6. 개인 평가
+**강점**: 실제 임상 환경(노이즈 많은 노트)에서도 LLM의 진단 능력을 유의미하게 향상시킨 점이 고무적입니다.  
+**약점**: Top-10 정확도 기준이라 후속 필터링이 필요하고, retrieval 품질에 매우 민감합니다.  
+**적용 가능성**: 유전자 패널 추천, 희귀질환 진단 컨설팅 등 의학 의사결정 지원에 즉시 참고할 수 있습니다.  
+**추천도**: ★★★★☆ (의료 LLM 연구자 및 병원 AI팀에 권장)
 
-### 4.3 분석
-실험 결과에 대한 정성적 분석과 해석을 제공합니다.
-
-## 5. 의의 및 영향
-본 연구는 희귀질환 진단 분야에서 CoT와 RAG의 혁신적 통합을 통해 임상 노트 기반 유전자 우선순위 결정의 새로운 패러다임을 제시했습니다. RAG-driven CoT와 CoT-driven RAG라는 두 가지 접근법을 통해 다양한 임상 노트 품질에 적응할 수 있는 유연한 프레임워크를 구현했습니다.
-**주요 성과:**
-1. **40% 이상 top-10 유전자 정확도**: 희귀질환 진단에서 실용적 수준 달성
-2. **적응적 방법론**: 노트 품질에 따른 최적 접근법 제시
-3. **실세계 검증**: 실제 병원 임상 노트에서 성능 입증
-4. **체계적 추론**: 전문가 수준의 5단계 진단 프로토콜 구현
-**임상적 의의:**
-- 희귀질환 진단 시간 단축 및 정확도 향상
-- 전문의가 부족한 환경에서의 진단 지원
-- 비구조화된 임상 노트의 체계적 활용
-- 유전자 검사 우선순위 결정 지원
-**기술적 혁신:**
-- CoT와 RAG의 효과적 통합 방법론 개발
-- 임상 노트 품질별 적응형 접근법 제시
-- 다중 의학 지식 베이스의 통합 활용
-- 전문가 추론 과정의 체계적 모델링
-
-## 6. 개인적 평가
-
-**강점**: 혁신적인 접근법과 우수한 실험 결과
-**약점**: 일부 제한사항과 개선 가능한 영역 존재  
-**적용 가능성**: 다양한 실제 응용 분야에서 활용 가능
-**추천도**: 해당 분야 연구자들에게 적극 추천
+## 7. 참고 자료
+- 원문: [Integrating Chain-of-Thought and Retrieval Augmented Generation Enhances Rare Disease Diagnosis from Clinical Notes](https://arxiv.org/abs/2505.21862)

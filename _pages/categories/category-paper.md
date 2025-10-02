@@ -6,13 +6,16 @@ author_profile: true
 sidebar_main: true
 ---
 
-{% assign paper_categories = "Transformer,VLM,Multimodal,Prompt Tuning,RAG,Wsi,Brain" | split: "," %}
-{% assign posts = "" | split: "," %}
-{% for cat in paper_categories %}
-  {% if site.categories[cat] %}
-    {% assign posts = posts | concat: site.categories[cat] %}
+{% assign posts = "" | split: "" %}
+{% assign subcategories = site.data.categories.paper.children %}
+
+{% for sub in subcategories %}
+  {% assign slug = sub[0] %}
+  {% if site.categories[slug] %}
+    {% assign posts = posts | concat: site.categories[slug] %}
   {% endif %}
 {% endfor %}
+
 {% assign posts = posts | sort: 'date' | reverse %}
 
 {% for post in posts %}

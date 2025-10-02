@@ -1,18 +1,17 @@
 ---
-title:  "Git Blog 만드는 방법" 
-excerpt: "How to make Git Blog"
-
+title: Git Blog 만드는 방법
+excerpt: How to make Git Blog
 categories:
-  - Blog
+- study
+- blog
 tags:
-  - [Blog, Git, Github,]
-
+- - Blog
+  - Git
+  - Github
 toc: true
 toc_sticky: true
- 
 date: 2024-04-03
 last_modified_at: 2024-04-03
-
 ---
 
 

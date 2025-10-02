@@ -1,18 +1,20 @@
 ---
-title: "Kubespray를 이용한 Kubernetes 클러스터 설치 (Ubuntu 22.04)"
-excerpt: "Ubuntu 22.04 환경에서 Kubespray를 사용하여 고가용성 Kubernetes 클러스터를 구축하는 방법"
-
+title: Kubespray를 이용한 Kubernetes 클러스터 설치 (Ubuntu 22.04)
+excerpt: Ubuntu 22.04 환경에서 Kubespray를 사용하여 고가용성 Kubernetes 클러스터를 구축하는 방법
 categories:
-  - Server
+- server
+- general
 tags:
-  - [Kubernetes, Kubespray, Ubuntu, DevOps, Container, Server]
-
+- - Kubernetes
+  - Kubespray
+  - Ubuntu
+  - DevOps
+  - Container
+  - Server
 toc: true
 toc_sticky: true
-
 date: 2024-07-30
 last_modified_at: 2024-07-30
-
 ---
 
 ## Kubespray란?

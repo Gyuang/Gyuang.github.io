@@ -6,7 +6,7 @@ author_profile: true
 sidebar_main: true
 ---
 
-{% assign posts = site.categories["Bioinformatics"] | sort: 'date' | reverse %}
+{% assign posts = site.categories["bioinformatics"] | sort: 'date' | reverse %}
 
 {% for post in posts %}
   {% include archive-single.html %}
