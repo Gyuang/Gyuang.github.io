@@ -86,3 +86,12 @@ toc_sticky: true
 - 원문: [ChatCAD+: Towards a Universal and Reliable Interactive CAD using LLMs](https://arxiv.org/abs/2407.16684)
 - 코드: [공식 GitHub](https://github.com/ShanghaiTechAI/ChatCAD-plus) (논문 링크)
 - 지식 베이스: Merck Manuals, Mayo Clinic, Cleveland Clinic 공개 자료
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/ChatCAD+-Toward-a-Universal-and-Reliable-Interactive-CAD-Using-LLMs/fig_06.png)
+
+### Main Results Table
+![Results](/assets/images/paper/ChatCAD+-Toward-a-Universal-and-Reliable-Interactive-CAD-Using-LLMs/table_208.png)

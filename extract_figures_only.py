@@ -77,32 +77,25 @@ def _load_client_credentials(creds_path: Optional[str]) -> Dict[str, str]:
 
 
 def _require_adobe_sdk():
+  """Support the public adobe.pdfservices.operation v2.x API."""
   try:
-    from adobe.pdfservices.operation.auth.service_principal_credentials import (
-      ServicePrincipalCredentials,
-    )
-    from adobe.pdfservices.operation.pdf_services import PDFServices
-    from adobe.pdfservices.operation.pdf_services_media_type import PDFServicesMediaType
-    from adobe.pdfservices.operation.pdfjobs.jobs.extract_pdf_job import ExtractPDFJob
-    from adobe.pdfservices.operation.pdfjobs.params.extract_pdf.extract_pdf_params import (
-      ExtractPDFParams,
-    )
-    from adobe.pdfservices.operation.pdfjobs.params.extract_pdf.extract_element_type import (
-      ExtractElementType,
-    )
-    from adobe.pdfservices.operation.pdfjobs.params.extract_pdf.extract_renditions_element_type import (
-      ExtractRenditionsElementType,
-    )
+    from adobe.pdfservices.operation.auth.service_principal_credentials import ServicePrincipalCredentials
+    from adobe.pdfservices.operation.execution_context import ExecutionContext
+    from adobe.pdfservices.operation.io.file_ref import FileRef
+    from adobe.pdfservices.operation.pdfops.extract_pdf_operation import ExtractPDFOperation
+    from adobe.pdfservices.operation.pdfops.options.extractpdf.extract_pdf_options import ExtractPDFOptions
+    from adobe.pdfservices.operation.pdfops.options.extractpdf.extract_element_type import ExtractElementType
+    from adobe.pdfservices.operation.pdfops.options.extractpdf.extract_renditions_element_type import ExtractRenditionsElementType
   except ImportError:
-    print("Missing adobe-pdfservices-sdk. Install: pip install adobe-pdfservices-sdk", file=sys.stderr)
+    print("Missing adobe-pdfservices-sdk. Install: pip install pdfservices-sdk", file=sys.stderr)
     raise
 
   return {
     "ServicePrincipalCredentials": ServicePrincipalCredentials,
-    "PDFServices": PDFServices,
-    "PDFServicesMediaType": PDFServicesMediaType,
-    "ExtractPDFJob": ExtractPDFJob,
-    "ExtractPDFParams": ExtractPDFParams,
+    "ExecutionContext": ExecutionContext,
+    "FileRef": FileRef,
+    "ExtractPDFOperation": ExtractPDFOperation,
+    "ExtractPDFOptions": ExtractPDFOptions,
     "ExtractElementType": ExtractElementType,
     "ExtractRenditionsElementType": ExtractRenditionsElementType,
   }
@@ -144,28 +137,27 @@ def _copy_rendition(src_dir: Path, file_name: str, dest_dir: Path, index: int, p
 
 def process_pdf(pdf_path: Path, creds: Dict[str, str], sdk_mods: Dict[str, object], out_base: Path) -> Dict[str, object]:
   ServicePrincipalCredentials = sdk_mods["ServicePrincipalCredentials"]
-  PDFServices = sdk_mods["PDFServices"]
-  PDFServicesMediaType = sdk_mods["PDFServicesMediaType"]
-  ExtractPDFJob = sdk_mods["ExtractPDFJob"]
-  ExtractPDFParams = sdk_mods["ExtractPDFParams"]
+  ExecutionContext = sdk_mods["ExecutionContext"]
+  FileRef = sdk_mods["FileRef"]
+  ExtractPDFOperation = sdk_mods["ExtractPDFOperation"]
+  ExtractPDFOptions = sdk_mods["ExtractPDFOptions"]
   ExtractElementType = sdk_mods["ExtractElementType"]
   ExtractRenditionsElementType = sdk_mods["ExtractRenditionsElementType"]
 
-  creds_obj = ServicePrincipalCredentials(
-    client_id=creds["client_id"], client_secret=creds["client_secret"]
-  )
-  pdf_services = PDFServices(credentials=creds_obj)
+  creds_obj = ServicePrincipalCredentials(creds["client_id"], creds["client_secret"])
+  ctx = ExecutionContext.create(creds_obj)
 
-  pdf_bytes = pdf_path.read_bytes()
-  input_asset = pdf_services.upload(input_stream=pdf_bytes, mime_type=PDFServicesMediaType.PDF)
+  input_ref = FileRef.create_from_local_file(str(pdf_path))
+  op = ExtractPDFOperation.create_new()
+  op.set_input(input_ref)
 
-  params = ExtractPDFParams(
-    elements_to_extract=[ExtractElementType.FIGURES],
-    elements_to_extract_renditions=[ExtractRenditionsElementType.FIGURES],
-  )
-  job = ExtractPDFJob(input_asset=input_asset, extract_pdf_params=params)
+  options = ExtractPDFOptions.builder() \
+    .with_elements_to_extract([ExtractElementType.FIGURES]) \
+    .with_elements_to_extract_renditions([ExtractRenditionsElementType.FIGURES]) \
+    .build()
+  op.set_options(options)
 
-  result = pdf_services.submit_and_wait(job)
+  result = op.execute(ctx)
 
   tmp_root = Path(".pdf_extract") / pdf_path.stem
   _ensure_dir(tmp_root)
