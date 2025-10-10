@@ -156,16 +156,27 @@ def _normalize_text(s: str) -> str:
 
 
 ARCH_KWS = [
-  "architecture", "framework", "pipeline", "overview", "system", "method", "network", "model", "workflow", "approach"
+  "architecture", "framework", "pipeline", "overview", "system", "method", "network", "model", "workflow", "approach", "diagram"
 ]
 RESULT_KWS = [
-  "results", "comparison", "performance", "evaluation", "benchmark", "sota", "state-of-the-art", "table", "metrics"
+  "results", "comparison", "performance", "evaluation", "benchmark", "sota", "state-of-the-art", "table", "metrics", "accuracy", "ablation"
 ]
 
 
 def _score_caption(caption: str, kws: List[str]) -> int:
   c = _normalize_text(caption)
   return sum(1 for k in kws if k in c)
+
+
+def _index_one_boost(caption: str, output_file: Optional[str]) -> float:
+  c = _normalize_text(caption)
+  boost = 0.0
+  if "figure 1" in c or "fig. 1" in c or "fig 1" in c or "table 1" in c:
+    boost += 2.0
+  name = (Path(output_file).name.lower() if output_file else "")
+  if any(x in name for x in ["fig_01", "figure_01", "table_01", "fileoutpart1.png", "fileoutpart01.png"]):
+    boost += 1.0
+  return boost
 
 
 def _area(bbox) -> float:
@@ -270,9 +281,9 @@ def extract_one(pdf: Path, creds: Dict[str, str], sdk, out_base: Path) -> Dict[s
     # Gather rendition file from filePaths if present
     fps = el.get("filePaths") or []
     file_name = fps if fps else (el.get("FileName") or el.get("fileName") or "")
-    # Heuristic caption: nearest text line below the element that horizontally overlaps
-    caption = ""
-    if bbox and page in page_texts:
+    # Prefer SDK-provided caption; otherwise heuristic nearest text
+    caption = (el.get("Caption") or el.get("caption") or "").strip()
+    if not caption and bbox and page in page_texts:
       x0, y0, x1, y1 = bbox
       best = None
       for t in page_texts[page]:
@@ -344,19 +355,24 @@ def extract_one(pdf: Path, creds: Dict[str, str], sdk, out_base: Path) -> Dict[s
   # Select key assets with improved scoring
   def arch_key(x):
     return (
-      _score_caption(x.get("caption", ""), ARCH_KWS) + _file_index_score(x.get("output_file")) * 0.5,
+      _score_caption(x.get("caption", ""), ARCH_KWS)
+      + _index_one_boost(x.get("caption", ""), x.get("output_file"))
+      + _file_index_score(x.get("output_file")) * 0.5,
       _area(x.get("bbox")),
     )
   arch = _pick_by_override(figures, overrides.get("arch")) or (sorted(figures, key=arch_key, reverse=True)[0] if figures else None)
 
   def res_key(x):
     return (
-      _score_caption(x.get("caption", ""), RESULT_KWS) + _file_index_score(x.get("output_file")) * 0.2,
+      _score_caption(x.get("caption", ""), RESULT_KWS)
+      + _index_one_boost(x.get("caption", ""), x.get("output_file"))
+      + _file_index_score(x.get("output_file")) * 0.2,
       _area(x.get("bbox")),
     )
-  res_primary = _pick_by_override(tables or figures, overrides.get("results"))
+  res_candidates = tables if tables else figures
+  res_primary = _pick_by_override(res_candidates, overrides.get("results"))
   if not res_primary:
-    res_primary = (sorted((tables or figures), key=res_key, reverse=True)[0] if (tables or figures) else None)
+    res_primary = (sorted(res_candidates, key=res_key, reverse=True)[0] if (res_candidates) else None)
   # Optionally a second results asset
   res_secondary = None
   res_list = overrides.get("results")
@@ -368,21 +384,33 @@ def extract_one(pdf: Path, creds: Dict[str, str], sdk, out_base: Path) -> Dict[s
         res_secondary = cand
         break
 
+  def _clean_caption(c: str, limit: int = 400) -> str:
+    c = " ".join((c or "").split())
+    if len(c) > limit:
+      c = c[:limit].rstrip() + "…"
+    return c
+
   md_lines = []
   if arch and arch.get("output_file"):
     rel = "/" + str(Path(arch["output_file"]).as_posix())
     md_lines.append("### Main Architecture")
     md_lines.append(f"![Architecture]({rel})")
+    if arch.get("caption"):
+      md_lines.append(f"캡션: {_clean_caption(str(arch.get('caption') or ''))}")
   if res_primary and res_primary.get("output_file"):
     rel = "/" + str(Path(res_primary["output_file"]).as_posix())
     md_lines.append("")
     md_lines.append("### Main Results Table")
     md_lines.append(f"![Results]({rel})")
+    if res_primary.get("caption"):
+      md_lines.append(f"캡션: {_clean_caption(str(res_primary.get('caption') or ''))}")
   if res_secondary and res_secondary.get("output_file"):
     rel2 = "/" + str(Path(res_secondary["output_file"]).as_posix())
     md_lines.append("")
     md_lines.append("### Main Results Table (2)")
     md_lines.append(f"![Results-2]({rel2})")
+    if res_secondary.get("caption"):
+      md_lines.append(f"캡션: {_clean_caption(str(res_secondary.get('caption') or ''))}")
   markdown = "\n".join(md_lines)
   key = {
     "architecture": arch,
@@ -429,7 +457,15 @@ def _inject_into_post(post_path: Path, markdown: str) -> bool:
   # Replace existing section if present
   start_tag = "\n## 주요 도식/표"
   idx = txt.find(start_tag)
-  block = "\n\n## 주요 도식/표\n\n" + markdown.strip() + "\n"
+  checklist = (
+    "\n\n## 작성 체크리스트\n\n"
+    "- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인\n"
+    "- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)\n"
+    "- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)\n"
+    "- [ ] 링크/출처 표기 적절성 점검\n"
+    "- [ ] 로컬 빌드 확인: bundle exec jekyll build\n"
+  )
+  block = "\n\n## 주요 도식/표\n\n" + markdown.strip() + checklist + "\n"
   if idx >= 0:
     # Find next section header or end
     next_idx = txt.find("\n## ", idx + 1)

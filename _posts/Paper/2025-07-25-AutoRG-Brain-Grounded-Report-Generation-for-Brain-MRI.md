@@ -91,13 +91,27 @@ toc_sticky: true
 
 
 
+
+
 ## 주요 도식/표
 
 ### Main Architecture
 ![Architecture](/assets/images/paper/AutoRG-Brain-Grounded-Report-Generation-for-Brain-MRI/fig_04.png)
+캡션: b. Grounded Report Generation Dataset on Brain MRI
 
 ### Main Results Table
 ![Results](/assets/images/paper/AutoRG-Brain-Grounded-Report-Generation-for-Brain-MRI/table_239.png)
+캡션: Global Report Generation. Our proposed system enables report generation with or without human prompting, largely outperforming existing foundational models. On SSPH dataset (the first part in Tab. (<>)2), AutoRG-Brain-Prompt trained on both SSPH and RadGenome-Brain MRI reaches the best performance, achieving a RadGraph score of 41.74±15.93%, a RadCliQ score of 0.30±0.48, and a RaTEScore of 68.76±1…
 
 ### Main Results Table (2)
 ![Results-2](/assets/images/paper/AutoRG-Brain-Grounded-Report-Generation-for-Brain-MRI/table_01.png)
+캡션: Brain Anomaly Segmentation. We compare both our first-stage segmentation module (Ours-S1) and second-stage segmentation module (Ours-S2) with existing segmentation models on BraTS2021 and ISLES2022,
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+
