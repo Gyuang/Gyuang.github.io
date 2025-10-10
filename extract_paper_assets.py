@@ -176,6 +176,43 @@ def _area(bbox) -> float:
     return -1.0
 
 
+def _file_index_score(path_str: Optional[str]) -> float:
+  """Smaller index gets slightly higher score (prefer early figures/tables).
+  Accepts names like fig_04.png, table_239.png or fileoutpart239.png.
+  """
+  if not path_str:
+    return 0.0
+  name = Path(path_str).name.lower()
+  import re
+  m = re.search(r"(?:fig|table|fileoutpart)[_-]?([0-9]{1,4})", name)
+  if not m:
+    return 0.0
+  try:
+    idx = int(m.group(1))
+  except Exception:
+    return 0.0
+  # Map smaller index to larger score in a bounded way
+  return max(0.0, 10.0 - min(999, idx) * 0.01)
+
+
+def _load_overrides() -> Dict[str, Dict[str, object]]:
+  p = Path("_data/main_assets_overrides.yml")
+  if not p.exists():
+    return {}
+  try:
+    import yaml  # type: ignore
+  except Exception:
+    # Lazy YAML parser: the file will be simple key: [..] value pairs; fallback to JSON if user prefers
+    try:
+      return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+      return {}
+  try:
+    return yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+  except Exception:
+    return {}
+
+
 def extract_one(pdf: Path, creds: Dict[str, str], sdk, out_base: Path) -> Dict[str, object]:
   ServicePrincipalCredentials = sdk["ServicePrincipalCredentials"]
   ExecutionContext = sdk["ExecutionContext"]
@@ -286,26 +323,71 @@ def extract_one(pdf: Path, creds: Dict[str, str], sdk, out_base: Path) -> Dict[s
   (out_dir / "figures.json").write_text(json.dumps(figures, ensure_ascii=False, indent=2), encoding="utf-8")
   (out_dir / "tables.json").write_text(json.dumps(tables, ensure_ascii=False, indent=2), encoding="utf-8")
 
-  # Select key assets
-  arch_cands = sorted(figures, key=lambda x: (_score_caption(x.get("caption", ""), ARCH_KWS), _area(x.get("bbox"))), reverse=True)
-  arch = arch_cands[0] if arch_cands else None
-  res_cands = sorted((tables or figures), key=lambda x: (_score_caption(x.get("caption", ""), RESULT_KWS), _area(x.get("bbox"))), reverse=True)
-  res = res_cands[0] if res_cands else None
+  # Overrides per PDF (by stem)
+  overrides = _load_overrides().get(pdf.stem, {})
+
+  def _pick_by_override(candidate_list: List[Dict[str, object]], override_val) -> Optional[Dict[str, object]]:
+    if not override_val:
+      return None
+    names = override_val
+    if isinstance(names, str):
+      names = [names]
+    names = [n.lower() for n in names]
+    for n in names:
+      for c in candidate_list:
+        out = (c.get("output_file") or "").lower()
+        base = Path(out).name.lower()
+        if n in out or n in base:
+          return c
+    return None
+
+  # Select key assets with improved scoring
+  def arch_key(x):
+    return (
+      _score_caption(x.get("caption", ""), ARCH_KWS) + _file_index_score(x.get("output_file")) * 0.5,
+      _area(x.get("bbox")),
+    )
+  arch = _pick_by_override(figures, overrides.get("arch")) or (sorted(figures, key=arch_key, reverse=True)[0] if figures else None)
+
+  def res_key(x):
+    return (
+      _score_caption(x.get("caption", ""), RESULT_KWS) + _file_index_score(x.get("output_file")) * 0.2,
+      _area(x.get("bbox")),
+    )
+  res_primary = _pick_by_override(tables or figures, overrides.get("results"))
+  if not res_primary:
+    res_primary = (sorted((tables or figures), key=res_key, reverse=True)[0] if (tables or figures) else None)
+  # Optionally a second results asset
+  res_secondary = None
+  res_list = overrides.get("results")
+  if isinstance(res_list, list) and len(res_list) > 1:
+    # Try to pick the next match in order
+    for name in res_list:
+      cand = _pick_by_override(tables or figures, name)
+      if cand and cand is not res_primary:
+        res_secondary = cand
+        break
 
   md_lines = []
   if arch and arch.get("output_file"):
     rel = "/" + str(Path(arch["output_file"]).as_posix())
     md_lines.append("### Main Architecture")
     md_lines.append(f"![Architecture]({rel})")
-  if res and res.get("output_file"):
-    rel = "/" + str(Path(res["output_file"]).as_posix())
+  if res_primary and res_primary.get("output_file"):
+    rel = "/" + str(Path(res_primary["output_file"]).as_posix())
     md_lines.append("")
     md_lines.append("### Main Results Table")
     md_lines.append(f"![Results]({rel})")
+  if res_secondary and res_secondary.get("output_file"):
+    rel2 = "/" + str(Path(res_secondary["output_file"]).as_posix())
+    md_lines.append("")
+    md_lines.append("### Main Results Table (2)")
+    md_lines.append(f"![Results-2]({rel2})")
   markdown = "\n".join(md_lines)
   key = {
     "architecture": arch,
-    "results": res,
+    "results": res_primary,
+    "results_2": res_secondary,
     "markdown": markdown,
   }
   (out_dir / "key_assets.json").write_text(json.dumps(key, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -314,7 +396,7 @@ def extract_one(pdf: Path, creds: Dict[str, str], sdk, out_base: Path) -> Dict[s
     "pdf": str(pdf),
     "out_dir": str(out_dir),
     "architecture_image": arch.get("output_file") if arch else None,
-    "results_image": res.get("output_file") if res else None,
+    "results_image": res_primary.get("output_file") if res_primary else None,
     "markdown": markdown,
   }
 
@@ -344,13 +426,23 @@ def _find_post_for_pdf(pdf: Path) -> Optional[Path]:
 
 def _inject_into_post(post_path: Path, markdown: str) -> bool:
   txt = post_path.read_text(encoding="utf-8")
+  # Replace existing section if present
+  start_tag = "\n## 주요 도식/표"
+  idx = txt.find(start_tag)
+  block = "\n\n## 주요 도식/표\n\n" + markdown.strip() + "\n"
+  if idx >= 0:
+    # Find next section header or end
+    next_idx = txt.find("\n## ", idx + 1)
+    if next_idx < 0:
+      next_idx = len(txt)
+    new_txt = txt[:idx] + block + txt[next_idx:]
+    changed = new_txt != txt
+    if changed:
+      post_path.write_text(new_txt, encoding="utf-8")
+    return changed
+  # Else append
   if markdown.strip() in txt:
     return False
-  # If a figures section exists, append under it; else append at end.
-  anchor = "## 5."
-  insert_at = len(txt)
-  # Simply append a new section
-  block = "\n\n## 주요 도식/표\n\n" + markdown.strip() + "\n"
   post_path.write_text(txt + block, encoding="utf-8")
   return True
 

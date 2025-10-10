@@ -88,3 +88,16 @@ toc_sticky: true
 - 원문: [AutoRG-Brain: Grounded Report Generation for Brain MRI](https://arxiv.org/abs/2407.16684)
 - 데이터: [RadGenome-Brain MRI](https://radgenome-brain.org) (논문 부록)
 - 코드: [Shanghai AI Lab GitHub (예정 공개)](https://github.com/Shanghai-AI-Laboratory)
+
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/AutoRG-Brain-Grounded-Report-Generation-for-Brain-MRI/fig_04.png)
+
+### Main Results Table
+![Results](/assets/images/paper/AutoRG-Brain-Grounded-Report-Generation-for-Brain-MRI/table_239.png)
+
+### Main Results Table (2)
+![Results-2](/assets/images/paper/AutoRG-Brain-Grounded-Report-Generation-for-Brain-MRI/table_01.png)
