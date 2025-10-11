@@ -86,3 +86,33 @@ toc_sticky: true
 - 원문: [Brain-Adapter: Enhancing Neurological Disorder Analysis with Adapter-Tuning Multimodal Large Language Models](https://arxiv.org/abs/2405.05189)
 - 코드: (논문 부록 제공) https://github.com/UTA-ML/Brain-Adapter
 - 데이터: [ADNI](https://adni.loni.usc.edu/)
+
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/2110.04544_CLIP-Adapter Better Vision-Language Models with Feature Adapters/fig_01.png)
+캡션: Although prompt-based zero-shot transfer learning showed promising performances, designing good prompts remains an engineering problem that demands substantial time and domain knowledge. To address the issue, Context Optimization (CoOp) [(<>)75] further proposed to learn continuous soft prompts with few-shot examples for replacing the carefully-chosen hard prompts. CoOp brings about significant im…
+
+### Main Results Table
+![Results](/assets/images/paper/2110.04544_CLIP-Adapter Better Vision-Language Models with Feature Adapters/table_355.png)
+캡션: Table 10 Comparison of finetuning different components of CLIP-Adapter.
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+

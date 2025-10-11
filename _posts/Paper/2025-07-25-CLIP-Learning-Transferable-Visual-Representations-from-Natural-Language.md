@@ -85,3 +85,33 @@ toc_sticky: true
 - 원문: [Learning Transferable Visual Models From Natural Language Supervision](https://arxiv.org/abs/2103.00020)
 - 코드: [OpenAI CLIP GitHub](https://github.com/openai/CLIP)
 - 체크포인트: [Open CLIP Weights](https://github.com/mlfoundations/open_clip)
+
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/2103.00020_Learning Transferable Visual Models From Natural Language Supervision/fig_01.png)
+캡션: Figure 1. Summary of our approach. While standard image models jointly train an image feature extractor and a linear classifier to predict some label, CLIP jointly trains an image encoder and a text encoder to predict the correct pairings of a batch of (image, text) training examples. At test time the learned text encoder synthesizes a zero-shot linear classifier by embedding the names or descript…
+
+### Main Results Table
+![Results](/assets/images/paper/2103.00020_Learning Transferable Visual Models From Natural Language Supervision/table_5523.png)
+캡션: Table 14. OCR performance on 5 datasets. All metrics are accuracy on the test set except for Hateful Memes which reports ROC AUC on the dev set. Single model SOTA reported to best of knowledge. ES Best reports the best performance across the 56 non-CLIP models in our evaluation suite. a((<>)Assiri, (<>)2020) b((<>)Jaderberg et al., (<>)2015) c((<>)Wang et al., (<>)2020) d((<>)Lippe et al., (<>)202…
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+

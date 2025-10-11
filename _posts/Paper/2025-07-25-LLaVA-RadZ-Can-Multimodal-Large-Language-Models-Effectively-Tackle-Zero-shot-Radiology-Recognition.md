@@ -113,3 +113,23 @@ toc_sticky: true
 - 저자 소속: East China Normal University, Tencent Youtu Lab, Northwest A&F University
 - 출판일: 2025년 3월 (arXiv 사전 공개)
 - 주요 데이터셋: MIMIC-CXR (pre-training), ChestX-ray14, RSNA Pneumonia, SIIM-ACR Pneumothorax, CheXpert, COVIDx CXR-2
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/LLaVA-RadZ-Can-Multimodal-Large-Language-Models-Effectively-Tackle-Zero-shot-Radiology-Recognition/fig_03.png)
+캡션: Figure 1. Feature distribution visualization of LLavA-1.5 (left) and MAVL (right) on the RSNA dataset.
+
+### Main Results Table
+![Results](/assets/images/paper/LLaVA-RadZ-Can-Multimodal-Large-Language-Models-Effectively-Tackle-Zero-shot-Radiology-Recognition/table_374.png)
+캡션: Table 3. Comparison of performance with other SOTA methods at different data portions for fine-tuning classification task. AUC scores are reported. The best results are highlighted in bold and the second-best results are underlined.
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+

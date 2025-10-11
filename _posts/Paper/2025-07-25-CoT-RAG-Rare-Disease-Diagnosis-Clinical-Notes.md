@@ -64,3 +64,23 @@ toc_sticky: true
 ## 7. 참고 자료
 - 원문: [arXiv:2505.21862](https://arxiv.org/abs/2505.21862)
 - 코드/데이터: 저자 제공 GitHub (추후 공개 예정)
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/CoT-RAG-Rare-Disease-Diagnosis-Clinical-Notes/fig_01.png)
+캡션: Figure 1. Illustration of workflow of different methods in this study. A: Base Prompt + CoT, B: Base Prompt + RAG, C: CoT-driven RAG, and D: RAG-driven CoT.
+
+### Main Results Table
+![Results](/assets/images/paper/CoT-RAG-Rare-Disease-Diagnosis-Clinical-Notes/table_01.png)
+캡션: Table 1: Overview of datasets used for evaluation in this study. The column labeled “Public” (Yes/No) specifies whether the listed dataset is available to the public.
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+

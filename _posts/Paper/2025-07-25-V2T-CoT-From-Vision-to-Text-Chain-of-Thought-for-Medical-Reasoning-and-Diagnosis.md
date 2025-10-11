@@ -109,3 +109,23 @@ V2T-CoT 프레임워크는 Vision CoT와 Text CoT 두 개의 주요 모듈로 �
 - **Cool Papers**: [논문 리뷰](https://papers.cool/arxiv/2506.19610)
 - **관련 데이터셋**: R-Med 39K (논문에서 구축한 instruction-tuning 데이터셋)
 - **평가 벤치마크**: VQA-RAD, SLAKE, VQA-2019, PathVQA
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/V2T-CoT-From-Vision-to-Text-Chain-of-Thought-for-Medical-Reasoning-and-Diagnosis/fig_01.png)
+캡션: Fig. 1: The comparison between V2T-CoT and existing Med-VQA methods. A employs a combined vision and text encoding strategy with regional attention for medical diagnosis. In contrast, previous methods (B & C) either lack reasoning or utilize it in a text-only context. D demonstrates the pipeline of V2T-CoT.
+
+### Main Results Table
+![Results](/assets/images/paper/V2T-CoT-From-Vision-to-Text-Chain-of-Thought-for-Medical-Reasoning-and-Diagnosis/table_288.png)
+캡션: Table 3: Comparison of different Vision Detection method performance and the effect on Related Med-VQA.
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+

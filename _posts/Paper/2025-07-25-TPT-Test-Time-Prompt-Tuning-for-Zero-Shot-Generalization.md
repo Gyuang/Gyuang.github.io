@@ -83,3 +83,23 @@ toc_sticky: true
 - 원문: [링크](https://arxiv.org/abs/XXXX)
 - 코드: [GitHub](https://github.com/...)
 - 데이터: [URL]
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/TPT-Test-Time-Prompt-Tuning-for-Zero-Shot-Generalization/fig_01.png)
+캡션: Figure 1: Test-time Prompt Tuning (TPT) for image classification. We tune adaptive prompts on the fly with a single test sample, without the need for additional training data or annotations. TPT optimizes the prompt to encourage consistent predictions across augmented views by minimizing the marginal entropy. We introduce confidence selection to filter out noisy augmentations.
+
+### Main Results Table
+![Results](/assets/images/paper/TPT-Test-Time-Prompt-Tuning-for-Zero-Shot-Generalization/table_242.png)
+캡션: Results. In Table (<>)2, we compare TPT with few-shot prompt tuning methods on generalization from ImageNet to fine-grained datasets. Note that TPT works in a zero-shot manner; thus it is not trained on ImageNet. Nonetheless, we find TPT to achieve on-par generalization as ImageNet trained CoCoOp. In Figure (<>)3, we present the results of the more challenging setting of cross-dataset generalizati…
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+

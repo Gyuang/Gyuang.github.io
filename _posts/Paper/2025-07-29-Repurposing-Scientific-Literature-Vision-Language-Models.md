@@ -95,3 +95,23 @@ toc_sticky: true
 - 데이터셋: [NeuroPubs Dataset](https://github.com/neurosurgical-ai/neuropubs) 
 - 관련 연구: [Multimodal ArXiv Dataset](https://aclanthology.org/2024.acl-long.775/)
 - 추가 자료: [Scientific VLM Survey](https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2024.1430984/full)
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/Repurposing-Scientific-Literature-Vision-Language-Models/fig_01.png)
+캡션: Fig. 1. Overview of key contributions. (A) We developed a pipeline for the acquisition, extraction, and filtering of figures, captions, and in-text mentions from a family of biomedical journals. We converted this data from unstructured biomedical texts and images into publication-, education-, and task-specific AI training datasets. (B) We trained CNS-Obsidian, a 34B parameter autoregressive visio…
+
+### Main Results Table
+![Results](/assets/images/paper/Repurposing-Scientific-Literature-Vision-Language-Models/fig_13.png)
+캡션: Fig. S8. Ablation studies of three-stage training using Claude-generated evaluations. Configuration [X, Y, Z] denotes number of epochs in Stages 1, 2, and 3. (A) Impact of Stage 1 (alignment) and Stage 2 (general fine-tuning) epochs on model accuracy using Claude generated MCQs dataset (n=1,239), with Stage 3 fixed at 0. Darker red indicates higher accuracy. Baseline [0, 0, 0] achieves 46.53%. Ali…
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+

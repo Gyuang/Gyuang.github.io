@@ -77,3 +77,22 @@ toc_sticky: true
 -   **약점:** 3단계의 전문가 모델을 거치므로 추론 속도가 상대적으로 느릴 수 있습니다.
 -   **적용 가능성:** 의료 영상 판독뿐만 아니라, 설명 가능성이 중요한 다양한 AI 기반 전문가 시스템(금융, 법률 등)에 확장 적용될 수 있습니다.
 -   **추천도:** ★★★★★ (해석 가능한 AI, 의료 AI 분야 연구자에게 강력 추천)
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/2412.13736_MedCoT Medical Chain of Thought via Hierarchical Expert/fig_03.png)
+캡션: Figure 2: The MedCoT pipeline begins with an Initial Specialist receiving a medical question and image to generate a preliminary rationale. This rationale may have flaws (indicated in red), which are then reviewed by theText Follow-up Text Specialist. If the rationale is deemed effective, it is retained; otherwise, it is reconsidered and a new rationale (indicated in green) is generated, along wit…
+
+### Main Results Table
+![Results](/assets/images/paper/2412.13736_MedCoT Medical Chain of Thought via Hierarchical Expert/table_22.png)
+캡션: dicate that MedCoT consistently achieves SoTA results compared to the majority of SoTA methods.
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+

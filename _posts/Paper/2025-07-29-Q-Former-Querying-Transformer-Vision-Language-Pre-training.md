@@ -83,3 +83,23 @@ toc_sticky: true
 - 원문: [링크](https://arxiv.org/abs/XXXX)
 - 코드: [GitHub](https://github.com/...)
 - 데이터: [URL]
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/Q-Former-Querying-Transformer-Vision-Language-Pre-training/fig_03.png)
+캡션: Figure 2. (Left) Model architecture of Q-Former and BLIP-2’s first-stage vision-language representation learning objectives. We jointly optimize three objectives which enforce the queries (a set of learnable embeddings) to extract visual representation most relevant to the text. (Right) The self-attention masking strategy for each objective to control query-text interaction.
+
+### Main Results Table
+![Results](/assets/images/paper/Q-Former-Querying-Transformer-Vision-Language-Pre-training/table_01.png)
+캡션: Table 1. Overview of BLIP-2 results on various zero-shot vision-language tasks. Compared with previous state-of-the-art models. BLIP-2 achieves the highest zero-shot performance while requiring the least number of trainable parameters during vision-language pre-training.
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+

@@ -85,3 +85,33 @@ toc_sticky: true
 - 원문: [Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks](https://arxiv.org/abs/2005.11401)
 - 코드: [GitHub - facebookresearch/rag](https://github.com/facebookresearch/rag)
 - 데이터: [Natural Questions-open](https://ai.google.com/research/NaturalQuestions), [TriviaQA](http://nlp.cs.washington.edu/triviaqa/)
+
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/2005.11401_Retrieval Augmented Generation for Knowledge Intensive NLP Tasks/fig_03.png)
+캡션: Figure 1: Overview of our approach. We combine a pre-trained retriever (Query Encoder + Document Index) with a pre-trained seq2seq model (Generator) and fine-tune end-to-end. For query x, we use Maximum Inner Product Search (MIPS) to find the top-K documents zi. For final prediction y, we treat z as a latent variable and marginalize over seq2seq predictions given different documents.
+
+### Main Results Table
+![Results](/assets/images/paper/2005.11401_Retrieval Augmented Generation for Knowledge Intensive NLP Tasks/table_01.png)
+캡션: to more effective marginalization over documents. Furthermore, RAG can generate correct answers even when the correct answer is not in any retrieved document, achieving 11.8% accuracy in such cases for NQ, where an extractive model would score 0%.
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+

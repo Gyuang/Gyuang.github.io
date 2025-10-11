@@ -81,3 +81,23 @@ toc_sticky: true
 - 원문: [링크](https://arxiv.org/abs/XXXX)
 - 코드: [GitHub](https://github.com/...)
 - 데이터: [URL]
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/Power-of-Scale-Prompt-Tuning/fig_06.png)
+캡션: 108 109 1010 Model Parameters 10 20 30 40 50 60 70 80 90 100 SuperGLUE Score Span Corruption Span Corruption + Sentinel LM Adaptation (100K) (c) Pre-training method
+
+### Main Results Table
+![Results](/assets/images/paper/Power-of-Scale-Prompt-Tuning/table_01.png)
+캡션: Table 1: F1 mean and stddev for models trained on SQuAD and evaluated on out-of-domain datasets from the MRQA 2019 shared task. Prompt tuning tends to give stronger zero-shot performance than model tuning, especially on datasets with large domain shifts like TextbookQA.
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+

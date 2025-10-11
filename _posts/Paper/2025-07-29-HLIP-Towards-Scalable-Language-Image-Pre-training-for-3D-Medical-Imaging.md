@@ -214,3 +214,23 @@ HLIP은 미가공 방사선학 연구에서 직접 예측을 수행할 수 있�
   - [CT-CLIP](https://arxiv.org/abs/2403.17834) - 3D CT를 위한 기존 CLIP 접근법
   - [BiomedCLIP](https://arxiv.org/abs/2303.00915) - 생의학 멀티모달 파운데이션 모델
   - [OpenCLIP](https://github.com/mlfoundations/open_clip) - 오픈소스 CLIP 구현
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/HLIP-Towards-Scalable-Language-Image-Pre-training-for-3D-Medical-Imaging/fig_01.png)
+캡션: Figure 1: Illustration of (a) an uncurated study for a patient. While previous work has relied on annotation and curation, HLIP enables language-image pre-training directly on such data. (b) HLIP achieves higher performance in zero-shot brain MRI disease classification while using less memory than the original ViT, which can only be trained with gradient checkpointing.
+
+### Main Results Table
+![Results](/assets/images/paper/HLIP-Towards-Scalable-Language-Image-Pre-training-for-3D-Medical-Imaging/table_164.png)
+캡션: Baselines. Given that recent 3D models such as Merlin [(<>)4] and M3D [(<>)5] do not include brain MRI in their training sets, we evaluate two 2D foundation models on our benchmark: BiomedCLIP [(<>)23], pre-trained on 15 million figure-caption pairs from PubMed, and ConceptCLIP [(<>)24], pre-trained on 23 million such pairs. We use the prompt "This brain MRI shows: {disease}." to perform zero-shot…
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+

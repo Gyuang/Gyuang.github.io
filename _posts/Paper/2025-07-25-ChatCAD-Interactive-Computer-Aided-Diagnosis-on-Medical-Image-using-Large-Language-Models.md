@@ -86,3 +86,32 @@ toc_sticky: true
 - 원문: [ChatCAD: Interactive Computer-Aided Diagnosis on Medical Image using Large Language Models](https://arxiv.org/abs/2302.07257)
 - 코드: [ChatCAD GitHub](https://github.com/ShanghaiTechAI/ChatCAD)
 - 데이터: [MIMIC-CXR](https://physionet.org/content/mimic-cxr/)
+
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/2302.07257_ChatCAD Interactive Computer Aided Diagnosis on Medical Image using Large Language Models/fig_01.png)
+
+### Main Results Table
+![Results](/assets/images/paper/2302.07257_ChatCAD Interactive Computer Aided Diagnosis on Medical Image using Large Language Models/table_29.png)
+캡션: Table 2. F1-score comparison of different-size LLMs
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+

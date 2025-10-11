@@ -87,3 +87,23 @@ toc_sticky: true
 - 원문: [Biomed-DPT: Dual Modality Prompt Tuning for Biomedical Vision-Language Models](https://arxiv.org/abs/2505.05189)
 - 코드: [GitHub - Kanyooo/Biomed-DPT](https://github.com/Kanyooo/Biomed-DPT)
 - 사전학습 모델: [BiomedCLIP Checkpoints](https://huggingface.co/microsoft/biomedclip)
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/Biomed-DPT-Dual-Modality-Prompt-Tuning-for-Biomedical-Vision-Language-Models/fig_12.png)
+캡션: Figure 4: Overview of the Biomed-DPT framework, which combines LLM prompt generation, fixed clinical prompt templates, learnable context, zero vector as a soft prompt, and BiomedCLIP to construct a unified multimodal representation space. In this method, the prompt ensemble strategy is used to integrate text and image features, and the cross-entropy, L1 constraint, and KL divergence loss are minim…
+
+### Main Results Table
+![Results](/assets/images/paper/Biomed-DPT-Dual-Modality-Prompt-Tuning-for-Biomedical-Vision-Language-Models/table_01.png)
+캡션: Table 1: The average classification accuracy (%) obtained from 5 benchmarks, where s indicates the introduction of only one learnable parameter layer. (w) denotes with interaction, and (w/o) denotes without interaction.
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+

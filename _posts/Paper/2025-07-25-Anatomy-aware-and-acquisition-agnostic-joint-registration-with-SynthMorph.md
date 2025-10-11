@@ -86,3 +86,23 @@ toc_sticky: true
 - 원문: [Anatomy-aware and acquisition-agnostic joint registration with SynthMorph](https://arxiv.org/abs/2301.11329)
 - 코드 및 유틸: [SynthMorph GitHub](https://github.com/voxelmorph/voxelmorph/tree/master/synthmorph)
 - 데이터: [OASIS](https://www.oasis-brains.org/), [ABCD](https://abcdstudy.org/), [HCP-D](https://www.humanconnectome.org/study/hcp-lifespan-development), [MASi](https://masi.vanderbilt.edu/)
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/Anatomy-aware-and-acquisition-agnostic-joint-registration-with-SynthMorph/fig_149.png)
+캡션: As in our prior work, the deformable model gη implements a U-Net ((<>)Ronneberger et al., 2015) architecture of width and we integrate the SVF νη via scaling and squaring ((<>)Ashburner, 2007; (<>)Dalca et al., 2018). Hyper-model Γξ is a simple feed-forward network with 4 ReLU- activated hidden FC layers of 32 output units each.
+
+### Main Results Table
+![Results](/assets/images/paper/Anatomy-aware-and-acquisition-agnostic-joint-registration-with-SynthMorph/table_01.png)
+캡션: QIN includes contrast-enhanced clinical stacks of thick slices from patients with glioblastoma, whereas the other acquisitions use 3D sequences. While HCP-D and MASi include pediatric data, the remaining datasets consist of adult populations.
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+

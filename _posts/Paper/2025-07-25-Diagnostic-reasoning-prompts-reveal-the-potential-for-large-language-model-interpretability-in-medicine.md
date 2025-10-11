@@ -126,3 +126,33 @@ toc_sticky: true
 - **데이터셋**: Modified MedQA USMLE dataset (518 test questions)
 - **보충 자료**: [Google Drive](https://drive.google.com/drive/folders/1mDQUZ4RhyROSEycVFN_c4uyP36oyMRSe?usp=sharing)
 - **관련 연구**: Chain-of-Thought Prompting, Clinical Reasoning in AI, Medical Question Answering
+
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/2308.06834_Diagnostic reasoning prompts reveal the potential for large language model interpretability in medicine/fig_01.png)
+캡션: Figure 3. A) Current LLM workflow. B) Proposed LLM workflow.
+
+### Main Results Table
+![Results](/assets/images/paper/2308.06834_Diagnostic reasoning prompts reveal the potential for large language model interpretability in medicine/table_01.png)
+캡션: Example LLM responses for each prompting strategy can be found in Figure 1 for GPT-3.5 and Figure 2 for GPT-4. Full results can be found in Supplemental Information I.
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+

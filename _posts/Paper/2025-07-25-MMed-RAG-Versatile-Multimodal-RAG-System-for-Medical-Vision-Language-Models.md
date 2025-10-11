@@ -82,3 +82,23 @@ toc_sticky: true
 - 원문: [링크](https://arxiv.org/abs/XXXX)
 - 코드: [GitHub](https://github.com/...)
 - 데이터: [URL]
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/MMed-RAG-Versatile-Multimodal-RAG-System-for-Medical-Vision-Language-Models/fig_20.png)
+캡션: Figure 1: Overview of MMed-RAG, a versatile factual multimodal RAG system designed to enhance the reliability of Med-LVLMs. It introduces a domain-aware retrieval mechanism that effectively handles different domains of medical images by selecting suitable retrieval models. Additionally, it uses an adaptive context selection approach to determine the optimal number of retrieved contexts and employs…
+
+### Main Results Table
+![Results](/assets/images/paper/MMed-RAG-Versatile-Multimodal-RAG-System-for-Medical-Vision-Language-Models/table_1659.png)
+캡션: Table 18: Performance comparison based on different retrievers.
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+

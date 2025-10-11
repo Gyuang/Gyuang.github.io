@@ -188,3 +188,33 @@ VoxelPrompt의 유연한 언어 인터페이스는 연구자들이 새로운 분
 - 코드: [Voxel Library](https://github.com/dalcalab/voxel) - VoxelPrompt 구현을 위한 PyTorch 기반 의료 영상 처리 라이브러리
 - 관련 연구: [SynthSeg](https://surfer.nmr.mgh.harvard.edu/fswiki/SynthSeg), [RadFM](https://arxiv.org/abs/2308.02463)
 - 데이터셋: FSM, OASIS, BraTS, ISLES, ATLAS, WMH 등 15개 공개 뇌 영상 데이터셋 활용
+
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/2410.08397_VoxelPrompt A Vision Language Agent for Grounded Medical Image Analysis/fig_17.png)
+캡션: Figure 1. Examples from the diverse set of tasks supported by the VoxelPrompt framework. For each example, we show the input prompt (gray) above the input images(s). VoxelPrompt annotates the images and generates language responses (shown in purple). These scans are processed entirely in 3D, but here we show only a single extracted slice.
+
+### Main Results Table
+![Results](/assets/images/paper/2410.08397_VoxelPrompt A Vision Language Agent for Grounded Medical Image Analysis/table_01.png)
+캡션: Table 1. Summary of key variables defined in the method.
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+

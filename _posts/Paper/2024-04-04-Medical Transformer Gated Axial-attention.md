@@ -80,3 +80,33 @@ toc_sticky: true
 - 원문: [링크](https://arxiv.org/abs/XXXX)
 - 코드: [GitHub](https://github.com/...)
 - 데이터: [URL]
+
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/2102.10662_Medical Transformer Gated Axial attention/fig_13.png)
+캡션: Fig. 1. Qualitative Results. The red box highlights the regions where our proposed method outperforms the convolutional baselines.
+
+### Main Results Table
+![Results](/assets/images/paper/2102.10662_Medical Transformer Gated Axial attention/table_01.png)
+캡션: For quantitative analysis, we use F1 and IoU scores for comparison. The quantitative results are tabulated in Table (<>)1. It can be noted that for datasets with relatively more images like Brain US, fully attention (transformer) based baseline performs better than convolutional baselines. For GlaS and MoNuSeg datasets, convolutional baselines perform better than fully attention baselines as it is…
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+

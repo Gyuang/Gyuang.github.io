@@ -78,3 +78,23 @@ toc_sticky: true
 - 원문: [링크](https://arxiv.org/abs/XXXX)
 - 코드: [GitHub](https://github.com/...)
 - 데이터: [URL]
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/Full-Contextual-Attention-for-Multi-resolution-Transformers-in-Semantic-Segmentation/fig_27.png)
+캡션: Fig. 1: Overview of the multimodal guidance approach. (a) Two independent modality-specific (inferior I vs superior S) classifiers are trained, each with encoder E—producing latent representation z—and decoder D. (b) The architecture of the guidance model G. (c) G connects the output of the (frozen) inferior modality encoder EI to the input of the (frozen) superior modality decoder DS . Then G is…
+
+### Main Results Table
+![Results](/assets/images/paper/Full-Contextual-Attention-for-Multi-resolution-Transformers-in-Semantic-Segmentation/table_01.png)
+캡션: classifier irrespective of the class performance [(<>)13]. Additionally, for the binary task of melanoma inference, we use the AUROC score.
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+

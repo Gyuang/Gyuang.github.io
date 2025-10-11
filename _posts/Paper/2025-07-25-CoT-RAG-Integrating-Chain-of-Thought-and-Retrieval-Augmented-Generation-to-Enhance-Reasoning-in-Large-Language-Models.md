@@ -82,3 +82,23 @@ toc_sticky: true
 ## 7. 참고 자료
 - 원문: [CoT-RAG: Integrating Chain of Thought and Retrieval-Augmented Generation to Enhance Reasoning in Large Language Models](https://arxiv.org/abs/2503.12286)
 - 코드: [CoT-RAG GitHub](https://github.com/hustlfy123/CoT-RAG)
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/CoT-RAG-Integrating-Chain-of-Thought-and-Retrieval-Augmented-Generation-to-Enhance-Reasoning-in-Large-Language-Models/fig_07.png)
+캡션: Figure 1: Example inputs and outputs of GPT-4o mini with (a) Zero-shot-CoT ((<>)Kojima et al., (<>)2022), (b) PoT ((<>)Chen (<>)et al., (<>)2023), (c) PS ((<>)Wang et al., (<>)2023a) and (d) Manual Intervention on MultiArith ((<>)Roy and Roth, (<>)2015).
+
+### Main Results Table
+![Results](/assets/images/paper/CoT-RAG-Integrating-Chain-of-Thought-and-Retrieval-Augmented-Generation-to-Enhance-Reasoning-in-Large-Language-Models/table_05.png)
+캡션: Table 1: Accuracy on nine datasets from three categories of reasoning tasks using ERNIE-Speed-128K. Throughout the tables in this paper, the best results are highlighted in bold, and the poorest results are underlined.
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+

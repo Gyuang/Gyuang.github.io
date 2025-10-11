@@ -82,3 +82,43 @@ toc_sticky: true
 - 원문: [링크](https://arxiv.org/abs/XXXX)
 - 코드: [GitHub](https://github.com/...)
 - 데이터: [URL]
+
+
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/2112.01518_DenseCLIP Language-Guided Dense Prediction with Context-Aware Prompting/fig_32.png)
+캡션: Semantic segmentation. As discussed in Section (<>)3.2, our framework is model-agnostic and can be applied to any dense prediction pipelines. Moreover, we propose to use an auxiliary objective to make better use of our pixel-text score maps in segmentation. Since the score maps s ∈ RH4 W4×K can be viewed as smaller segmentation results, we therefore compute a segmentation loss on it:
+
+### Main Results Table
+![Results](/assets/images/paper/2112.01518_DenseCLIP Language-Guided Dense Prediction with Context-Aware Prompting/table_01.png)
+캡션: Table 2. Ablation study. We demonstrate that performing post-model vision-to-language prompting can yield the better performance with fewer extra FLOPs and parameters.
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+

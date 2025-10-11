@@ -88,10 +88,32 @@ toc_sticky: true
 - 지식 베이스: Merck Manuals, Mayo Clinic, Cleveland Clinic 공개 자료
 
 
+
+
 ## 주요 도식/표
 
 ### Main Architecture
-![Architecture](/assets/images/paper/ChatCAD+-Toward-a-Universal-and-Reliable-Interactive-CAD-Using-LLMs/fig_06.png)
+![Architecture](/assets/images/paper/2305.15964_ChatCAD+ Toward a Universal and Reliable Interactive CAD Using LLMs/fig_06.png)
+캡션: Fig. 2. Overview of the reliable report generation. (a) Universal interpretation: To enhance the vision capability of LLMs, multiple CAD models are incorporated. The numerical results obtained from these models are transformed into visual descriptions following the rule of prob2text. (b) Hierarchical in-context learning: The LLM initially generates a preliminary report based on the visual descript…
 
 ### Main Results Table
-![Results](/assets/images/paper/ChatCAD+-Toward-a-Universal-and-Reliable-Interactive-CAD-Using-LLMs/table_208.png)
+![Results](/assets/images/paper/2305.15964_ChatCAD+ Toward a Universal and Reliable Interactive CAD Using LLMs/table_208.png)
+캡션: across other metrics, which validates its advanced overall performance. Note that ChatCAD+ (P3) shows a significant advantage over ChatCAD (P3) on all NLG and CE metrics, which underscores the rationality of hierarchical in-context learning. These results suggest that ChatCAD+ (P3) is capable of generating high-quality responses that are not only fluent and grammatical but also clinically accurate…
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
+
