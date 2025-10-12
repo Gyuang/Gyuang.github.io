@@ -1,7 +1,7 @@
 ---
 categories:
 - paper
-- bioinformatics
+- medical-ai
 date: 2025-10-13
 excerpt: 'ST-Net은 유방암 H&E 조직영상의 형태학을 학습해 공간 전사체(spot) 단위 유전자 발현을 예측, 형태-분자 정보 융합 가능성을 보여줍니다.'
 header: {}
@@ -56,4 +56,23 @@ toc_sticky: true
 - [ ] 데이터/지표 수치 인용 보강
 - [ ] 주요 도식/표 추출 및 삽입 확인(자동 주입기 사용 가능)
 - [ ] 링크/인용 형식 점검, 로컬 빌드 확인
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/ST-Net_Integrating_spatial_gene_expression_and_breast_tumour_morphology_via_DL/fig_12.png)
+캡션: Fig. 1 | St-Net pipeline and data. a, Prediction pipeline for a whole-slide histopathology image. We begin by taking patches of 224 × 224 pixels centred on the spatial transcriptomics spots. A shared set of 120 convolutional layers is used for all genes, and a fully connected layer with 250 outputs makes the final prediction for the log of the normalized mRNA count. b, Number of spots sampled in e…
+
+### Main Results Table
+![Results](/assets/images/paper/ST-Net_Integrating_spatial_gene_expression_and_breast_tumour_morphology_via_DL/table_01.png)
+캡션: Four evaluation metrics are shown: (1) number of patients (out of 23) where the ST-Net predictions correlate positively with the experimental measurements across all of the spots in that patient, (2) median Pearson's correlation across patients, (3) median correlation with the smoothed experimental data and (4) correlation with the external 10x Genomics test data.
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
 

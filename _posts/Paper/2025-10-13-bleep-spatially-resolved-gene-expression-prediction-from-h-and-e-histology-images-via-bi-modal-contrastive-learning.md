@@ -1,7 +1,7 @@
 ---
 categories:
 - paper
-- bioinformatics
+- medical-ai
 date: 2025-10-13
 excerpt: 'BLEEP은 H&E–전사체 쌍으로 학습한 비모달 대조학습 임베딩으로 공간 유전자 발현을 예측, 도메인 일반화를 강화합니다.'
 header: {}
@@ -53,4 +53,23 @@ toc_sticky: true
 - [ ] 데이터/지표 수치 인용 보강
 - [ ] 주요 도식/표 추출 및 삽입 확인(자동 주입기 사용 가능)
 - [ ] 링크/인용 형식 점검, 로컬 빌드 확인
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/BLEEP_Spatially_Resolved_Gene_Expression_Prediction_2306.01859/fig_04.png)
+캡션: For BLEEP, we use the pretrained ResNet50[(<>)10] as the image encoder and a fully connected network (FCN) with an output dimension of 256 as the expression encoder, which doubles as a projection head. The image features from the image encoder are passed through a separate projection head to bring the two modalities to the same dimension before applying the contrastive loss similar to CLIP[(<>)15]…
+
+### Main Results Table
+![Results](/assets/images/paper/BLEEP_Spatially_Resolved_Gene_Expression_Prediction_2306.01859/table_01.png)
+캡션: Table 2: Predicted gene expression values with top 5 correlations with original profile for each method from one representative replicate.
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
 

@@ -1,7 +1,7 @@
 ---
 categories:
 - paper
-- bioinformatics
+- medical-ai
 date: 2025-10-13
 excerpt: 'EGN은 exemplar-guided 전략으로 공간 전사체 유전자 발현 예측을 개선하며, 확장판에서는 그래프 신경망으로 공간 관계를 강화합니다.'
 header: {}
@@ -54,4 +54,23 @@ toc_sticky: true
 - [ ] 데이터/지표 수치 인용 보강
 - [ ] 주요 도식/표 추출 및 삽입 확인(자동 주입기 사용 가능)
 - [ ] 링크/인용 형식 점검, 로컬 빌드 확인
+
+
+## 주요 도식/표
+
+### Main Architecture
+![Architecture](/assets/images/paper/EGN_Exemplar_Guided_DNN_for_Spatial_Transcriptomics_WACV2023/fig_06.png)
+캡션: Figure 2: EGN framework. Our networks are trained in a two-stage manner. In the stage of unsupervised exemplar retrieval (Sec. 3.1), we learn an extractor E(·) and a decoder G(·) with image reconstruction objectives. After convergence, we use the extractor E(·) with a distance metric for unsupervised exemplar retrieval. For example, given Xi, we obtain the global view of Xi, i.e., ei and ei = E(Xi…
+
+### Main Results Table
+![Results](/assets/images/paper/EGN_Exemplar_Guided_DNN_for_Spatial_Transcriptomics_WACV2023/table_205.png)
+캡션: Table 4: Ablation study on model architectures.
+
+## 작성 체크리스트
+
+- [ ] 이미지가 논문 메인 아키텍처/결과표와 일치하는지 확인
+- [ ] 캡션 문구가 자연스러운지 확인 (필요 시 수정)
+- [ ] 해상도/가독성 확인 (너비 조정 필요 시 이미지 교체)
+- [ ] 링크/출처 표기 적절성 점검
+- [ ] 로컬 빌드 확인: bundle exec jekyll build
 
