@@ -6,7 +6,12 @@ author_profile: true
 sidebar_main: true
 ---
 
-{% assign posts = site.categories.vlm | sort: 'date' | reverse %}
-{% for post in posts %}
-  {% include archive-single.html %}
-{% endfor %}
+{% assign cat_posts = site.categories.vlm %}
+{% if cat_posts %}
+  {% assign posts = cat_posts | sort: 'date' | reverse %}
+  {% for post in posts %}
+    {% include archive-single.html %}
+  {% endfor %}
+{% else %}
+  <p><em>No posts in this category yet.</em></p>
+{% endif %}
