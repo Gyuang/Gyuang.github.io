@@ -1,0 +1,1163 @@
+
+===== PAGE 1 =====
+Improving Concept Alignment in Vision-Language Concept Bottleneck Models
+Nithish Muthuchamy Selvaraj, Xiaobao Guo, Adams Wai-Kin Kong, Alex Kot
+Nanyang Technological University, Singapore
+Abstract
+Concept Bottleneck Models (CBM) map images to human-
+interpretable concepts before making class predictions.
+Recent approaches automate CBM construction by prompt-
+ing Large Language Models (LLMs) to generate text
+concepts and employing Vision Language Models (VLMs)
+to score these concepts for CBM training. However, it is
+desired to build CBMs with concepts defined by human
+experts rather than LLM-generated ones to make them
+more trustworthy. In this work, we closely examine the
+faithfulness of VLM concept scores for such expert-defined
+concepts in domains like fine-grained bird species and animal
+classification. Our investigations reveal that VLMs like CLIP
+often struggle to correctly associate a concept with the
+corresponding visual input, despite achieving a high classifi-
+cation performance. This misalignment renders the resulting
+models difficult to interpret and less reliable. To address
+this issue, we propose a novel Contrastive Semi-Supervised
+(CSS) learning method that leverages a few labeled concept
+samples to activate truthful visual concepts and improve
+concept alignment in the CLIP model. Extensive experiments
+on three benchmark datasets demonstrate that our method
+significantly enhances both concept (+29.95%) and clas-
+sification (+3.84%) accuracies yet requires only a fraction
+of human-annotated concept labels. To further improve the
+classification performance, we introduce a class-level inter-
+vention procedure for fine-grained classification problems
+that identifies the confounding classes and intervenes in their
+concept space to reduce errors. Source codes are available at
+https://github.com/NMS05/Improving-Concept-Alignment-
+in-Vision-Language-Concept-Bottleneck-Models.
+Introduction
+Concept Bottleneck Models (CBM) (Koh et al. 2020) are a
+popular choice to build interpretable models using human-
+understandable concepts. These models first map input im-
+ages to a low-dimensional, expert-defined concept space.
+For instance, the bird species ‘Vermilion Flycatcher’ can be
+described using concepts like ‘red-body’ and ‘black-wing’.
+A linear classifier then makes predictions based on these
+concepts. Building a CBM requires a well-defined, non-
+ambiguous set of concepts and the corresponding concept
+labels for each sample, which is labor-intensive to obtain.
+Recent approaches (Oikarinen et al. 2023; Yang et al. 2023)
+circumvent this issue by automating CBM construction us-
+ing Large Language Models (LLMs) and Vision Language
+Models (VLMs). These methods generate an initial concept
+set by prompting an LLM with few-shot examples, then ex-
+tracting a subset of those concepts that are conducive to
+classification. When an image and this filtered concept set
+are input to a contrastively pre-trained VLM, its image-text
+alignment scores serve as “concept scores” or “concept la-
+bels” for that sample. These scores can be used to train an-
+other CBM classifier or directly predict the classes, effec-
+tively turning a VLM into a CBM (referred to as VL-CBM
+hereon).
+While LLMs possess rich world knowledge (Petroni et al.
+2019; Jiang et al. 2020) and can generate extensive con-
+cept sets across various domains, expert-defined concepts
+are sometimes preferred for several reasons.
+• Concise Concept Sets: A small, well-defined set of ex-
+pert concepts allows for easier error analysis and inter-
+vention, which is crucial for interpretable models.
+• Trusted Expertise: In medical domains like Hematol-
+ogy (Tsutsui, Pang, and Wen 2023), expert concepts are
+preferred over LLM-generated ones, as the former comes
+from the more trusted pathologists.
+• Visual Grounding: For faithful visual classification, all
+concepts must be visually grounded in the image, which
+is ensured with expert concepts.
+In such cases with limited yet preferable expert concepts,
+it is essential to ask: Do VLM concept scores faithfully rep-
+resent the visual input, and are they effective for build-
+ing VL-CBMs with the desired classification performance?
+To answer this, we closely examine CLIP (Radford et al.
+2021) concept scores for expert concepts on classification
+datasets such as CUB (Wah et al. 2011), RIVAL (Moayeri
+et al. 2022), and AwA2 (Xian et al. 2018). Ideally, the CLIP
+model should accurately associate visual concepts (appear-
+ance, color, shape, etc.) with the corresponding visual input.
+However, our investigations reveal two key issues:
+• Poor Concept Alignment: The CLIP model exhibits rel-
+atively lower concept accuracy despite the higher clas-
+sification performance of VL-CBMs. This suggests that
+CLIP’s concept scores do not faithfully represent the vi-
+sual input, thus making the resulting model less reliable.
+• Challenges with Fine-Grained Concepts: For chal-
+lenging classification tasks like CUB, the CLIP model
+tends to be biased towards the primary color of the bird,
+arXiv:2405.01825v2  [cs.CV]  24 Aug 2024
+
+===== PAGE 2 =====
+incorrectly attributing this dominant color to other body
+parts. It struggles to correctly attribute the fine-grain con-
+cepts to the visual input.
+Hence, to improve the faithfulness and reliability of VL-
+CBMs, there is a need to improve concept alignment i.e.,
+activate the desired/truthful concepts for a given image,
+which requires concept supervision. However, obtaining su-
+pervisory concept labels for all training samples is cumber-
+some. To address this, we propose a novel Contrastive Semi-
+Supervised (CSS) learning approach that improves concept
+alignment in VL-CBM with fewer labeled concept exam-
+ples. Our approach encourages consistent concept scores
+for intra-class samples while contrasting them with other
+classes. It then aligns these scores with ground truth using
+a few labeled examples per class (semi-supervision). Ex-
+tensive experiments on three benchmark datasets CUB, RI-
+VAL, and AwA2 show that our CSS method substantially
+increases the concept accuracy (+39.1% for CUB, +18.63%
+for RIVAL, +32.11% for AwA2) and enhances the overall
+classification accuracy (+5.61% for CUB, +2.84% for RI-
+VAL, +3.06% for AwA2) with minimal human-annotated
+concept labels. We also validate the effectiveness our CSS
+approach in a medical domain using the blood cell attribute
+dataset WBCAtt (Tsutsui, Pang, and Wen 2023).
+Intervention is the key advantage of a CBM over other
+interpretable models, where incorrect predictions of the clas-
+sifier can be rectified by examining and modifying the con-
+cepts. In this work, we propose a class-level intervention
+procedure for fine-grain classification problems, where we
+first compute an error matrix to identify the “confound-
+ing classes” (visually similar but semantically different) for
+which the model makes the most error. We then intervene
+the error images of these classes to improve overall classifi-
+cation accuracy. The primary contributions of this paper are
+summarized below,
+• Evaluating faithfulness of VL-CBMs. We quantify and
+evaluate the faithfulness of VLM concept scores, reveal-
+ing that CLIP models exhibit poor concept alignment and
+struggle with fine-grain concept association.
+• Improving Concept Alignment: We introduce a novel
+Contrastive Semi-Supervised (CSS) approach that lever-
+ages a fraction of human-annotated and expert-defined
+concept labels, which are inherently more reliable, to im-
+prove both concept and classification accuracies.
+• Class-level Intervention: We propose an intervention
+procedure for fine-grain classification tasks that reduces
+errors in confounding classes, further enhancing classifi-
+cation performance.
+Related Work
+Early works on Explainable AI focused on unimodal (im-
+age) classifiers and they can be broadly classified into two
+categories. Prototype-based methods (Chen et al. 2019;
+Nauta, Van Bree, and Seifert 2021; Donnelly, Barnett, and
+Chen 2022; Wang et al. 2023) learn interpretable visual fea-
+ture prototypes for every class from the training samples.
+During inference, the distance (similarity score) between the
+test sample feature and the learned prototypes determines
+the classifier’s decision. Concept-based methods (Kim et al.
+2018; Koh et al. 2020; Zarlenga et al. 2022) map the input to
+a high-level concept space defined by human experts, where
+these concepts are readily interpretable. The classifier deci-
+sion is then based on the predicted concept scores. The main
+advantage of concept-based methods is that they allow test-
+time intervention (Mitchell et al. 2021; Abid, Yuksekgonul,
+and Zou 2021; Bontempelli et al. 2023) and they are easier
+to debug compared to other methods.
+Vision-Language interpretable models (VL-CBMs). A
+limitation of concept-based models is that they require con-
+cept labels for every training sample (Koh et al. 2020)
+or a lot of training images representing each of those
+concepts (Kim et al. 2018). To mitigate this, recent ap-
+proaches (Oikarinen et al. 2023; Yang et al. 2023; Yan et al.
+2023b) leverage contrastively pre-trained Vision-Language
+Models, like CLIP, to automatically generate concept labels
+from their image-text alignment scores. These models have
+natural language concepts (Menon and Vondrick 2023; Yan
+et al. 2023a) which make them easily interpretable.
+Enhancing faithfulness. Though pioneering works on VL-
+CBMs have proposed methods to extract salient concepts for
+higher classification accuracy, recent studies have identified
+several drawbacks, such as concept prompts being biased to-
+wards object names (Zang et al. 2024), concepts being non-
+factual or irrelevant (Fang et al. 2024), and insufficient con-
+cept coverage (Shang et al. 2024). These recent works im-
+prove VL-CBM reliability by discovering concepts that bet-
+ter represent visual attributes (Esfandiarpoor, Menghini, and
+Bach 2024; Chiquier, Mall, and Vondrick 2024) and have
+stronger CLIP alignment scores. In comparison, we use ex-
+pert concepts, which are inherently more trustworthy but
+limited in size. Importantly, our CSS method can be applied
+to these works provided a few labels can be annotated for
+those concepts. Some works also enhance VL-CBMs’ relia-
+bility by making the concepts resilient to perturbations (Lai
+et al. 2023) and using sparse classifiers (Panousis, Ienco, and
+Marcos 2023; Semenov et al. 2024).
+Methodology
+Vision-Language Concept Bottleneck Models
+We first formally define VL-CBMs. Consider a dataset D =
+{(x1, y1), (x2, y2), ..., (xN, yN)}, where xi ∈RH×W ×3
+denotes the images, yi denotes the labels for k classes, and
+N is the total number of training samples. While a black-box
+classifier f : x →Rk directly maps an image x to its label y,
+a CBM consists of a backbone g : x →Rc which first maps
+the image x to a concept space consisting of c pre-defined
+concepts and a linear classifier h : Rc →Rk that maps the
+predicted concepts to its corresponding label y. These con-
+cepts represent the salient visual features crucial for solving
+the classification task and are human interpretable.
+However, training the backbone g requires N × c concept
+labels which is tedious to obtain. VL-CBMs overcome this
+issue by leveraging the image-text alignment scores of con-
+trastively pre-trained VLMs (like CLIP) as concept scores.
+Concretely, let T = {t1, t2, ..., tc} be the set of LLM gen-
+erated or expert-defined text concepts. Now the c concept
+
+===== PAGE 3 =====
+CUB
+RIVAL
+AwA2
+Classification Acc (%)
+75.84
+95.63
+90.14
+Concept Acc (%)
+24.43
+58.85
+49.02
+No.of Concepts
+312
+18
+85
+Concept Difficulty
+Hard
+Easy
+Medium
+Table 1: Evaluating faithfulness of CLIP concept scores and
+VL-CBM classification performance.
+scores for an image xi, which is denoted as Ci, is obtained
+by Ci = EI(xi) · ET (T)⊺, where · denotes the dot product,
+EI and ET denotes the image and text encoder of the CLIP
+model that maps the images and text concepts into a shared
+feature space. Now, with the availability of image xi, con-
+cept score Ci, and class label yi for N samples, the linear
+classifier h can be trained to make class predictions.
+Evaluating Faithfulness of VL-CBMs
+The trustworthiness and reliability of a VL-CBM depends
+on the faithfulness of its concept scores, which serve two
+purposes: providing rich representations for a linear classi-
+fier and enabling human interpretation of the classifier’s pre-
+dictions. Prior works on VL-CBMs have focused primarily
+on classification accuracy, which measures how well sam-
+ples are separable in the concept space, but doesn’t mea-
+sure the faithfulness of concept scores in representing visual
+truth. Therefore, we evaluate both the faithfulness of VLM
+concept scores by comparing them to ground-truth concept
+labels (Koh et al. 2020) and their classification performance
+with a linear classifier. We use three image classification
+datasets - Caltech-UCSD Birds (CUB) (Wah et al. 2011),
+Rich Visual Attributes with Localization (RIVAL) (Moay-
+eri et al. 2022), and Animal with Attributes (AwA2) (Xian
+et al. 2018) because they provide expert-defined concepts
+and the corresponding ground-truth concept labels needed
+for our evaluation. The results are presented in Table 1 and a
+visualization of these concepts is shown in Figure 2. Our in-
+vestigations reveal two key issues with CLIP concept scores.
+Poor Concept Alignment: From the table, the CLIP model
+has relatively lower concept accuracy across all three
+datasets, despite the VL-CBM achieving high classification
+accuracy. This indicates that CLIP’s concept scores do not
+faithfully represent the visual input and a higher classifica-
+tion performance does not guarantee a faithful concept un-
+derstanding. Consequently, the model is less reliable, and it
+becomes difficult to intervene such a model during test-time.
+Challenges with Fine-Grained Concepts: A closer inspec-
+tion of these concepts in Figure 2 (CLIP Concept Scores) re-
+veals that, for challenging tasks like CUB, the CLIP model
+tends to be biased towards the primary color of the bird and
+incorrectly attributes this dominant color to other body parts.
+It struggles to correctly associate the compositional and fine-
+grain concepts with the visual input.
+Why does CLIP exhibit poor concept alignment? Al-
+though the CLIP model excels at associating images with
+text containing object names and attributes, achieving strong
+zero-shot performance on open-ended classification tasks,
+we find that the CLIP model struggles with fine-grained vi-
+sual understanding when only concept descriptions are pre-
+sented, making errors in associating objects with their at-
+tributes. The CLIP model shows unsatisfactory concept ac-
+curacy when dealing with such fine-grained concepts de-
+fined by experts. Similar findings are also discussed in some
+previous works (Zang et al. 2024; Pham et al. 2024; Yuk-
+sekgonul et al. 2022; Lewis et al. 2022; Yun et al. 2022). As
+poor concept alignment can reduce the reliability and inter-
+pretability of VL-CBMs, it is critical to improve the faith-
+fulness of VL-CBMs by activating the truthful concepts for
+the given image.
+Enhancing Faithfulness of VL-CBMs
+To improve concept alignment in VL-CBM we propose a
+novel Contrastive Semi-Supervised (CSS) learning method
+that leverages a few labelled concept examples per class.
+Figure 1 illustrates the overall framework. As shown in Ta-
+ble 1, the frozen CLIP model achieves a low yet non-trivial
+concept accuracy. We enhance this by adding a learnable lin-
+ear concept projection layer (see Figure 1a) which improves
+the CLIP concept scores by directly predicting c concepts
+from the average pooled visual patch tokens as,
+Ci = EI(xi) · ET (T)⊺+ LN(E∗
+I (xi)) · WCP ,
+(1)
+where EI(xi) ∈R1×512 is the image feature, ET (T) ∈
+Rc×512 is the text feature for c concepts, E∗
+I (xi) ∈R1×768
+denotes the average pooled patch tokens from the visual en-
+coder, WCP ∈R768×c is the learnable concept projection
+layer and LN denotes layer normalization. From the con-
+cept scores Ci ∈R1×c, a linear classifier WK ∈Rc×k
+makes class predictions Ki = Ci · WK for the image xi,
+where Ki ∈R1×k denotes the class logits for the k classes.
+Now, the model must be optimized to enhance both con-
+cept and classification accuracies. To improve concept ac-
+curacy, the concept projection layer can be trained with
+a few concept labels (semi-supervision), which refines the
+weak concept scores of CLIP and aligns the predicted con-
+cepts with the ground truth. However, one needs to ef-
+fectively leverage this sparse (concept) supervisory signals
+and extend them to other unlabelled examples. Contempo-
+rary unimodal works (Hu et al. 2024) compare the features
+of labelled and unlabelled examples in the cosine space,
+and then assign pseudo concept labels for unlabelled ex-
+amples using KNN algorithm. But, this necessitates addi-
+tional computation steps (KNN) for each mini-batch. We in-
+stead propose to bootstrap the sparsely supervised concept
+scores to other unlabelled samples using contrastive learn-
+ing. This method promotes consistent concept scores for
+samples sharing ‘similar’ concepts (positive pairs) and dis-
+criminates concept scores for samples with ‘disjoint’ con-
+cepts (negative pairs). For all datasets in our paper, the simi-
+lar concept pairs come from intra-class samples and the dis-
+joint concept pairs come from inter-class samples. Further-
+more, discriminating the scores of inter-class samples make
+classes more separable in the concept space, thus aiding in
+classification.
+To achieve this (see Figure 1b), we perform pairwise sam-
+pling such that each training sample consists of a pair of im-
+ages (xi, xj) from the same class, while every other sample
+in the mini-batch belongs to different classes. There are n
+
+===== PAGE 4 =====
+Text 
+Features
+Avg Pooled 
+Patch Tokens
+Image 
+Feature
+LayerNorm
+Linear Concept 
+Projection
++
+Concept Activations
+CLIP Image 
+Encoder
+CLIP Text 
+Encoder
+• a cone shaped bill
+• a blue coloured wing
+• a red coloured wing
+• an orange coloured crown
+• a purple coloured breast
+• a striped pattern in the wing
+• a yellow coloured nape
+n
+n
+VLM
+Contrastive Learning
+VLM
+stack
+Linear Classifier
+C
+K
+G
+y
+Ground Truth 
+Concept Labels
+Ground Truth 
+Class Labels
+(a)
+(b)
+Concept Supervision
+Classifier Loss
+Figure 1: (a) Modified CLIP (VLM) with concept projection layer which enhances the raw concept scores. (b) Architecture of
+VL-CBM and an overview of the Contrastive Semi-Supervised (CSS) learning method.
+samples (2n images) in each mini-batch, and only a subset
+of these images will be concept supervised. For these image
+pairs, we compute the concept scores (Ci, Cj) and class pre-
+dictions K = [Ki, Kj] 1. Let g = [gi, gj] and y = [yi, yj]
+be the corresponding ground-truth concept labels and class
+labels. We jointly train the concept projection layer and the
+linear classifier to minimize the following loss objective.
+L = Lcontrastive + LCE + Lconcept,
+(2)
+Lcontrastive = 1
+n
+X
+i,j∈n
+−log
+esim(Ci,Cj)/τ
+P
+m̸=i esim(Ci,Cm)/τ ,
+LCE = 1
+2n
+X
+l∈2n
+Lce(Kl, yl),
+Lconcept = 1
+2n
+X
+l∈2n
+L1(γ · (s(Cl) −s(Gl))), if |Gl| ̸= 0,
+Lconcept = 0, if |Gl| = 0,
+where sim is the cosine similarity metric, τ is the tempera-
+ture parameter, Lce and L1 is the standard cross entropy loss
+and mean absolute error, s is the softmax normalization and
+γ is a constant that increases the magnitude of the L1 loss
+function. Gl represents the ground truth concept label for
+the l-th entry. l denotes the index of the concept score, class
+logit, and label tensor within the mini-batch, after stacking
+along the batch dimension.
+• The contrastive loss (Lcontrastive) optimizes WCP and
+encourages the concept scores of the same classes (posi-
+tive pairs) to be consistent and discriminates it from the
+other classes (negative pairs).
+• The cross entropy loss (LCE) trains the linear classifier
+WK to make class predictions from the concept scores.
+1The square brackets denote the tensors are stacked across batch
+dimension and no longer need to be in pairs.
+• The concept loss (Lconcept) optimizes WCP to align the
+concept predictions with the ground truth concept labels
+and it primarily improves the concept accuracy. The con-
+cept loss is enabled if the concept labels are available
+(|Gl| ̸= 0) or else it becomes zero.
+Experiments
+Experimental Setting
+Dataset. We validate the effectiveness of our Contrastive
+Semi-Supervised (CSS) method in improving concept align-
+ment on the CUB (Wah et al. 2011), RIVAL (Moayeri
+et al. 2022), AwA2 (Xian et al. 2018) datasets, and in a
+medical setting on the White Blood Cell Attribute (WB-
+CAtt) dataset (Tsutsui, Pang, and Wen 2023). All the above
+datasets provide an expert-defined concept set and the cor-
+responding ground-truth concept labels, which is crucial for
+our evaluation.
+Model. We use the PLIP ViT-B-16 (Huang et al. 2023)
+model available in Hugging Face for experiments on WB-
+CAtt dataset and use the OpenCLIP ViT-B-16 model (Il-
+harco et al. 2021) for experiments on all other datasets, un-
+less otherwise specified.
+Training and Evaluation. Following the literature (Koh
+et al. 2020; Fong and Vedaldi 2017), we use concept ac-
+curacy to quantify concept alignment. We use Adam opti-
+mizer to train all our models and evaluate them with clas-
+sification accuracy and concept accuracy metrics. We also
+conduct a distributional analysis of the VL-CBM concept
+scores to show the concept alignment explicitly.
+Improving Concept Alignment
+We empirically demonstrate the effectiveness of our Con-
+trastive Semi-Supervised (CSS) approach in improving con-
+cept alignment for the CUB, RIVAL, AwA2, and WBCAtt
+datasets in Table 2.
+Bird and Animal classification. We validate our CSS
+method with concept accuracy and classification accuracy
+
+===== PAGE 5 =====
+Model
+CUB
+RIVAL
+AwA2
+WBCAtt
+Class
+Concept
+Class
+Concept
+Class
+Concept
+Attribute
+ViT-B/16 (Black Box)
+79.21
+NA
+99.47
+NA
+94
+NA
+66.11
+CLIP VL-CBM
+75.84
+24.43
+95.63
+58.85
+90.14
+49.02
+42.56
+CSS VL-CBM (Ours)
+81.45
+63.53
+98.47
+77.48
+93.2
+81.13
+64.19
+Table 2: Improving Concept Alignment in VL-CBM using Contrastive Semi-Supervised (CSS) learning. We report the classi-
+fication, concept, and WBC attribute accuracies (in %) as Class, Concept, and Attribute. The best performance is bolded, and
+the second-best is underlined. Note that WBCAtt uses the PLIP model.
+Baltimore Oriole
+CLIP Concept Scores
+CSS Concept Scores
+0.292 - a orange coloured bill                 0.872 - a perching-like body shape       
+0.285 - a orange coloured upper tail       0.655 - a orange coloured lower body  
+0.283 - a orange coloured throat             0.627 - a black coloured wing               
+0.282 - a orange coloured breast             0.622 - a black coloured nape               
+0.273 - a orange coloured forehead
+0.608 - a black coloured eye                 
+0.256 - a black coloured throat               0.583 - a orange coloured breast
+0.247 - a orange coloured wing              0.562 - bill length shorter than head     
+0.246 - a orange coloured upper body    0.532 - a black coloured upper tail
+Vermilion Flycatcher
+CLIP Concept Scores
+CSS Concept Scores
+0.294 - a red coloured breast                  0.685 - a red coloured crown                
+0.293 - a rufous coloured crown             0.685 - a black coloured eye                 
+0.291 - a rufous coloured belly               0.644 - has primary colour red
+0.291 - a rufous coloured forehead         0.624 - a black coloured wing               
+0.290 - a red coloured eye                  
+0.592 - bill length shorter than head     
+0.286 - a rufous coloured upper tail        0.550 - a red coloured breast
+0.283 - a red coloured wing                 
+0.507 - has primary colour black          
+0.282 - a rufous coloured under tail        0.496 - a black coloured upper body     
+Common Yellowthroat
+CLIP Concept Scores
+CSS Concept Scores
+0.314 - a yellow coloured throat             0.698 - a buff coloured forehead
+0.284 - a yellow coloured upper tail       0.657 – a yellow coloured lower body
+0.269 - a yellow coloured bill                 0.612 - a pointed bill                        
+0.268 - a yellow coloured under tail       0.577 - a yellow coloured breast           
+0.266 - a orange coloured throat             0.563 - a yellow coloured belly            
+0.261 - a black coloured throat               0.511 - a perching-like body shape       
+0.255 - a yellow coloured breast            0.505 - a yellow coloured throat           
+0.251 - a buff coloured throat                 0.501 - a yellow coloured upper tail     
+Chimpanzee
+CLIP Concept Scores
+CSS Concept Scores
+0.013 - hooves
+0.019 - bush
+0.013 - furry
+0.019 - fast
+0.012 - tusks
+0.019 - walks
+0.012 - long leg
+0.018 - strong
+0.012 - paws
+0.018 - bipedal
+0.012 - horns
+0.018 - smelly
+0.012 - tail
+0.018 - jungle
+0.012 - black
+0.018 - long leg
+Fox
+CLIP Concept Scores
+CSS Concept Scores
+0.013 - furry
+0.02 - forest
+0.012 - long leg
+0.02 - plains
+0.012 - vegetation
+0.019 - meatteeth
+0.012 - small
+0.019 - hunter
+0.012 - tail
+0.019 - tail
+0.012 - hunter
+0.019 - paws
+0.012 - fish
+0.019 - active
+0.012 - walks
+0.019 - pads
+Buffalo
+CLIP Concept Scores
+CSS Concept Scores
+0.013 - horns
+0.021 - walks
+0.013 - tusks
+0.021 - fierce
+0.013 - longleg
+0.021 - quadrupedal
+0.013 - plains
+0.02 - muscle
+0.012 - fierce
+0.02 - strong
+0.012 - black
+0.02 - fast
+0.012 - buckteeth
+0.02 - horns
+0.012 - meat teeth
+0.02 - tail
+Figure 2: Visualization of top −8 concept scores for the CUB (birds) and AwA2 (animals) datasets. Incorrectly activated
+concepts are highlighted in red.
+metrics for the CUB, RIVAL, and AwA2 datasets. We first
+train a black-box image classifier with frozen CLIP vision
+encoder (ViT-B/16) as the backbone to establish baseline
+classification performance. The black-box classifier directly
+predicts the classes from image features without any concept
+bottlenecks. We then train a CLIP VL-CBM (Oikarinen et al.
+2023; Wang et al. 2023) classifier with expert-defined text
+concepts. From the table, we can see that the classification
+performance of CLIP VL-CBM is on par with the black-box
+classifier, however, it has a lower concept accuracy.
+Hence, to improve the faithfulness of VL-CBM, we add
+the concept projection layer and optimize the model with our
+CSS objective (CSS VL-CBM). Our CSS method not only
+substantially increases the concept accuracy, it also closes
+the gap with black-box methods on image classification per-
+formance. Especially for the CUB dataset, our CSS method
+surpasses the black-box classifier. The “number of concept
+labels per class” used to train the CSS VL-CBM model for
+the above datasets are as CUB - 9 labels (30%), RIVAL -
+8 labels (0.1%), and AwA2 - 10 labels (1.4%). The values
+within brackets denote the “concept labels used for training
+as a percentage of the total concept labels provided by the
+dataset”. The results show that even with such small per-
+centages of concept labels, our CSS method can substan-
+tially increase the concept accuracy. The enhanced and faith-
+ful concept scores after improving concept alignment with
+CSS is presented in Figure 2 (CSS Concept Scores).
+WBC Attribute prediction. WBCAtt contains White Blood
+41.08
+47.56
+52.11
+53.91
+80.38
+80.57
+81.21
+81.71
+63.53
+64.15
+69.87
+70.64
+81.45
+81.63
+81.89
+82.1
+35
+45
+55
+65
+75
+85
+9
+15
+24
+30
+Accuracy (%)
+Number of concept labels per class
+CUB
+70.12
+72.38
+75.86
+79.81
+98.36
+98.49
+98.53
+98.56
+77.48
+79.61
+81.47
+83.67
+98.47
+98.75
+98.86
+98.89
+69
+74
+79
+84
+89
+94
+99
+8
+40
+80
+800
+Accuracy (%)
+Number of concept labels per class
+RIVAL
+Figure 3: Impact of the number of concept labels on CSS
+VL-CBM and LaBo.
+Cell (WBC) images annotated with 31 “cell morphology” at-
+tributes. These attributes aid in diagnosis of a variety of con-
+ditions in Hematology and Pathology. So, we directly eval-
+uate the models on their attribute prediction accuracy and
+do not perform any image classification. While contempo-
+rary works (Yuksekgonul, Wang, and Zou 2023; Yang et al.
+2023) use the HAM10000 (Tschandl, Rosendahl, and Kit-
+tler 2018) dataset to study VL-CBM in the medical domain,
+the availability of attribute labels in WBCAtt makes the lat-
+ter suitable for our work. For our evaluation, we train the
+PLIP model (a VLM for Pathology AI), with 50% of the
+attribute labels. From the table, we can see that our CSS
+method substantially increases the attribute prediction accu-
+racy and closes the gap with black-box attribute predictor.
+
+===== PAGE 6 =====
+CBM Method
+Concepts
+Source
+Class Acc (%)
+LaBo (Yang et al. 2023)
+10,000
+LLM
+81.9
+SparseCBM (Semenov et al. 2024)
+926
+LLM
+80.02
+CDL (Zang et al. 2024)
+400
+LLM
+83.4
+LM4CV (Yan et al. 2023a)
+400
+LLM
+81.4
+CSS VL-CBM (Ours)
+321
+Expert
+83.89
+Table 3: Comparison of CSS VL-CBM with contemporary
+methods on CUB dataset.
+CBM Method
+Class Acc (%)
+Concept Acc (%)
+Text2Concept
+95.38
+CSS (Ours)
+98.86
+72.84
+PCBM
+88
+71.9
+ECBM
+91.2
+85.84
+CSS (Ours)
+93.2
+81.3
+Table 4: Comparison of CSS VL-CBM with other methods
+on RIVAL (top) and AwA2 (bottom) datasets.
+Impact of the number of concept labels. Since our ap-
+proach is semi-supervised, we further investigate the im-
+pact of the number of human-annotated concept labels on
+CSS VL-CBM performance, as shown in Figure 3. In this
+study, we also compare our method with the closest work,
+LaBo, where we fine-tune the final layernorm and visual
+projection layers of the CLIP model (which closely resem-
+bles training our concept projection layers). Both models are
+trained with expert concepts, and we progressively increase
+the number of concept labels used for training on the CUB
+and RIVAL datasets. From the figure, we observe that both
+approaches achieve similar classification accuracies. How-
+ever, our CSS VL-CBM model attains relatively higher con-
+cept accuracies, especially when fewer concept labels are
+available. We attribute this to the use of the concept projec-
+tion layer (which enhances raw CLIP scores) and the appli-
+cation of contrastive learning.
+Comparison with other methods
+CUB. We compare our Contrastive Semi-Supervised VL-
+CBM method with contemporary VLM-based interpretable
+models on the CUB dataset, which is extensively used by
+the Explainable AI community to study CBMs. Following
+the literature, we adopt the CLIP ViT-L-14 model for this
+comparison. Note that this increases the number of trainable
+parameters in the concept projection layer. The results, pre-
+sented in Table 3, show that our CSS model achieves strong
+classification performance despite having a smaller num-
+ber of bottleneck concepts. Since other methods use LLM-
+generated concepts without corresponding concept labels,
+concept accuracy is not reported for this comparison.
+RIVAL and AwA2. We further compare CSS VL-CBM with
+contemporary methods on the animal classification datasets
+in Table 4. For the RIVAL dataset, CSS achieves higher clas-
+sification performance compared to Text2Concept (Moay-
+eri et al. 2023). For the AwA2 dataset, CSS achieves
+higher classification accuracy compared to other methods
+but slightly lower concept accuracy compared to ECBM.
+It is important to note that PCBM (Kim et al. 2023) and
+Metric
+CSS Scores
+CLIP Scores
+Truthfulness∗(↓)
+3.22
+14.04
+Sparseness# (↓)
+0.08
+0.19
+Discriminability# (↑)
+7.04
+3.28
+Table 5: Distributional analysis of CSS vs CLIP concept
+scores for CUB test. The results are averaged over instances∗
+and classes#.
+CLIP Concept Scores
+CSS Concept Scores
+Ground Truth
+(class-averaged)
+Poor Concept 
+Alignment of CLIP
+Figure 4: t-SNE visualization of CSS (triangles) vs CLIP
+(circles) concept scores of 5 random classes for CUB test.
+ECBM (Xu et al. 2023) do not use “text” concepts and opti-
+mize the vision backbone during training.
+Distributional Analysis of Concept Space
+In addition to concept accuracy metric, we conduct a distri-
+butional analysis of the VL-CBM concept scores to explic-
+itly demonstrate the effectiveness of our CSS method in im-
+proving concept alignment. For quantitative assessment, we
+extract the concept scores (R5790×312) from both CLIP and
+our CSS model for the CUB test set. We report three met-
+rics: truthfulness: defined as the L2-distance between pre-
+dicted and ground-truth concepts; sparseness: measures the
+intra-class standard deviation of the predicted concepts; and
+discriminability: defined as the L2-distance between inter-
+class concept score clusters. The results in Table 5 show that
+the proposed CSS model has improved concept alignment
+compared with the CLIP model. To further visually com-
+pare the difference, Figure 4 depicts a t-SNE visualization of
+CSS (triangles) vs. CLIP (circles) concept scores of 5 ran-
+dom classes on the CUB test set. Our CSS method makes the
+concept clusters more dense and more separable in the con-
+cept space, enhancing concept alignment by bringing them
+closer to the ground truth.
+Intervention
+When a CBM makes an error, one can inspect the incor-
+rect predictions and manually adjust the classifier weights
+or modify the concepts to rectify these errors, thereby
+improving the overall accuracy. This process is known
+as “intervention” or “model editing.” Traditional interven-
+
+===== PAGE 7 =====
+Before Interv.
+After Interv.
+Total error for CG (30)
+27
+14
+Total error for WG (30)
+15
+9
+CG misclassified as WG
+13
+4
+WG misclassified as CG
+3
+1
+Total error for CT (30)
+21
+11
+Total error for AT (29)
+3
+2
+CT misclassified as AT
+12
+6
+AT misclassified as CT
+0
+0
+Classification Accuracy (%)
+81.45
+82.57
+Table 6: Class-level intervention of CSS VL-CBM. The con-
+founding classes are as California Gull (CG), Western Gull
+(WG), Common Tern (CT), and Artic Tern (AT). The value
+within brackets denote the total number of test samples for
+that class.
+tion approaches are typically performed at the instance
+level (Oikarinen et al. 2023; Yuksekgonul, Wang, and Zou
+2023; Koh et al. 2020), where a few erroneous images are ar-
+bitrarily chosen for intervention. However, for fine-grained
+multi-class classification problems like CUB, which have
+many classes (some bird species are visually similar) and
+relatively few samples per class, selection of error images
+become non-trivial. Therefore, we propose a class-level in-
+tervention procedure where we first identify the confounding
+classes and then choose the error images from these classes
+for intervention. Confounding classes are bird species that
+are visually similar yet semantically different, and the model
+makes the most errors for these challenging classes. This
+class-level intervention is carried out in the following steps.
+Step 1: Identify the confounding classes. We compute a
+K ×K error matrix by evaluating the trained CSS VL-CBM
+model on the test set, where K is the number of classes. The
+error matrix provides the error distribution for each class,
+and the matrix element with the highest value indicates the
+confounding class pairs. In our experiments, we identified
+two pairs of confounding classes: California Gull - Western
+Gull and Common Tern - Arctic Tern. The total number of
+classification errors for these confounding classes before in-
+tervention is presented in Table 6.
+Step 2: Inspecting the concept space. Next, we inspect
+the concept scores of the error images in these confounding
+class pairs. We find that the concept score distribution of the
+confounding classes is nearly identical, making it difficult to
+discriminate between them. Even the averaged ground-truth
+concept labels for the confounding classes are highly sim-
+ilar. Our model suffers from Type-2 error (Oikarinen et al.
+2023), meaning the number of bottleneck concepts and their
+score distributions are insufficient to effectively discriminate
+the samples.
+Step 3: Expanding the concept set. To mitigate the Type-
+2 error and to improve the overall performance, we ex-
+pand the concept set by leveraging the concepts provided
+by LaBo (Yang et al. 2023). Note that the new concepts to
+be added should be visually groundable by the CLIP model
+and hence we use the “filtered” concept set of LaBo. We
+choose top −32 concepts per confounding class and expand
+the concept set from the original 312 concepts to 440 con-
+cepts. Formally, let T ′ be the new set of 128 text concepts
+and C′
+i = EI(xi) · ET (T ′)⊺be the CLIP concept scores
+for it. Now the concept scores for all the 440 concepts for an
+image xi is given by C′ = Concat(Ci, C′
+i). During this inter-
+vention procedure we do not train a new concept projection
+layer for the expanded concept set.
+Step 4: Training the classifier. We add a new linear clas-
+sifier W ′
+K ∈R128×4 that directly predicts the confounding
+classes as K′ = C′ · W ′
+K. Then we append zeros for the
+non-confounding classes and add them to the original class
+predictions as K′
+i = Ki + K′. We finally train the linear
+classifiers WK and W ′
+K simultaneously on the CUB train set
+in a standard supervised setting with cross-entropy loss Lce.
+The total number of classification errors after this class-level
+intervention procedure is presented in Table 6. We observe
+a substantial decrease in errors for the confounding classes
+with an overall increase in the classification performance.
+Limitations
+Despite the numerous advantages, VL-CBMs have a few po-
+tential limitations.
+Ineffable concepts. While natural language offers a conve-
+nient way to build interpretable models with high-level ab-
+stract concepts, its expressive power can be limited. The sub-
+tle visual cues required for certain classification tasks, such
+as face recognition, might be difficult to articulate in words.
+Unknown concepts. VL-CBMs assume that the complete
+set of salient concepts required for solving the classifica-
+tion task is known before training. However, this assump-
+tion is not always feasible. In such cases, models that can
+“discover” unknown concepts (Shang et al. 2024) during the
+course of training are more suitable.
+Locality Faithfulness. Recent works have observed that
+even when CBMs predict the concept correctly, they often
+fail to ‘respect localities’ (Raman et al. 2024). This suggests
+that the concept predictor might rely on spurious correla-
+tions instead of relevant visual/spatial features. Such a study
+on locality faithfulness in VL-CBMs is largely unexplored.
+Conclusion
+In this paper, we investigated the faithfulness of VL-CBM
+for expert concepts and found that VLMs like CLIP have
+poor concept alignment. Hence, we proposed a novel Con-
+trastive Semi-Supervised approach that improved concept
+alignment with fewer human-annotated concept labels. Our
+work will primarily aid the Explainable AI community in
+building interpretable models that align with human pref-
+erences (concepts) yet require minimal supervision. We also
+introduced a class-level intervention procedure for fine-grain
+classification problems that reduced the error for the con-
+founding classes to increase the overall performance of the
+model.
+
+===== PAGE 8 =====
+References
+Abid, A.; Yuksekgonul, M.; and Zou, J. 2021. Meaningfully
+explaining model mistakes using conceptual counterfactu-
+als.
+Bontempelli, A.; Teso, S.; Tentori, K.; Giunchiglia, F.; and
+Passerini, A. 2023.
+Concept-level Debugging of Part-
+Prototype Networks. In The Eleventh International Confer-
+ence on Learning Representations.
+Chen, C.; Li, O.; Tao, D.; Barnett, A.; Rudin, C.; and Su,
+J. K. 2019.
+This looks like that: deep learning for inter-
+pretable image recognition. Advances in neural information
+processing systems, 32.
+Chiquier, M.; Mall, U.; and Vondrick, C. 2024. Evolving In-
+terpretable Visual Classifiers with Large Language Models.
+arXiv preprint arXiv:2404.09941.
+Donnelly, J.; Barnett, A. J.; and Chen, C. 2022. Deformable
+ProtoPNet: An Interpretable Image Classifier Using De-
+formable Prototypes.
+In Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recognition
+(CVPR), 10265–10275.
+Esfandiarpoor, R.; Menghini, C.; and Bach, S. H. 2024. If
+CLIP Could Talk: Understanding Vision-Language Model
+Representations Through Their Preferred Concept Descrip-
+tions. arXiv preprint arXiv:2403.16442.
+Fang, Z.; Yuan, Z.; Li, Z.; Chen, J.; Kuang, K.; Yao, Y.-f.;
+and Wu, F. 2024. Cross-modality Image Interpretation via
+Concept Decomposition Vector of Visual-language Models.
+IEEE Transactions on Circuits and Systems for Video Tech-
+nology.
+Fong, R. C.; and Vedaldi, A. 2017. Interpretable explana-
+tions of black boxes by meaningful perturbation. In Pro-
+ceedings of the IEEE international conference on computer
+vision, 3429–3437.
+Hu, L.; Huang, T.; Xie, H.; Ren, C.; Hu, Z.; Yu, L.; and
+Wang, D. 2024. Semi-supervised Concept Bottleneck Mod-
+els. arXiv preprint arXiv:2406.18992.
+Huang, Z.; Bianchi, F.; Yuksekgonul, M.; Montine, T. J.;
+and Zou, J. 2023.
+A visual–language foundation model
+for pathology image analysis using medical Twitter. Nature
+Medicine, 1–10.
+Ilharco, G.; Wortsman, M.; Wightman, R.; Gordon, C.; Car-
+lini, N.; Taori, R.; Dave, A.; Shankar, V.; Namkoong, H.;
+Miller, J.; Hajishirzi, H.; Farhadi, A.; and Schmidt, L. 2021.
+OpenCLIP. If you use this software, please cite it as below.
+Jiang, Z.; Xu, F. F.; Araki, J.; and Neubig, G. 2020. How
+can we know what language models know? Transactions of
+the Association for Computational Linguistics, 8: 423–438.
+Kim, B.; Wattenberg, M.; Gilmer, J.; Cai, C.; Wexler, J.;
+Viegas, F.; et al. 2018. Interpretability beyond feature at-
+tribution: Quantitative testing with concept activation vec-
+tors (tcav). In International conference on machine learning,
+2668–2677. PMLR.
+Kim, E.; Jung, D.; Park, S.; Kim, S.; and Yoon, S. 2023.
+Probabilistic Concept Bottleneck Models.
+arXiv preprint
+arXiv:2306.01574.
+Koh, P. W.; Nguyen, T.; Tang, Y. S.; Mussmann, S.; Pier-
+son, E.; Kim, B.; and Liang, P. 2020. Concept bottleneck
+models. In International conference on machine learning,
+5338–5348. PMLR.
+Lai, S.; Hu, L.; Wang, J.; Berti-Equille, L.; and Wang, D.
+2023. Faithful Vision-Language Interpretation via Concept
+Bottleneck Models. In The Twelfth International Conference
+on Learning Representations.
+Lewis, M.; Yu, Q.; Merullo, J.; and Pavlick, E. 2022. Does
+clip bind concepts? probing compositionality in large image
+models. arXiv preprint arXiv:2212.10537.
+Menon, S.; and Vondrick, C. 2023. Visual Classification via
+Description from Large Language Models. ICLR.
+Mitchell, E.; Lin, C.; Bosselut, A.; Finn, C.; and Manning,
+C. D. 2021.
+Fast model editing at scale.
+arXiv preprint
+arXiv:2110.11309.
+Moayeri, M.; Pope, P.; Balaji, Y.; and Feizi, S. 2022.
+A
+Comprehensive Study of Image Classification Model Sensi-
+tivity to Foregrounds, Backgrounds, and Visual Attributes.
+In Proceedings of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition.
+Moayeri, M.; Rezaei, K.; Sanjabi, M.; and Feizi, S. 2023.
+Text-to-concept (and back) via cross-model alignment. In
+International Conference on Machine Learning, 25037–
+25060. PMLR.
+Nauta, M.; Van Bree, R.; and Seifert, C. 2021. Neural proto-
+type trees for interpretable fine-grained image recognition.
+In Proceedings of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition, 14933–14943.
+Oikarinen, T.; Das, S.; Nguyen, L. M.; and Weng, T.-W.
+2023. Label-free Concept Bottleneck Models. In Interna-
+tional Conference on Learning Representations.
+Panousis, K. P.; Ienco, D.; and Marcos, D. 2023.
+Sparse
+linear concept discovery models.
+In Proceedings of the
+IEEE/CVF International Conference on Computer Vision,
+2767–2771.
+Petroni, F.; Rockt¨aschel, T.; Lewis, P.; Bakhtin, A.; Wu, Y.;
+Miller, A. H.; and Riedel, S. 2019.
+Language models as
+knowledge bases? arXiv preprint arXiv:1909.01066.
+Pham, T. M.; Chen, P.; Nguyen, T.; Yoon, S.; Bui, T.; and
+Nguyen, A. 2024. PEEB: Part-based Image Classifiers with
+an Explainable and Editable Language Bottleneck. arXiv
+preprint arXiv:2403.05297.
+Radford, A.; Kim, J. W.; Hallacy, C.; Ramesh, A.; Goh, G.;
+Agarwal, S.; Sastry, G.; Askell, A.; Mishkin, P.; Clark, J.;
+et al. 2021. Learning transferable visual models from nat-
+ural language supervision. In International conference on
+machine learning, 8748–8763. PMLR.
+Raman, N.; Zarlenga, M. E.; Heo, J.; and Jamnik, M. 2024.
+Do Concept Bottleneck Models Obey Locality?
+arXiv
+preprint arXiv:2401.01259.
+Semenov, A.; Ivanov, V.; Beznosikov, A.; and Gasnikov, A.
+2024. Sparse Concept Bottleneck Models: Gumbel Tricks
+in Contrastive Learning. arXiv preprint arXiv:2404.03323.
+Shang, C.; Zhou, S.; Zhang, H.; Ni, X.; Yang, Y.; and Wang,
+Y. 2024. Incremental residual concept bottleneck models.
+
+===== PAGE 9 =====
+In Proceedings of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition, 11030–11040.
+Tschandl, P.; Rosendahl, C.; and Kittler, H. 2018.
+The
+HAM10000 dataset, a large collection of multi-source der-
+matoscopic images of common pigmented skin lesions. Sci-
+entific data, 5(1): 1–9.
+Tsutsui, S.; Pang, W.; and Wen, B. 2023. WBCAtt: A White
+Blood Cell Dataset Annotated with Detailed Morphological
+Attributes. arXiv preprint arXiv:2306.13531.
+Wah, C.; Branson, S.; Welinder, P.; Perona, P.; and Belongie,
+S. 2011. The caltech-ucsd birds-200-2011 dataset.
+Wang, B.; Li, L.; Nakashima, Y.; and Nagahara, H. 2023.
+Learning Bottleneck Concepts in Image Classification. In
+Proceedings of the IEEE/CVF Conference on Computer Vi-
+sion and Pattern Recognition, 10962–10971.
+Xian, Y.; Lampert, C. H.; Schiele, B.; and Akata, Z.
+2018. Zero-shot learning—a comprehensive evaluation of
+the good, the bad and the ugly. IEEE transactions on pat-
+tern analysis and machine intelligence, 41(9): 2251–2265.
+Xu, X.; Qin, Y.; Mi, L.; Wang, H.; and Li, X. 2023. Energy-
+Based Concept Bottleneck Models. In The Twelfth Interna-
+tional Conference on Learning Representations.
+Yan, A.; Wang, Y.; Zhong, Y.; Dong, C.; He, Z.; Lu, Y.;
+Wang, W. Y.; Shang, J.; and McAuley, J. 2023a. Learning
+concise and descriptive attributes for visual recognition. In
+Proceedings of the IEEE/CVF International Conference on
+Computer Vision, 3090–3100.
+Yan, A.; Wang, Y.; Zhong, Y.; He, Z.; Karypis, P.; Wang, Z.;
+Dong, C.; Gentili, A.; Hsu, C.-N.; Shang, J.; et al. 2023b.
+Robust and Interpretable Medical Image Classifiers via Con-
+cept Bottleneck Models. arXiv preprint arXiv:2310.03182.
+Yang, Y.; Panagopoulou, A.; Zhou, S.; Jin, D.; Callison-
+Burch, C.; and Yatskar, M. 2023. Language in a bottle: Lan-
+guage model guided concept bottlenecks for interpretable
+image classification.
+In Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recognition,
+19187–19197.
+Yuksekgonul, M.; Bianchi, F.; Kalluri, P.; Jurafsky, D.; and
+Zou, J. 2022. When and Why Vision-Language Models Be-
+have like Bags-Of-Words, and What to Do About It? In The
+Eleventh International Conference on Learning Representa-
+tions.
+Yuksekgonul, M.; Wang, M.; and Zou, J. 2023. Post-hoc
+Concept Bottleneck Models. In The Eleventh International
+Conference on Learning Representations.
+Yun, T.; Bhalla, U.; Pavlick, E.; and Sun, C. 2022.
+Do
+Vision-Language Pretrained Models Learn Composable
+Primitive Concepts? arXiv preprint arXiv:2203.17271.
+Zang, Y.; Yun, T.; Tan, H.; Bui, T.; and Sun, C. 2024. Pre-
+trained Vision-Language Models Learn Discoverable Visual
+Concepts. arXiv preprint arXiv:2404.12652.
+Zarlenga, M. E.; Barbiero, P.; Ciravegna, G.; Marra, G.; Gi-
+annini, F.; Diligenti, M.; Precioso, F.; Melacci, S.; Weller,
+A.; Lio, P.; et al. 2022.
+Concept embedding models.
+In
+NeurIPS 2022-36th Conference on Neural Information Pro-
+cessing Systems.

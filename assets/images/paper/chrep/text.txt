@@ -1,0 +1,1298 @@
+
+===== PAGE 1 =====
+WANG et al.: CHREP FOR SPATIAL GENE EXPRESSION PREDICTION
+1
+CHRep: Cross-modal Histology Representation
+and Post-hoc Calibration for Spatial Gene
+Expression Prediction
+Changfan Wang, Xinran Wang, Donghai Liu, Fei Su, Member, IEEE,
+Lulu Sun, Zhicheng Zhao, Member, IEEE, and Zhu Meng
+Abstract— Spatial transcriptomics (ST) enables spatially
+resolved gene profiling but remains expensive and low-
+throughput, limiting large-cohort studies and routine clin-
+ical use. Predicting spatial gene expression from routine
+hematoxylin and eosin (H&E) slides is a promising alter-
+native, yet under realistic leave-one-slide-out evaluation,
+existing models often suffer from slide-level appearance
+shifts and regression-driven over-smoothing that suppress
+biologically meaningful variation. CHRep, a two-phase
+framework for robust histology-to-expression prediction, is
+introduced. In the training phase, CHRep learns a structure-
+aware representation by jointly optimizing correlation-
+aware regression, symmetric image–expression alignment,
+and coordinate-induced spatial topology regularization. In
+the inference phase, cross-slide robustness is improved
+without backbone fine-tuning through a lightweight cali-
+bration module trained on the training slides, which com-
+bines a non-parametric estimate from a training gallery with
+a magnitude-regularized correction module. Unlike prior
+embedding-alignment or retrieval-based transfer methods
+that rely on a single prediction route, CHRep couples
+topology-preserving representation learning with post-hoc
+calibration, enabling stable neighborhood retrieval and
+controlled bias correction under slide-level shifts. Across
+the three cohorts, CHRep consistently improves gene-wise
+correlation under leave-one-slide-out evaluation, with the
+largest gains observed on Alex+10x. Relative to HAGE,
+the Pearson correlation coefficient on all considered genes
+[PCC(ACG)] increases by 4.0% on cSCC and 9.8% on
+HER2+. Relative to mclSTExp, PCC(ACG) further improves
+by 39.5% on Alex+10x, together with 9.7% and 9.0% reduc-
+tions in mean squared error (MSE) and mean absolute error
+(MAE), respectively.
+Index Terms— Spatial transcriptomics, histopathology,
+spatial gene expression prediction, contrastive learning,
+topology preservation.
+This work was supported by the National Natural Science Foundation
+of China under Grant 62401069. (Corresponding authors: Zhicheng
+Zhao and Zhu Meng.)
+Changfan Wang, Fei Su, Zhicheng Zhao, and Zhu Meng are with the
+Beijing University of Posts and Telecommunications, Beijing 100876,
+China, and also with the Beijing Key Laboratory of Network System and
+Network Culture, Beijing 100876, China (e-mail: 2025018043@bupt.cn;
+sufei@bupt.edu.cn; zhaozc@bupt.edu.cn; bamboo@bupt.edu.cn).
+Xinran Wang, Donghai Liu, and Lulu Sun are with Peking University
+Third Hospital, Beijing 100191, China (e-mail: wxrsarah924@163.com;
+345818520@qq.com; lulusun@bjmu.edu.cn).
+I. INTRODUCTION
+Spatial transcriptomics (ST) has rapidly advanced as a
+key technology for interrogating tissue biology with spatially
+resolved molecular readouts [1]. By measuring genome-wide
+RNA abundance while retaining the spatial coordinates of cap-
+ture locations, ST enables the study of spatial gene expression
+programs in situ, and supports analyses that are difficult for
+bulk assays, such as identifying spatial domains, characterizing
+microenvironmental niches, and probing cell–cell communica-
+tion patterns [2]–[4]. To better exploit these attributes, a broad
+range of computational methods has been developed for spatial
+representation learning and domain discovery, super-resolution
+mapping, and denoising/imputation of sparse measurements,
+aiming to recover coherent and fine-grained spatial expression
+landscapes [5], [6].
+In practice, deploying ST at scale remains constrained by
+experimental cost, limited throughput, and platform-dependent
+noise such as dropouts and batch artifacts [7]. In contrast, rou-
+tine H&E whole-slide images are inexpensive, standardized in
+clinical workflows, and available at large scale across cohorts.
+This contrast has motivated a rapidly growing direction that
+seeks to predict spatial gene expression from histopathology
+morphology, approximating ST-like molecular readouts when
+only slides are available and enabling large-cohort studies
+without additional wet-lab assays [8].
+However, inferring transcriptomic states from morphology
+is fundamentally challenging. First, histology is an indirect
+surrogate where similar visual patterns may correspond to
+distinct transcriptional programs [9]. Second, the resolution
+mismatch complicates learning: each spot aggregates hetero-
+geneous microenvironments, often causing standard regression
+models to collapse into mean-seeking solutions [10]. While
+such conservative predictions often result in a lower mean
+squared error (MSE), they fail to resolve high-frequency spa-
+tial variations and rare cell types, effectively smoothing out the
+critical biological heterogeneity. Finally, realistic deployment
+demands robustness against slide-specific staining variations,
+which induce distribution shifts that degrade generalization
+without explicit alignment mechanisms [11].
+Representative histology-to-ST predictors can be broadly
+grouped by the inductive biases they emphasize for bridg-
+ing morphology and molecular profiles. Early regression-
+arXiv:2604.21573v1  [cs.CV]  23 Apr 2026
+
+===== PAGE 2 =====
+2
+WANG et al.: CHREP FOR SPATIAL GENE EXPRESSION PREDICTION
+based pipelines learn patch-to-gene mapping directly from
+paired H&E–ST data, exemplified by ST-Net [12], [13], while
+transformer-style contextual modeling, such as HisToGene,
+captures broader histological dependencies [14]. To further
+exploit spatial context, methods including Hist2ST and THI-
+toGene incorporate structured aggregation across spots using
+graph/transformer or hybrid modules [15], [16]. More recently,
+multimodal embedding approaches seek a shared image–
+expression space to improve correspondence and transferabil-
+ity: BLEEP performs retrieval-based expression transfer via
+cross-modal similarity, whereas mclSTExp combines spatial
+encoding with contrastive objectives for representation align-
+ment [17], [18].
+Despite this progress, practical challenges remain under
+realistic leave-one-slide-out evaluation. Slide-level appearance
+and protocol variations can perturb visual features, weakening
+histology–expression correspondence and leading to brittle
+generalization [19]. Moreover, objectives dominated by point-
+wise regression can encourage conservative predictions that
+attenuate spatial variation and reduce gene-wise correlation,
+even when absolute errors appear competitive. Finally, while
+many designs enhance local context aggregation, they often
+lack explicit constraints to preserve higher-order spatial re-
+lationships beyond immediate neighbors, which can gradually
+dilute mesoscopic tissue organization in the learned embedding
+space [20].
+These challenges suggest that stable representation learning
+and systematic bias correction should be treated separately
+rather than being entangled within a single end-to-end regres-
+sion pipeline. Accordingly, CHRep is introduced as a two-
+phase framework. The training phase learns structure-aware
+representations by jointly optimizing correlation-aware regres-
+sion, symmetric image–expression alignment, and coordinate-
+induced multi-hop topology preservation. The inference phase
+then applies a lightweight post-hoc calibration module,
+which combines non-parametric neighbor-based estimation
+with magnitude-regularized residual correction to improve
+robustness without backbone fine-tuning.
+The main contributions are summarized as follows:
+• CHRep is presented as a robust histology-to-expression
+prediction framework tailored to strict leave-one-slide-
+out evaluation, separating representation learning from
+deployment-time calibration to improve cross-slide gen-
+eralization.
+• A unified representation-learning objective is formulated
+by integrating correlation-aware regression, symmet-
+ric image–expression alignment, and coordinate-induced
+spatial topology preservation, strengthening gene-wise
+trend fidelity while maintaining tissue structural consis-
+tency.
+• A lightweight calibration scheme is introduced on
+top of frozen image-side representations by coupling
+a similarity-weighted non-parametric estimate with a
+magnitude-regularized residual correction, reducing slide-
+dependent bias without backbone fine-tuning.
+• Extensive experiments on the cSCC [21], HER2+ [22],
+and Alex+10x [23] datasets demonstrate consistent im-
+provements under leave-one-slide-out evaluation, with
+the largest gains observed on Alex+10x. Relative to
+HAGE [24], the Pearson correlation coefficient averaged
+over all considered genes improves by 4.0% on cSCC and
+9.8% on HER2+. Relative to mclSTExp [18], PCC(ACG)
+improves by 39.5% on Alex+10x, together with 9.7% and
+9.0% reductions in mean squared error and mean absolute
+error, respectively.
+II. METHODOLOGY
+A. Overall Framework
+Fig. 1 presents the overall pipeline of CHRep, which
+consists of a training phase and an inference phase. The key
+idea is to decouple representation learning from deployment-
+time calibration so that the model can preserve cross-modal
+and spatial structure during training, while remaining robust
+to slide-level shifts at inference time.
+In the training phase, CHRep takes three inputs for each
+spot, including an H&E patch, its spatial coordinate, and
+the corresponding gene expression vector. The H&E branch
+extracts histology features for expression regression, the coor-
+dinate branch generates position-aware features that are fused
+with histology features, and the gene branch encodes expres-
+sion targets into gene features. Based on these three branches,
+CHRep jointly optimizes a correlation-aware regression loss,
+a cross-modal alignment loss between coordinate-guided mor-
+phology features and gene features, and a spatial topology
+regularization term derived from spot coordinates. Together,
+these objectives encourage the learned representation to remain
+predictive for gene expression, aligned across modalities, and
+consistent with tissue spatial organization.
+In the inference phase, CHRep freezes the trained encoder
+and applies a lightweight calibration module without back-
+bone fine-tuning. Specifically, an Estimate Module produces a
+similarity-weighted neighbor-based estimate from a training-
+gallery embedding bank, and a Correction Module predicts
+a regularized residual adjustment from the frozen embedding.
+The final prediction is obtained by summing the outputs of the
+two modules. This design improves robustness under leave-
+one-slide-out evaluation by reducing slide-specific bias while
+preserving the representation learned in the training phase.
+B. Data Preparation and Notation
+For each tissue section, each spatial location (spot) is
+represented by a triplet (x, g, p), where x ∈R3×H×W denotes
+an H&E image patch centered at the spot, g ∈RG denotes the
+corresponding spot-level expression vector restricted to a fixed
+highly-variable gene (HVG) set, and p ∈R2 denotes the 2D
+spot coordinate. Raw counts are preprocessed by library-size
+normalization followed by log transformation, and the HVG
+list is fixed for each cohort to ensure consistency in training
+and evaluation.
+Within each leave-one-slide-out fold, expression is fur-
+ther standardized on a per-gene basis using the mean µ
+and standard deviation σ computed from the training slides
+only, yielding ˜g = (g −µ) ⊘(σ + ϵ). Unless otherwise
+stated, training-phase optimization, inference-phase neighbor
+aggregation, and all reported metrics are computed in this
+
+===== PAGE 3 =====
+WANG et al.: CHREP FOR SPATIAL GENE EXPRESSION PREDICTION
+3
+Fig. 1: Overview of CHRep with a two-phase workflow. Training phase (top): CHRep uses three branches for H&E patches,
+spot coordinates, and gene expression. The H&E branch produces histology features FH for decoding and correlation-aware
+regression supervision (Lreg). The coordinate branch maps spot coordinates to coordinate features FC, which are fused with
+FH to form the coordinate-guided morphology representation FM. The gene branch produces expression features FG. A cross-
+modal alignment loss (Lcon) aligns FM with FG, while a topology regularization term (Lspa) preserves coordinate-induced
+spatial structure by regularizing the similarity pattern of FG. Inference phase (bottom): the encoder is frozen, an Estimate
+Module computes a similarity-weighted neighbor-based estimate from the training gallery, and a Correction Module outputs a
+magnitude-regularized residual adjustment. Their sum gives the final prediction.
+standardized space ˜g in order to reduce cross-slide scale drift
+and maintain a consistent per-gene scale. Because the mean
+squared error (MSE) and mean absolute error (MAE) are
+scale-dependent, whereas the Pearson correlation coefficient
+(PCC) is not, the corresponding absolute-error metrics in the
+original log-normalized space are additionally reported in the
+supplementary material for completeness.
+Fixed-size image patches are cropped around each spot
+center in pixel space. For cohorts with pixel-aligned spot cen-
+ters, patch extraction is performed directly on the whole-slide
+image using the recorded coordinates. For 10× Visium data,
+spot coordinates are first transformed into the image coordinate
+system using the provided scale factor, and boundary-safe
+clamping is then applied to spots near slide borders prior to
+cropping. During training, lightweight data augmentations are
+employed, including color jitter, random horizontal flips, and
+random rotations. During inference, deterministic preprocess-
+ing is adopted without augmentation.
+The coordinates p are not fed directly into the image
+encoder as raw image inputs. Instead, during the training phase
+they are mapped by a position-embedding branch to coor-
+dinate features FC, which are fused with histology features
+FH to form the coordinate-guided morphology representation
+FM used for cross-modal alignment. In parallel, the same
+coordinates are used to define the coordinate-induced topology
+structure that supervises the similarity pattern of gene features
+FG. Therefore, spatial coordinates in CHRep are used not only
+for topology construction, but also for guiding the aligned mor-
+phology representation in the representation-learning stage.
+C. Representation Learning with a Unified Objective
+Following the training phase in Fig. 1, CHRep learns
+from three coordinated inputs in each mini-batch, namely
+H&E patches, spot coordinates, and gene expression vectors,
+denoted by {(xi, pi, gi)}B
+i=1. As illustrated in Fig. 1, the
+histology branch uses an image encoder, denoted as Zimg
+in the figure, to extract image features FH for expression
+prediction. The coordinate branch generates position-aware
+features FC, which are fused with FH to form the coordinate-
+guided morphology representation FM. In parallel, the gene
+branch uses a gene encoder, denoted as Zgene in the figure, to
+produce gene features FG. For each spot i, the image encoder
+fθ extracts the histology feature
+FH(i) = fθ(xi),
+(1)
+
+===== PAGE 4 =====
+4
+WANG et al.: CHREP FOR SPATIAL GENE EXPRESSION PREDICTION
+and the regression head predicts the standardized expression
+vector from the image feature:
+ˆgi = hϕ(FH(i)) .
+(2)
+In parallel, the coordinate branch maps the 2-D spot coor-
+dinate pi = (xi, yi) to a position-aware feature,
+FC(i) = eψ(pi).
+(3)
+The resulting coordinate feature is fused with the histology
+feature to form the coordinate-guided morphology represen-
+tation FM(i) used for subsequent cross-modal alignment.
+Meanwhile, the gene branch maps the standardized expression
+vector to a gene representation,
+FG(i) = gω(˜gi) .
+(4)
+The regression branch is supervised by a correlation-aware
+objective,
+Lreg =
+1
+BG
+B
+X
+i=1
+∥ˆgi −˜gi∥2
+2 + λmae
+1
+BG
+B
+X
+i=1
+∥ˆgi −˜gi∥1
++ λPCC
+ 1 −PCC
+
+,
+(5)
+where PCC denotes the average gene-wise Pearson correlation
+computed across the mini-batch.
+Beyond direct regression, CHRep explicitly aligns the
+coordinate-guided morphology representation FM with the
+gene representation FG. In terms of the visual pipeline in
+Fig. 1, this corresponds to aligning the projected image-side
+features derived from the image encoder Zimg with the pro-
+jected gene-side features derived from the gene encoder Zgene.
+Specifically, lightweight projection heads are applied to FM
+and FG, and the projected embeddings are normalized before
+contrastive matching. For visual simplicity, these projection
+heads are omitted in Fig. 1. A symmetric contrastive objective
+is adopted:
+Lcon = 1
+2 (LM→G + LG→M) ,
+(6)
+with
+LM→G = −1
+B
+B
+X
+i=1
+log
+exp(sim(i, i)/τ)
+PB
+j=1 exp(sim(i, j)/τ)
+,
+(7)
+where sim(i, j) denotes the cosine similarity between the
+projected image-side embedding of spot i and the projected
+gene-side embedding of spot j, and τ is a learnable temper-
+ature parameter. The term LG→M is defined analogously by
+swapping the two modalities.
+To preserve coordinate-induced tissue organization, CHRep
+further
+regularizes
+the
+gene-side
+representation
+with
+a
+topology-consistency term. For each mini-batch, a kNN graph
+is first constructed from the spot coordinates, and multi-hop
+neighborhood matrices are derived to encode local-to-global
+spatial structure. Let A(h) ∈RB×B denote the adjacency
+matrix of the h-hop neighborhood in the current mini-batch.
+The coordinate-induced topology prior is defined as
+Atopo =
+Hhop
+X
+h=1
+αhA(h),
+(8)
+where αh controls the contribution of different hop orders.
+Let FG denote the batch-wise gene-feature matrix formed
+by stacking {FG(i)}B
+i=1. Its feature-similarity matrix is com-
+puted as
+S(FG) = FGF⊤
+G.
+(9)
+The topology loss then encourages the similarity pattern in-
+duced by FG to match the coordinate-induced topology prior:
+Lspa =
+eS(FG) −eAtopo
+
+2
+F ,
+(10)
+where both matrices are normalized before comparison. In
+this way, the learned gene representation is encouraged to
+preserve higher-order tissue organization, and this structural
+bias is further conveyed to the morphology side through the
+contrastive alignment term in Eq. (6).
+Finally, the overall training objective combines regression,
+cross-modal alignment, and topology preservation:
+L = λconLcon + λregLreg + λspaLspa.
+(11)
+D. Post-hoc Calibration via an Estimate Module and a
+Correction Module
+The inference phase in Fig. 1 is designed to improve
+robustness under strict leave-one-slide-out evaluation without
+re-training the backbone. After stage-1 training, the regression
+head hϕ is discarded, and only the frozen image encoder is
+retained at deployment. For each query spot i from the held-
+out slide, the H&E patch xi is passed through the trained
+image encoder to obtain a frozen image feature, denoted by
+zi := FH(i). This feature corresponds to the shared query
+representation shown in Fig. 1 and serves as the common input
+to both the Estimate Module and the Correction Module. No
+additional inference-time projection head is introduced in this
+stage. Therefore, both retrieval-based estimation and residual
+correction are performed in the same frozen image-feature
+space. The coordinate branch is used only during training to
+shape the representation and is not involved during inference.
+Let Dtr and Dte denote the training and test sets for a
+given fold. A gallery bank is first built from training-slide
+embeddings and their standardized expression vectors only.
+The retrieved top-k neighborhood from this bank corresponds
+to the Gallery Cluster shown in Fig. 1. For a query spot
+i ∈Dte, cosine similarities to candidate training spots j ∈Dtr
+are computed as
+sij = z⊤
+i zj.
+(12)
+Let Nk(i) denote the indices of the top-k gallery neighbors
+with the highest similarity scores. The Estimate Module forms
+a similarity-weighted non-parametric prediction:
+wij =
+exp(sij/τt)
+P
+j′∈Nk(i) exp(sij′/τt),
+ˆg(E)
+i
+=
+X
+j∈Nk(i)
+wij ˜gj,
+(13)
+where τt controls the sharpness of neighbor aggregation.
+During correction-stage training, trivial self-copying is avoided
+by enforcing
+Nk(i) ⊆Dtr \ {i}.
+(14)
+
+===== PAGE 5 =====
+WANG et al.: CHREP FOR SPATIAL GENE EXPRESSION PREDICTION
+5
+Although the Estimate Module provides a shift-tolerant
+anchor, neighbor aggregation alone may still leave structured
+gene-wise residual bias when the retrieved neighborhood is
+imperfect. To compensate for this limitation, a lightweight
+Correction Module rη predicts an additive residual from the
+same frozen query representation:
+∆i = rη(zi),
+ˆgi = ˆg(E)
+i
++ ∆i,
+(15)
+where rη is implemented as a small MLP. The additive form
+in Eq. (15) corresponds to the summation node shown in the
+lower panel of Fig. 1. To prevent over-correction, the residual
+magnitude is regularized as
+L∆= 1
+B
+B
+X
+i=1
+∥∆i∥2
+2 .
+(16)
+The
+correction
+module
+is
+optimized
+while
+keeping
+the image branch frozen. Its objective applies the same
+MSE+MAE+PCC form as Eq. (5) to the calibrated predic-
+tions, together with residual regularization:
+Lcal = Lcal
+reg + λ∆L∆,
+(17)
+where Lcal
+reg reuses the same correlation-aware regression form
+as Eq. (5), but is computed on the calibrated predictions in
+Eq. (15). Only the parameters η of the correction module are
+updated in this stage.
+At inference time, each query patch from the held-out slide
+is first encoded into zi, the gallery neighbors are retrieved
+using only training-slide embeddings, the Estimate Module
+produces ˆg(E)
+i
+through Eq. (13), and the Correction Module
+outputs the final calibrated prediction through Eq. (15). This
+protocol ensures that the test slide is excluded from both
+gallery construction and correction-module training, thereby
+matching strict leave-one-slide-out evaluation. In practice, the
+Estimate Module provides a robust retrieval-based anchor,
+whereas the Correction Module compensates systematic resid-
+ual bias without additional backbone optimization.
+III. EXPERIMENTS AND RESULTS
+A. Datasets
+Experiments are conducted on three paired histology–spatial
+transcriptomics cohorts spanning distinct tissues and acqui-
+sition settings, covering both tumor microenvironment and
+breast cancer scenarios. Specifically, the evaluation is per-
+formed on the HER2+ breast cancer dataset with 32 tissue
+sections, the cSCC dataset with 12 tissue sections, and the
+Alex+10x dataset with 9 slices. Each cohort provides, for every
+capture location (spot), an H&E-derived image patch centered
+at the spot, the corresponding spot-level gene expression vec-
+tor, and the 2D spatial coordinates. Unless otherwise specified,
+a leave-one-slide-out protocol is adopted for model selection,
+and performance on the held-out slide is reported using both
+correlation- and error-based metrics.
+cSCC [21] comprises spatially resolved transcriptomes mea-
+sured on cutaneous squamous cell carcinoma specimens with
+matched histology. The cohort contains multiple patients with
+replicate tissue sections, providing a clinically relevant setting
+in which morphology varies across sections and patients
+and cross-slide generalization is essential. The standard pre-
+processing pipeline used in prior histology-to-transcriptome
+prediction studies is followed to obtain spot-level normalized
+expression targets and aligned H&E patches.
+HER2+ [22] is a breast cancer spatial transcriptomics cohort
+with matched histology and spot coordinates and is widely
+used as a benchmark for histology-to-expression prediction.
+The commonly adopted subset of tissue sections with con-
+sistent spot layouts and reliable image–expression pairing is
+used, and PCC-based metrics are reported for both all genes
+and highly expressed genes.
+Alex+10x [23] is a 10x Visium cohort with paired H&E im-
+ages and spot-level expression profiles. The cohort is evaluated
+under a strict slide-held-out setting to stress-test robustness to
+slide- or batch-level shifts. Following prior work, each slide
+is treated as a domain, and leave-one-slide-out evaluation is
+performed across all available slides using the same gene
+subset and normalization convention throughout.
+B. Compared Methods
+Comparisons
+are
+conducted
+against
+representative
+histology-to-expression
+predictors
+that
+reflect
+the
+main
+modeling trends in this area. Regression-based baselines
+include
+ST-Net
+[12],
+whereas
+contextual
+modeling
+is
+represented by HisToGene [14]. To account for spatial
+interactions, Hist2ST [15] and hybrid architectures such
+as THItoGene [16] are included. Cross-modal alignment
+approaches that learn shared image–expression embedding
+spaces are also considered, including retrieval-based BLEEP
+[17], contrastive learning-based mclSTExp [18], and the
+recent HAGE model [24]. For each method, the authors’
+recommended settings are adopted when available; otherwise,
+hyperparameters are tuned using training/validation splits
+only. HAGE is included on datasets for which results or
+sufficiently detailed settings are available from the original
+work. It is not reported on Alex+10x because the original
+paper does not provide official code or an Alex+10x-specific
+implementation protocol, making a faithful reproduction
+difficult to ensure.
+C. Evaluation Metrics
+Both correlation-based and error-based metrics are reported
+under the same convention as that used in training. Let gi ∈
+RG denote the log-normalized ground-truth expression for spot
+i, and let ˜gi = (gi −µ) ⊘(σ + ϵ) denote the per-gene
+standardized expression, where (µ, σ) are computed from the
+training slides of the current fold. Let ˆgi ∈RG denote the
+predicted standardized expression for spot i. Unless otherwise
+stated, all metrics below are computed in the standardized
+space ˜g to maintain a consistent per-gene scale across slides
+[25]. The Pearson correlation coefficient (PCC) is invariant to
+affine rescaling, whereas the mean squared error (MSE) and
+mean absolute error (MAE) depend on scale.
+Gene-wise Pearson correlation. For each gene j, the
+Pearson correlation coefficient across all spots is computed
+
+===== PAGE 6 =====
+6
+WANG et al.: CHREP FOR SPATIAL GENE EXPRESSION PREDICTION
+TABLE I: Mean Pearson correlation coefficients (PCCs) on all considered genes (ACG) and the top-50 highly expressed genes
+(HEG@50), along with mean squared error (MSE) and mean absolute error (MAE), across the HER2+, cSCC, and Alex+10x
+datasets. HAGE is not reported on Alex+10x because the original work does not provide official code or dataset-specific
+implementation details for a faithful reproduction on this cohort.
+Methods
+HER2+
+PCC (ACG)↑
+PCC (HEG@50)↑
+MSE↓
+MAE↓
+ST-Net [12]
+0.0561 ± 0.017
+0.0134 ± 0.013
+0.5312 ± 0.008
+0.6306 ± 0.011
+HisToGene [14]
+0.0842 ± 0.015
+0.0711 ± 0.014
+0.5202 ± 0.014
+0.6422 ± 0.005
+His2ST [15]
+0.1443 ± 0.013
+0.1849 ± 0.015
+0.5135 ± 0.009
+0.6087 ± 0.013
+THItoGene [16]
+0.1726 ± 0.018
+0.2809 ± 0.013
+0.5012 ± 0.011
+0.5956 ± 0.009
+BLEEP [17]
+0.1873 ± 0.005
+0.2909 ± 0.016
+0.6015 ± 0.016
+0.5824 ± 0.004
+mclSTExp [18]
+0.2304 ± 0.011
+0.3866 ± 0.021
+0.5897 ± 0.013
+0.5813 ± 0.008
+HAGE [24]
+0.2489 ± 0.001
+0.4458 ± 0.003
+0.4830 ± 0.005
+0.3606 ± 0.002
+CHRep (Ours)
+0.2733 ± 0.0018
+0.4634 ± 0.0020
+0.5616 ± 0.005
+0.5002 ± 0.008
+Methods
+cSCC
+PCC (ACG)↑
+PCC (HEG@50)↑
+MSE↓
+MAE↓
+ST-Net [12]
+0.0012 ± 0.022
+0.0018 ± 0.015
+0.6806 ± 0.006
+0.6404 ± 0.003
+HisToGene [14]
+0.0771 ± 0.024
+0.0919 ± 0.012
+0.6805 ± 0.012
+0.6234 ± 0.007
+His2ST [15]
+0.1838 ± 0.011
+0.2175 ± 0.016
+0.6748 ± 0.017
+0.6107 ± 0.006
+THItoGene [16]
+0.2373 ± 0.009
+0.2719 ± 0.012
+0.6546 ± 0.006
+0.6012 ± 0.019
+BLEEP [17]
+0.2449 ± 0.017
+0.3122 ± 0.027
+0.5163 ± 0.007
+0.5399 ± 0.015
+mclSTExp [18]
+0.3235 ± 0.019
+0.4261 ± 0.016
+0.4302 ± 0.005
+0.5208 ± 0.009
+HAGE [24]
+0.3397 ± 0.006
+0.4607 ± 0.007
+0.4248 ± 0.002
+0.3296 ± 0.002
+CHRep (Ours)
+0.3532 ± 0.004
+0.4682 ± 0.005
+0.4183 ± 0.003
+0.4048 ± 0.007
+Methods
+Alex+10x
+PCC (ACG)↑
+PCC (HEG@50)↑
+MSE↓
+MAE↓
+ST-Net [12]
+0.0009 ± 0.013
+0.0452 ± 0.007
+0.4721 ± 0.011
+0.5042 ± 0.015
+HisToGene [14]
+0.0618 ± 0.008
+0.0984 ± 0.015
+0.4565 ± 0.014
+0.4973 ± 0.009
+His2ST [15]
+0.1299 ± 0.012
+0.1784 ± 0.005
+0.3788 ± 0.008
+0.4492 ± 0.012
+THItoGene [16]
+0.1384 ± 0.014
+0.2156 ± 0.013
+0.3672 ± 0.009
+0.4315 ± 0.006
+BLEEP [17]
+0.1552 ± 0.009
+0.2825 ± 0.012
+0.2593 ± 0.013
+0.4050 ± 0.015
+mclSTExp [18]
+0.1949 ± 0.011
+0.3611 ± 0.018
+0.2329 ± 0.006
+0.3897 ± 0.011
+CHRep (Ours)
+0.2718 ± 0.016
+0.4659 ± 0.020
+0.2102 ± 0.033
+0.3545 ± 0.010
+Fig. 2: Per-slide distribution of gene-wise Pearson correlations on HER2+ (785 genes). For each slide, boxplots of gene-
+wise PCC values between predicted and ground-truth expression are reported for CHRep and representative baselines. Higher
+medians and tighter interquartile ranges indicate more accurate and stable cross-slide generalization.
+as
+PCCj =
+PN
+i=1
+ ˜gi,j −˜g·,j
+  ˆgi,j −¯ˆg·,j
+
+qPN
+i=1
+ ˜gi,j −˜g·,j
+2 qPN
+i=1
+ ˆgi,j −¯ˆg·,j
+2 ,
+(18)
+where ˜g·,j = 1
+N
+PN
+i=1 ˜gi,j and ¯ˆg·,j = 1
+N
+PN
+i=1 ˆgi,j.
+For a gene subset S, the set-level correlation metric is
+defined as the average of gene-wise Pearson correlation co-
+efficients:
+PCC(S) = 1
+|S|
+X
+j∈S
+PCCj.
+(19)
+In particular, ACG denotes all considered genes, i.e., the full
+HVG set used in evaluation. Therefore, PCC(ACG) repre-
+
+===== PAGE 7 =====
+WANG et al.: CHREP FOR SPATIAL GENE EXPRESSION PREDICTION
+7
+Fig. 3: HER2+ performance as a function of the gene set. PCC on ACG and HEG@K with K ∈{50, 100, 200} is reported.
+Error bars indicate the standard deviation across folds. As shown, CHRep consistently achieves the highest PCC across all
+evaluated gene sets, with particularly clear advantages on highly expressed genes.
+sents the average gene-wise Pearson correlation coefficient
+over the full evaluation gene set.
+Highly expressed genes (HEG@K). To emphasize genes
+with stronger signal, we define HEG@K as the top-K genes
+ranked by their mean expression in the ground truth:
+µj = 1
+N
+N
+X
+i=1
+gi,j,
+SHEG@K = TopK
+ {µj}G
+j=1
+
+,
+(20)
+and report
+PCC(HEG@K) = PCC (SHEG@K) .
+(21)
+Error metrics. Mean squared error (MSE) and mean abso-
+lute error (MAE) are also reported:
+MSE =
+1
+NG
+N
+X
+i=1
+∥ˆgi −˜gi∥2
+2 ,
+MAE =
+1
+NG
+N
+X
+i=1
+∥ˆgi −˜gi∥1 .
+(22)
+Correlation
+metrics
+reflect
+gene-wise
+trend
+consistency,
+whereas MSE/MAE quantify absolute deviations; reporting
+both provides a balanced assessment under noisy and sparse
+ST measurements.
+D. Implementation Details
+CHRep consists of a training phase and an inference
+phase. For each spot i, the input is an H&E-centered patch
+xi
+∈R3×224×224. In the training phase, the image en-
+coder extracts the histology feature FH(i) = fθ(xi), and
+the regression head hϕ maps FH(i) to the training-phase
+prediction ˆgi = hϕ(FH(i)) ∈RG. Training uses standard
+image augmentations, including random flips, rotations, and
+color jitter. Spatial coordinates are not directly used as in-
+puts to the image encoder. Instead, they are encoded by a
+position-embedding branch and fused with histology features
+to form the coordinate-guided morphology representation. In
+parallel, the same coordinates are used to construct coordinate-
+induced multi-hop neighborhoods for topology regularization
+on the gene side. For each mini-batch, a kNN graph is
+built in coordinate space, and multi-hop adjacency is derived
+to supervise hierarchical neighborhood preservation in the
+embedding space. Cross-modal alignment is implemented with
+lightweight projection heads that produce normalized image-
+side and gene-side embeddings for the symmetric contrastive
+objective.
+In the inference phase, the encoder is frozen and all training
+spots are mapped to calibration embeddings zi, which form
+the training-gallery embedding bank. For a query spot, the
+Estimate Module computes a similarity-weighted estimate
+ˆg(E)
+i
+by aggregating the standardized expression vectors of
+the top-k nearest training embeddings. The Correction Module
+predicts a residual term ∆i = rη(zi), and the final prediction
+is given by ˆgi = ˆg(E)
+i
++ ∆i. Only the correction module is
+optimized in this phase. Its training is restricted to the training
+slides of each fold, and explicit magnitude regularization is
+imposed on ∆i to prevent over-correction and re-learning of
+the full mapping. All hyperparameters are selected strictly
+within the training/validation portion of each leave-one-slide-
+out fold.
+E. Comparative Experiments
+Table I reports leave-one-slide-out performance on HER2+,
+cSCC, and Alex+10x under both correlation-based an error-
+based metrics. Overall, CHRep achieves the strongest corre-
+lation across all three cohorts, indicating improved recovery
+of gene-wise expression trends under slide-level distribution
+shifts. The error metrics exhibit a more nuanced pattern: on
+cSCC, CHRep improves correlation and MSE with competitive
+
+===== PAGE 8 =====
+8
+WANG et al.: CHREP FOR SPATIAL GENE EXPRESSION PREDICTION
+Fig. 4: Per-slide distribution of gene-wise PCC on cSCC under leave-one-slide-out evaluation.
+error performance overall, while on Alex+10x it improves
+both correlation and error metrics; on HER2+, CHRep attains
+the best PCC while not reaching the minimum MSE/MAE,
+reflecting the well-known difference between preserving rel-
+ative variation (correlation) and matching absolute magnitude
+(squared/absolute error).
+On
+HER2+,
+CHRep
+improves
+PCC(ACG)
+and
+PCC(HEG@50)
+to
+0.2733
+and
+0.4634
+(Table
+I),
+outperforming all baselines including HAGE. In contrast,
+HAGE achieves the lowest MSE/MAE. This discrepancy is
+consistent with the different emphases of correlation and
+error-based metrics. MSE/MAE primarily penalize magnitude
+deviations and can therefore favor conservative, mean-seeking
+predictions that remain close to global averages. Although
+such predictions may yield smaller absolute errors, they
+often attenuate spatial and gene-wise variability, which in
+turn
+suppresses
+correlation.
+CHRep
+explicitly
+optimizes
+correlation-aware supervision and cross-modal alignment to
+preserve relative variation patterns across spots and genes,
+which improves PCC. However, absolute-error metrics can
+remain higher when the prediction exhibits slide-dependent
+scale/offset mismatch in the standardized space, indicating
+that correlation gains do not necessarily imply optimal
+magnitude
+calibration.
+The
+post-hoc
+Estimate/Correction
+calibration stage is designed to reduce these systematic
+biases, and the remaining MSE/MAE gap on HER2+ suggests
+stronger slide-specific calibration differences in this cohort
+compared with the other datasets.
+Fig. 2 complements the averaged results by showing the
+per-slide distribution of gene-wise PCCs (785 genes). Across
+most slides, CHRep exhibits higher medians and reduced
+low-correlation tails compared with representative baselines,
+indicating that the gain is not driven by a small subset of
+favorable slides but reflects more stable cross-slide general-
+ization. The often tighter interquartile ranges further suggest
+reduced sensitivity to slide-level appearance shifts and a more
+consistent mapping from morphology to expression trends.
+Fig. 3 further evaluates high-signal genes on HER2+ using
+PCC(HEG@K) with K ∈{50, 100, 200}. CHRep improves
+HEG correlation consistently across all K, which is important
+because highly expressed genes tend to carry clearer spatial
+signals and are less dominated by measurement noise. The
+consistent advantage from HEG@50 to HEG@200 indicates
+that the improvement extends beyond a narrow gene subset
+and supports more reliable recovery of biologically meaningful
+spatial variation.
+On cSCC, CHRep achieves the best correlation performance
+and the lowest MSE among the compared methods (Table I),
+indicating improved recovery of gene-wise expression trends
+with competitive magnitude accuracy. This advantage is fur-
+ther supported by the per-slide boxplots in Fig. 4. Across most
+held-out slides, CHRep shows higher median gene-wise PCC
+and a more favorable distribution than the competing baselines.
+This suggests that the improvement is broadly distributed
+across slides rather than driven by a small number of favor-
+able cases, reflecting more stable cross-slide generalization.
+Fig. 5 complements this analysis with qualitative spatial maps.
+Compared with competing methods, CHRep produces spatial
+patterns that more closely resemble the ground truth, particu-
+larly in preserving spatially localized enrichment and coherent
+gradients that follow tissue morphology. Furthermore, on the
+Alex+10x dataset, CHRep achieves the largest improvements
+across all metrics, substantially reducing error and improving
+correlation over the strongest baselines. Taken together, these
+results indicate that CHRep improves cross-slide robustness
+by strengthening histology–transcriptome correspondence and
+preserving spatial organization. Moreover, the post-hoc cali-
+bration module effectively reduces systematic slide-level bias
+under pronounced distribution shifts without the need to re-
+train the image backbone.
+F. Analysis of Key Design Components
+This section examines how the key design components of
+CHRep contribute to robust leave-one-slide-out generalization.
+The analysis of post-hoc calibration is conducted on Alex+10x
+(Table II), where slide-level shifts are more pronounced and
+the effect of calibration is most evident. The analysis of
+representation learning is conducted on cSCC (Table III),
+which provides a demanding test bed for preserving tissue
+
+===== PAGE 9 =====
+WANG et al.: CHREP FOR SPATIAL GENE EXPRESSION PREDICTION
+9
+Fig. 5: Qualitative comparison of predicted spatial expression patterns on a held-out cSCC slide. Rows correspond to the genes
+SBSN, PAICS, and CELF1, while columns show the ground-truth expression, CHRep prediction, and mclSTExp prediction,
+respectively, with spot-level expression values overlaid on the same H&E image. The PCC values reported above the predicted
+maps denote the gene-wise Pearson correlation coefficients on the displayed slide. Red boxes highlight representative local
+regions for cross-method visual comparison. Compared with mclSTExp, CHRep produces spatial patterns that more closely
+match the ground truth, with clearer recovery of localized high-expression regions and better preservation of spatially coherent
+expression variation.
+topology and cross-modal correspondence. Taken together,
+these results reveal a consistent pattern: non-parametric neigh-
+borhood aggregation improves shift tolerance, the correction
+module compensates structured gene-wise bias, correction-
+magnitude regularization prevents over-correction, and align-
+ment and topology play complementary roles in stabilizing
+cross-modal correspondence while retaining tissue organiza-
+tion.For fairness, each ablation table is obtained from an
+independently repeated experiment batch under the same data
+split and training protocol, so the full-model numbers reported
+in Tables II and III are intended as within-table controls and
+may differ slightly from the final CHRep results in Table I.
+G. Effect of the Post-hoc Calibration Design
+Table II compares alternative post-hoc calibration designs
+on Alex+10x by disentangling the roles of the estimate
+module, the correction module, and the correction-magnitude
+constraint. This analysis is particularly informative because
+Alex+10x is also the cohort on which CHRep achieves the
+strongest overall gains in the main comparison.
+The estimate-only variant provides a robust but conserva-
+tive baseline. By aggregating information from neighboring
+samples in the learned embedding space, it stabilizes predic-
+tions under slide-level appearance shifts. However, the same
+averaging mechanism also smooths sharp local variation and
+cannot explicitly remove structured gene-wise bias shared by
+the neighborhood. As a result, its correlation remains limited,
+reaching a PCC(ACG) of 0.2079 and a PCC(HEG@50) of
+0.3687.
+Using only the correction module substantially improves
+correlation, indicating that a learned residual adjustment
+can compensate systematic errors that remain after stage-
+1 prediction. Relative to estimate-only, the correction-only
+design increases PCC(ACG) from 0.2079 to 0.2434 and
+PCC(HEG@50) from 0.3687 to 0.4429. At the same time,
+MSE rises from 0.2211 to 0.2300, suggesting that, without a
+non-parametric anchor, the corrector may over-adjust to slide-
+specific noise. This result highlights an important trade-off:
+
+===== PAGE 10 =====
+10
+WANG et al.: CHREP FOR SPATIAL GENE EXPRESSION PREDICTION
+TABLE II: Comparison of post-hoc calibration designs on Alex+10x. ‘Constraint’ denotes the regularization that controls the
+magnitude of the correction-module output ∆(·).
+Variants
+Calibration Modules
+Alex+10x
+Estimate
+Correction
+Constraint
+PCC(ACG)↑
+PCC (HEG@50)↑
+MSE↓
+MAE↓
+Estimate only
+✓
+×
+×
+0.2079
+0.3687
+0.2211
+0.3865
+Correction only
+×
+✓
+×
+0.2434
+0.4429
+0.2300
+0.3691
+No constraint
+✓
+✓
+×
+0.2604
+0.4391
+0.2652
+0.3643
+Estimate + Correction
+✓
+✓
+✓
+0.2676
+0.4573
+0.2150
+0.3551
+TABLE III: Contribution analysis of alternative representation-objective configurations on cSCC. “Topology” denotes the
+coordinate-induced (multi-hop) topology preservation term; “Contrastive” denotes the symmetric cross-modal alignment
+objective.
+Variants
+Representation Components
+cSCC
+Topology
+Regression
+Contrastive
+PCC(ACG)↑
+PCC (HEG@50)↑
+MSE↓
+MAE↓
+Regression + Contrastive
+×
+✓
+✓
+0.3412
+0.4482
+0.4303
+0.4272
+Topology + Regression
+✓
+✓
+×
+0.3321
+0.4272
+0.4292
+0.4103
+Contrastive + Topology
+✓
+×
+✓
+0.3482
+0.4563
+0.4250
+0.4115
+Full objective (Ours)
+✓
+✓
+✓
+0.3522
+0.4663
+0.4191
+0.4051
+improving trend agreement alone does not necessarily ensure
+accurate magnitude calibration.
+The strongest performance is obtained by combining the
+estimate and correction modules. Relative to estimate-only, the
+full calibration design improves PCC(ACG) by +0.0597 and
+PCC(HEG@50) by +0.0886, while reducing MAE by 0.0314.
+Relative to correction-only, adding the estimate module fur-
+ther improves PCC(ACG) by +0.0242 and reduces MSE by
+0.0150. These results indicate a clear division of labor between
+the two components: the estimate module provides a slide-
+robust anchor through similarity-weighted neighborhood ag-
+gregation, whereas the correction branch focuses on structured
+residual patterns that neighborhood averaging alone cannot
+resolve.
+The correction-magnitude constraint is also critical. With-
+out this constraint, the Estimate+Correction design improves
+correlation over estimate-only but exhibits a marked degrada-
+tion in squared error, with MSE increasing to 0.2652. After
+introducing the constraint, PCC(ACG) further improves from
+0.2604 to 0.2676 and PCC(HEG@50) from 0.4391 to 0.4573,
+while MSE and MAE are reduced to 0.2150 and 0.3551,
+respectively. This behavior indicates that explicit control of the
+correction magnitude is necessary to prevent over-correction
+and to achieve a better balance between trend fidelity and
+absolute-value accuracy under pronounced cross-slide shifts.
+H. Contribution of the Representation Objective
+Table III analyzes alternative representation-objective con-
+figurations on cSCC to quantify the contributions of re-
+gression, symmetric cross-modal contrastive alignment, and
+coordinate-induced multi-hop topology consistency. This set-
+ting is particularly informative because, in the main results,
+cSCC is one of the cohorts on which CHRep improves both
+correlation and error metrics while also showing stable slide-
+wise behavior.
+The partial objectives already provide competitive perfor-
+mance, but none of them matches the full formulation. The
+Regression+Contrastive variant attains a PCC(ACG) of 0.3412
+and a PCC(HEG@50) of 0.4482, indicating that explicit align-
+ment between morphology and expression improves cross-
+modal correspondence under leave-one-slide-out evaluation.
+However, this configuration alone does not fully preserve the
+spatial organization induced by tissue coordinates.
+Adding topology preservation on top of regression and con-
+trastive alignment yields the best overall result. Relative to Re-
+gression+Contrastive, the full objective improves PCC(ACG)
+from 0.3412 to 0.3522 and PCC(HEG@50) from 0.4482 to
+0.4663, while reducing MSE from 0.4303 to 0.4191 and MAE
+from 0.4272 to 0.4051. These gains suggest that the topology
+term contributes information that is not captured by cross-
+modal alignment alone. Rather than enforcing only immediate-
+neighbor smoothness, the multi-hop constraint preserves a
+local-to-global neighborhood hierarchy, thereby helping retain
+mesoscopic tissue organization in the learned representation.
+A complementary perspective is provided by the Topol-
+ogy+Regression variant, which removes contrastive align-
+ment while retaining regression and topology preservation.
+Compared with Regression+Contrastive, this variant achieves
+slightly lower MAE (0.4103 versus 0.4272) but weaker corre-
+lation, with PCC(ACG) decreasing from 0.3412 to 0.3321 and
+PCC(HEG@50) from 0.4482 to 0.4272. This result suggests
+that topology can regularize spatial coherence and partly
+stabilize prediction magnitude, but cannot by itself maintain
+sufficiently strong histology–expression correspondence under
+stain and scanner variation.
+The Contrastive+Topology variant further confirms the com-
+plementary roles of the three components. Although it achieves
+stronger correlation than Topology+Regression, it still remains
+inferior to the full objective, indicating that regression is
+necessary for anchoring quantitative prediction. Overall, the
+
+===== PAGE 11 =====
+WANG et al.: CHREP FOR SPATIAL GENE EXPRESSION PREDICTION
+11
+results support a consistent interpretation: regression provides
+the quantitative prediction backbone, contrastive alignment
+stabilizes cross-modal correspondence, and topology consis-
+tency preserves tissue organization beyond immediate neigh-
+borhoods. Jointly optimizing these components yields the most
+balanced performance and the strongest cross-slide generaliza-
+tion.
+IV. CONCLUSION
+CHRep addresses spatial gene expression prediction from
+H&E histology under strict leave-one-slide-out evaluation
+through a two-phase design that separates structure-aware
+representation learning from inference-time bias correction.
+The framework improves robustness to cross-slide variation by
+preserving image–expression correspondence and coordinate-
+induced tissue organization during training, while refining
+inference through similarity-guided estimation and regularized
+residual correction. Results on cSCC, HER2+, and Alex+10x
+datasets show that this design consistently strengthens gene-
+wise correlation on held-out slides while maintaining favorable
+overall error performance across cohorts. These findings sug-
+gest that decoupling representation learning from lightweight
+inference-phase calibration offers a practical direction for
+building more reliable and transferable histology-to-expression
+models in large-cohort and real-world deployment settings.
+REFERENCES
+[1] S. Alon, D. R. Goodwin, A. Sinha, A. T. Wassie, F. Chen, E. R. Daugh-
+arthy, Y. Bando, A. Kajita, A. G. Xue, K. Marrett et al., “Expansion
+sequencing: Spatially precise in situ transcriptomics in intact biological
+systems,” Science, vol. 371, no. 6528, p. eaax2656, 2021.
+[2] M. Asp, J. Bergenstr˚ahle, and J. Lundeberg, “Spatially resolved tran-
+scriptomes—next generation tools for tissue exploration,” BioEssays,
+vol. 42, no. 10, p. 1900221, 2020.
+[3] A. Rao, D. Barkley, G. S. Franc¸a, and I. Yanai, “Exploring tissue
+architecture using spatial transcriptomics,” Nature, vol. 596, no. 7871,
+pp. 211–220, 2021.
+[4] J. Hu, K. Coleman, D. Zhang, E. B. Lee, H. Kadara, L. Wang, and
+M. Li, “Deciphering tumor ecosystems at super resolution from spatial
+transcriptomics with TESLA,” Cell Systems, vol. 14, no. 5, pp. 404–417,
+2023.
+[5] A. Chen, S. Liao, M. Cheng, K. Ma, L. Wu, Y. Lai, X. Qiu, J. Yang,
+J. Xu, S. Hao et al., “Spatiotemporal transcriptomic atlas of mouse
+organogenesis using DNA nanoball-patterned arrays,” Cell, vol. 185,
+no. 10, pp. 1777–1792, 2022.
+[6] E. Zhao, M. R. Stone, X. Ren, J. Guenthoer, K. S. Smythe, T. Pulliam,
+S. R. Williams, C. R. Uytingco, S. E. Taylor, P. Nghiem et al.,
+“Spatial transcriptomics at subspot resolution with BayesSpace,” Nature
+Biotechnology, vol. 39, no. 11, pp. 1375–1384, 2021.
+[7] J. Lee, M. Yoo, and J. Choi, “Recent advances in spatially resolved
+transcriptomics: challenges and opportunities,” BMB Reports, vol. 55,
+no. 3, p. 113, 2022.
+[8] T. M. Dang, Q. Zhou, Y. Guo, H. Ma, S. Na, T. B. Dang, J. Gao, and
+J. Huang, “Abnormality-aware multimodal learning for WSI classifica-
+tion,” Frontiers in Medicine, vol. 12, p. 1546452, 2025.
+[9] M. Pizurica, Y. Zheng, F. Carrillo-Perez, H. Noor, W. Yao, C. Wohlfart,
+A. Vladimirova, K. Marchal, and O. Gevaert, “Digital profiling of gene
+expression from histology images with linearized attention,” Nature
+Communications, vol. 15, no. 1, p. 9886, 2024.
+[10] S. He, Y. Jin, A. Nazaret, L. Shi, X. Chen, S. Rampersaud, B. S.
+Dhillon, I. Valdez, L. E. Friend, J. L. Fan et al., “Starfysh integrates
+spatial transcriptomic and histologic data to reveal heterogeneous tumor–
+immune hubs,” Nature Biotechnology, vol. 43, no. 2, pp. 223–235, 2025.
+[11] D. Tellez, G. Litjens, P. B´andi, W. Bulten, J.-M. Bokhorst, F. Ciompi,
+and J. Van Der Laak, “Quantifying the effects of data augmentation
+and stain color normalization in convolutional neural networks for
+computational pathology,” Medical Image Analysis, vol. 58, p. 101544,
+2019.
+[12] B. He, L. Bergenstr˚ahle, L. Stenbeck, A. Abid, A. Andersson, ˚A. Borg,
+J. Maaskola, J. Lundeberg, and J. Zou, “Integrating spatial gene ex-
+pression and breast tumour morphology via deep learning,” Nature
+Biomedical Engineering, vol. 4, no. 8, pp. 827–834, 2020.
+[13] H. Li, C. Wang, G. Zhao, Z. He, Y. Wang, and Z. Sun, “Sclera-transfuse:
+Fusing swin transformer and CNN for accurate sclera segmentation,” in
+2023 IEEE International Joint Conference on Biometrics (IJCB). IEEE,
+2023, pp. 1–8.
+[14] M. Pang, K. Su, and M. Li, “Leveraging information in spatial tran-
+scriptomics to predict super-resolution gene expression from histology
+images in tumors,” bioRxiv, pp. 2021–11, 2021.
+[15] Y. Zeng, Z. Wei, W. Yu, R. Yin, Y. Yuan, B. Li, Z. Tang, Y. Lu,
+and Y. Yang, “Spatial transcriptomics prediction from histology jointly
+through transformer and graph neural networks,” Briefings in Bioinfor-
+matics, vol. 23, no. 5, 2022.
+[16] Y. Jia, J. Liu, L. Chen, T. Zhao, and Y. Wang, “THItoGene: a deep
+learning method for predicting spatial transcriptomics from histological
+images,” Briefings in Bioinformatics, vol. 25, no. 1, 2023.
+[17] R. Xie, K. Pang, S. Chung, C. Perciani, S. MacParland, B. Wang,
+and G. Bader, “Spatially resolved gene expression prediction from
+histology images via bi-modal contrastive learning,” Advances in Neural
+Information Processing Systems, vol. 36, pp. 70 626–70 637, 2023.
+[18] W. Min, Z. Shi, J. Zhang, J. Wan, and C. Wang, “Multimodal contrastive
+learning for spatial gene expression prediction using histology images,”
+Briefings in Bioinformatics, vol. 25, no. 6, p. bbae551, 2024.
+[19] K. Stacke, G. Eilertsen, J. Unger, and C. Lundstr¨om, “Measuring domain
+shift for deep learning in histopathology,” IEEE Journal of Biomedical
+and Health Informatics, vol. 25, no. 2, pp. 325–336, 2020.
+[20] H. Ren, B. L. Walker, Z. Cang, and Q. Nie, “Identifying multicellular
+spatiotemporal organization of cells with SpaceFlow,” Nature Commu-
+nications, vol. 13, no. 1, p. 4076, 2022.
+[21] A. L. Ji, A. J. Rubin, K. Thrane, S. Jiang, D. L. Reynolds, R. M.
+Meyers, M. G. Guo, B. M. George, A. Mollbrink, J. Bergenstr˚ahle et al.,
+“Multimodal analysis of composition and spatial architecture in human
+squamous cell carcinoma,” Cell, vol. 182, no. 2, pp. 497–514, 2020.
+[22] A. Andersson, L. Larsson, L. Stenbeck, F. Salm´en, A. Ehinger, S. Wu,
+G. Al-Eryani, D. Roden, A. Swarbrick, ˚A. Borg et al., “Spatial de-
+convolution of HER2-positive breast tumors reveals novel intercellular
+relationships,” bioRxiv, pp. 2020–07, 2020.
+[23] S. Z. Wu, G. Al-Eryani, D. L. Roden, S. Junankar, K. Harvey, A. An-
+dersson, A. Thennavan, C. Wang, J. R. Torpy, N. Bartonicek et al., “A
+single-cell and spatially resolved atlas of human breast cancers,” Nature
+Genetics, vol. 53, no. 9, pp. 1334–1347, 2021.
+[24] T. M. Dang, H. Li, Y. Guo, H. Ma, F. Jiang, Y. Miao, Q. Zhou, J. Gao,
+and J. Huang, “HAGE: Hierarchical alignment gene-enhanced pathology
+representation learning with spatial transcriptomics,” in International
+Conference on Medical Image Computing and Computer-Assisted In-
+tervention.
+Springer, 2025, pp. 228–238.
+[25] C. Wang, A. S. Chan, X. Fu, S. Ghazanfar, J. Kim, E. Patrick, and
+J. Y. Yang, “Benchmarking the translational potential of spatial gene
+expression prediction from histology,” Nature Communications, vol. 16,
+no. 1, p. 1544, 2025.

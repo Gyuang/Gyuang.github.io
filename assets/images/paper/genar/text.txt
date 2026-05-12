@@ -1,0 +1,1908 @@
+
+===== PAGE 1 =====
+Under Review
+GENAR: NEXT-SCALE AUTOREGRESSIVE GENERA-
+TION FOR SPATIAL GENE EXPRESSION PREDICTION
+Jiarui Ouyang1,2∗,Yihui Wang1∗,Yihang Gao1,2, Yingxue Xu1, Shu Yang1 Hao Chen1B
+1The Hong Kong University of Science and Technology
+2Shenzhen Loop Area Institute
+{jouyangag, ywangrm, ygaodh, yxueb, syangcw}@connect.ust.hk
+jhc@cse.ust.hk
+ABSTRACT
+Spatial Transcriptomics (ST) offers spatially resolved gene expression but remains
+costly. Predicting expression directly from widely available Hematoxylin and
+Eosin (H&E) stained images presents a cost-effective alternative. However, most
+computational approaches (i) predict each gene independently, overlooking co-
+expression structure, and (ii) cast the task as continuous regression despite ex-
+pression being discrete counts. This mismatch can yield biologically implausible
+outputs and complicate downstream analyses. We introduce GenAR, a multi-scale
+autoregressive framework that refines predictions from coarse to fine. GenAR (a)
+clusters genes into hierarchical groups to expose cross-gene dependencies, (b)
+models expression as codebook-free discrete token generation to directly predict
+raw counts, and (c) conditions decoding on fused histological and spatial embed-
+dings. From an information-theoretic view, the discrete formulation avoids log-
+induced biases and the coarse-to-fine factorization aligns with a principled condi-
+tional decomposition. Extensive experimental results on four ST datasets across
+different tissue types demonstrate that GenAR achieves state-of-the-art perfor-
+mance, offering potential implications for precision medicine and cost-effective
+molecular profiling. Code is publicly available at https://github.com/oyjr/genar.
+1
+INTRODUCTION
+Spatial Transcriptomics (ST) has emerged as a transformative technology, enabling measurement of
+gene expression while preserving the spatial organization of cells within tissue samples Jain & Eadon
+(2024); Rao et al. (2021b); Xiao & Yu (2021). Unlike traditional bulk RNA sequencing, which aver-
+ages gene expression across entire tissue samples and discards spatial context, ST maintains the spa-
+tial relationships among cells and their molecular profiles. This spatially resolved approach reveals
+how gene expression patterns vary across different tissue regions, providing molecular insights that
+complement conventional morphological assessment such as Hematoxylin and Eosin (H&E) stain-
+ing Ilse et al. (2018); Yang et al. (2024); Chen et al. (2025b); Xu & Chen (2023). The impact of ST
+technology extends across multiple biomedical domains, such as cancer research, where it identifies
+spatially distinct tumor subregions Bera et al. (2019).
+However, ST technology faces significant practical barriers that limit its widespread adoption. Cur-
+rent ST protocols require specialized laboratory equipment, extensive technical expertise, and con-
+siderable time investment. Per-sample costs often range from hundreds to thousands of dollars, mak-
+ing large-scale studies financially challenging Rao et al. (2021a). These constraints have resulted
+in relatively small ST datasets, whereas H&E images are abundant and inexpensive to obtain. This
+scarcity of ST data further reduces the practical utility of this technology and hinders comprehensive
+spatial studies across diverse tissue types and disease conditions.
+To address this challenge, several computational methods have been proposed for predicting spa-
+tial gene expression directly from histopathological images. Early studies such as ST-Net He et al.
+*Equal contribution.
+BCo-corresponding author.
+1
+arXiv:2510.04315v1  [cs.CV]  5 Oct 2025
+
+===== PAGE 2 =====
+Under Review
+(2020) and Hist2ST Zeng et al. (2022) established the basic framework for linking morphological
+features to molecular profiles. Subsequent work includes BLEEP Xie et al. (2023), which imple-
+mented bi-modal embedding with contrastive learning, TRIPLEX Chung et al. (2024), which in-
+tegrates multi-resolution feature, and M2OST Wang et al. (2025) with multimodal and multi-scale
+strategies. More recently, STEM Zhu et al. (2025) attempted to solve this problem using conditional
+diffusion models from a generative modeling perspective.
+Despite these significant advances, existing methods share several limitations: First, many methods
+independently predict the expression of each gene, underutilizing cross-gene dependencies. Genes
+rarely function in isolation but rather operate in concert through regulatory networks, signaling
+pathways, and co-expression modules Barabasi & Oltvai (2004). Treating genes as independent
+targets can therefore miss biologically meaningful interactions.
+Second, existing methods face challenges in maintaining biological interpretability due to their mod-
+eling of gene expression as continuous regression tasks. Gene expression is recorded as nonnegative
+integer counts that approximate the number of mRNA molecules per spot or cell, typically ranging
+from zero to several thousand. These raw counts carry important meaning for biological applica-
+tions such as differential expression and pathway enrichment Love et al. (2014). However, current
+approaches apply a log transformation to gene expression data, converting them into continuous
+floating-point numbers (typically 0-15) for prediction. This transformation departs from the discrete
+count scale used in biological analyses and may lead to predictions that cannot be directly interpreted
+in terms of molecule counts.
+To address these challenges, we propose GenAR (Gene expression prediction via next-scale
+AutoRegressive), a progressive multi-scale autoregressive framework that overcomes the limitations
+of existing approaches. Specifically, GenAR tackles the aforementioned problems as follows: First,
+rather than predicting genes independently, we cluster genes into coarse-to-fine groups and perform
+sequential prediction across scales; each scale conditions on all prior predictions to encode cross-
+gene structure and progressively refine estimates. Second, our framework directly predicts raw gene
+expression counts, keeping biological meaning intact and allowing direct use in biological analy-
+ses. Third, we cast prediction as discrete token generation rather than continuous regression—an
+information-theoretic, entropy-preserving view that avoids log-induced bias and aligns with a con-
+ditional probability decomposition.
+Our main contributions can be summarized as follows:
+• We propose a progressive multi-scale autoregressive framework for spatial gene expression
+prediction that decomposes the prediction task into sequential scales from coarse to fine
+granularity.
+• We develop a discrete token generation approach that directly predicts raw gene expres-
+sion counts through a codebook-free approach, preserving biological interpretability and
+enabling direct use in downstream analyses.
+• GenAR demonstrates state-of-the-art performance on four spatial transcriptomics datasets,
+outperforming existing methods across standard evaluation metrics.
+2
+RELATED WORK
+2.1
+GENE EXPRESSION PREDICTION
+Initial work in this field focused on connecting tissue morphology with molecular profiles. ST-
+Net He et al. (2020) applied the DenseNet architecture to extract features from H&E stained images
+for gene expression prediction. Hist2ST Zeng et al. (2022) advanced this approach by combining
+convolutional networks, Transformers, and graph neural networks to better capture complex spatial
+relationships and cellular interactions in tissue samples, demonstrating the importance of model-
+ing spatial context in gene expression prediction. Histogene Pang et al. (2021) brought the Vision
+Transformer architecture to this domain, leveraging self-attention mechanisms to capture long-range
+dependencies in histopathological images that traditional convolutional approaches might miss.
+As the field evolved, specialized methods such as BLEEP Xie et al. (2023) introduced bi-modal
+embeddings and contrastive learning, aligning histopathological and gene expression data more ef-
+2
+
+===== PAGE 3 =====
+Under Review
+fectively. EGN Yang et al. (2023) utilized exemplar-guided networks for efficient spatial transcrip-
+tomics analysis by learning from representative samples, reducing computational overhead while
+maintaining prediction accuracy.
+Recent work has explored multimodal and multi-scale strategies to further improve performance.
+TRIPLEX Chung et al. (2024) designed a multi-resolution framework with three specialized en-
+coders to capture local patch features, spatial context, and tissue-level patterns at different scales.
+UMPIRE Han et al. (2024) employed contrastive learning to align image and gene expression rep-
+resentations using large-scale paired datasets, showing that scaling up training data significantly
+improves model generalization. M2OST Wang et al. (2025) enhanced prediction accuracy by in-
+tegrating multimodal information and multi-scale feature representations, STEM Zhu et al. (2025)
+attempted to solve this problem from a generative modeling perspective using conditional diffusion
+models, treating gene expression prediction as a generation task conditioned on histological features.
+2.2
+NEXT-SCALE AUTOREGRESSIVE GENERATION
+Autoregressive generation has achieved remarkable success in natural language processing and com-
+puter vision. Early visual autoregressive approaches treated images as sequences of pixels Van den
+Oord et al. (2016), but suffered from computational inefficiency. Vector Quantized Variational Au-
+toEncoder (VQ-VAE) Van Den Oord et al. (2017) addressed this by representing images as discrete
+token sequences through quantization, establishing a two-stage paradigm of discretization followed
+by autoregressive prediction.
+Recently, VAR Tian et al. (2024) proposed next-scale prediction, generating images progressively
+from coarse to fine scales rather than sequential token-by-token generation. VAR has inspired exten-
+sions across diverse applications Ma et al. (2024); Qu et al. (2025); Chen et al. (2025a), establishing
+next-scale autoregressive generation as a promising paradigm. These methods follow a two-stage
+paradigm where a VQ-VAE first discretizes continuous visual data into codebook tokens, which are
+then predicted by an autoregressive model. This approach is necessitated by the continuous nature
+of visual data, requiring explicit discretization to enable autoregressive modeling.
+However, gene expression prediction presents a unique opportunity to leverage the inherently dis-
+crete nature of the data. Since gene expression counts are naturally discrete integer values, we
+can directly apply autoregressive modeling without requiring a separate codebook learning stage.
+This yields a codebook-free end-to-end pipeline that avoids encode–decode reconstruction loss and
+retains a simpler assumption with fewer moving parts.
+3
+METHODOLOGY
+Problem Formulation. Let G = {1, . . . , n} index the genes. For each spatial location u (spot), we
+observe an H&E image patch Iu ∈RH×W×3 and its coordinates Su ∈R2. The target is a vector
+of nonnegative integer counts yu ∈Nn
+0, where yu,g denotes the expression count of gene g ∈G at
+location u Anders & Huber (2010). Given a dataset D = {(Iu, Su, yu)}N
+u=1, the goal is to learn
+a mapping that predicts gene expression counts ˆyu = GenARθ(Iu, Su). Training minimizes the
+expected loss over D:
+θ⋆= arg min
+θ
+1
+N
+N
+X
+u=1
+L(yu, ˆyu)
+(1)
+where L is the multi-scale loss function defined in Section 3.
+Overview of GenAR. An overview of GenAR is shown in Figure 1. Genes are reordered into hierar-
+chical clusters based on spatial expression patterns, progressing from major gene groups to smaller
+nested subgroups. Given an H&E patch Iu and its coordinates Su, we first extract histopathological
+features using a pre-trained foundation model Chen et al. (2024). We then incorporate spatial con-
+text by applying a sinusoidal positional encoding to Su. Both modalities are processed through a
+fusion module to obtain a final histological embedding H ∈R768.
+GenAR employs a progressive multi-scale autoregressive framework to capture cross-gene structure
+that independent regression baselines often underutilize. We define K scales with hierarchical gene
+3
+
+===== PAGE 4 =====
+Under Review
+K Scales
+Gene Identity Modulate
+1
+1
+2 3 4
+̂𝑟2
+̂𝑟1
+̂𝑟3
+1
+2 3 4 5
+6 7 8
+Output Head
+Causal Transformer
+̂𝑟1, ̂𝑟2 ,···, ̂𝑟𝑘−1
+···
+···
+···
+···
+Histological Embedding
+···
+×12
+!𝐺=[𝑔1, 𝑔2 ,···, 𝑔200]
+Raw Gene Expression Counts
+···
+···
+···
+···
+···
+⨁
+Spatial Coordinates
+Spatial Processor
+⨂
+···
+···
+···
+···
+···
+Foundation Model
+···
+···
+···
+···
+···
+Gene 19 
+Gene 13
+Gene 7
+Gene 8  
+Gene 1
+Gene 11
+…
+Gene 1 
+Gene 2
+Gene 3
+Gene 4  
+Gene 5
+Gene 6
+…
+Spatial Embedding
+Histological Embedding
+Predicted Tokens
+Image Embedding
+a
+c
+b
+Next-Scale Prediction
+̂𝑟1
+···
+̂𝑟2
+···
+̂𝑟2
+̂𝑟𝑘
+Gene 200
+Start
+Figure 1: Overall architecture of GenAR. (a) Genes are clustered into hierarchical groups from
+coarse to fine granularity. (b) Image and spatial features are fused to generate histological embed-
+dings. (c) Multi-scale autoregressive generation progressively refines predictions across scales.
+groups {C(1), . . . , C(K)} from coarse to fine, starting from a single global group and refining to
+smaller groups and finally individual genes. At each scale k, the model predicts grouped expressions
+y(k)
+u
+conditioned on all previously generated coarser outputs y(<k)
+u
+.
+At each scale, we represent gene expression counts as discrete tokens and map them to dense vec-
+tors via a learned embedding layer. The resulting sequence is processed by a causal Transformer
+decoder that is conditioned on the histological embedding H through adaptive layer normalization
+(AdaLN) Dhariwal & Nichol (2021). We further apply feature-wise linear modulation, where gene-
+identity embeddings produce scale and shift parameters to inject gene-specific inductive bias into
+the model. Finally, the decoder outputs token logits for the current scale, which are then converted
+into integer expression counts.
+Gene Clustering and Histological Embeddings. We cluster genes based on their spatial expression
+patterns in the training set. Using k-means on Z-score normalized expression profiles, we first group
+the 200 genes into 4 major clusters, then subdivide each cluster into smaller groups of approximately
+12 genes.
+The fusion module applies layer normalization to histopathological features ϕ(Iu) ∈R1024, fol-
+lowed by two linear layers with GELU activation and dropout regularization. Spatial information
+Su ∈R2 undergoes sinusoidal positional encoding to capture spatial relationships, followed by lin-
+ear projection and normalization. The processed features are concatenated and projected to the final
+histological embeddings dimension H ∈R768.
+Gene expression counts are mapped to dense representations through a learned embedding layer
+Egene ∈Rvocab size×768. Considering that gene expression counts typically range from 0 to several
+thousand, we adopt a fixed-size vocabulary to cover this range. Gene identity embeddings Eidentity ∈
+Rn×768 capture the characteristics and functional properties of each gene. Gene modulation is
+achieved through feature-wise linear modulation, where gene identity embeddings are transformed
+to generate scaling and shift parameters that modulate the hidden representations.
+4
+
+===== PAGE 5 =====
+Under Review
+Algorithm 1 GenAR Training Process
+Require: Histology patches Iu, Spatial coordinates Su, Ground-truth counts y
+Ensure: Final training loss Lfinal
+1: H ←ConditionProcessor(Iu, Su)
+▷Fuse multi-modal context
+2: T ←CreateHierarchicalTargets(y)
+▷Prepare multi-scale ground truth
+3: Eoutputs ←∅,
+Ltotal ←0
+4: for each scale k ∈{1, . . . , K} with dimension dk do
+5:
+if k = 1 then
+6:
+Xcontext ←[START TOKEN]
+7:
+else
+8:
+Gcontext ←GetTokensFromTargets(T<k)
+▷Teacher forcing with cumulative history
+9:
+Xcontext ←Concat([START TOKEN], GeneEmbed(Gcontext))
+10:
+end if
+11:
+Xinit ←GeneUpsampling(Eoutputs, k)
+▷Initialize current scale’s targets
+12:
+X ←Concat(Xcontext, Xinit) + PosEmbed(k) + ScaleEmbed(k)
+13:
+Xhidden ←Transformer(X, H, CausalMask)
+14:
+Logits ←OutputHead(FiLM(SliceLastTokens(Xhidden, dk), GeneIdentity(k)))
+15:
+if k < K then
+16:
+Lk ←SoftKLLoss(Logits, Tk)
+▷Group-level soft supervision
+17:
+else
+18:
+Lk ←GaussianNLL(CountHead(Logits), Tk; σ2 = α CountHead(Logits) + β)
+▷
+Count-level heteroscedastic loss
+19:
+end if
+20:
+Ltotal ←Ltotal + Lk
+21:
+Eoutputs.Append(GeneEmbed(ArgMax(Logits)))
+▷Update state for next scale
+22: end for
+23: Lfinal ←Ltotal/K
+24: return Lfinal
+Progressive Multi-Scale Generation. The autoregressive generation process can be formalized as:
+p(y | H) =
+K
+Y
+k=1
+p
+ y(k)  H, y(<k)
+(2)
+where y(k) denotes expressions at scale k, y(<k) denotes all previous-scale outputs, and H repre-
+sents the histological embeddings derived from histopathological patches and spatial information.
+We design K sequential scales to capture gene expression relationships at different granularities,
+i.e., a structured conditional factorization from global to gene-level interactions. At each scale k,
+genes are divided into dk groups, where each group contains consecutive genes from the cluster
+gene ordering. The number of groups increases progressively across scales: the first scale uses a
+single group representing global transcriptional activity across all genes, intermediate scales grad-
+ually increase the number of groups to capture finer-grained patterns, and the final scale contains
+individual genes for precise prediction. We design this hierarchical decomposition to allow GenAR
+to establish dependencies between genes at different levels of granularity, moving from global tran-
+scriptional context to specific gene interactions.
+The autoregressive property applies across scales, where predictions at each scale are conditioned
+on all previously generated coarser-grained information. At each scale, gene expression values are
+tokenized and embedded, then processed through a causal Transformer architecture conditioned on
+the embeddings H. Our approach is codebook-free, directly predicting integer gene expression
+counts without requiring vector quantization or discrete codebook learning stages. This eliminates
+potential information loss associated with codebook reconstruction and enables end-to-end training.
+As illustrated in Figure 2, our framework operates differently during training and inference phases.
+During training (left panel), the model learns to predict tokens at each scale using ground-truth
+information from previous scales. The process begins with a start token, followed by ground-truth
+tokens from completed scales, and interpolated tokens that provide initialization for the current scale
+prediction.
+5
+
+===== PAGE 6 =====
+Under Review
+Training
+···
+Causal Transformer
+1 𝑟1
+1
+2 3 4 𝑟2
+Upscaling
+[
+S
+]
+Histological
+Embedding
+Loss
+···
+1
+̂𝑟1
+1
+2 3 4
+̂𝑟2
+̂𝑟3
+1 2 3 4 5 6 7 8
+···
+1
+2 3 4 𝑟2
+1
+̂𝑟1
+𝑟3
+1 2 3 4 5 6 7 8
+···
+1
+2 3 4
+̂𝑒2
+̂𝑒3
+1 2 3 4 5 6 7 8
+Inference
+[
+S
+]
+Causal Transformer
+Histological
+Embedding
+Upscaling
+···
+1
+̂𝑟1
+1
+2 3 4
+̂𝑟2
+···
+1
+̂𝑟1
+1
+2 3 4
+̂𝑟2
+̂𝑟3
+1 2 3 4 5 6 7 8
+···
+1
+2 3 4
+̂𝑒2
+̂𝑒3
+1 2 3 4 5 6 7 8
+Ground-Truth Tokens
+Predicted Tokens
+Interpolated Tokens
+Figure 2: Progressive multi-scale generation process, illustrating sequence construction and upsam-
+pling initialization during training and inference phases.
+During inference (right panel), the model generates predictions autoregressively across scales. At
+each scale k, the input sequence is constructed as:
+Xk = [start token, ˆy(1), . . . , ˆy(k−1), interpolated tokensk]
+(3)
+where ˆy(j) represents previously generated tokens from scale j. The interpolated tokens are ob-
+tained through upsampling operations from the previous scale’s embeddings, providing contextual
+initialization for current scale generation.
+Multi-Scale Loss Function. Under the hierarchical factorization, the negative log-likelihood de-
+composes across scales:
+Eq
+
+−log pθ(y | H)
+
+=
+K
+X
+k=1
+Eq
+
+−log pθ(y(k) | H, y(<k))
+
+=
+K
+X
+k=1
+KL
+ q(k) ∥p(k)
+θ
+
++ const,
+(4)
+where q(k) is the target distribution at scale k (group levels use temperature-smoothed targets derived
+from adaptive pooling; the final level reduces to a sharp target over counts) and p(k)
+θ
+is the model
+distribution (softmax over logits).
+At
+intermediate
+scales,
+we
+supervise
+grouped
+targets
+obtained
+by
+y(k)
+=
+AdaptiveAvgPool1d(y, dk) for k < K and convert them to soft distributions via tempera-
+ture smoothing, optimizing KL(q(k)∥p(k)
+θ ). At the final scale, we use a count-level likelihood with
+expression-dependent variance σ2 = αµ + β (equivalently a KL to a Gaussian family up to a
+constant) to capture heteroscedasticity while preserving count semantics; here CountHead(·) maps
+final-scale logits to the mean ˆµ used in the Gaussian NLL. The overall objective averages losses
+across scales:
+Ltotal = 1
+K
+K
+X
+k=1
+Lk.
+(5)
+4
+EXPERIMENTS
+4.1
+DATASETS
+We conducted experiments on four different spatial transcriptomics datasets selected from the HEST-
+1k database Jaume et al. (2024), spanning multiple tissue types and disease states.
+HER2ST dataset Andersson et al. (2021) contains breast cancer tissue slides with spatial spots
+of 100 µm diameter. This dataset consists of multiple pathology images with a total of 13,594
+spots, each containing gene expression profiles. The tissue samples include normal breast tissue and
+cancerous regions. In our experiments, we used the SPA148 slide as the test set, with the remaining
+slides used for training.
+Human Prostate Cancer (PRAD) Visium dataset Erickson et al. (2022) contains 23 prostate can-
+cer tissue slides sequenced using the 10x Genomics Visium platform. The spatial spots have a size
+of 55 µm, with the number of spots per slide ranging from 1,418 to 4,079. We used the MEND145
+slide as the test set, with the remaining slides used for training.
+6
+
+===== PAGE 7 =====
+Under Review
+Method
+HER2ST
+PRAD
+PCC-10↑
+PCC-50↑
+PCC-200↑
+MSE↓
+MAE↓
+PCC-10↑
+PCC-50↑
+PCC-200↑
+MSE↓
+MAE↓
+BLEEP Xie et al. (2023)
+0.773
+0.714
+0.565
+1.243
+0.833
+0.580
+0.510
+0.316
+2.475
+1.091
+M2OST Wang et al. (2025)
+0.810
+0.759
+0.660
+1.151
+0.820
+0.602
+0.551
+0.442
+1.290
+0.862
+TRIPLEX Chung et al. (2024)
+0.783
+0.714
+0.586
+1.212
+0.857
+0.620
+0.544
+0.423
+1.319
+0.836
+STEM Zhu et al. (2025)
+0.831
+0.770
+0.625
+1.199
+0.787
+0.636
+0.555
+0.403
+1.457
+0.857
+GenAR(Ours)
+0.842
+0.784
+0.663
+1.082
+0.745
+0.702
+0.650
+0.512
+1.191
+0.771
+Table 1: Experimental results on HER2ST and PRAD datasets. The best results are highlighted in
+bold. ↑indicates higher is better, ↓indicates lower is better.
+Kidney Visium dataset Lake et al. (2023) contains 23 kidney tissue slides from samples represent-
+ing three pathological states: healthy controls, chronic kidney disease, and acute kidney injury. The
+data was acquired using Visium technology with spatial spots of 55 µm size, and the number of
+spots per slide ranges from 315 to 4,159. The samples cover both cortical and medullary anatomical
+regions of the kidney. We used the NCBI697 slide as the test set, with the remaining slides used for
+training.
+Healthy Mouse Brain dataset Vicari et al. (2024) contains 14 Visium samples from healthy adult
+mouse brain tissue. Each slide contains 2,675 to 3,617 spatial spots with a spot size of 55 µm. We
+selected the NCBI667 slide as the test set, with the remaining slides used for training.
+4.2
+DATA PREPROCESSING AND EVALUATION METRICS
+Data Preprocessing. For all four datasets, we applied a consistent preprocessing pipeline Zhu et al.
+(2025). We selected the top 200 genes from the intersection of highly expressed and highly variable
+genes for evaluation. For image processing, we used a patch size of 224 × 224 pixels for all datasets,
+with each patch corresponding to one spatial spot. Our model extracts histopathological image
+features using UNI Chen et al. (2024). For gene expression count processing, while other baseline
+models applied log2 transformation, following Jaume et al. (2024), our model directly predicts raw
+gene expression counts without log2 transformation during training. To ensure consistent evaluation
+with other models, we then applied log2 transformation to our model outputs after prediction for
+metric calculation.
+Evaluation Metrics. We used multiple evaluation metrics to assess model prediction performance.
+We used PCC-10, PCC-50, and PCC-200 metrics, representing the average PCC values of the top
+10, 50, and 200 genes with the highest Pearson correlation coefficients in the prediction results,
+respectively. For a single gene g, the PCC is calculated as:
+PCCg =
+Cov(Yg, ˆYg)
+q
+Var(Yg) · Var( ˆYg)
+(6)
+where Yg and ˆYg represent the true and predicted expression values for gene g, respectively, Cov(·)
+denotes covariance, and Var(·) denotes variance.
+Moreover, we calculated Mean Squared Error (MSE) and Mean Absolute Error (MAE) to evaluate
+the overall prediction accuracy of the model. MSE computes the average squared error between
+predicted and true values across all spatial spots and genes. MAE computes the average absolute
+error between predicted and true values across all spatial spots and genes.
+Implementation Details. Our models are trained with the Adam optimizer Kingma (2014) with a
+learning rate of 1e-4 and a batch size of 64. For these four datasets, we configured 6 hierarchical
+scale dimensions (1, 4, 8, 40, 100, 200) for multi-scale feature extraction, targeting the prediction of
+200 gene expression counts. The main hyperparameters of our model include model depth, model
+width, and the number of heads in self-attention mechanisms. Increased model complexity is often
+accompanied by higher computational resource requirements, our model design balances prediction
+performance while considering computational efficiency. Experiments were conducted in PyTorch
+7
+
+===== PAGE 8 =====
+Under Review
+Method
+Kidney
+Healthy Mouse Brain
+PCC-10↑
+PCC-50↑
+PCC-200↑
+MSE↓
+MAE↓
+PCC-10↑
+PCC-50↑
+PCC-200↑
+MSE↓
+MAE↓
+BLEEP Xie et al. (2023)
+0.500
+0.422
+0.314
+1.926
+0.945
+0.342
+0.280
+0.156
+1.591
+0.987
+M2OST Wang et al. (2025)
+0.494
+0.447
+0.318
+1.785
+0.925
+0.456
+0.387
+0.231
+1.148
+0.861
+TRIPLEX Chung et al. (2024)
+0.542
+0.469
+0.336
+1.732
+0.887
+0.501
+0.445
+0.312
+1.157
+0.822
+STEM Zhu et al. (2025)
+0.567
+0.483
+0.322
+1.832
+0.997
+0.526
+0.452
+0.331
+1.235
+0.864
+GenAR(Ours)
+0.589
+0.514
+0.354
+1.636
+0.871
+0.568
+0.503
+0.367
+1.138
+0.805
+Table 2: Experimental results on Kidney and Mouse Brain datasets. The best results are highlighted
+in bold. ↑indicates higher is better, ↓indicates lower is better.
+on NVIDIA H100 (80 GB) GPUs. Baselines used the same preprocessing and tuning protocol.
+Results were obtained with fixed seeds. Code and configuration files will be released.
+4.3
+EXPERIMENTAL RESULTS
+We evaluated the performance of our proposed method on four different spatial transcriptomics
+datasets and compared it with multiple baseline methods. The experimental results are shown in
+Table 1 and Table 2. Our method achieves the best performance across all datasets.
+As shown in Table 1, on the HER2ST dataset containing breast cancer tissue slides with 100 µm spa-
+tial spots, our method achieves PCC-10, PCC-50, and PCC-200 scores of 0.842, 0.784, and 0.663,
+outperforming the best baseline method STEM by 1.3%, 1.8%, and 6.1%, respectively. The MSE
+and MAE are reduced by 9.8% and 5.3% compared to STEM. On the PRAD dataset containing
+prostate cancer tissue slides with 55 µm spatial spots, our method demonstrates more significant im-
+provements, achieving PCC-10, PCC-50, and PCC-200 scores of 0.702, 0.650, and 0.512, surpassing
+STEM by 10.4%, 17.1%, and 27.0%, respectively. The MSE and MAE reductions are 18.3% and
+10.0%, respectively.
+As shown in Table 2, on the Kidney dataset covering three pathological states with 55 µm spatial
+spots, our method achieves PCC-10, PCC-50, and PCC-200 scores of 0.589, 0.514, and 0.354,
+outperforming STEM by 3.9%, 6.4%, and 9.9%, respectively. The MSE and MAE are reduced
+by 10.7% and 12.6%. On the Mouse Brain dataset containing healthy adult mouse brain tissue
+with 55 µm spatial spots, our method achieves PCC-10, PCC-50, and PCC-200 scores of 0.568,
+0.503, and 0.367, surpassing STEM by 8.0%, 11.3%, and 10.9%, respectively. The MSE and MAE
+reductions are 7.9% and 6.8%.
+Cross-dataset analysis shows consistent gains, with larger margins on cancer tissues, indicating that
+the proposed coarse-to-fine discrete autoregressive formulation is robust across tissue types.
+4.4
+ABLATION STUDY
+Component Ablation. We perform internal ablation experiments on the PRAD dataset, which
+contains numerous spatial spots and exhibits high complexity. As shown in Table 3, we separately
+remove the progressive multi-scale generation framework, gene identity embeddings, and replace
+the loss function to analyze the contribution of each component.
+The experimental results demonstrate that removing the progressive multi-scale generation frame-
+work has the most significant impact on model performance, with PCC-10 decreasing from 0.702
+to 0.651 and MSE increasing from 1.171 to 1.406. This indicates that the multi-scale autoregres-
+sive generation process is crucial for capturing gene expression relationships at different granu-
+larities. After removing gene identity embeddings, the PCC-200 metric decreases from 0.532 to
+0.481, demonstrating the importance of gene-specific representations for precise prediction. Us-
+ing cross-entropy loss instead of our designed adaptive Gaussian KL loss and soft-label KL diver-
+gence loss results in PCC-10 decreasing from 0.702 to 0.662. We also observe weaker performance
+in extremely sparse regions (token rarity/gradient sparsity), motivating pathway/ontology-informed
+grouping without altering the core framework.
+Foundation Model Ablation. We design a raw gene expression count prediction task and eval-
+uate it across three foundation models and GenAR. We compare ResNet-18 He et al. (2016a),
+8
+
+===== PAGE 9 =====
+Under Review
+Method
+PCC-10↑PCC-50↑PCC-200↑MSE↓MAE↓
+w/o Multi-scale
+0.651
+0.601
+0.493
+1.406 0.779
+w/o Gene identity
+0.683
+0.625
+0.481
+1.281 0.828
+w/ Cross-entropy
+0.662
+0.612
+0.482
+1.325 0.781
+GenAR
+0.702
+0.650
+0.512
+1.191 0.771
+Table 3: Ablation study results on the PRAD dataset. The best results are highlighted in bold. ↑
+indicates higher is better, ↓indicates lower is better.
+Figure 3: Spatial visualization of SSR4 gene expression prediction on HER2ST SPA148 sample.
+From left to right: histopathological image, ground truth, and predictions from GenAR, BLEEP,
+M2OST, TRIPLEX, and STEM. Color scale: low (purple/blue) to high (yellow/green) expression.
+CONCH Huang et al. (2023), and UNI Chen et al. (2024). Our full GenAR model selects the
+UNI Chen et al. (2024) to extract histological features. For fair comparison, all baselines use iden-
+tical architectures: input projection to hidden space, two residual blocks with GELU activation, and
+output heads for discrete gene expression prediction. Table 4 reports results on the PRAD dataset.
+All three foundation models achieve reasonable performance on this discrete prediction task, while
+GenAR substantially outperforms them with 33.7% improvement in PCC-200 over the best baseline,
+demonstrating the effectiveness of our framework design.
+4.5
+VISUALIZATION ANALYSIS
+Figure 3 shows visualization results on the HER2ST dataset using sample SPA148 for gene SSR4
+(Signal Sequence Receptor Subunit 4), which encodes an ER membrane receptor associated with
+cancer progression. The ground truth exhibits distinct spatial heterogeneity with concentrated high-
+expression regions (yellow-green) and clearly demarcated low-expression areas (purple-blue).
+BLEEP and M2OST generate smooth expression maps with limited dynamic range, failing to
+capture sharp spatial transitions. TRIPLEX and STEM show improved pattern recognition, with
+STEM preserving better boundaries, though both exhibit oversmoothing in high-expression regions.
+GenAR produces expression predictions that most closely match ground truth, accurately capturing
+both high-expression zone localization and expression level transitions.
+5
+CONCLUSION
+We propose GenAR, a multi-scale autoregressive framework that reframes spatial gene expression
+prediction as discrete token generation. The discrete formulation preserves biological interpretabil-
+ity and avoids biases of continuous surrogates, while the coarse-to-fine factorization encodes hi-
+erarchical dependencies. Empirically, GenAR achieves state-of-the-art performance across four
+datasets. We also note relatively weaker performance in extremely sparse regions, which moti-
+vates pathway and ontology informed grouping. The design is modality agnostic and may extend to
+proteomics, metabolomics, or other spatiotemporal settings. Overall, this compact, codebook-free
+recipe may inform broader multimodal learning research. Future work will explore the integration
+of more sophisticated biological priors, such as gene regulatory networks and pathway-level inter-
+actions, to further enhance prediction accuracy.
+9
+
+===== PAGE 10 =====
+Under Review
+Method
+PCC-10↑PCC-50↑PCC-200↑MSE↓MAE↓
+ResNet-18 He et al. (2016a)
+0.431
+0.381
+0.273
+1.876 0.905
+CONCH Huang et al. (2023)
+0.451
+0.391
+0.286
+2.110 0.949
+UNI Chen et al. (2024)
+0.597
+0.526
+0.383
+1.741 0.871
+GenAR (Ours)
+0.702
+0.650
+0.512
+1.191 0.771
+Table 4: Performance comparison on raw gene expression count prediction on the PRAD dataset.
+The best results are highlighted in bold. ↑indicates higher is better, ↓indicates lower is better.
+ACKNOWLEDGMENTS
+This work was supported by the National Natural Science Foundation of China (No. 62202403),
+Hong Kong Innovation and Technology Commission (Project No. MHP/002/22 and ITCPD/17-9),
+and Research Grants Council of the Hong Kong Special Administrative Region, China (Project No.
+R6003-22 and C4024-22GF).
+ETHICS STATEMENT
+This work uses only publicly available, de-identified spatial transcriptomics datasets and H&E im-
+ages; no new human or animal data were collected. We complied with dataset licenses and standard
+citation practices. The models are released for research use only and are not intended for clinical
+decision-making. We do not release any sensitive metadata.
+REPRODUCIBILITY STATEMENT
+We took several steps to support reproducibility. The paper details the method in Section 3 (archi-
+tecture, training objective, multi-scale design), the datasets, gene selection, preprocessing pipeline,
+and metrics in Section 4.2, and training and implementation details (optimizers, batch sizes, scales,
+seeds, hardware) in Section 4.3. The Appendix further lists all selected genes for each dataset,
+ablation settings, and exact hyperparameters and training setup (“Implementation Details and Re-
+producibility”). Code is publicly available at https://github.com/oyjr/genar.
+REFERENCES
+Simon Anders and Wolfgang Huber. Differential expression analysis for sequence count data. Nature
+Precedings, pp. 1–1, 2010.
+Alma Andersson, Ludvig Larsson, Linnea Stenbeck, Fredrik Salm´en, Anna Ehinger, Sunny Z Wu,
+Ghamdan Al-Eryani, Daniel Roden, Alex Swarbrick, ˚Ake Borg, et al. Spatial deconvolution of
+her2-positive breast cancer delineates tumor-associated cell type interactions. Nature communi-
+cations, 12(1):6012, 2021.
+Albert-Laszlo Barabasi and Zoltan N Oltvai. Network biology: understanding the cell’s functional
+organization. Nature reviews genetics, 5(2):101–113, 2004.
+N Bektas and et al. The ubiquitin-like molecule isg15 is a prognostic marker in human breast cancer.
+Breast Cancer Research, 10(4):R58, 2008. doi: 10.1186/bcr2117.
+Kaustav Bera, Kurt A. Schalper, David L. Rimm, Vamsidhar Velcheti, and Anant Madabhushi.
+Artificial intelligence in digital pathology — new tools for diagnosis and precision oncology.
+Nature Reviews Clinical Oncology, pp. 703–715, Nov 2019. doi: 10.1038/s41571-019-0252-y.
+URL http://dx.doi.org/10.1038/s41571-019-0252-y.
+J David Cahoy and et al. A transcriptome database for astrocytes, neurons, and oligodendrocytes: a
+new resource for understanding brain development and function. Journal of Neuroscience, 28(1):
+264–278, 2008. doi: 10.1523/JNEUROSCI.0307-08.2008.
+10
+
+===== PAGE 11 =====
+Under Review
+Q Cao et al. Overexpression of plin2 is a prognostic marker and attenuates tumor progression in
+clear cell renal cell carcinoma. Oncogenesis, 7(6):65, 2018. doi: 10.1038/s41389-018-0075-5.
+Huayu Chen, Kai Jiang, Kaiwen Zheng, Jianfei Chen, Hang Su, and Jun Zhu. Visual generation
+without guidance. arXiv preprint arXiv:2501.15420, 2025a.
+Jiawen Chen, Muqing Zhou, Wenrong Wu, Jinwei Zhang, Yun Li, and Didong Li. Stimage-1k4m:
+A histopathology image-gene expression dataset for spatial transcriptomics. Advances in Neural
+Information Processing Systems, 37:35796–35823, 2025b.
+Richard J Chen, Tong Ding, Ming Y Lu, Drew FK Williamson, Guillaume Jaume, Andrew H Song,
+Bowen Chen, Andrew Zhang, Daniel Shao, Muhammad Shaban, et al. Towards a general-purpose
+foundation model for computational pathology. Nature Medicine, 30(3):850–862, 2024.
+Y Chen and et al. Clinical and therapeutic relevance of cancer-associated fibroblasts, 2021.
+Erik I Christensen and Henrik Birn. Megalin and cubilin: multifunctional endocytic receptors, 2002.
+Youngmin Chung, Ji Hun Ha, Kyeong Chan Im, and Joo Sang Lee. Accurate spatial gene expression
+prediction by integrating multi-resolution features. In Proceedings of the IEEE/CVF Conference
+on Computer Vision and Pattern Recognition, pp. 11591–11600, 2024.
+KBJM Cleutjens and et al. Two androgen response regions cooperate in steroid hormone regulated
+activity of the prostate-specific antigen promoter. Molecular Endocrinology, 11(11):148–161,
+1997. doi: 10.1210/mend.11.11.0014.
+T Collins et al. Immune interferon activates multiple class ii mhc antigens. Proceedings of the
+National Academy of Sciences, 81:4917–4921, 1984.
+L Cords and et al. Cancer-associated fibroblast classification in single-cell studies across cancers.
+Nature Communications, 14:4614, 2023. doi: 10.1038/s41467-023-39762-1.
+Olivier Devuyst, Eric Olinger, and Luca Rampoldi. Uromodulin biology from kidney to systemic
+effects, 2017.
+Prafulla Dhariwal and Alexander Nichol. Diffusion models beat gans on image synthesis. Advances
+in neural information processing systems, 34:8780–8794, 2021.
+Andrew Erickson, Mengxiao He, Emelie Berglund, Maja Marklund, Reza Mirzazadeh, Niklas
+Schultz, Linda Kvastad, Alma Andersson, Ludvig Bergenstr˚ahle, Joseph Bergenstr˚ahle, et al.
+Spatially resolved clonal copy number alterations in benign and malignant tissue. Nature, 608
+(7922):360–367, 2022.
+CM Ewing and et al. Germline mutations in hoxb13 and prostate-cancer risk. New England Journal
+of Medicine, 366:141–149, 2012. doi: 10.1056/NEJMoa1110000.
+GK Gray and et al. A human breast atlas integrating single-cell proteomics and transcriptomics.
+Developmental Cell, 2022. doi: 10.1016/j.devcel.2022.09.017.
+Minghao Han, Dingkang Yang, Jiabei Cheng, Xukun Zhang, Linhao Qu, Zizhi Chen, and Lihua
+Zhang. Towards unified molecule-enhanced pathology image representation learning via inte-
+grating spatial transcriptomics. arXiv preprint arXiv:2412.00651, 2024.
+Bryan He, Ludvig Bergenstr˚ahle, Linnea Stenbeck, Abubakar Abid, Alma Andersson, ˚Ake Borg,
+Jonas Maaskola, Joakim Lundeberg, and James Zou. Integrating spatial gene expression and
+breast tumour morphology via deep learning.
+Nature biomedical engineering, 4(8):827–834,
+2020.
+Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. Deep residual learning for image recog-
+nition. In Proceedings of the IEEE conference on computer vision and pattern recognition, pp.
+770–778, 2016a.
+L He et al. Analysis of the brain mural cell transcriptome. Nature Communications, 2016b.
+11
+
+===== PAGE 12 =====
+Under Review
+SC Hebert, DB Mount, and G Gamba. Molecular physiology of the slc12 family of electroneutral
+cation-coupled chloride cotransporters. Physiological Reviews, 84:1575–1617, 2004. doi: 10.
+1152/physrev.00011.2004.
+V Hongisto and et al. The her2 amplicon includes several genes required for the growth and survival
+of her2 positive breast cancer cells. Breast Cancer Research and Treatment, 2014. doi: 10.1007/
+s10549-014-3155-x.
+Zhi Huang, Federico Bianchi, Mert Yuksekgonul, Thomas J Montine, and James Zou. A visual–
+language foundation model for pathology image analysis using medical twitter. Nature medicine,
+29(9):2307–2316, 2023.
+RS Hubert and et al. Steap: a prostate-specific cell-surface antigen highly expressed in human
+prostate tumors. Proceedings of the National Academy of Sciences, 96(25):14523–14528, 1999.
+doi: 10.1073/pnas.96.25.14523.
+Maximilian Ilse, Jakub M Tomczak, and Max Welling. Attention-based deep multiple instance
+learning. arXiv preprint arXiv:1802.04712, 2018.
+S Ivanov et al. Hypoxia-inducible expression of tumor-associated carbonic anhydrases. Cancer
+Research, 60(24):7075–7083, 2001.
+Sanjay Jain and Michael T Eadon. Spatial transcriptomics in health and disease. Nature Reviews
+Nephrology, 20(10):659–671, 2024.
+Guillaume Jaume, Paul Doucet, Andrew H. Song, Ming Y. Lu, Cristina Almagro-Perez, Sophia J.
+Wagner, Anurag J. Vaidya, Richard J. Chen, Drew F. K. Williamson, Ahrong Kim, and Faisal
+Mahmood. Hest-1k: A dataset for spatial transcriptomics and histology image analysis. In Ad-
+vances in Neural Information Processing Systems, December 2024.
+Pinelopi P Kapitsinou et al. Hif-2alpha mediates hypoxia-inducible epo expression in renal in-
+terstitial fibroblasts in vivo.
+Journal of Clinical Investigation, 120:4215–4220, 2010.
+doi:
+10.1172/JCI42839.
+YA Kariri and et al.
+The prognostic significance of interferon-stimulated gene 15 in invasive
+breast cancer.
+Breast Cancer Research and Treatment, 183:341–351, 2020.
+doi: 10.1007/
+s10549-020-05756-2.
+Diederik P Kingma. Adam: A method for stochastic optimization. arXiv preprint arXiv:1412.6980,
+2014.
+Jaclyn M Kubala, Kristian B Laursen, et al. Ndufa4l2 reduces mitochondrial respiration resulting in
+defective lysosomal trafficking in clear cell renal cell carcinoma. Cancer Biology & Therapy, 24
+(1):2170669, 2023. doi: 10.1080/15384047.2023.2170669.
+MJ Kwon and et al. Genes co-amplified with erbb2 as novel potential therapeutic targets in breast
+cancer. BMC Medical Genomics, 10(1):79, 2017. doi: 10.1186/s12920-017-0316-0.
+Blue B Lake, Rajasree Menon, Seth Winfree, Qiwen Hu, Ricardo Melo Ferreira, Kian Kalhor, Daria
+Barwinska, Edgar A Otto, Michael Ferkowicz, Dinh Diep, et al. An atlas of healthy and injured
+cell states and niches in the human kidney. Nature, 619(7970):585–594, 2023.
+Lucy Liaw et al. Osteopontin promotes fibrosis in the obstructed kidney. Kidney International, 53:
+169–176, 1998. doi: 10.1046/j.1523-1755.1998.00743.x.
+P Lindblom et al.
+Transcription profiling of pdgf-b–deficient mice identifies rgs5 as a pericyte
+marker. The Journal of Clinical Investigation, 112:1147–1155, 2003.
+Michael I Love, Wolfgang Huber, and Simon Anders. Moderated estimation of fold change and
+dispersion for rna-seq data with deseq2. Genome biology, 15(12):550, 2014.
+Xiaoxiao Ma, Mohan Zhou, Tao Liang, Yalong Bai, Tiejun Zhao, Biye Li, Huaian Chen, and
+Yi Jin.
+Star: Scale-wise text-conditioned autoregressive image generation.
+arXiv preprint
+arXiv:2406.10797, 2024.
+12
+
+===== PAGE 13 =====
+Under Review
+Sueli Marques and et al. Oligodendrocyte heterogeneity in the mouse juvenile and adult central
+nervous system. Science, 352(6291):1326–1329, 2016. doi: 10.1126/science.aaf6463.
+Maxime Meylan, Florent Petitprez, Etienne Becht, Antoine Bougo¨uin, Guilhem Pupier, Anne
+Calvez, Ilenia Giglioli, Virginie Verkarre, Guillaume Lacroix, Johanna Verneau, et al. Tertiary
+lymphoid structures generate and propagate anti-tumor antibody-producing plasma cells in renal
+cell cancer. Immunity, 55(3):527–541, 2022.
+Soren Nielsen, Tae-Hwan Kwon, Jorn Frokiaer, and Mark A Knepper. Aquaporins in the kidney:
+from molecules to medicine. Physiological Reviews, 82:205–244, 2002. doi: 10.1152/physrev.
+00024.2001.
+JL Onieva et al. High igkc-expressing intratumoral plasma cells predict immunotherapy response.
+Cancers, 14(16):3958, 2022.
+AM Ortega-Prieto et al. Interferon-stimulated genes and their antiviral activity against sars-cov-2,
+2024.
+Minxing Pang, Kenong Su, and Mingyao Li. Leveraging information in spatial transcriptomics to
+predict super-resolution gene expression from histology images in tumors. BioRxiv, pp. 2021–11,
+2021.
+Yunpeng Qu, Kun Yuan, Jinhua Hao, Kai Zhao, Qizhi Xie, Ming Sun, and Chao Zhou. Visual
+autoregressive modeling for image super-resolution. arXiv preprint arXiv:2501.18993, 2025.
+Anjali Rao, Dalia Barkley, Gustavo S Franc¸a, and Itai Yanai. Exploring tissue architecture using
+spatial transcriptomics. Nature, 596(7871):211–220, 2021a.
+Anjali Rao, Dalia Barkley, Gustavo S. Franc¸a, and Itai Yanai. Exploring tissue architecture using
+spatial transcriptomics. Nature, pp. 211–220, Aug 2021b. doi: 10.1038/s41586-021-03634-9.
+URL http://dx.doi.org/10.1038/s41586-021-03634-9.
+John W Schoggins and Charles M Rice. Interferon-stimulated genes: what do they all do?, 2011.
+Maria LS Sequeira-Lopez and Robert A Gomez. Renin cells, the kidney, and hypertension. Physio-
+logical Reviews, 95:405–411, 2015. doi: 10.1152/physrev.00040.2013.
+Karthyayani Srinivasan and et al. A molecular signatures database for astrocytes, neurons, and
+oligodendrocytes. Neuron, 96(3):572–585.e7, 2016. doi: 10.1016/j.neuron.2017.09.030.
+Thomas C S¨udhof. Neurotransmitter release: the last millisecond. Annual Review of Neuroscience,
+36:227–249, 2013. doi: 10.1146/annurev-neuro-062012-170334.
+Bosiljka Tasic and et al. Shared and distinct transcriptomic cell types across neocortical areas.
+Nature, 563:72–78, 2018. doi: 10.1038/s41586-018-0654-5.
+JA Thompson et al.
+Phase i trials of anti-enpp3 antibody–drug conjugates in advanced re-
+fractory renal cell carcinomas.
+Clinical Cancer Research, 24(18):4399–4406, 2018.
+doi:
+10.1158/1078-0432.CCR-17-3526.
+Keyu Tian, Yi Jiang, Zehuan Yuan, Bingyue Peng, and Liwei Wang. Visual autoregressive modeling:
+Scalable image generation via next-scale prediction. Advances in neural information processing
+systems, 37:84839–84865, 2024.
+TL Tłu´sciak, TL Whiteside, et al. For breast cancer prognosis, immunoglobulin kappa chain ex-
+pression in tumor-infiltrating plasma cells matters. Clinical Cancer Research, 18(7):1907–1912,
+2012. doi: 10.1158/1078-0432.CCR-11-2733.
+SA Tomlins and et al. Recurrent fusion of tmprss2 and ets transcription factor genes in prostate
+cancer. Science, 310(5748):644–648, 2005. doi: 10.1126/science.1117679.
+Aaron Van den Oord, Nal Kalchbrenner, Lasse Espeholt, Oriol Vinyals, Alex Graves, et al. Con-
+ditional image generation with pixelcnn decoders. Advances in neural information processing
+systems, 29, 2016.
+13
+
+===== PAGE 14 =====
+Under Review
+Aaron Van Den Oord, Oriol Vinyals, et al. Neural discrete representation learning. Advances in
+neural information processing systems, 30, 2017.
+Marco Vicari, Reza Mirzazadeh, Anna Nilsson, Reza Shariatgorji, Patrik Bj¨arterot, Ludvig Larsson,
+Hower Lee, Mats Nilsson, Julia Foyer, Markus Ekvall, et al. Spatial multimodal analysis of
+transcriptomes and metabolomes in tissues. Nature Biotechnology, 42(7):1046–1050, 2024.
+Hongyi Wang, Xiuju Du, Jing Liu, Shuyi Ouyang, Yen-Wei Chen, and Lanfen Lin. M2ost: Many-
+to-one regression for predicting spatial transcriptomics from digital pathology images. In Pro-
+ceedings of the AAAI Conference on Artificial Intelligence, number 7, pp. 7709–7717, 2025.
+Q Wang and et al.
+A hierarchical network of transcription factors governs androgen receptor-
+dependent prostate cancer growth. Molecular Cell, 27:380–392, 2009. doi: 10.1016/j.molcel.
+2009.07.001.
+Yi Xiao and Dihua Yu. Tumor microenvironment as a therapeutic target in cancer. Pharmacol-
+ogy amp; Therapeutics, pp. 107753, May 2021. doi: 10.1016/j.pharmthera.2020.107753. URL
+http://dx.doi.org/10.1016/j.pharmthera.2020.107753.
+Ronald Xie, Kuan Pang, Sai Chung, Catia Perciani, Sonya MacParland, Bo Wang, and Gary Bader.
+Spatially resolved gene expression prediction from histology images via bi-modal contrastive
+learning. Advances in Neural Information Processing Systems, 36:70626–70637, 2023.
+AQ Xu et al. Genetic timestamping of plasma cells in vivo reveals tissue residence. Proceedings of
+the National Academy of Sciences, 117:8491–8499, 2020.
+Yingxue Xu and Hao Chen.
+Multimodal optimal transport-based co-attention transformer with
+global structure consistency for survival prediction. In Proceedings of the IEEE/CVF interna-
+tional conference on computer vision, pp. 21241–21251, 2023.
+Shu Yang, Yihui Wang, and Hao Chen. Mambamil: Enhancing long sequence modeling with se-
+quence reordering in computational pathology. In Marius George Linguraru, Qi Dou, Aasa Fer-
+agen, Stamatia Giannarou, Ben Glocker, Karim Lekadir, and Julia A. Schnabel (eds.), Medical
+Image Computing and Computer Assisted Intervention – MICCAI 2024, pp. 296–306, Cham,
+2024. Springer Nature Switzerland.
+Yan Yang, Md Zakir Hossain, Eric A Stone, and Shafin Rahman. Exemplar guided deep neural
+network for spatial transcriptomics analysis of gene expression prediction. In Proceedings of the
+IEEE/CVF Winter Conference on Applications of Computer Vision, pp. 5039–5048, 2023.
+Zizhen Yao and et al. A transcriptomic and epigenomic cell atlas of mouse primary motor cortex.
+Nature, 598:103–110, 2021. doi: 10.1038/s41586-021-03950-0.
+J Yeong and et al. High densities of tumor-associated plasma cells predict improved prognosis in
+triple-negative breast cancer. Cancers, 10(9):306, 2018. doi: 10.3390/cancers10090306.
+Amit Zeisel and et al. Cell types in the mouse cortex and hippocampus revealed by single-cell
+rna-seq. Science, 347(6226):1138–1142, 2015. doi: 10.1126/science.aaa1934.
+Yuansong Zeng, Zhuoyi Wei, Weijiang Yu, Rui Yin, Yuchen Yuan, Bingling Li, Zhonghui Tang,
+Yutong Lu, and Yuedong Yang. Spatial transcriptomics prediction from histology jointly through
+transformer and graph neural networks. Briefings in Bioinformatics, 23(5):bbac297, 2022.
+W Zhang and et al. Spon2, a secreted extracellular matrix protein, is a prognostic marker for prostate
+cancer. Oncology Reports, 28(6):2043–2050, 2012. doi: 10.3892/or.2012.2043.
+Y Zhang et al. Single-cell transcriptional atlas of tumor-associated macrophages in breast cancer.
+Signal Transduction and Targeted Therapy, 9:151, 2024. doi: 10.1038/s41392-024-01868-9.
+Ye Zhang and et al. An rna-sequencing transcriptome and splicing database of glia, neurons, and
+vascular cells of the cerebral cortex. Journal of Neuroscience, 34(36):11929–11947, 2014. doi:
+10.1523/JNEUROSCI.1860-14.2014.
+Sichen Zhu, Yuchen Zhu, Molei Tao, and Peng Qiu. Diffusion generative modeling for spatially
+resolved gene expression inference from histology images. arXiv preprint arXiv:2501.15598,
+2025.
+14
+
+===== PAGE 15 =====
+Under Review
+A
+ADDITIONAL EXPERIMENT
+A.1
+CCRCC DATASET RESULTS
+We conducted additional experiments on the ccRCC (clear cell Renal Cell Carcinoma) dataset Mey-
+lan et al. (2022) to further validate the generalisation capability of our proposed GenAR framework
+across different cancer types.
+ccRCC dataset contains 24 clear cell renal cell carcinoma tissue slides sequenced using the 10x
+Genomics Visium platform. Each spatial spot covers an area of 112×112 µm, and the number of
+spots per slide varies across samples. The samples are labeled from INT1 to INT24, representing
+different tissue sections from kidney cancer patients. We used the INT2 slide as the test set, with the
+remaining slides used for training.
+Method
+PCC-10↑PCC-50↑PCC-200↑MSE↓MAE↓
+BLEEP
+0.366
+0.288
+0.202
+1.853
+1.238
+M2OST
+0.408
+0.309
+0.195
+1.798
+1.068
+TRIPLEX
+0.429
+0.336
+0.246
+1.553
+0.938
+STEM
+0.429
+0.377
+0.256
+1.422
+0.932
+GenAR(Ours)
+0.457
+0.394
+0.276
+1.465
+0.896
+Table 5: Experimental results on ccRCC dataset. The best results are highlighted in bold. ↑indicates
+higher is better, ↓indicates lower is better.
+The results on the ccRCC dataset demonstrate consistent performance improvements, with PCC-10,
+PCC-50, and PCC-200 scores of 0.457, 0.394, and 0.276, respectively, outperforming the best base-
+line methods. Our method achieves a 6.5% improvement in PCC-10 compared to both TRIPLEX
+and STEM, and shows a 4.5% improvement in PCC-50 over STEM. For PCC-200, GenAR achieves
+a 7.8% improvement compared to STEM. While the MSE is slightly higher than STEM, the MAE
+is reduced by 3.9%, indicating better overall prediction accuracy. These results further validate the
+effectiveness of our progressive multi-scale autoregressive approach across different cancer types.
+A.2
+SCALE DESIGNS ABLATION
+To investigate the impact of different scale designs on prediction performance, we conducted abla-
+tion studies on the PRAD dataset with varying hierarchical decompositions. As shown in Table 6,
+we compare four different scale configurations: (1) single scale with all 200 genes, (2) three scales
+with 1, 20, and 200 groups, (3) four scales with 1, 40, 100, and 200 groups, and (4) our proposed
+six-scale design with 1, 4, 8, 40, 100, and 200 groups.
+The results demonstrate that increasing the number of scales generally improves performance. The
+single-scale baseline (200) achieves the lowest performance across most metrics, confirming the
+importance of hierarchical decomposition. The three-scale design shows significant improvements,
+particularly in PCC-200 (0.534). Adding a fourth scale further enhances PCC-10 and PCC-50 per-
+formance while achieving the best MAE (0.763). Our six-scale design achieves the best overall
+performance with PCC-10 of 0.702 and PCC-50 of 0.650, representing the optimal balance between
+hierarchical granularity and model complexity. The progressive refinement from global transcrip-
+tional context (1 group) to individual gene predictions (200 groups) enables the model to capture
+dependencies at multiple levels of granularity.
+B
+INFERENCE PROCESS
+During inference, GenAR generates predictions autoregressively across scales using previously gen-
+erated outputs as context (no teacher forcing). At each scale k, the input sequence concatenates the
+start token, embeddings of all past predictions ˆy(1), . . . , ˆy(k−1), and interpolated tokens that ini-
+tialize the current scale. The Transformer decoder processes this sequence under a causal mask,
+produces logits, and the current tokens ˆy(k) are obtained from the predicted distribution (default:
+greedy arg max). These tokens are appended to the history to condition subsequent scales, enabling
+progressive refinement from coarse- to fine-grained predictions.
+15
+
+===== PAGE 16 =====
+Under Review
+Scale Design
+PCC-10↑PCC-50↑PCC-200↑MSE↓MAE↓
+(200)
+0.622
+0.561
+0.445
+1.446 0.797
+(1, 20, 200)
+0.681
+0.638
+0.534
+1.203 0.775
+(1, 40, 100, 200)
+0.683
+0.643
+0.522
+1.213 0.763
+(1, 4, 8, 40, 100, 200) (Ours)
+0.702
+0.650
+0.512
+1.191 0.771
+Table 6: Ablation study on different scale designs for gene expression count prediction on the PRAD
+dataset. The best results are highlighted in bold. ↑indicates higher is better, ↓indicates lower is
+better.
+Algorithm 2 GenAR Inference Process
+Require: Histology patches Iu, Spatial coordinates Su
+Ensure: Final prediction ˆy(K)
+1: H ←ConditionProcessor(Iu, Su)
+▷Fuse multi-modal context
+2: Eoutputs ←∅,
+ˆy(<1) ←∅
+3: for each scale k ∈{1, . . . , K} with dimension dk do
+4:
+if k = 1 then
+5:
+Xcontext ←[START TOKEN]
+6:
+else
+7:
+Xcontext ←Concat([START TOKEN], GeneEmbed(ˆy(<k)))
+8:
+end if
+9:
+Xinit ←GeneUpsampling(Eoutputs, k)
+▷Initialize current scale
+10:
+X ←Concat(Xcontext, Xinit) + PosEmbed(k) + ScaleEmbed(k)
+11:
+Xhidden ←Transformer(X, H, CausalMask)
+12:
+Logits ←OutputHead(FiLM(SliceLastTokens(Xhidden, dk), GeneIdentity(k)))
+13:
+ˆy(k) ←arg max(Logits)
+▷Greedy decode; sampling with temperature is optional
+14:
+ˆy(<k+1) ←Concat(ˆy(<k), ˆy(k))
+15:
+Eoutputs.Append(GeneEmbed(ˆy(k)))
+▷State for next scale
+16: end for
+17: return ˆy(K)
+C
+SELECTED GENES FOR ALL DATASETS
+We provide the complete selected genes for each of the five datasets used in our experiments. The
+genes were selected based on the intersection of highly expressed and highly variant genes following
+the preprocessing pipeline described in Section 4.2 Data Preprocessing and Evaluation Metrics.
+C.1
+HER2ST DATASET SELECTED GENES
+The following genes were selected for the HER2ST (breast cancer) dataset:
+A2M, ACTB, ACTG1, ACTN4, ADAM15, AEBP1, AES, ALDOA, AP000769.1, APOC1, APOE,
+ARHGDIA, ATG10, ATP5B, ATP5E, ATP6V0B, AZGP1, B2M, BEST1, BGN, BSG, BST2, C12orf57,
+C1QA, C3, CALM2, CALML5, CALR, CCT3, CD24, CD63, CD74, CFL1, CHCHD2, CHPF, CIB1,
+CLDN3, CLDN4, COL18A1, COL1A1, COL1A2, COL3A1, COL6A2, COMP, COPE, COPS9, COX4I1,
+COX5B, COX6B1, COX6C, COX7C, CRIP2, CST3, CTSB, CTSD, CTTN, CYBA, DBI, DDIT4, DDX5,
+DHCR24, EDF1, EEF1D, EEF2, EIF4G1, ELOVL1, ENO1, ERBB2, ERGIC1, FASN, FAU, FLNA, FN1,
+FNBP1L, FTH1, FTL, GAPDH, GNAS, GPX4, GRB7, GRINA, GUK1, H2AFJ, HLA-A, HLA-B, HLA-C,
+HLA-DRA, HLA-E, HNRNPA2B1, HSP90AA1, HSP90AB1, HSP90B1, HSPA8, HSPB1, IDH2, IFI27,
+IGFBP2, IGHA1, IGHG1, IGHG3, IGHG4, IGHM, IGKC, IGLC2, IGLC3, INTS1, ISG15, JTB, KDELR1,
+KRT18, KRT19, KRT7, KRT81, LAPTM4A, LAPTM5, LASP1, LGALS1, LGALS3, LGALS3BP, LMAN2,
+LMNA, LUM, LY6E, MAPKAPK2, MDK, MGP, MIDN, MIEN1, MLLT6, MMACHC, MMP14, MUC1,
+MUCL1, MYL6, MYL9, MZT2B, NACA, NBL1, NDUFB9, NUCKS1, NUPR1, ORMDL3, P4HB, PCGF2,
+PEBP1, PERP, PFDN5, PFKL, PGAP3, PHB, PIP4K2B, PLD3, POSTN, PPDPF, PPP1CA, PPP1R1B,
+PRDX1, PRRC2A, PRSS8, PSMB3, PSMB4, PSMD3, PTMA, PTMS, PTPRF, RACK1, S100A14, S100A6,
+S100A8, S100A9, SCAND1, SCD, SDC1, SEC61A1, SEPW1, SERF2, SF3B5, SH3BGRL3, SLC2A4RG,
+SLC9A3R1, SNRPB, SPARC, SPDEF, SPINT2, SSR2, SSR4, STARD10, STARD3, SUPT6H, SYNGR2,
+16
+
+===== PAGE 17 =====
+Under Review
+TAGLN, TAPBP, TFF3, TIMP1, TMED9, TMSB10, TPT1, TSPO, TUBB, TXNIP, TYMP, UBA52, UBC,
+UBE2M, UBL5, UQCRQ, VIM, ZYX.
+We clustered the 200 genes into 32 groups. The group membership is listed below.
+Group Members
+0
+ACTB, AES, BST2, CALM2, CALML5, CALR, CIB1, COX6C, CST3, IGFBP2,
+KDELR1, TUBB
+1
+ATP5E, IGHA1, IGHG4
+2
+IGHG3
+3
+GRB7
+4
+MLLT6
+5
+SNRPB
+6
+ADAM15, AEBP1, APOC1, ARHGDIA, COL18A1, COL1A1, COL1A2, COL3A1,
+COPS9, FLNA, FN1, PTPRF
+7
+C1QA, COX4I1, DDX5, ENO1, FAU, FNBP1L, FTH1, KRT19, KRT7, LGALS3,
+MIEN1, SSR2
+8
+ACTN4, ELOVL1, ERBB2, FASN, HLA–B, HLA–C, HLA–DRA, LGALS3BP, PEBP1,
+PPDPF, PTMS, RACK1
+9
+ERGIC1, FTL, KRT81, LGALS1, LMAN2, MIDN, PERP, PFDN5, PFKL, PTMA,
+S100A14, SPDEF
+10
+ATP6V0B, AZGP1, COX5B, CTTN, CYBA, DHCR24, IGKC, IGLC2, PSMD3, S100A6,
+SSR4, STARD10
+11
+DDIT4, HLA–A, HLA–E, IGLC3, KRT18, PHB, PIP4K2B, PPP1R1B, PRDX1, S100A8,
+SLC2A4RG, SUPT6H
+12
+ATG10, EEF2, EIF4G1, GAPDH, HSPA8, MZT2B, P4HB, POSTN, PRSS8, PSMB3,
+SCAND1, TFF3
+13
+CD74, DBI, EDF1, HNRNPA2B1, HSP90AB1, HSP90B1, LAPTM5, PGAP3, PSMB4,
+SEC61A1, SLC9A3R1, STARD3
+14
+CLDN4, GNAS, GRINA, LASP1, MMACHC, PCGF2, PPP1CA, PRRC2A, SF3B5,
+SH3BGRL3, SPARC, SPINT2
+15
+B2M, BEST1, CD24, CLDN3, CTSD, GPX4, GUK1, H2AFJ, MGP, MMP14, MYL9,
+SEPW1
+16
+A2M, AP000769.1, CHPF, EEF1D, IFI27, LMNA, LUM, MUC1, MYL6, PLD3, SCD,
+TAGLN
+17
+HSP90AA1, IGHM, INTS1, LAPTM4A, MUCL1, NUPR1, ORMDL3, S100A9, SERF2,
+SYNGR2, TAPBP, TMED9
+18
+C3, CHCHD2, COX6B1, CRIP2, JTB, LY6E, MAPKAPK2, MDK, NACA, NDUFB9,
+SDC1, TXNIP
+19
+ACTG1, BGN, BSG, CFL1, COPE, COX7C, CTSB, HSPB1, NBL1, TIMP1, TMSB10
+20
+COMP
+21
+IDH2, ISG15
+22
+CCT3
+23
+COL6A2
+24
+ATP5B
+25
+TSPO
+26
+CD63
+27
+APOE
+28
+NUCKS1
+29
+TPT1
+30
+C12orf57
+31
+IGHG1
+Examples of biologically coherent modules.
+Several groups align with well-known breast cancer
+and microenvironment programs:
+17
+
+===== PAGE 18 =====
+Under Review
+• HER2/17q12 amplicon: groups 8, 3, 13, 7 contain ERBB2, GRB7, STARD3, PGAP3,
+MIEN1, which are frequently co–amplified and co–expressed in HER2+ tumors Hongisto
+& et al. (2014); Kwon & et al. (2017).
+• Luminal epithelial/secretory features: groups 12, 14, 15, 16, 9 include MUC1, TFF3,
+SPDEF, CLDN3/CLDN4, KRT7/KRT19, consistent with luminal programs Gray & et al.
+(2022).
+• Antigen presentation and interferon–stimulated genes: groups 8, 11, 21, 18 include
+HLA–A/B/C/E/DRA, ISG15, IFI27, LY6E, reflecting MHC and IFN response modules with
+prognostic links in breast cancer Kariri & et al. (2020); Bektas & et al. (2008).
+• C1Q+ macrophages: group 7 contains C1QA together with LGALS3, consistent with C1Q+
+TAM subsets described in breast tumors Zhang et al. (2024).
+• CAF/ECM remodeling and smooth–muscle: groups 6, 12, 14, 19, 23, 16 include
+COL1A1/1A2/3A1/6A2, FN1, POSTN, SPARC, TAGLN, LUM, typical of stromal and my-
+ofibroblast programs Chen & et al. (2021); Cords & et al. (2023).
+• Plasma–cell immunoglobulins: groups 1, 2, 10, 11, 31 contain IGH* and IGK/IGL genes,
+consistent with plasma–cell infiltration and known prognostic associations Tłu´sciak et al.
+(2012); Yeong & et al. (2018).
+C.2
+KIDNEY DATASET SELECTED GENES
+The following genes were selected for the Kidney dataset:
+A1BG, A2M, ACADVL, ACTA2, ACTB, ACTG1, ADGRG1, ADIRF, AEBP1, ALDOB, ANPEP, ANXA2,
+APOE, APP, AQP1, AQP2, ASS1, ATP1A1, ATP1B1, ATP5F1D, ATP5MC3, ATP5MD, ATP5ME, ATP5MF,
+ATP5MPL, ATP6V0C, B2M, BCAM, BGN, BSG, C7, CA2, CALB1, CALM2, CANX, CD151, CD24,
+CD74, CD81, CFL1, CHCHD10, CIRBP, CKB, CLCNKB, CLU, COL1A2, COL3A1, COL4A2, COX5A,
+COX5B, COX6B1, COX6C, COX7A2, COX7B, COX7C, CRIM1, CRYAB, CST3, CTSB, CTSH, CXCL14,
+CYSTM1, DCN, DDX5, DEFB1, DSTN, DUSP1, DYNLL1, EEF1D, EEF1G, EEF2, EIF3K, ENG, EPAS1,
+EZR, FLNA, FTH1, FTL, FXYD2, GABARAP, GATM, GPX3, GSTP1, H3F3A, HINT1, HLA-A, HLA-B,
+HLA-C, HLA-DRA, HLA-DRB1, HLA-E, HNRNPA1, HNRNPA2B1, HSD11B2, HSPA8, HSPB1, HTRA1,
+IDH2, IFITM2, IFITM3, IGFBP4, IGFBP5, IGFBP7, IGHA1, IGHG1, IGHG3, IGHG4, IGKC, IGLC1,
+IGLC2, IGLC3, ITM2B, KNG1, LAMP1, LAMTOR5, LAPTM4A, LDHA, LGALS1, LRP2, LUM, MAL,
+MALAT1, MGP, MGST3, MIOX, MMP7, MUC1, MYL6, MYL9, NAT8, NDRG1, NDUFA1, NDUFA13,
+NDUFA4, NDUFB2, NDUFB7, NDUFB8, NDUFB9, NEAT1, NME2, OAZ1, OGDHL, OST4, P4HB, PCK1,
+PDZK1IP1, PEBP1, PEPD, PFN1, PGK1, PIGR, PODXL, PPP1R1A, PTGDS, PTH1R, REN, RHOA,
+RNASE1, RTN4, S100A10, S100A2, S100A6, SAT1, SELENOP, SERPINA1, SERPINA5, SFRP1,
+SLC12A1, SLC12A3, SLC13A3, SLC25A3, SLC25A5, SLC25A6, SLC3A1, SLC5A12, SOD1, SOD2,
+SPARC, SPINK1, SPP1, SRP14, SSR4, SUCLG1, TAGLN, TIMP1, TIMP3, TMA7, TMSB10, TMSB4X,
+TPI1, TPM1, TPT1, TSPAN1, UBA52, UGT2B7, UMOD, UQCRB, UQCRFS1, VIM, WFDC2.
+We clustered the 200 genes into 31 groups. The group membership is listed below.
+Group Members
+0
+CLU, COX6B1, CRIM1, DCN, HLA-E, IGHA1, MGP, SAT1, SOD1, SPP1, TMA7,
+WFDC2
+1
+COX7B, RTN4
+2
+REN
+3
+ADGRG1, ANPEP, ANXA2, APOE, MUC1, OAZ1, OGDHL, PODXL, S100A2, SOD2,
+SUCLG1, TSPAN1
+4
+A2M, ACADVL, ACTA2, ACTG1, AEBP1, AQP1, IGLC2, MALAT1, MIOX, MMP7,
+OST4, SFRP1
+5
+ALDOB, CALB1, CANX, CD81, NDRG1, NDUFB8, PIGR, PTH1R, RHOA, S100A10,
+SELENOP, UQCRB
+6
+A1BG, APP, ASS1, CD24, DUSP1, EEF1D, HLA-DRA, HNRNPA1, NDUFA13,
+S100A6, UBA52, UQCRFS1
+7
+ACTB, ATP5MC3, HLA-DRB1, IGLC1, ITM2B, MAL, NME2, PGK1, PPP1R1A,
+RNASE1, SERPINA1, SLC12A1
+18
+
+===== PAGE 19 =====
+Under Review
+8
+ATP5F1D, CD151, CFL1, CKB, CST3, FTL, GSTP1, IDH2, IGFBP5, MGST3,
+NDUFB2, PDZK1IP1
+9
+ADIRF, ATP1B1, CLCNKB, COX5A, FLNA, HNRNPA2B1, HSD11B2, HTRA1,
+LAPTM4A, SLC25A3, SRP14, VIM
+10
+ATP5MD, ATP5ME, BGN, CIRBP, DEFB1, GPX3, IFITM3, IGHG1, LGALS1, LUM,
+NDUFA1, PTGDS
+11
+AQP2, BCAM, BSG, HINT1, KNG1, LAMP1, LRP2, NAT8, PEPD, SERPINA5,
+SLC25A6, SPARC
+12
+ATP1A1, COL4A2, COX6C, DSTN, EPAS1, FTH1, IGFBP7, IGKC, SLC12A3,
+SLC3A1, TIMP1, UGT2B7
+13
+ATP5MF, B2M, CD74, EEF2, FXYD2, GATM, H3F3A, HLA-A, NDUFB7, P4HB,
+PFN1, TAGLN
+14
+ATP5MPL, COL3A1, ENG, IGHG4, IGLC3, MYL9, NDUFA4, NEAT1, PEBP1,
+SLC13A3, TMSB10, TPI1
+15
+CA2, COX7A2, CTSB, EIF3K, HLA-B, IGFBP4, LDHA, PCK1, SPINK1, SSR4,
+TIMP3, TPM1
+16
+SLC5A12
+17
+COX7C
+18
+CHCHD10, DYNLL1, GABARAP, HSPA8
+19
+CALM2
+20
+COX5B
+21
+ATP6V0C
+22
+UMOD
+23
+NDUFB9
+24
+CRYAB
+25
+HSPB1
+26
+TMSB4X
+27
+C7
+28
+COL1A2, CTSH, CXCL14, CYSTM1, DDX5, EEF1G, EZR, HLA-C, IGHG3, LAM-
+TOR5, MYL6, TPT1
+29
+SLC25A5
+30
+IFITM2
+Examples of biologically coherent modules.
+Several groups align with well-known renal and
+tumor microenvironment programs:
+• Thick ascending limb and distal nephron (groups 22, 7, 12):
+UMOD, SLC12A1,
+SLC12A3. These are canonical markers of the thick ascending limb and distal convoluted
+tubule Devuyst et al. (2017); Hebert et al. (2004).
+• Collecting duct principal cells (group 11): AQP2 with epithelial partners, consistent with
+vasopressin-regulated water transport Nielsen et al. (2002).
+• Proximal tubule endocytosis and transport (group 11, 12): LRP2 (megalin), SLC3A1,
+consistent with proximal tubule uptake and amino acid handling Christensen & Birn (2002).
+• Juxtaglomerular apparatus (group 2): REN marks renin-producing cells Sequeira-Lopez
+& Gomez (2015).
+• Interstitial hypoxia and EPO axis (group 12): EPAS1 (HIF-2α) associated with renal
+interstitial EPO-producing cells Kapitsinou et al. (2010).
+• Stromal ECM and smooth muscle/pericyte (groups 4, 13, 14, 28): COL1A1/1A2/3A1,
+DCN, TAGLN, MYL9, typical of fibroblasts and mural cells Chen & et al. (2021).
+• Antigen presentation and interferon-stimulated genes (groups 6, 7, 10, 28, 30): HLA-
+DRA/DRB1/A/B/C, CD74, IFITM2/3 reflecting MHC and IFN-response modules Collins
+et al. (1984); Schoggins & Rice (2011).
+• C1Q+ macrophages (group 7): presence of C1QA with LGALS3 is consistent with C1Q+
+TAM subsets Zhang et al. (2024).
+• Injury-associated tubular program (group 0): SPP1 (osteopontin) often rises in stressed
+or injured tubules Liaw et al. (1998).
+19
+
+===== PAGE 20 =====
+Under Review
+C.3
+MOUSE BRAIN DATASET SELECTED GENES
+The following genes were selected for the Healthy Mouse Brain dataset:
+1110008P14Rik, 6330403K07Rik, Acot7, Apod, Apoe, App, Arpp19, Arpp21, Atp1a1, Atp1a2, Atp1b1,
+Atp2a2, Atp2b2, Atp5b, Atp5e, Atp5g1, Atp5j, Atp5o, Atp6v1e1, Baiap2, Basp1, Bc1, Bex2, Bsg, Calm2,
+Calm3, Camk2a, Camk2n1, Camkv, Cck, Cd81, Cfl1, Chgb, Chn1, Chst1, Ckb, Clstn1, Cox5a, Cox5b,
+Cox6a1, Cox6b1, Cox6c, Cox7b, Cox7c, Cox8a, Cplx1, Cplx2, Cryab, Cst3, Ctsd, Ctxn1, Dbi, Dclk1, Dnm1,
+Dpysl2, Dynll1, Dynll2, Eef1a1, Eno1, Eno2, Fkbp1a, Fkbp8, Fth1, Ftl1, Gaa, Gad1, Gas5, Gdi1, Gm42418,
+Gnao1, Gnas, Gng3, Gpi1, Gpm6a, Gpm6b, Gprasp1, Grcc10, H2afz, Hba-a1, Hba-a2, Hbb-bs, Hint1, Hpca,
+Hpcal4, Hspa8, Kif1a, Kif5a, Lars2, Ldhb, Lrrc17, Ly6h, Maged1, Malat1, Mbp, Mdh2, Meg3, Mlf2, Mobp,
+Mrfap1, Mt1, Myl12b, Myl6, Naca, Nap1l5, Ncdn, Ndfip1, Ndrg2, Ndufa12, Ndufa2, Ndufa3, Ndufa4,
+Ndufb9, Ndufc1, Nisch, Nnat, Nptxr, Nrgn, Nsf, Nsg1, Oaz1, Olfm1, Pcp4, Pde1b, Pea15a, Penk, Pfdn5,
+Pfn2, Pja2, Plp1, Ppp1r1b, Ppp3ca, Prkar1b, Ptgds, Ptma, Ptprn, Rab3a, Rnasek, Rpl10, Rpl13, Rpl13a,
+Rpl14, Rpl18, Rpl18a, Rpl19, Rpl22l1, Rpl23, Rpl23a, Rpl27, Rpl27a, Rpl29, Rpl32, Rpl34, Rpl36a, Rpl37,
+Rpl39, Rpl4, Rpl5, Rpl6, Rpl7, Rpl9, Rplp2, Rps12, Rps15a, Rps17, Rps18, Rps19, Rps2, Rps20, Rps23,
+Rps24, Rps27a, Rps3, Rps4x, Rps6, Rps7, Rtn3, Rtn4, Scd2, Scn1b, Selenow, Serf2, Sez6l2, Slc17a7, Slc1a2,
+Slc22a17, Slc25a4, Slc25a5, Snap25, Snap47, Snrpn, Sod1, Sparcl1, Sst, Stmn1, Stmn3, Sub1, Syn1, Syn2,
+Syngr1, Syt11, Tmsb10, Tmsb4x, Tpi1, Tspan7, Tuba1a, Tubb2a, Tubb4a, Tubb5, Ubl5, Uchl1, Uqcrc1,
+Uqcrh, Vsnl1, Wbp2, Ywhae, Ywhag, Ywhah.
+We clustered the 200 genes into 32 groups. The group membership is listed below.
+Group Members
+0
+Gnao1
+1
+Atp5b, Basp1, Camk2n1, Gas5, Nptxr, Pea15a, Rpl27a, Rpl29, Rps18, Rps20, Rps23,
+Stmn3
+2
+Stmn1
+3
+Cst3, Ctsd, Gad1, Gdi1, Mobp, Ndrg2, Ptprn, Rab3a, Rnasek, Rpl10, Rpl13a, Rpl19
+4
+Cplx1, Gnas, Gpm6a, Gprasp1, Hspa8, Kif1a, Ly6h, Nrgn, Penk, Pfdn5, Plp1, Ppp1r1b
+5
+Arpp21, Cox8a, Malat1, Mbp, Mdh2, Meg3, Naca, Ndufa12, Ndufa2, Pja2, Rpl13, Rps6
+6
+Apod, Atp2b2, Bex2, Camkv, Rpl34, Rps19, Rps24, Rps27a, Rps4x, Rps7, Sez6l2,
+Snap25
+7
+6330403K07Rik, Arpp19, Cox5a, Dpysl2, Ndufc1, Rpl18, Rpl39, Rpl7, Rpl9, Rps12,
+Rtn4, Slc1a2
+8
+Atp6v1e1, Dbi, Kif5a, Maged1, Nisch, Ppp3ca, Ptgds, Ptma, Rpl18a, Rplp2, Rps15a,
+Scd2
+9
+Apoe, Cfl1, Dynll2, Eno1, Hba-a2, Hbb-bs, Ldhb, Ndufb9, Rpl6, Rps2, Sub1, Syn1
+10
+Camk2a, Ckb, Cox6c, Fkbp8, H2afz, Hba-a1, Hpca, Lars2, Ndfip1, Rpl32, Sparcl1, Syt11
+11
+Atp5g1, Clstn1, Eef1a1, Fth1, Mrfap1, Myl12b, Nnat, Pcp4, Rpl36a, Rps3, Selenow, Sst
+12
+1110008P14Rik, Atp5o, Bc1, Chn1, Gpi1, Hpcal4, Lrrc17, Mlf2, Myl6, Ncdn, Pde1b,
+Snap47
+13
+App, Cck, Cryab, Dnm1, Dynll1, Hint1, Rpl22l1, Rpl23a, Slc25a4, Snrpn, Sod1, Syn2
+14
+Baiap2, Bsg, Calm3, Cplx2, Fkbp1a, Gaa, Gpm6b, Nsf, Rpl14, Rpl5, Rps17, Serf2
+15
+Acot7, Atp1a2, Atp5e, Calm2, Chgb, Chst1, Cox6a1, Eno2, Olfm1, Rpl23, Rpl37, Rpl4
+16
+Atp2a2, Cox7b, Ctxn1, Dclk1, Gm42418, Gng3, Oaz1, Rpl27, Rtn3, Scn1b, Slc17a7,
+Slc25a5
+17
+Cd81, Cox6b1, Prkar1b
+18
+Atp5j
+19
+Ndufa4
+20
+Atp1a1
+21
+Cox5b
+22
+Mt1
+23
+Cox7c
+24
+Nsg1
+25
+Atp1b1
+26
+Syngr1
+27
+Pfn2
+28
+Grcc10
+29
+Nap1l5
+20
+
+===== PAGE 21 =====
+Under Review
+30
+Slc22a17
+31
+Ndufa3
+Examples of biologically coherent modules.
+Several groups align with well-known brain cell
+programs:
+• Excitatory neurons (groups 10, 16, 4): Slc17a7 (VGLUT1), Camk2a, Nrgn, Hpca mark
+glutamatergic neurons Tasic & et al. (2018); Yao & et al. (2021).
+• Inhibitory neurons and neuropeptides (groups 3, 11, 13): Gad1, Sst, Cck represent
+GABAergic interneuron classes Tasic & et al. (2018); Zeisel & et al. (2015).
+• Oligodendrocytes and myelination (groups 5, 4, 3): Mbp, Plp1, Mobp are canonical
+myelin genes Cahoy & et al. (2008); Marques & et al. (2016).
+• Astrocyte-enriched genes (groups 3, 7, 9): Slc1a2, Ndrg2, Apoe are enriched in astro-
+cytes Zhang & et al. (2014); Srinivasan & et al. (2016).
+• Synaptic vesicle and release machinery (groups 6, 9, 13): Snap25, Syn1/Syn2, Syt11,
+Rab3a, Dnm1 participate in synaptic transmission S¨udhof (2013).
+C.4
+PRAD DATASET SELECTED GENES
+The following genes were selected for the PRAD (prostate cancer) dataset:
+A2M, ACPP, ACTA2, ACTB, ACTG1, ACTG2, ADIRF, AGR2, AMD1, APLP2, ATP5F1E, ATP5IF1,
+ATP5MD, ATP5MF, ATP5MPL, ATP6V0B, AZGP1, B2M, BTF3, C12orf57, CALM2, CALR, CD63, CD74,
+CD81, CD9, CD99, CFD, CFL1, CHCHD2, CIRBP, CKB, CLU, CNN1, COMMD6, COPS9, COX4I1,
+COX5B, COX6A1, COX6C, COX7A2, COX7B, COX7C, COX8A, CPE, CSRP1, CST3, DBI, DDT, DES,
+DHRS7, DSTN, DUSP1, EDF1, EEF1A1, EEF1B2, EEF2, EGR1, EIF1, EIF3L, ELOB, FABP5, FASN, FAU,
+FBLN1, FLNA, FOS, FTH1, FTL, FXYD3, GAPDH, GPX4, H2AFJ, H3F3A, H3F3B, HERPUD1, HINT1,
+HLA-B, HLA-C, HLA-DRA, HMGN2, HNRNPA1, HOXB13, HSPA5, HSPA8, HSPB1, IGHA1, IGKC,
+IGLC2, ITM2B, KDELR2, KLK2, KLK3, KLK4, KRT18, KRT8, LGALS1, LTF, MALAT1, MDK, MGP,
+MIF, MINOS1, MPC2, MSMB, MYH11, MYL6, MYL9, MYLK, MZT2B, NACA, NBL1, NDRG1,
+NDUFB1, NDUFB11, NDUFB4, NDUFS5, NEAT1, NEFH, NKX3-1, NME4, NPM1, NPY, NR4A1,
+NUPR1, OAZ1, OST4, PABPC1, PARK7, PDLIM5, PFDN5, PFN1, PLA2G2A, PLPP1, PMEPA1, POLR2L,
+PPDPF, PPIA, PRAC1, PRDX2, PRDX6, PTGDS, PTMA, RACK1, RDH11, ROMO1, RPN2, S100A11,
+S100A6, SARAF, SAT1, SEC11C, SEC61B, SEC61G, SELENOP, SELENOW, SERF2, SERP1, SKP1,
+SLC25A6, SLC45A3, SNHG19, SNHG25, SNHG8, SNRPD2, SORD, SPDEF, SPINT2, SPON2, SRP14,
+SSR4, STEAP2, TAGLN, TFF3, TIMP1, TMBIM6, TMEM141, TMEM258, TMEM59, TMPRSS2,
+TMSB10, TMSB4X, TOMM7, TPM2, TPT1, TRPM4, TSC22D3, TSPAN1, TSTD1, TXN, UBA52, UBB,
+UBL5, UQCR10, UQCRB, UQCRH, UQCRQ, VEGFA, VIM, ZFAS1.
+We clustered the 200 genes into 32 groups. The group membership is listed below.
+Group
+Members
+0
+EDF1, EEF1B2, FABP5, HLA–C
+1
+SELENOP
+2
+HERPUD1
+3
+A2M, CFL1, CIRBP, PPDPF, PRDX2, PRDX6, PTGDS, RACK1, RDH11, RPN2, S100A6,
+SARAF
+4
+LTF, MYL6, MYLK, MZT2B, NACA, NBL1, NDRG1, OAZ1, ROMO1, SLC25A6, SORD,
+TMEM141
+5
+ACPP, ACTG2, ADIRF, AGR2, AMD1, ATP5F1E, BTF3, NDUFB4, TMBIM6, TMPRSS2,
+TMSB10, UQCRQ
+6
+ACTG1, APLP2, COPS9, EIF3L, NDUFS5, NUPR1, OST4, PRAC1, SAT1, TMSB4X, TOMM7,
+TSPAN1
+7
+ACTA2, AZGP1, B2M, CNN1, EIF1, HSPA5, HSPB1, LGALS1, NME4, PMEPA1, S100A11,
+UQCRH
+8
+ATP5IF1, COX7C, HOXB13, IGKC, KDELR2, MDK, NEFH, SKP1, TPM2, TPT1, UBB, ZFAS1
+9
+ATP5MF, COX4I1, ELOB, HMGN2, HSPA8, MPC2, PLPP1, POLR2L, PPIA, SRP14, TMEM258,
+TSTD1
+21
+
+===== PAGE 22 =====
+Under Review
+10
+CD74, CKB, COX7B, CPE, DHRS7, EEF2, HLA–DRA, PDLIM5, SELENOW, TXN, UBL5,
+UQCRB
+11
+ACTB, ATP6V0B, CD81, CD9, FLNA, FTH1, H3F3A, HNRNPA1, IGLC2, MYL9, NR4A1,
+SNHG25
+12
+ATP5MPL, CD63, COX5B, FTL, MGP, NDUFB1, NDUFB11, PFN1, PTMA, SEC61G, SNHG8,
+SNRPD2
+13
+ATP5MD, C12orf57, COMMD6, CSRP1, FASN, FXYD3, KLK3, MIF, NEAT1, SEC11C, SPINT2,
+VEGFA
+14
+CD99, CLU, DBI, FBLN1, KRT8, MALAT1, NPY, PLA2G2A, SEC61B, SERF2, SPDEF, TAGLN
+15
+COX6A1, COX7A2, EGR1, FAU, H3F3B, MSMB, MYH11, NKX3–1, PFDN5, SLC45A3, TFF3,
+TIMP1
+16
+CALM2, CHCHD2, CST3, DES, GAPDH, H2AFJ, HINT1, IGHA1, KLK2, SNHG19, SPON2,
+SSR4
+17
+CALR, CFD, COX8A, DSTN, GPX4, KRT18, PABPC1, PARK7, SERP1, STEAP2, TSC22D3
+18
+TMEM59
+19
+VIM
+20
+EEF1A1
+21
+KLK4
+22
+DUSP1
+23
+ITM2B
+24
+MINOS1
+25
+UQCR10
+26
+NPM1
+27
+DDT
+28
+HLA–B
+29
+COX6C
+30
+TRPM4
+31
+FOS
+Examples of biologically coherent modules.
+Several groups align with well-known PRAD biology:
+• Androgen–regulated luminal secretory program (groups 13, 15, 8, 5, 16, 21): KLK3/KLK2,
+NKX3–1, HOXB13, TMPRSS2, SLC45A3, MSMB, TFF3, SPDEF. These genes are lineage markers
+or direct androgen receptor targets in prostate epithelium Cleutjens & et al. (1997); Wang & et al.
+(2009); Ewing & et al. (2012); Tomlins & et al. (2005).
+• Stromal smooth muscle and CAF–like ECM (groups 7, 14, 15): ACTA2, CNN1, MYH11, TAGLN,
+FBLN1, DES mark prostate stroma and myofibroblasts Chen & et al. (2021).
+• Antigen presentation and immunoglobulin (groups 10, 28, 11, 8, 16): HLA–DRA/HLA–B, CD74,
+IGKC/IGLC2/IGHA1 reflect MHC and B–cell modules Collins et al. (1984).
+• Prostate–enriched antigens and secreted factors (groups 7, 17, 16): AZGP1, STEAP2, SPON2 are
+well–documented prostate–enriched proteins with diagnostic or biological relevance Hubert & et al.
+(1999); Zhang & et al. (2012).
+C.5
+CCRCC DATASET SELECTED GENES
+The following genes were selected for the ccRCC (clear cell Renal Cell Carcinoma) dataset:
+A2M, ACTA2, ACTB, ACTR3, ADIRF, AEBP1, AHNAK, ANGPTL4, ANPEP, ANXA2, APOC1, APOE,
+APOL1, APP, ARF1, ARF4, ARPC1B, ARPC2, ASPH, ATP1A1, ATP1B1, ATP5F1B, ATP5MC2, ATP5ME,
+B2M, BGN, BIRC3, BRI3, BSG, BST2, C19orf33, C1QA, C1QB, C1QC, C1R, C1S, C3, CA12, CALD1,
+CANX, CAV1, CCDC91, CCN1, CCN2, CCNI, CD24, CD44, CD63, CD68, CD74, CD81, CD99, CEBPD,
+CHCHD2, CIRBP, CLU, COL18A1, COL1A1, COL1A2, COL3A1, COL4A1, COL4A2, COL6A1,
+COL6A2, COL6A3, COX6C, CP, CPE, CRYAB, CST3, CSTB, CTSA, CTSB, CTSD, CTSZ, CXCR4,
+CYB5A, CYB5R3, DCN, DDIT4, DDX17, DEPP1, DUSP1, EEF1G, EIF1, EIF4A1, EIF4A2, EIF4G2,
+EIF4H, ENPP3, FCGRT, FGB, FKBP5, FLNA, FN1, FOS, FTH1, FTL, FXYD2, GABARAP, GLUL, GPX3,
+GSN, GSTP1, H3F3B, HINT1, HIST1H4C, HLA-A, HLA-DPA1, HLA-DPB1, HLA-DQA1, HLA-DQB1,
+HLA-DRA, HLA-DRB1, HLA-F, HMGB1, HNRNPA2B1, HNRNPA3, HPCAL1, HSP90AA1, HSP90B1,
+HSPA1B, HSPA5, HSPA8, HSPD1, HSPG2, HTRA1, IFI27, IFI30, IFI6, IFITM2, IGFBP3, IGFBP4,
+IGFBP5, IGFBP7, IGHA1, IGHG1, IGHG2, IGHG3, IGHG4, IGHM, IGKC, IGLC1, IL32, ITGA3, ITGB1,
+JCHAIN, KRT18, KRT8, LAPTM5, LGALS1, LGALS3, LGALS3BP, LY6E, LYZ, MCL1, MGP, MIF,
+MMP7, MYH9, MYL9, NCL, NDRG1, NDUFA4L2, NME2, NOP53, NPC2, NUPR1, P4HB, PARK7,
+22
+
+===== PAGE 23 =====
+Under Review
+PCBP1, PCBP2, PDIA6, PDK4, PDZK1IP1, PEBP1, PFDN5, PFKP, PGAM1, PGF, PLEC, PLIN2, PLOD2,
+PLTP, POSTN, PPDPF, PPP2CB, PRDX6, PRR13, PSAP, PTMA, PTMS, PTTG1IP, RARRES2, RASSF4,
+RGS5, RHOB, RNASET2, RPN2, S100A11, S100A6, SAT1, SCD, SEC61G, SELENOP, SERPINA1,
+SERPINE1, SERPING1, SNX3, SOD2, SPARC, SPINK13, SPP1, SQSTM1, SRRM2, SRSF2, SSR4,
+TAGLN, TAGLN2, TGFBI, TGM2, THBS1, TIMP1, TIMP3, TMBIM6, TMEM176A, TMEM176B,
+TMSB4X, TOMM7, TPM1, TPM2, TRAM1, TSC22D3, TUBA1B, TXN, TXNIP, TYROBP, UBA52, UBC,
+UQCRQ, VEGFA, VIM, VWF.
+We clustered the 200 genes into 32 groups. The group membership is listed below.
+Group
+Members
+0
+ANGPTL4, APP, ATP1B1, BGN, BIRC3, CAV1, CD74, FTH1, FTL, GABARAP, HNRNPA3,
+PTMA
+1
+GLUL
+2
+CYB5A
+3
+ARPC1B, C1R, CA12, CD63, CIRBP, COL4A2, DDIT4, FGB, HSP90B1, HTRA1, PDZK1IP1,
+RNASET2
+4
+AEBP1, AHNAK, FKBP5, GSTP1, HIST1H4C, HLA–DQB1, HMGB1, HSPG2, IGFBP4, ITGB1,
+NDUFA4L2, PSAP
+5
+BST2, HLA–DQA1, HLA–DRA, HNRNPA2B1
+6
+NUPR1
+7
+KRT18
+8
+CCNI
+9
+COL4A1
+10
+C1QB
+11
+IGKC
+12
+ANPEP, COX6C, HSPA8, IFI30, IGHG4, IGHM, LY6E, MCL1, MGP, MYL9, NCL, PARK7
+13
+APOC1, GSN, HSPD1, IFITM2, KRT8, LAPTM5, LGALS1, LGALS3, MMP7, MYH9, PLIN2,
+PTMS
+14
+ADIRF, ARF4, CCDC91, COL18A1, CTSZ, FXYD2, HLA–A, HSP90AA1, ITGA3, LYZ, NPC2,
+PEBP1
+15
+APOE, ATP5MC2, BRI3, BSG, C1S, CP, DDX17, DEPP1, GPX3, IGFBP3, LGALS3BP, PGAM1
+16
+ACTB, ARPC2, C1QA, C1QC, CCN1, COL6A3, CYB5R3, IGFBP5, MIF, PFDN5, PPDPF,
+S100A11
+17
+A2M, ACTR3, ANXA2, APOL1, ATP1A1, HLA–DPA1, HSPA1B, HSPA5, NDRG1, PLTP, RAR-
+RES2, RGS5
+18
+ATP5F1B, CD81, CST3, CXCR4, EIF4H, ENPP3, FCGRT, FN1, IGHG2, NOP53, PRR13, RPN2
+19
+CALD1, CTSA, CTSB, IFI6, IGHA1, IGHG3, NME2, PCBP2, PDIA6, POSTN, PRDX6, RHOB
+20
+ARF1, CCN2, CD24, CD44, COL6A2, EIF4G2, IFI27, IGHG1, JCHAIN, P4HB, PGF, PLOD2
+21
+ACTA2, ASPH, C3, CANX, CD99, CEBPD, COL1A1, DCN, EIF4A1, FOS, HLA–DPB1, HP-
+CAL1
+22
+ATP5ME, CLU, CPE, CSTB, DUSP1, EEF1G, EIF1, FLNA, HLA–F, IGLC1, PLEC, RASSF4
+23
+C19orf33, CD68, CHCHD2, COL1A2, COL3A1, COL6A1, CRYAB, H3F3B, HINT1, IL32, PDK4,
+PPP2CB
+24
+CTSD
+25
+PTTG1IP
+26
+EIF4A2
+27
+PFKP
+28
+HLA–DRB1
+29
+IGFBP7
+30
+B2M
+31
+PCBP1
+Examples of biologically coherent modules (by groups).
+Several groups align with well-known
+ccRCC or tumor-microenvironment programs:
+• Hypoxia/lipid metabolism and ECM remodeling: groups 3, 4, 15, 18, 20. Representative genes
+include NDUFA4L2, PLIN2, CA12, ENPP3, PLOD2, PGF, FN1. These are classic HIF–hypoxia
+targets or matrix/secretory programs frequently upregulated in ccRCC Kubala et al. (2023); Cao
+et al. (2018); Ivanov et al. (2001); Thompson et al. (2018).
+• Antigen presentation and interferon-stimulated genes: groups 5, 14, 21, 28. Genes such as
+HLA–DRA/DRB1/DPA1/DPB1, HLA–A, BST2, IFI27, IFI6, IFITM2, LY6E mark MHC-II antigen
+processing and IFN response Collins et al. (1984); Ortega-Prieto et al. (2024).
+23
+
+===== PAGE 24 =====
+Under Review
+• C1Q+ macrophage module: groups 10, 16, 23 with C1QA/B/C, CD68, often alongside
+APOE/LGALS3 Lindblom et al. (2003); He et al. (2016b).
+• Pericyte/smooth-muscle and stromal ECM: groups 19, 21, 23 with ACTA2, MYL9, CALD1,
+RGS5, and collagens COL1A1/1A2/3A1/6A1/6A3, DCN, POSTN, FN1 Lindblom et al. (2003); He
+et al. (2016b).
+• Plasma-cell immunoglobulins: groups 11, 12, 18, 19, 20 featuring IGHG1/2/3/4, IGHM, IGHA1,
+IGKC, JCHAIN Xu et al. (2020); Onieva et al. (2022).
+D
+IMPLEMENTATION DETAILS AND REPRODUCIBILITY
+Reproducibility To ensure consistent results, we fix the random seed at 2021 (configurable via --seed). The
+fix seed function controls randomness in Python, NumPy, PyTorch, and CUDA operations. For complete
+reproducibility, set Lightning’s deterministic=True and apply cuDNN flags as recommended in
+PyTorch documentation. All inference scripts use fixed seeds.
+Training Setup We use a learning rate of 1e-4 with weight decay of 1e-4 and gradient clipping at 1.0. The
+learning rate scheduler is disabled by default. Training uses batch size 256 while validation and testing use
+batch size 64, with 4 data loading workers and pin memory=True.
+The model uses 768-dimensional embeddings with 8 transformer layers, 8 attention heads, and MLP ratio of
+3.0. Dropout is set to 0.0 for training and 0.1 for evaluation. Multi-scale patches are configured as
+gene patch nums = (1, 4, 8, 40, 100, 200) with a vocabulary size of max gene count +
+1 (default 2000). All models train for 50 epochs with early stopping.
+Multi-GPU Training We use DDP for multi-GPU training with accumulate grad batches = 1 and
+find unused parameters = False. DDP is automatically enabled when multiple GPUs are detected.
+E
+ADDITIONAL VISUALIZATION RESULTS
+To provide comprehensive spatial visualization comparisons across different genes, we present additional
+visualization results on the HER2ST dataset using the SPA148 sample. These visualizations demonstrate the
+spatial expression patterns predicted by our GenAR method compared to baseline approaches across a diverse
+set of genes with different expression characteristics and biological functions. The selected genes represent
+various functional categories including structural proteins, growth factors, immune-related genes, and
+metabolic enzymes, showcasing the generalization capability of our method across different gene types.
+F
+LARGE LANGUAGE MODEL USAGE
+Large Language Models were used as general-purpose writing assistance tools to improve the grammar,
+clarity, and organisation of the manuscript. The core research contributions, methodology, experimental
+design, and scientific insights are entirely original work by the authors.
+24
+
+===== PAGE 25 =====
+Under Review
+Figure 4: Spatial visualization comparison of C12orf57 gene expression prediction on HER2ST
+SPA148 sample.
+Figure 5: Spatial visualization comparison of EIF4G1 gene expression prediction on HER2ST
+SPA148 sample.
+Figure 6: Spatial visualization comparison of FNBP1L gene expression prediction on HER2ST
+SPA148 sample.
+Figure 7: Spatial visualization comparison of IGFBP2 gene expression prediction on HER2ST
+SPA148 sample.
+Figure 8: Spatial visualization comparison of ISG15 gene expression prediction on HER2ST
+SPA148 sample.
+25
+
+===== PAGE 26 =====
+Under Review
+Figure 9: Spatial visualization comparison of NUCKS1 gene expression prediction on HER2ST
+SPA148 sample.
+Figure 10: Spatial visualization comparison of ORMDL3 gene expression prediction on HER2ST
+SPA148 sample.
+Figure 11: Spatial visualization comparison of PPP1R1B gene expression prediction on HER2ST
+SPA148 sample.
+Figure 12: Spatial visualization comparison of SF3B5 gene expression prediction on HER2ST
+SPA148 sample.
+Figure 13: Spatial visualization comparison of SSR2 gene expression prediction on HER2ST
+SPA148 sample.
+26

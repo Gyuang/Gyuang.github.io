@@ -1,0 +1,1771 @@
+
+===== PAGE 1 =====
+ 
+1 
+Leveraging information in spatial transcriptomics to predict super-resolution 
+1 
+gene expression from histology images in tumors 
+2 
+Minxing Pang1, Kenong Su2, Mingyao Li2 
+3 
+ 
+4 
+1. Computer, Electrical and Mathematical Sciences and Engineering Division, King Abdullah 
+5 
+University of Science and Technology (KAUST), Thuwal, Saudi Arabia. 
+6 
+2. Department of Biostatistics, Epidemiology and Informatics, Perelman School of Medicine, 
+7 
+University of Pennsylvania, USA. 
+8 
+ 
+9 
+Correspondence:  
+10 
+suken@pennmedicine.upenn.edu 
+11 
+mingyao@pennmedicine.upenn.edu 
+12 
+ 
+13 
+Keywords: spatial transcriptomics; gene expression prediction; histology; vision transformer. 
+14 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 2 =====
+ 
+2 
+ABSTRACT 
+15 
+Recent developments in spatial transcriptomics (ST) technologies have enabled the profiling of 
+16 
+transcriptome-wide gene expression while retaining the location information of measured genes 
+17 
+within tissues. Moreover, the corresponding high-resolution hematoxylin and eosin-stained 
+18 
+histology images are readily available for the ST tissue sections. Since histology images are easy 
+19 
+to obtain, it is desirable to leverage information learned from ST to predict gene expression for 
+20 
+tissue sections where only histology images are available. Here we present HisToGene, a deep 
+21 
+learning model for gene expression prediction from histology images. To account for the spatial 
+22 
+dependency of measured spots, HisToGene adopts Vision Transformer, a state-of-the-art method 
+23 
+for image recognition. The well-trained HisToGene model can also predict super-resolution gene 
+24 
+expression. Through evaluations on 32 HER2+ breast cancer samples with 9,612 spots and 785 
+25 
+genes, we show that HisToGene accurately predicts gene expression and outperforms ST-Net 
+26 
+both in gene expression prediction and clustering tissue regions using the predicted expression. 
+27 
+We further show that the predicted super-resolution gene expression also leads to higher 
+28 
+clustering accuracy than observed gene expression. Gene expression predicted from HisToGene 
+29 
+enables researchers to generate virtual transcriptomics data at scale and can help elucidate the 
+30 
+molecular signatures of tissues. 
+ 
+31 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 3 =====
+ 
+3 
+INTRODUCTION 
+32 
+Knowledge of the spatial organization of cells and the spatial variation of gene expression in 
+33 
+tissues is important in understanding the complex transcriptional architecture of multicellular 
+34 
+organisms. For example, in a heterogeneous tissue such as tumor, cancer cells can differ vastly 
+35 
+from each other in their gene expression profiles and cellular properties due to residing in distinct 
+36 
+tumor microenvironments. Recent advances in spatial transcriptomics (ST) technologies have 
+37 
+made it possible to profile gene expression while retaining the spatial location information of the 
+38 
+measured genes within tissues (1-6). Applications of the ST technologies in diverse tissues and 
+39 
+diseases have transformed our views of transcriptome complexity (7-9). A popular ST technology 
+40 
+is based on spatial barcoding followed by next-generation sequencing in which transcriptome-
+41 
+wide gene expression is measured in gene capture locations, referred to as spatially barcoded 
+42 
+spots. Such ST technologies include Spatial Transcriptomics (10), 10x Genomics Visium, SLIDE-
+43 
+seq (11), SLIDE-seq2 (12), and many others (13,14). Data from such spatial barcoding-based 
+44 
+technology typically include a high-resolution hematoxylin and eosin (H&E)-stained histology 
+45 
+image of the tissue section from which the gene expression data are obtained. 
+46 
+ 
+47 
+Although ST offers rich information, such data are still expensive to generate, which prevents the 
+48 
+applications of ST in large-scale studies. On the other hand, H&E-stained histology images are 
+49 
+easier and cheaper to obtain than ST and are routinely generated in clinics. It is desirable to 
+50 
+leverage information learned from ST to predict gene expression from histology images. Such 
+51 
+predictions can generate virtual ST data, which will enable the study of spatial variations of gene 
+52 
+expression at scale. Indeed, several studies have shown that tumor related genes are highly 
+53 
+correlated with histological features, suggesting that gene expression can be predicted from 
+54 
+histology images. HE2RNA (15), a model based on the integration of multiple data modes, is 
+55 
+trained to systematically predict gene expression profiles from whole-slide images without the 
+56 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 4 =====
+ 
+4 
+reliance on expert annotation. ST-Net (16) predicts spatially variable gene expression from 
+57 
+histology images using a supervised convolutional neural network (CNN) trained from breast 
+58 
+cancer ST data. 
+59 
+ 
+60 
+While these methods have shown promising performance, they are not short of limitations. 
+61 
+HE2RNA was developed for bulk RNA sequencing and lacks the ability to learn from ST data. 
+62 
+While ST-Net is specifically designed for ST, it does not model the spatial location information of 
+63 
+each measured spot in their CNN model. Since gene expression often displays local patterns, 
+64 
+which are often manifested in the histology images, it is necessary to explicitly model the spatial 
+65 
+location information when predicting gene expression. Although CNN-based models have 
+66 
+dominated the field of computer vision for years, different parts of an image must be processed 
+67 
+in the same way regardless of their position. This intrinsic bias in CNN makes it less ideal for ST 
+68 
+data. However, this bias has been recently alleviated by Vision Transformer (17), which internally 
+69 
+utilizes self-attention mechanism for divided image patches and has shown strong performance 
+70 
+on many tasks, including medical image classification, segmentation (18), and registration (19). 
+71 
+ 
+72 
+To utilize these advances in Vision Transformer, we developed HisToGene, an attention-based 
+73 
+model that aims to predict gene expression from H&E-stained histology images based on the 
+74 
+relationship between histological features and gene expression features learned from a training 
+75 
+ST dataset. To account for the spatial dependency of measured spots in ST, HisToGene employs 
+76 
+a modified Vision Transformer model, which can naturally model the positional relationship 
+77 
+between spots through appropriate positional embedding. Compared to ST-Net (16), our 
+78 
+attention-based model considers the spot dependency together with histological features when 
+79 
+predicting gene expression. After model training, HisToGene can further predict super-resolution 
+80 
+gene expression by averaging predicted gene expression from densely sampled histology image 
+81 
+patches. To the best of our knowledge, it is the first time that gene expression can be predicted 
+82 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 5 =====
+ 
+5 
+at such high resolution based on histology images. Gene expression predicted from HisToGene 
+83 
+enables researchers to generate virtual transcriptomics data at scale and can help elucidate the 
+84 
+molecular signatures of tissues. 
+85 
+ 
+86 
+MATERIALS AND METHODS 
+87 
+Overview of HisToGene 
+88 
+HisToGene takes a ST dataset, possibly with multiple tissue sections obtained from different 
+89 
+subjects, as input for model training. For each tissue section in the ST data, it starts by extracting 
+90 
+patches from the histology image according to the spatial coordinates and size of each spot in 
+91 
+the ST data. The patch embedding and position embedding are then aggregated by learnable 
+92 
+linear layers through a modified Vision Transformer model. Next, HisToGene utilizes multi-head 
+93 
+attention layers to generate latent embeddings (Figure. 1a). With the well-trained model, 
+94 
+HisToGene can predict gene expression for each sampled patch from the histology image in a 
+95 
+test dataset that only has histology images. Furthermore, using a dense image patch sampling 
+96 
+strategy, HisToGene can predict super-resolution gene expression with 4 times of the original 
+97 
+patch/spot level resolution by default (Figure. 1b), but the resolution can be increased to an even 
+98 
+higher level when using more densely sampled patches. 
+99 
+ 
+100 
+Data preprocessing 
+101 
+HisToGene involves a training step and a prediction step. The training step takes a ST dataset 
+102 
+as input, which includes histology images, the gene expression data, and the spatial coordinates 
+103 
+for the spatial barcodes. In the training stage, it uses the histology images and the spatial 
+104 
+coordinates of the spatially barcoded spots as input, and the corresponding spatial gene 
+105 
+expression data as labels. The spatial gene expression data are stored in an 𝑁× 𝐷 matrix of 
+106 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 6 =====
+ 
+6 
+unique molecular identifier (UMI) counts with 𝑁 spots and 𝐷 genes. The coordinates of the spots 
+107 
+are stored in an 𝑁× 2 matrix indicating the (𝑥, 𝑦) location of each spot. 
+108 
+ 
+109 
+For the histology image, we extract patches according to the size and location of each spot. We 
+110 
+assemble all patches in a tissue section and flatten them into an 𝑁× (3 × 𝑊× 𝐻) matrix as the 
+111 
+input for the Vision Transformer, where 3 is the number of channels, and 𝑊 and 𝐻 represent the 
+112 
+width and height of the patch. In our experiment on the HER2+ breast cancer dataset (20), 𝑊=
+113 
+𝐻= 112 pixels, which correspond to the diameter of each spot in the ST data.  
+114 
+ 
+115 
+For the spatial gene expression data, we first identify common genes across all tissue sections in 
+116 
+the training ST data. We then select the top 1,000 highly variable genes in each tissue section 
+117 
+and eliminate genes that are expressed in less than 1,000 spots across all tissue sections. The 
+118 
+gene expression values in each spot are normalized such that the UMI count for each gene is 
+119 
+divided by the total UMI counts across all genes in that spot, multiplied by 1,000,000, and then 
+120 
+transformed to a natural log scale. 
+121 
+ 
+122 
+The modified Vision Transformer model for gene expression prediction 
+123 
+Model architecture 
+124 
+Vision Transformer has been widely used in computer vision for image recognition and 
+125 
+outperformed other state-of-the-art methods in the ImageNet Large-Scale Visual Recognition 
+126 
+Challenge. The standard Vision Transformer model splits an image into a fixed number of 
+127 
+patches. However, in ST data, the number of spots that cover the captured tissue area is not 
+128 
+fixed. This property is similar to problems in natural language processing in which the lengths of 
+129 
+sentences are also variant. To accommodate variable numbers of spots in ST, we redesign the 
+130 
+encoding part of the Vision Transformer model with details described below. 
+131 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 7 =====
+ 
+7 
+ 
+132 
+Encoding of histology image and position features 
+133 
+After preprocessing, we use a learnable linear layer 𝑾! to transform the histology image features 
+134 
+from an 𝑁× (3 × 𝑊× 𝐻) matrix 𝑭! to an 𝑁× 1024 matrix 𝑬!, i.e., 𝑬! = 𝑭! ⋅𝑾!. Another part of 
+135 
+the input is the 𝑁× 2 matrix, which represents the (𝑥, 𝑦) coordinates of each spot in the ST data. 
+136 
+The 𝑥-coordinate information is represented by an 𝑁× 1 vector, which is transformed into a one-
+137 
+hot encoding matrix 𝑷" with size 𝑁×  𝑚, where 𝑚 is the maximum number of 𝑥-coordinates 
+138 
+among all tissue sections. For the HER2+ breast cancer dataset, 𝑚= 30. Next, we use a 
+139 
+learnable linear layer 𝑾" ∈R#$×&$'( to transform 𝑷" into an 𝑁× 1024 matrix 𝑬", i.e., 𝑬" = 𝑷" ⋅
+140 
+𝑾". Similar transformations are performed for the 𝑦-coordinate vector to obtain an 𝑁× 1024 
+141 
+encoding matrix 𝑬). Finally, we obtain the embedding matrix by summing up the image feature 
+142 
+encoding matrix, the 𝑥-coordinate encoding matrix, and the 𝑦-coordinate encoding matrix, 
+143 
+𝑬= 𝑬! + 𝑬" + 𝑬). 
+144 
+This embedding matrix is used as the input for the multi-head attention layers as described below. 
+145 
+ 
+146 
+Multi-Head Attention layers 
+147 
+The Multi-Head Attention module can automatically learn the attention for a "sequence". In 
+148 
+language data, the "sequence" is sequence of words in a sentence. In ST data, the "sequence" 
+149 
+is a sequence of spots/patches in a tissue section. The multi-head attention is a linear combination 
+150 
+of multiple attention heads, 
+151 
+MultiHead(𝑸, 𝑲, 𝑽) = [ℎ𝑒𝑎𝑑&, … , ℎ𝑒𝑎𝑑*]𝑾$, 
+152 
+where 𝑾$ is a learnable 1024 × 1024 parameter matrix that is used to aggregate the attention 
+153 
+heads, 𝑛 is the number of heads, and 𝑸, 𝑲, 𝑽 represent Query, Key, and Value. In our model, the 
+154 
+input matrix is the 𝑁× 1024 embedding matrix 𝑬 obtained in the previous step. The attention 
+155 
+mechanism is defined as 
+156 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 8 =====
+ 
+8 
+head+ =  Attention O𝑸𝑾+
+,, 𝑲𝑾+
+-, 𝑽𝑾+
+.P 
+157 
+ Attention(𝑸, 𝑲, 𝑽) = softmax R𝑸𝑲𝑻
+S𝑑0
+T 𝑽 
+158 
+where 𝑾+
+,, 𝑾+
+-, and 𝑾+
+. are all learnable 1024 × 1024 parameter matrices. The shape of the input 
+159 
+for the attention is 𝑁× 1024. In the attention operation, we have two parts, softmax U
+𝑸𝑲𝑻
+34"V and 𝑽. 
+160 
+The former part is called Attention Map, whose shape is 𝑁× 𝑁. The latter part is the Value of the 
+161 
+self-attention mechanism, where 𝑸= 𝑲= 𝑽. Each column of the Attention Map represents the 
+162 
+attention weight contributed from other spots. The Attention Map provides useful information on 
+163 
+how the model works. The result of the attention operation is an 𝑁× 1024 matrix. We use the 
+164 
+output of each multi-head Attention layer as the input for the next layer and repeat this calculation 
+165 
+sequentially. 
+166 
+ 
+167 
+Details of the model implementation 
+168 
+We implement the HisToGene model using PyTorch with the following hyper-parameters: learning 
+169 
+rate is 10-5, the number of training epochs is 100, drop-out ratio is 0.1, the number of Multi-Head 
+170 
+Attention layers is 8, and the number of attention heads is 16. 
+171 
+ 
+172 
+Predicting gene expression at super-resolution 
+173 
+The above trained Vision Transformer model can predict gene expression from histology images 
+174 
+with spot level resolution as the training ST data only contain gene expression measured within 
+175 
+spatially barcoded spots. However, since the histology image does not have tissue gaps, it is 
+176 
+possible to densely sample histology image patches and use predicted gene expression from 
+177 
+overlapping patches to estimate gene expression at a resolution that is higher than the original 
+178 
+spot. This is analogous to natural language processing, where the Transformer is trained using 
+179 
+short sentences but can make predictions for long sentences. In our case, the “sentence” is the 
+180 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 9 =====
+ 
+9 
+sequence of “spots”. Therefore, using the trained model, we can predict the expression for more 
+181 
+“spots” within a tissue section.  
+182 
+ 
+183 
+The key for our super-resolution gene expression prediction lies in the dense sampling scheme 
+184 
+of the histology image patches. First, we uniformly sample patches from the tissue area according 
+185 
+to a grid with size of each cell determined by the spot size in the training ST data. For example, 
+186 
+in the HER2+ breast cancer dataset, each patch is 112×112 pixels. We sample patches from the 
+187 
+histology image such that the entire tissue area is covered by non-overlapping patches of size 
+188 
+112×112 pixels. By sampling the patches this way, each sub-patch is covered by 4 patches. Using 
+189 
+the trained model, we can predict the gene expression for each sampled patch. For each sub-
+190 
+patch, its gene expression is predicted by the average of the predicted expressions for the 4 
+191 
+patches that cover it. Since the size of each sub-patch is only ¼ of the original patch, this sampling 
+192 
+scheme can increase the gene expression resolution by 4 times. We note that our sampling 
+193 
+scheme can be easily modified to increase gene expression prediction resolution to a higher level. 
+194 
+ 
+195 
+RESULTS 
+196 
+Overview of evaluations 
+197 
+To evaluate the performance of HisToGene, we analyzed the HER2+ breast cancer dataset (20), 
+198 
+which includes 36 tissue sections collected from 8 HER2+ breast cancer patients. We retained 
+199 
+32 sections from 7 patients that have at least 180 spots per section in the analysis. To evaluate 
+200 
+the gene expression prediction accuracy, we conducted leave-one-out (32-fold) cross validation. 
+201 
+Specifically, for each section, we used the other 31 sections to train the model and make spatial 
+202 
+gene expression predictions for that section. To select genes for prediction, we first considered 
+203 
+the top 1,000 highly variable genes for each section and then filtered those that were expressed 
+204 
+in less than 1,000 spots across all tissue sections. This filtering left with 9,612 spots and 785 
+205 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 10 =====
+ 
+10 
+genes for model training. We compared HisToGene with ST-Net for gene expression prediction. 
+206 
+Since the source codes of ST-Net released by the authors are not maintained, we were not able 
+207 
+to analyze the HER2+ breast cancer data using their codes. For comparison, we used our own 
+208 
+implementation of ST-Net. 
+209 
+ 
+210 
+HisToGene enables super-resolution gene expression prediction and consistently 
+211 
+outperforms ST-Net 
+212 
+Since there are no tissue gaps in a histology image, it is possible to densely sample patches from 
+213 
+the image, predict gene expression for each sampled patch, and then use the average of the 
+214 
+predicted expression from overlapping patches to predict the gene expression for the overlapping 
+215 
+tissue area. This allows us to increase the gene expression prediction resolution as the 
+216 
+overlapping area among patches is much smaller than the size of the original patch. By averaging 
+217 
+predicted gene expression across spatially close patches also reduces prediction uncertainty. 
+218 
+Based upon this intuition, we implemented a super-resolution gene expression prediction 
+219 
+algorithm in which the modified Vision Transformer in HisToGene can take image patches with 
+220 
+variable lengths as input. With the patterned dense sampling of image patches shown in Figure 
+221 
+1b, we can increase the gene expression prediction resolution by 4 times. Using a similar 
+222 
+patterned image patch sampling scheme, the gene expression prediction resolution can be 
+223 
+increased by 9 times, 25 times, or higher. 
+224 
+ 
+225 
+For illustration, we sampled in the image patches such that the gene expression resolution 
+226 
+prediction is increased by 4 times. An ideal super-resolution gene expression prediction method 
+227 
+should increase the gene expression resolution while retaining the original expression pattern at 
+228 
+the patch level, i.e, spot level, as this will ensure no artificial patterns are introduced during the 
+229 
+super-resolution gene expression prediction. To evaluate whether HisToGene has this property, 
+230 
+we obtained the patch/spot level gene expression from the super-resolution expression predicted 
+231 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 11 =====
+ 
+11 
+by HisToGene. Specifically, we summed up the expression values for 4 adjacent sub-patches to 
+232 
+“recover” the patch/spot-level gene expression. Results obtained from this super-resolution 
+233 
+expression “recovered” approach were denoted by HisToGene*. We conducted the leave-one-
+234 
+out cross validation for the 32 tissue sections in the HER2+ breast cancer dataset. For each tissue 
+235 
+section, we calculated the correlations between the observed gene expression and the predicted 
+236 
+gene expression. Figure 2a shows that among the 32 tissue sections, HisToGene* predicted 
+237 
+patch/spot level gene expression has significantly higher correlations with the observed spot-level 
+238 
+gene expression than HisToGene for 19 (59%) sections, whereas HisToGene has significantly 
+239 
+higher correlations than HisToGene* for 6 (19%) sections. These results indicate that with the 
+240 
+densely sampled image patches as input in the trained prediction model, we can not only increase 
+241 
+gene expression prediction resolution, but also the patch/spot-level gene expression prediction 
+242 
+accuracy. Such increased accuracy is due to the flexibility of the attention mechanism in handling 
+243 
+longer sequences of image patches, which makes the prediction benefit from information in 
+244 
+additional batches included in the longer sequences. The increased accuracy is also due to the 
+245 
+use of average predicted expression across nearby patches as the random error of the mean is 
+246 
+less than that of an individual prediction.  
+247 
+ 
+248 
+We also performed gene expression prediction using ST-Net but found its predictions generally 
+249 
+yielded low correlations with the observed expression. In fact, for most of the tissue sections, the 
+250 
+mean correlations are around zero, and the correlations are not much better even for patient B in 
+251 
+which both HisToGene and HisToGene* yielded much higher correlations. We suspect the 
+252 
+relatively poor performance of ST-Net is due to its failure in considering the spatial dependency 
+253 
+of spots when building the prediction model. As such, patches obtained from different patients are 
+254 
+treated in the same way. As reported in the original study (20), there are strong subject-to-subject 
+255 
+differences among patients, thus ignoring such differences would lead to less accurate prediction. 
+256 
+By contrast, the modified Vision Transformer in HisToGene considers a tissue section as the 
+257 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 12 =====
+ 
+12 
+modeling unit, thus the histology and gene expression relationships are learned within each tissue 
+258 
+section, which helps alleviate the subject-to-subject differences among patients. These results 
+259 
+demonstrate the importance of considering the spatial dependency of spots when training the 
+260 
+prediction model. 
+261 
+ 
+262 
+To show that both HisToGene and HisToGene* can predict biologically meaningful information, 
+263 
+we conducted gene set enrichment analysis using fgsea (21). Inspired by iPath (22), which sorts 
+264 
+genes by positive values, for each approach, we ranked the genes by the average -log10 p-values 
+265 
+across all 32 tissue sections, where the p-value for each tissue section was obtained by testing 
+266 
+whether the correlation between the observed and the predicted expression values was 
+267 
+significantly different from zero. We used the top 100 genes to calculate the enrichment score for 
+268 
+each pathway from the C2 canonical pathways in MSigDB (23). Then, the significance for each 
+269 
+pathway was assessed by permutations (n=10,000) of the gene list. The enrichment analysis 
+270 
+results demonstrate that the highly correlated genes in HisToGene and HisToGene* are enriched 
+271 
+in breast-cancer-related pathways (Figure 2b). For example, HisToGene*’s top enriched 
+272 
+pathways include human thyroid stimulating hormone pathway and REACTOME integration of 
+273 
+energy metabolism pathway. Previous studies have reported that thyroid hormones are 
+274 
+associated with the risk of breast cancer (24), and energy metabolism is a hallmark of cancer 
+275 
+cells and links with the breast cancer brain metastases (25). By contrast, the top enriched 
+276 
+pathways for ST-Net show less relevance with breast cancer.  
+277 
+ 
+278 
+Visualization of the predicted gene expression 
+279 
+To gain a better understanding of the predicted gene expression, we next selected the top 
+280 
+predicted genes obtained from each method for visualization. For each gene in a tissue section, 
+281 
+we calculated the correlation between the observed and the predicted expression values and 
+282 
+tested whether the correlation is significantly different from zero. We then ranked the genes by 
+283 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 13 =====
+ 
+13 
+the average -log10 p-values across all 32 tissue sections. Figure 3a (Supplementary Table 1) 
+284 
+shows the top 4 genes (GNAS, MYL12B, FASN, and CLDN4) predicted by HisToGene, where 
+285 
+the expression for the best predicted tissue section by HisToGene was visualized. GNAS (mean 
+286 
+R = 0.32) encodes the stimulatory G-protein alpha subunit and regulates the production of the 
+287 
+second messenger cyclic AMP. Elevated expression of GNAS has been found in several tumors 
+288 
+including breast cancer and promotes breast cancer cell proliferation (26). MYL12B (mean R = 
+289 
+0.27) encodes a myosin regulatory subunit that plays an important role in the regulation of non-
+290 
+muscle cell contractile activity via its phosphorylation. A recent study showed that the activity of 
+291 
+myosin II in cancer cells drives tumor progression, where the activation of myosin II in non-muscle 
+292 
+cells is regulated by phosphorylation of a regulatory light chain such as MYL12B (27). FASN 
+293 
+(mean R = 0.27) encodes a key enzyme that is involved in the biogenesis of membrane lipids in 
+294 
+proliferating cells and is closely associated with the occurrence and development of tumors (28). 
+295 
+Inhibition of FASN induces apoptosis in breast cancer cells, making it a potential therapeutic 
+296 
+target for breast cancer (29). CLDN4 (mean R = 0.26) encodes a tight junction protein that is 
+297 
+required for cell adhesion. It is frequently expressed in primary breast cancers, especially in their 
+298 
+metastases, thus is a promising membrane bound molecular imaging and drug target for breast 
+299 
+cancer (30-32). As a comparison, we also included the predicted gene expression obtained from 
+300 
+HisToGene*, the super-resolution gene expression (denoted by HisToGene_SR), and ST-Net. 
+301 
+Although the mean -log10 p-values for genes obtained from HisToGene* are not as significant as 
+302 
+HisToGene, the general predicted expression patterns are similar to HisToGene, and for the 
+303 
+selected tissue sections, the correlations are similar in magnitude to HisToGene. By contrast, the 
+304 
+ST-Net predicted expression shows little correlation with the observed expression. 
+305 
+ 
+306 
+Figure 3b (Supplementary Table 2) shows the top 4 genes (GNAS, FN1, MYL12B, and FASN) 
+307 
+predicted by HisToGene*, 3 of them (GNAS, MYL12B, and FASN) were also predicted by 
+308 
+HisToGene as the top genes. FN1 is a gene that shows higher correlation in HisToGene* (mean 
+309 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 14 =====
+ 
+14 
+R = 0.24) than in HisToGene (mean R = 0.22). FN1 encodes fibronectin, a glycoprotein that is 
+310 
+present in a soluble dimeric form in plasma, and in a dimeric or multimeric form at the cell surface 
+311 
+and in extracellular matrix. Fibronectin is involved in cell adhesion and migration processes, and 
+312 
+high expression of FN1 is associated with breast cancer invasion and metastasis (33). 
+313 
+Interestingly, although FASN is among the top 4 best predicted genes by both HisToGene* (mean 
+314 
+R = 0.24) and HisToGene (mean R = 0.27), the best predicted tissue sections are different. For 
+315 
+the best tissue section predicted by HisToGene* (R = 0.47), the HisToGene correlation is 0.42, 
+316 
+only slightly worse than HisToGene*, whereas the correlation obtained from ST-Net prediction is 
+317 
+close to 0. In general, we found that HisToGene* has higher correlations than HisToGene, 
+318 
+whereas the correlations for ST-Net are often close to 0. For GNAS, FN1, MYL12B, and FASN, 
+319 
+we further examined the super-resolution gene expression prediction, which revealed fine grained 
+320 
+spatial expression patterns that are missed in the original patch/spot level gene expression 
+321 
+prediction. 
+322 
+ 
+323 
+As a comparison, we also visualized the top 4 genes (IGHM, PPP1R1B, IGLC2, and PNMT) 
+324 
+predicted by ST-Net (Supplementary Figure 1 and Supplementary Table 3). The average 
+325 
+correlations for these 4 genes are much lower than the top 4 genes predicted by HisToGene and 
+326 
+HisToGene*. 
+327 
+  
+328 
+HisToGene predicted gene expression can recover pathologists annotated spatial 
+329 
+domains 
+330 
+Next, we examined if the predicted gene expression can be used to recover the pathologists 
+331 
+annotated spatial domains. The HER2+ breast cancer data included 6 tissue sections with 
+332 
+pathologists’ annotation, which allowed us to further evaluate if the predicted gene expression 
+333 
+patterns are biologically meaningful. If the predictions are useful in revealing the underlying 
+334 
+biology, we would expect the clusters obtained using the predicted gene expression to agree well 
+335 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 15 =====
+ 
+15 
+with the pathologists annotated spatial domains. We performed K-Means clustering using the 
+336 
+predicted gene expression obtained from HisToGene, HisToGene*, and ST-Net. The clustering 
+337 
+results were evaluated using Adjusted Rand Index (ARI) by treating pathologists annotated spatial 
+338 
+domains as the ground truth. As a comparison, we also performed clustering analysis using the 
+339 
+observed gene expression for each tissue section.  
+340 
+ 
+341 
+Figure 4 shows the clustering results and the corresponding ARIs for each method and the results 
+342 
+obtained using the observed gene expression. Among the 6 tissue sections with pathologists’ 
+343 
+annotation, HisToGene* yielded the highest ARIs for 4 sections (B1, C1, D1, and F1), and for 
+344 
+sections D1 and F1, the HisToGene*’s ARIs are much higher than those obtained from the 
+345 
+observed gene expression and ST-Net. For E1, ST-Net had the highest ARI. For G2, the observed 
+346 
+gene expression had the highest ARI. Clustering analysis using observed gene expression is a 
+347 
+commonly conducted task in spatial transcriptomics (34-36). Interestingly, HisToGene* had even 
+348 
+higher ARIs than the observed gene expression for 4 out of the 6 tissue sections. Since 
+349 
+HisToGene* is based on the aggregated super-resolution gene expression, we next performed 
+350 
+clustering analysis using the super-resolution gene expression, denoted by HisToGene_SR. 
+351 
+Although we cannot directly calculate the ARIs for HisToGene_SR, visual examination indicates 
+352 
+that the clustering results agreed well with the pathologists annotated spatial domains, with the 
+353 
+tumor region clearly separated from the background. 
+354 
+ 
+355 
+Understanding the HisToGene prediction with attention map 
+356 
+It is intriguing that the predicted super-resolution gene expression led to higher clustering ARIs 
+357 
+than the observed gene expression. We next sought to investigate how the super-resolution gene 
+358 
+expression prediction works. Attention is a key feature in HisToGene’s modified Vision 
+359 
+Transformer model. To understand how attention contributes to the HisToGene predicted gene 
+360 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 16 =====
+ 
+16 
+expression, we examined the attention maps. HisToGene’s modified Vision Transformer model 
+361 
+has 8 layers and each layer has 16 heads, leading to 128 attention maps. For visualization, we 
+362 
+randomly chose the attention map from the first, fourth, and eighth layer, which represent the 
+363 
+shallow, median, and deep layers. Figure 5 shows three representative attention maps when 
+364 
+HisToGene predicts the expression for a given target spot (the yellow spot in each plot) under the 
+365 
+original spot level resolution and the super-resolution settings. The results indicate that 1) in the 
+366 
+shallow layer, the modified Vision Transformer model mainly pays attention to the target spot; 2) 
+367 
+in the median layer, the model starts to pay attention to some distant spots, and the pattern is 
+368 
+especially clear in the super-resolution setting; 3) in the deep layer, the model pays more attention 
+369 
+to distant spots that are tumor related. During the model training process, HisToGene can 
+370 
+adaptively change the scale of weights when the input sample size changes; for example, the 
+371 
+average weight of the super-resolution attention is about 1/10 of the original-resolution attention. 
+372 
+It is also evident that in the super-resolution setting, the model utilizes more refined information 
+373 
+provided by the neighboring patches. The difference in the attention weights for input with different 
+374 
+sample sizes explains why the gene expression prediction for the same image patch can be 
+375 
+different when the number of patches is different. 
+376 
+ 
+377 
+DISCUSSION 
+378 
+In this paper, we presented HisToGene, a deep learning method that predicts super-resolution 
+379 
+gene expression from histology images in tumors. Trained in a ST dataset, HisToGene models 
+380 
+the spatial dependency in gene expression and histological features among spots through a 
+381 
+modified Vision Transformer model. HisToGene has been evaluated in 32 heterogeneous HER2+ 
+382 
+breast cancer tissue sections with 9,612 spots and 785 genes obtained from different patients. 
+383 
+Our results consistently show that HisToGene outperformed ST-Net in the spot level gene 
+384 
+expression prediction. Additionally, HisToGene can predict gene expression at super-resolution, 
+385 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 17 =====
+ 
+17 
+a feature that ST-Net does not have. To the best of our knowledge, HisToGene is the first method 
+386 
+for super-resolution gene expression prediction using histology images. The subsequent 
+387 
+clustering analysis using predicted gene expression also shows that HisToGene consistently 
+388 
+yielded higher ARIs than ST-Net, and for many of the tissue sections that we analyzed, the ARIs 
+389 
+were even higher than those obtained from the observed gene expression. This is likely due to 
+390 
+the use of attention, which has the ability to naturally learn from neighborhood. Since the predicted 
+391 
+gene expression is based on the histology images, which do not have tissue gaps, it is possible 
+392 
+that the consideration of all captured tissue areas in the prediction helped recover expression 
+393 
+patterns that are not captured in the observed gene expression. 
+394 
+ 
+395 
+Compared to ST-Net, HisToGene benefits from the consideration of spots’ dependency and the 
+396 
+advanced network architecture, which makes HisToGene robust to heterogeneity among patients. 
+397 
+Being robust to batch effects, especially the systematic differences between the training and 
+398 
+testing data is an advantage of HisToGene because due to experimental and technical 
+399 
+constraints, batch effects are often unavoidable in real studies. HisToGene is robust to 
+400 
+heterogeneity among patients due to the following reasons. First, the multi-head attention matrix 
+401 
+in HisToGene utilizes the histological features from all spots, implying that when predicting the 
+402 
+gene expression for one spot, image features from neighboring spots also contribute. 
+403 
+Furthermore, the attention matrix is updated during the training stage, which ensures appropriate 
+404 
+adjustment of the neighboring spots’ contributions. Second, HisToGene predicts the gene 
+405 
+expression for all spots within a tissue section together. These mechanisms enable HisToGene 
+406 
+to model the relationship between histology images and the spatial gene expression data for an 
+407 
+entire tissue section, hence minimizing batch effects in histology and gene expression features 
+408 
+when learning their relationships. By contrast, CNN-based models such as ST-Net consider each 
+409 
+spot independently, making these models more sensitive to batch effects. 
+410 
+ 
+411 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 18 =====
+ 
+18 
+HisToGene is computationally fast. To show the computational advantages of HisToGene, we 
+412 
+compared its running time for training 31 tissue sections of HER2+ dataset with ST-Net. Our 
+413 
+experiment was conducted on CentOS 7 with 24 cores Intel Xeon 8260 CPU and a single NVIDIA 
+414 
+V100 (32GB) GPU. On overage, it took HisToGene 11 minutes but 27 minutes for ST-Net. 
+415 
+ 
+416 
+We mainly focused our analyses on the HER2+ breast cancer dataset in this paper, because this 
+417 
+dataset involves a relatively large number of tissue sections and patients. It provides an 
+418 
+opportunity to evaluate the performance of HisToGene and ST-Net in the presence of patient 
+419 
+heterogeneity. To show the generalizability of HisToGene to other data, we also analyzed a 
+420 
+cutaneous squamous cell carcinoma (cSCC) dataset (37), which includes 12 tissue sections 
+421 
+obtained from 4 patients, with each patient having 3 sections. Unlike the HER2+ breast cancer 
+422 
+dataset, where all tissue sections were generated using the same ST platform, the 12 tissue 
+423 
+sections in the cSCC data were generated using a mixture of the relatively low-resolution Spatial 
+424 
+Transcriptomics and the more recent 10x Visium platforms. Using the same filtering criteria as the 
+425 
+HER2+ breast cancer dataset, 6,630 spots and 134 genes remained for model training and 
+426 
+prediction in the cSCC dataset. We also conducted the leave-one-out cross-validation experiment 
+427 
+in this dataset, and the results are shown in Supplementary Note 1. Due to the relatively small 
+428 
+number of tissue sections and patients and the platform heterogeneity among the 12 tissue 
+429 
+sections, neither HisToGene nor ST-Net can reliably predict the gene expression with high 
+430 
+accuracy. However, HisToGene still yielded higher prediction accuracy than ST-Net. While the 
+431 
+requirement of a relatively large training set is a potential limitation of deep learning-based models 
+432 
+such as HisToGene, we anticipate that as more and more training ST data become available in 
+433 
+the near future, the performance and robustness of HisToGene can be further improved. 
+434 
+ 
+435 
+ACKNOWLEDGEMENTS 
+436 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 19 =====
+ 
+19 
+The authors would like to thank Alma Andersson and Joakim Lundberg for providing the histology 
+437 
+images for the HER2+ breast cancer dataset. 
+438 
+ 
+439 
+AUTHOR CONTRIBUTIONS 
+440 
+This study was conceived of and led by M.L.. M.P. designed the model and algorithm. M.P. 
+441 
+implemented the HisToGene software and led the data analysis with input from M.L. and K.S.. 
+442 
+M.P., K.S., and M.L. wrote the paper.  
+443 
+ 
+444 
+FUNDING 
+445 
+This work was supported by the following grant: R01GM125301 (to M.L.). 
+446 
+ 
+447 
+COMPETING FINANCIAL INTERESTS 
+448 
+The authors declare no competing interests.
+449 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 20 =====
+ 
+20 
+FIGURE LEGENDS 
+450 
+Figure 1. Workflow of HisToGene. a, The modified Vision Transformer in HisToGene starts from 
+451 
+sequences of extracted patches from histology images in the training ST dataset. Added by the 
+452 
+position embedding obtained from the spatial coordinates of the spots, the patch embedding goes 
+453 
+through the Multi-Head Attention layers and is transformed by a linear layer. The final output of 
+454 
+the modified Vision Transformer is the spatial gene prediction. This modified Vision Transformer 
+455 
+will be trained based on the observed gene expression in the training ST dataset.  b, Using the 
+456 
+trained model, HisToGene can predict super-resolution gene expression. HisToGene first predicts 
+457 
+gene expression for each sampled patch from the histology image in a test dataset that only has 
+458 
+histology images. Using a dense image patch sampling strategy, HisToGene then predicts the 
+459 
+super-resolution gene expression by averaging the predicted gene expression among 
+460 
+overlapping patches. With the patch sampling strategy shown in b, the resolution is increased 4 
+461 
+times, but the resolution can be increased to an even higher level when using more densely 
+462 
+sampled patches. 
+463 
+ 
+464 
+Figure 2. Evaluation of gene expression prediction for the HER2+ breast cancer dataset. a, 
+465 
+Boxplot of the Pearson correlations between the predicted and observed gene expression for the 
+466 
+785 genes predicted by HisToGene, HisToGene*, and ST-Net. HisToGene* is based on the 
+467 
+recovered patch/spot level gene expression obtained from the super-resolution gene expression 
+468 
+prediction, denoted by HisToGene_SR. b, Enrichment analysis for the top 100 predicted genes 
+469 
+by HisToGene, HisToGene*, and ST-Net. 
+470 
+ 
+471 
+Figure 3. Visualization of the top predicted genes in the HER2+ breast cancer dataset. a, 
+472 
+Relative expression of the top 4 genes predicted by HisToGene. The genes were selected based 
+473 
+on the average -log10 p-values across all 32 tissue sections, where the p-value for each tissue 
+474 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 21 =====
+ 
+21 
+section was obtained by testing whether the correlation between the predicted and observed gene 
+475 
+expression was significantly different from zero. For each of the 4 genes, the tissue section that 
+476 
+had the smallest p-value by HisToGene was selected for visualization. HisToGene* was based 
+477 
+on the recovered patch/spot level gene expression obtained from the super-resolution gene 
+478 
+expression prediction, denoted by HisToGene_SR. b, Relative expression of the top 4 genes 
+479 
+predicted by HisToGene*. The genes were selected based on the average -log10 p-values across 
+480 
+all 32 tissue sections, where the p-value for each tissue section was obtained by testing whether 
+481 
+the correlation between the predicted and observed gene expression was significantly different 
+482 
+from zero. For each of the 4 genes, the tissue section that had the smallest p-value by 
+483 
+HisToGene* was selected for visualization. HisToGene* was based on the recovered patch/spot 
+484 
+level gene expression obtained from the super-resolution gene expression prediction, denoted by 
+485 
+HisToGene_SR. 
+486 
+ 
+487 
+Figure 4. Clustering analysis using predicted gene expression in the HER2+ breast cancer 
+488 
+dataset. 6 of the 32 tissue sections had pathologists’ annotation which allowed us to evaluate 
+489 
+whether the predicted gene expression can reveal the pathologists annotated spatial domains. 
+490 
+The first column shows the histology image with the pathologists’ annotation, where the red lines 
+491 
+represent invasive cancer, green lines represent breast glands, yellow lines represent immune 
+492 
+infiltrate, and the blue lines represent connective tissue. The remaining columns show the 
+493 
+clustering results generated from the observed, ST-Net predicted gene expression, HisToGene 
+494 
+predicted gene expression, HisToGene* predicted gene expression, and HisToGene_SR using 
+495 
+K-Means clustering algorithm (k=4). Clustering accuracy was evaluated by the Adjusted Rand 
+496 
+Index (ARI) between the pathology annotations and the clusters obtained from the predicted gene 
+497 
+expression. 
+498 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 22 =====
+ 
+22 
+ 
+499 
+Figure 5. Attention maps in HisToGene’s modified Vision Transformer. Displayed are the 
+500 
+attention weights in the modified Vision Transformer when making gene expression predictions 
+501 
+for the target spot (the yellow spot in each figure) in the HER2+ breast cancer dataset. The first 
+502 
+row shows the attention maps when predicting the gene expression at the original patch/spot 
+503 
+level. The second row shows the attention maps when predicting the gene expression at the 
+504 
+super-resolution level. 
+ 
+505 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 23 =====
+ 
+23 
+ 
+506 
+DATA AVAILABILITY 
+507 
+We analyzed two publicly available ST datasets. These data were acquired from the following 
+508 
+websites or accession numbers: (1) human HER2-positive breast tumor ST data 
+509 
+(https://github.com/almaan/her2st); (2) human cutaneous squamous cell carcinoma 10x Visium 
+510 
+data (GSE144240).  
+511 
+ 
+512 
+SOFTWARE AVAILABILITY 
+513 
+An open-source implementation of HisToGene can be downloaded from  
+514 
+https://github.com/maxpmx/HisToGene 
+ 
+515 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 24 =====
+ 
+24 
+REFERENCES 
+516 
+1. 
+Liao, J., Lu, X., Shao, X., Zhu, L. and Fan, X. (2021) Uncovering an Organ's Molecular 
+517 
+Architecture at Single-Cell Resolution by Spatially Resolved Transcriptomics. Trends 
+518 
+Biotechnol, 39, 43-58. 
+519 
+2. 
+Waylen, L.N., Nim, H.T., Martelotto, L.G. and Ramialison, M. (2020) From whole-mount 
+520 
+to single-cell spatial assessment of gene expression in 3D. Commun Biol, 3, 602. 
+521 
+3. 
+Burgess, D.J. (2019) Spatial transcriptomics coming of age. Nat Rev Genet, 20, 317. 
+522 
+4. 
+Asp, M., Bergenstrahle, J. and Lundeberg, J. (2020) Spatially Resolved 
+523 
+Transcriptomes-Next Generation Tools for Tissue Exploration. Bioessays, 42, 
+524 
+e1900221. 
+525 
+5. 
+Crosetto, N., Bienko, M. and van Oudenaarden, A. (2015) Spatially resolved 
+526 
+transcriptomics and beyond. Nat Rev Genet, 16, 57-66. 
+527 
+6. 
+Moor, A.E. and Itzkovitz, S. (2017) Spatial transcriptomics: paving the way for tissue-
+528 
+level systems biology. Curr Opin Biotechnol, 46, 126-133. 
+529 
+7. 
+Asp, M., Giacomello, S., Larsson, L., Wu, C., Furth, D., Qian, X., Wardell, E., Custodio, J., 
+530 
+Reimegard, J., Salmen, F. et al. (2019) A Spatiotemporal Organ-Wide Gene Expression 
+531 
+and Cell Atlas of the Developing Human Heart. Cell, 179, 1647-1660 e1619. 
+532 
+8. 
+Maniatis, S., Aijo, T., Vickovic, S., Braine, C., Kang, K., Mollbrink, A., Fagegaltier, D., 
+533 
+Andrusivova, Z., Saarenpaa, S., Saiz-Castro, G. et al. (2019) Spatiotemporal dynamics 
+534 
+of molecular pathology in amyotrophic lateral sclerosis. Science, 364, 89-93. 
+535 
+9. 
+Chen, W.T., Lu, A., Craessaerts, K., Pavie, B., Sala Frigerio, C., Corthout, N., Qian, X., 
+536 
+Lalakova, J., Kuhnemund, M., Voytyuk, I. et al. (2020) Spatial Transcriptomics and In 
+537 
+Situ Sequencing to Study Alzheimer's Disease. Cell, 182, 976-991 e919. 
+538 
+10. 
+Stahl, P.L., Salmen, F., Vickovic, S., Lundmark, A., Navarro, J.F., Magnusson, J., 
+539 
+Giacomello, S., Asp, M., Westholm, J.O., Huss, M. et al. (2016) Visualization and analysis 
+540 
+of gene expression in tissue sections by spatial transcriptomics. Science, 353, 78-82. 
+541 
+11. 
+Rodriques, S.G., Stickels, R.R., Goeva, A., Martin, C.A., Murray, E., Vanderburg, C.R., 
+542 
+Welch, J., Chen, L.M., Chen, F. and Macosko, E.Z. (2019) Slide-seq: A scalable 
+543 
+technology for measuring genome-wide expression at high spatial resolution. Science, 
+544 
+363, 1463-1467. 
+545 
+12. 
+Stickels, R.R., Murray, E., Kumar, P., Li, J., Marshall, J.L., Di Bella, D.J., Arlotta, P., 
+546 
+Macosko, E.Z. and Chen, F. (2020) Highly sensitive spatial transcriptomics at near-
+547 
+cellular resolution with Slide-seqV2. Nature biotechnology. 
+548 
+13. 
+Liu, Y., Yang, M., Deng, Y., Su, G., Enninful, A., Guo, C.C., Tebaldi, T., Zhang, D., Kim, D., 
+549 
+Bai, Z. et al. (2020) High-Spatial-Resolution Multi-Omics Sequencing via Deterministic 
+550 
+Barcoding in Tissue. Cell, 183, 1665-1681 e1618. 
+551 
+14. 
+Vickovic, S., Eraslan, G., Salmen, F., Klughammer, J., Stenbeck, L., Schapiro, D., Aijo, T., 
+552 
+Bonneau, R., Bergenstrahle, L., Navarro, J.F. et al. (2019) High-definition spatial 
+553 
+transcriptomics for in situ tissue profiling. Nat Methods, 16, 987-990. 
+554 
+15. 
+Schmauch, B., Romagnoni, A., Pronier, E., Saillard, C., Maille, P., Calderaro, J., Kamoun, 
+555 
+A., Sefta, M., Toldo, S., Zaslavskiy, M. et al. (2020) A deep learning model to predict 
+556 
+RNA-Seq expression of tumours from whole slide images. Nat Commun, 11, 3877. 
+557 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 25 =====
+ 
+25 
+16. 
+He, B., Bergenstrahle, L., Stenbeck, L., Abid, A., Andersson, A., Borg, A., Maaskola, J., 
+558 
+Lundeberg, J. and Zou, J. (2020) Integrating spatial gene expression and breast 
+559 
+tumour morphology via deep learning. Nat Biomed Eng, 4, 827-834. 
+560 
+17. 
+Dosovitskiy, A., Beyer, L., Kolesnikov, A., Weissenborn, D., Zhai, X., Unterthiner, T., 
+561 
+Dehghani, M., Minderer, M., Heigold, G., Gelly, S. et al. (2020) An image is worth 16x16 
+562 
+words: transformer for image recognition at scale. ICLR 2021 Proceedings. 
+563 
+18. 
+Chen, J., Lu, Y., Yu, Q., Luo, X., Adeli, E., Wang, Y., Lu, L., Yuille, A.L. and Zhou, Y. (2021) 
+564 
+TransUNet: transformers make strong encoders for medical image segmentation. 
+565 
+arxiv; https://arxiv.org/abs/2102.04306. 
+566 
+19. 
+Chen, J., He, Y., Frey, E.C., Li, Y. and Du, Y. (2021) ViT-V-Net: vision transformer for 
+567 
+unsupervised volumeric medical image registration. arXiv:2104.06468. 
+568 
+20. 
+Andersson, A., Larsson, L., Stenbeck, L., Salmen, F., Ehinger, A., Wu, S.Z., Al-Eryani, G., 
+569 
+Roden, D., Swarbrick, A., Borg, A. et al. (2021) Spatial deconvolution of HER2-positive 
+570 
+breast cancer delineates tumor-associated cell type interactions. Nat Commun, 12, 
+571 
+6012. 
+572 
+21. 
+Sergushichev, A.A. (2016) An algorithm for fast preranked gene set enrichment 
+573 
+anaysis 
+using 
+cumulative 
+statistic 
+calculation. 
+bioRxiv; 
+doi: 
+574 
+https://doi.org/10.1101/060012. 
+575 
+22. 
+Su, K., Yu, Q., Shen, R., Sun, S.Y., Moreno, C.S., Li, X. and Qin, Z.S. (2021) Pan-cancer 
+576 
+analysis of pathway-based gene expression pattern at the individual level reveals 
+577 
+biomarkers of clinical prognosis. Cell Rep Methods, 1. 
+578 
+23. 
+Liberzon, A., Birger, C., Thorvaldsdottir, H., Ghandi, M., Mesirov, J.P. and Tamayo, P. 
+579 
+(2015) The Molecular Signatures Database (MSigDB) hallmark gene set collection. 
+580 
+Cell Syst, 1, 417-425. 
+581 
+24. 
+Ortega-Olvera, C., Ulloa-Aguirre, A., Angeles-Llerenas, A., Mainero-Ratchelous, F.E., 
+582 
+Gonzalez-Acevedo, C.E., Hernandez-Blanco, M.L., Ziv, E., Aviles-Santa, L., Perez-
+583 
+Rodriguez, E. and Torres-Mejia, G. (2018) Thyroid hormones and breast cancer 
+584 
+association according to menopausal status and body mass index. Breast Cancer Res, 
+585 
+20, 94. 
+586 
+25. 
+Chen, E.I., Hewel, J., Krueger, J.S., Tiraby, C., Weber, M.R., Kralli, A., Becker, K., Yates, 
+587 
+J.R., 3rd and Felding-Habermann, B. (2007) Adaptation of energy metabolism in 
+588 
+breast cancer brain metastases. Cancer Res, 67, 1472-1486. 
+589 
+26. 
+Jin, X., Zhu, L., Cui, Z., Tang, J., Xie, M. and Ren, G. (2019) Elevated expression of GNAS 
+590 
+promotes breast cancer cell proliferation and migration via the PI3K/AKT/Snail1/E-
+591 
+cadherin axis. Clin Transl Oncol, 21, 1207-1219. 
+592 
+27. 
+Georgouli, M., Herraiz, C., Crosas-Molist, E., Fanshawe, B., Maiques, O., Perdrix, A., 
+593 
+Pandya, P., Rodriguez-Hernandez, I., Ilieva, K.M., Cantelli, G. et al. (2019) Regional 
+594 
+Activation of Myosin II in Cancer Cells Drives Tumor Progression via a Secretory 
+595 
+Cross-Talk with the Immune Microenvironment. Cell, 176, 757-774 e723. 
+596 
+28. 
+Flavin, R., Peluso, S., Nguyen, P.L. and Loda, M. (2010) Fatty acid synthase as a 
+597 
+potential therapeutic target in cancer. Future Oncology, 6, 551-562. 
+598 
+29. 
+Menendez, J. and Lupu, R. (2017) Fatty acid synthase (FASN) as a therapeutic target 
+599 
+in breast cancer. Expert Opinion in Therapeutic Targets, 21, 1001-1016. 
+600 
+30. 
+Jiwa, L.S., van Diest, P.J., Hoefnagel, L.D., Wesseling, J., Wesseling, P., Dutch Distant 
+601 
+Breast Cancer Metastases, C. and Moelans, C.B. (2014) Upregulation of Claudin-4, 
+602 
+CAIX and GLUT-1 in distant breast cancer metastases. BMC Cancer, 14, 864. 
+603 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 26 =====
+ 
+26 
+31. 
+Lanigan, F., McKiernan, E., Brennan, D.J., Hegarty, S., Millikan, R.C., McBryan, J., 
+604 
+Jirstrom, K., Landberg, G., Martin, F., Duffy, M.J. et al. (2009) Increased claudin-4 
+605 
+expression is associated with poor prognosis and high tumour grade in breast cancer. 
+606 
+Int J Cancer, 124, 2088-2097. 
+607 
+32. 
+Szasz, A.M., Tokes, A.M., Micsinai, M., Krenacs, T., Jakab, C., Lukacs, L., Nemeth, Z., 
+608 
+Baranyai, Z., Dede, K., Madaras, L. et al. (2011) Prognostic significance of claudin 
+609 
+expression changes in breast cancer with regional lymph node metastasis. Clin Exp 
+610 
+Metastasis, 28, 55-63. 
+611 
+33. 
+Wang, Y., Xu, H., Zhu, B., Qiu, Z. and Lin, Z. (2018) Systematic identification of the key 
+612 
+candidate genes in breast cancer stroma. Cell Mol Biol Lett, 23, 44. 
+613 
+34. 
+Sun, S., Zhu, J. and Zhou, X. (2020) Statistical analysis of spatial expression patterns 
+614 
+for spatially resolved transcriptomic studies. Nat Methods, 17, 193-200. 
+615 
+35. 
+Hu, J., Li, X., Coleman, K., Schroeder, A., Ma, N., Irwin, D.J., Lee, E.B., Shinohara, R.T. and 
+616 
+Li, M. (2021) SpaGCN: Integrating gene expression, spatial location and histology to 
+617 
+identify spatial domains and spatially variable genes by graph convolutional network. 
+618 
+Nat Methods, 18, 1342-1351. 
+619 
+36. 
+Hu, J., Schroeder, A., Coleman, K., Chen, C., Auerbach, B.J. and Li, M. (2021) Statistical 
+620 
+and machine learning methods for spatially resolved transcriptomics with histology. 
+621 
+Comput Struct Biotechnol J, 19, 3829-3841. 
+622 
+37. 
+Ji, A.L., Rubin, A.J., Thrane, K., Jiang, S., Reynolds, D.L., Meyers, R.M., Guo, M.G., George, 
+623 
+B.M., Mollbrink, A., Bergenstrahle, J. et al. (2020) Multimodal Analysis of Composition 
+624 
+and Spatial Architecture in Human Squamous Cell Carcinoma. Cell, 182, 497-514 
+625 
+e422. 
+626 
+ 
+ 
+627 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 27 =====
+ 
+27 
+Figure 1 
+628 
+ 
+629 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 28 =====
+ 
+28 
+Figure 2 
+630 
+ 
+631 
+ 
+ 
+632 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 29 =====
+ 
+29 
+Figure 3 
+633 
+ 
+634 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 30 =====
+ 
+30 
+Figure 4 
+635 
+ 
+636 
+ 
+ 
+637 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 
+
+===== PAGE 31 =====
+ 
+31 
+Figure 5 
+638 
+ 
+639 
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted November 28, 2021. 
+; 
+https://doi.org/10.1101/2021.11.28.470212
+doi: 
+bioRxiv preprint 

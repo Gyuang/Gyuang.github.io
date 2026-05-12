@@ -1,0 +1,1071 @@
+
+===== PAGE 1 =====
+Latent Gene Diffusion for Spatial Transcriptomics Completion
+Paula C´ardenasB, Leonardo Manrique∗, Daniela Vega∗, Daniela Ruiz, Pablo Arbel´aez
+Center for Research and Formation in Artificial Intelligence
+Universidad de los Andes, Bogot´a, Colombia
+{p.cardenasg,dl.manrique,d.vegaa,da.ruizl1,pa.arbelaez}@uniandes.edu.co
+Abstract
+Computer Vision has proven to be a powerful tool for an-
+alyzing Spatial Transcriptomics (ST) data. However, cur-
+rent models that predict spatially resolved gene expression
+from histopathology images suffer from significant limita-
+tions due to data dropout. Most existing approaches rely
+on single-cell RNA sequencing references, making them de-
+pendent on alignment quality and external datasets while
+also risking batch effects and inherited dropout. In this pa-
+per, we address these limitations by introducing LGDiST,
+the first reference-free latent gene diffusion model for ST
+data dropout. We show that LGDiST outperforms the pre-
+vious state-of-the-art in gene expression completion, with
+an average Mean Squared Error that is 18% lower across
+26 datasets. Furthermore, we demonstrate that completing
+ST data with LGDiST improves gene expression prediction
+performance on six state-of-the-art methods up to 10% in
+MSE. A key innovation of LGDiST is using context genes
+previously considered uninformative to build a rich and bio-
+logically meaningful genetic latent space. Our experiments
+show that removing key components of LGDiST, such as the
+context genes, the ST latent space, and the neighbor condi-
+tioning, leads to considerable drops in performance. These
+findings underscore that the full architecture of LGDiST
+achieves substantially better performance than any of its
+isolated components.
+1. Introduction
+The emergence of Spatial Transcriptomics (ST) is one of
+the most groundbreaking advances in biological research
+over the last five years [16]. This technology bridges the
+gap between genetic expression and cellular spatial organi-
+zation by combining single-cell RNA sequencing (scRNA-
+seq) and histology in a single tool [26]. ST technologies can
+be broadly categorized into imaging-based and sequencing-
+based methods. Imaging-based technologies achieve single-
+*These authors contributed equally to this work
+cell resolution but have very limited sequence coverage
+[26], whereas sequencing-based technologies have a low
+spot-level resolution but offer high throughput [4].
+In
+this work, we focus on sequencing-based ST technologies,
+which measure gene expression in spatially localized bulk
+regions rather than at the level of individual cells.
+Despite its advantages, ST is a resource-demanding tech-
+nology that involves expensive devices, complex sample
+handling, and is time-consuming [9].
+In response, on-
+going research has introduced multiple Computer Vision
+(CV) models to automate ST by predicting a tissue’s spa-
+tially resolved genetic expressions solely from histopathol-
+ogy images [27].
+Proposed gene expression prediction
+models leverage a wide range of CV techniques and Ar-
+tificial Intelligence (AI) algorithms with varied complexi-
+ties, from simple Convolutional Neural Networks (CNNs)
+[7] to Graph Neural Networks (GNNs) [30] and contrastive
+learning techniques [27, 29]. Nevertheless, another critical
+but frequently overlooked limitation of ST is data dropout.
+This phenomenon refers to the stochastic failure to detect
+gene transcripts in a spot, even when they are expressed [6].
+Dropouts introduce noise into ST data and hinder the util-
+ity of this technology. Moreover, noise in ST datasets not
+only affects genetic analyses but seriously degrades the per-
+formance of CV models trained for a wide variety of image-
+processing tasks, including gene expression prediction from
+histopathology images, spatial domain detection, cellular
+segmentation and classification, and computer-aided diag-
+nosis [5, 11, 13].
+The dropout problem has received increasing attention
+in recent years due to its significant impact on the effec-
+tive processing of ST data [1, 3, 12, 14, 24].
+However,
+most of these works are primarily suitable for imaging-
+based technologies, given their inherent focus on single-cell
+information. This paradigm limits the applicability of these
+methods for data completion and leaves the dropout prob-
+lem unresolved for ST data measured through bulk tran-
+scriptomics. Additionally, most methods previously pro-
+posed are based on scRNA-seq references to accurately pre-
+dict missing genetic values. This reliance not only makes
+arXiv:2509.01864v1  [cs.CV]  2 Sep 2025
+
+===== PAGE 2 =====
+Spatial Graph
+Expression Map per Gene 
+with Dropout
+LGDiST
+Spatial Graph Completed
+Neighborhood 
+Completed
+Central 
+Spot
+Missing 
+Data
+n Genes
+Neighbor 
+Spot
+Neighborhood 
+with Dropout
+Figure 1. Spatial Transcriptomics Completion Pipeline. LGDiST processes ST neighborhoods to infer missing values, generating a
+completed expression map with high-quality data.
+the models highly sensitive to the quality of external data
+but also increases the challenge of addressing dropout in
+sequencing-based ST, given its lower resolution.
+To overcome the limitations mentioned above, this pa-
+per introduces Latent Gene Diffusion for Spatial Transcrip-
+tomics (LGDiST), a novel reference-free generative model
+designed to complete missing gene expression values in
+ST data. Our approach builds on the remarkable success
+of Denoising Diffusion Probabilistic Models (DDPMs) [8]
+in image generation and biology-related applications, in-
+cluding small molecule generation, protein structure pre-
+diction [25], and, more recently, gene expression prediction
+from histopathology images [31]. To enhance our method,
+we also draw inspiration from the ability of AutoEncoders
+(AEs) to capture complex patterns in data and build highly
+informative latent spaces [2]. LGDiST utilizes an AE to
+build an ST latent space incorporating Highly Spatially As-
+sociated Genes (HSAGs) and additional genes with lower
+Moran’s I, which we consider as context genes (CGs). Fur-
+thermore, we employ a Diffusion Transformer (DiT) [21]
+conditioned on the encoded genetic data from the neighbor-
+ing spots to complete missing values in the central spot.
+We perform multiple comparative experiments across the
+26 sequencing-based ST datasets in the SpaRED database
+[18], assessing our model against leading methods on
+dropout data completion. The results show a noteworthy
+improvement in the prediction of missing data with an av-
+erage 18% reduction in Mean Square Error (MSE) across
+all the datasets explored compared to the state-of-the-art in
+reference-free ST data completion. Additionally, we exam-
+ine the significance of LGDiST by quantifying its impact on
+the performance of models designed to predict total gene
+expression profiles from histopathology images. We find
+that LGDiST effectively cleans up training data, allowing
+these state-of-the-art models to learn from higher quality
+information and subsequently improve their own evaluation
+metrics up to 10%. These results establish LGDiST as a
+superior approach for addressing data dropout in ST and
+highlight its potential to enhance downstream CV analyses,
+ultimately advancing the accuracy and reliability of spatial
+transcriptomics studies.
+To summarize, our main contributions are:
+1. We introduce the first generative, reference-free model
+for addressing data dropout in ST and prove its ability to
+optimize the performance of CV models trained on ST
+data.
+2. We design a latent space for ST data and show that con-
+ducting diffusion within it enhances gene expression re-
+covery.
+3. We demonstrate the value of low spatially autocorrelated
+genes in spatial analyses, presenting a new way of har-
+nessing data previously considered uninformative.
+To promote further research on ST, our source code is
+publicly available at https://github.com/BCV-
+Uniandes/LGDiST.
+2. Related Work
+To mitigate the effect of data dropout, previous works have
+proposed various methods that aim to complete missing val-
+ues in ST datasets. These methods can generally be di-
+vided into two main categories based on whether they re-
+quire external references or rely solely on the ST data itself:
+reference-based and reference-free approaches. Each cat-
+egory has distinct advantages and limitations, which have
+driven the development of increasingly sophisticated strate-
+gies to address the inherent challenges posed by dropout in
+spatial transcriptomics.
+2.1. Reference-based methods
+Reference-based methods [1, 12, 24] attempt to enhance
+the completeness of ST datasets by leveraging information
+from scRNA-seq data as an external reference. By align-
+ing gene expression profiles measured in spatial spots with
+those obtained from single-cell technologies, these meth-
+ods aim to predict the missing values on the expression
+map of each gene. A representative example of this strat-
+egy is stDiff [12], which utilizes DDPMs [8] to model the
+relationships between gene expression abundances based
+on scRNA-seq-derived references. This modeling enables
+highly informed predictions of missing expression values
+based on prior knowledge of genetic expression profiles.
+Nonetheless, incorporating scRNA-seq references into
+
+===== PAGE 3 =====
+Reconstructed Gene Expression 
+Neighborhood 
+...
+Gene Expression 
+Neighborhood 
+ 
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+Encoder
+Decoder
+...
+...
+...
+...
+...
+...
+Reconstruction Loss
+Positional
+Encoding
+Genes (HSAGs and CGs)
+Spots
+Genes (HSAGs and CGs)
+Spots
+Figure 2. AutoEncoder training framework. We add a 2D positional encoding to the gene expression neighborhood X before passing
+it through an encoder Eθ that maps it to a Latent Space Representation XE. The decoder Dϕ then reconstructs the input from the latent
+space, aiming to minimize reconstruction loss.
+the completion process significantly increases the computa-
+tional resources and experimental data requirements, since
+high-quality scRNA-seq datasets must be collected, pro-
+cessed, and aligned with the ST samples. Moreover, differ-
+ences in sequencing technologies or protocols can introduce
+inconsistencies or batch effects that propagate into the com-
+pleted ST data, compromising its reliability and introducing
+biases that may affect downstream analyses [15]. Impor-
+tantly, reference-based models depend on alignment qual-
+ity, which remains suboptimal despite ongoing advance-
+ments, potentially introducing bias in the completed data
+[28]. Recognizing these limitations, we propose a model
+that works entirely without scRNA-seq references, thereby
+eliminating dependence on external datasets and avoiding
+risks associated with alignment performance.
+This ap-
+proach makes LGDiST broadly applicable to bulk ST data
+and suitable for tissues lacking existing reference informa-
+tion, while minimizing potential biases.
+2.2. Reference-free methods
+Reference-free methods [22] complete missing values us-
+ing only the information contained within the ST dataset
+itself. These methods avoid dependence on external refer-
+ences and are often more adaptable to a wider range of sam-
+ples and experimental conditions. In [17], authors propose
+a median-completion strategy that operates as a reference-
+free method. This method uses a modified adaptive median
+filter to replace dropout values with the median expression
+of the gene of interest in a local region surrounding the
+missing spot. In case the region lacks sufficient data, the
+missing values are substituted with the median value of the
+whole slide image (WSI). This strategy proved to be help-
+ful as an initial approach to reduce the effect of data dropout
+for gene prediction methods. Despite its practicality, relying
+on median imputation alone can excessively smooth the ex-
+pression patterns of genes across the tissue, diminishing bi-
+ologically relevant spatial variability. Furthermore, median
+completion lacks the robustness required to handle datasets
+with a high fraction of dropout, where too many missing
+values make the median estimate unreliable.
+More
+advanced
+reference-free
+methods,
+such
+as
+SpaCKLE [18], address the dropout problem by adopting
+a masked autoencoder architecture that learns patterns of
+gene expression directly from the spatial data. SpaCKLE
+represents a significant advancement, utilizing a deep
+learning framework and achieving superior performance
+compared to previous methods.
+However, it focuses
+exclusively on HSAGs, which are selected based on their
+Moran’s I scores [19]. This narrow focus overlooks genes
+with low spatial autocorrelation, which can still provide
+valuable context and biological insights.
+By discarding
+these low-autocorrelation genes,
+SpaCKLE limits its
+capacity to capture a broader and more comprehensive
+molecular context within the tissue.
+In contrast,
+LGDiST explicitly incorporates a la-
+tent space that encompasses both HSAGs and low-
+autocorrelation genes that serve as context.
+This design
+choice enables our model to leverage a richer set of genetic
+information, improving its ability to reconstruct missing ex-
+pression values in a way that better preserves both local and
+global spatial expression patterns.
+3. Latent Gene Diffusion
+3.1. Overview
+LGDiST consists of two main components: an AE (shown
+in Fig. 2) that builds a compact but highly informative latent
+space for ST data, and a diffusion model (Fig. 3) trained
+to generate the missing gene expression profile of a spot
+conditioned on the information from its nearest neighbors.
+
+===== PAGE 4 =====
+...
+Gene Expression 
+Neighborhood 
+ 
+...
+...
+...
+...
+...
+...
+Completed Gene Expression
+Central Spot
+...
+Missing Data Mask
+...
+Completed Data
+...
+...
+...
+...
+...
+...
+...
+...
+Encoder
+Decoder
+...
+DiT
+...
+...
+...
+...
+...
+...
+...
+Completed Gene
+Expression Neighborhood
+...
+...
+...
+...
+...
+Condition
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+Genes (HSAGs and CGs)
+Spots
+Genes (HSAGs and CGs)
+Spots
+HSGAs
+HSGAs
+...
+...
+...
+...
+...
+...
+...
+Completed Gene Expression 
+Neighborhood
+Genes (HSAGs and CGs)
+Spots
+Genes (HSAGs and CGs)
+Completed Gene Expression
+Central Spot
+HSGAs
+a. LGDiST Training Process
+b. LGDiST Inference Process
+Filter-out CGs
+Spots
+Latent Dimension
+Figure 3. (a) LGDiST Training: The encoder Eθ maps the gene expression neighborhood X to XE. We feed this representation to the
+DiT with the condition C and t. Through an iterative noising-denoising process, the DiT learns to predict the noise in ˜
+XE,t. After learning
+how to remove the noise, the DiT outputs ˜
+XE, t = 0 and Dϕ decodes the result to obtain the final gene expression matrix. (b) LGDiST
+Inference: After obtaining the completed gene expression neighborhood, we filter out the CGs and obtain the final completed data.
+We define X ∈R(n+1)×g as the matrix representing the
+genetic expression profile of a neighborhood, where g is the
+number of genes and n denotes the number of closest neigh-
+bors for a given spot in the hexagonal geometry of Visium
+ST data. Consequently, we construct a neighborhood for
+each spot to consider its local context during data process-
+ing.
+Our methodology follows a structured two-stage train-
+ing process. First, we train the AE to build a latent space
+for ST neighborhoods. Once trained, we use this model
+to encode and decode the input and output of the DiT, re-
+spectively. During the second stage, we train the DiT con-
+ditioned on the latent representation of ST neighborhoods.
+This approach follows a latent diffusion strategy as pro-
+posed in [23], which accelerates training and reduces mem-
+ory requirements during both training and inference in the
+diffusion framework. Thus, instead of employing existing
+genetic foundation models to obtain gene expression em-
+beddings, which may not capture the neighborhood-level
+structure our framework requires, we design and train our
+own AE that both embeds the expression profiles and de-
+codes them once the diffusion process is complete.
+3.2. Genomics-Based Latent Space
+We propose an autoencoder (AE) architecture consisting
+of a four-layer transformer-based encoder with a single at-
+tention head, followed by a two-layer multilayer percep-
+tron (MLP) decoder. Both the encoder and decoder use a
+dropout rate of 0.1 and the hyperbolic tangent activation
+function. As shown in Fig. 2, we feed our encoder with Xp,
+which corresponds to the gene expression matrix X with
+added 2D positional encodings. Then we map Xp to the la-
+tent space, obtaining XE ∈R(n+1)×d = Eθ(Xp), where d
+corresponds to a latent dimension of 128. To enhance ro-
+bustness, we apply a regularization mechanism that injects
+noise into Xp during training with a probability of 50%.
+For decoding, we use the MLP Dϕ to reconstruct the ex-
+pression profile of the processed neighborhood based on its
+latent representation XE. The final reconstructed expres-
+sion matrix corresponds to ˆX ∈R(n+1)×g = Dϕ(XE).
+We train the autoencoder to minimize an adjusted recon-
+struction loss Lrec that prioritizes the columns correspond-
+ing to the HSAGs through the use of a weighted factor α:
+LHSAGs = MSE(XHSAGs, ˆXHSAGs)
+(1)
+LCGs = MSE(XCGs, ˆXCGs)
+(2)
+Lrec = α · LHSAGs + (1 −α)LCGs
+(3)
+3.3. Completing Missing Data with DDPMs
+During the second stage of our model, we train a twelve-
+layer DiT with sixteen attention heads to predict the ex-
+pression values of all genes in the central spot using in-
+formation from its nearest neighbors. We define the out-
+
+===== PAGE 5 =====
+put of each noising step in our diffusion process as de-
+scribed in Eq. 4. Here, ε ∼N(0, I) is Gaussian noise, and
+M ∈{0, 1}(n+1)×d is a binary mask that ensures only the
+central spot’s row is noised while leaving the neighboring
+spots’ data unchanged. The model learns to progressively
+denoise ˜XE by estimating the added noise and removing it
+iteratively. As shown in Fig. 3a, we condition the diffusion
+process on C = M ⊙XE to ensure that the model relies
+solely on the neighborhood information when reconstruct-
+ing the central spot’s gene expression profile.
+˜XE = (1 −M) ⊙ε + M ⊙XE
+(4)
+The model is trained to minimize the standard diffusion
+loss in Eq. 5, where ˆεθ( ˜XE,t, C, t) is the model’s predicted
+noise at timestep t based on the input noise ˜XE,t and the
+condition C.
+LDDP M = EXE,t,ε
+h
+∥ε −ˆεθ( ˜XE,t, C, t)∥2
+2
+i
+(5)
+After training our model to complete fully empty central
+spots, we use it to tackle the real dropout problem, where
+only a subset of genes in the central spot’s profile is miss-
+ing. As shown in Fig. 3b, during inference we must decode
+the DiT’s generated expressions and filter out CGs. Notably,
+instead of retrieving the whole generated profile, we extract
+only the values corresponding to the missing data. On the
+other hand, when evaluating our model, we build a mask
+that simulates data dropout by hiding values that were suc-
+cessfully measured by the ST technology. This procedure
+allows us to directly compare the predicted values against
+the known ground truth measurements and compute reliable
+evaluation metrics.
+3.4. Implementation Details
+Given the substantial amount of missing values in the orig-
+inal ST data, we adopt the training strategy outlined in
+[18]. This strategy includes pre-completing the data be-
+fore training using the median completion technique from
+[17], as detailed in section 2.2. We adopt this approach
+since [18] demonstrates that data pre-completion acceler-
+ates training convergence and ensures meaningful, non-zero
+outputs. Furthermore, [18] shows that pre-completion im-
+proves the performance of the final gene completion model
+compared to training on the original data with missing val-
+ues. This strategy also aligns with the reference-free nature
+of our approach, as the median-completion technique fills
+missing values using information already contained in the
+ST dataset.
+We train our model on an NVIDIA Quadro RTX 8000,
+using an AdamW optimizer [10], and a batch size of 128.
+The DiT backbone requires approximately 3.22 GFLOPs,
+stDiff*
+SpaCKLE
+LGDist
+0.0
+0.5
+1.0
+1.5
+2.0
+2.5
+3.0
+MSE per dataset
+MSE for all imputation methods on 26 SpaRED datasets
+Figure 4. MSE of the three completion methods on each dataset.
+stDiff* corresponds to an adjusted version of stDiff [12], modified
+to work reference-free.
+and we train it for 1500 epochs with a cosine noise sched-
+uler and a learning rate of 1 × 10−4, with 1500 diffusion
+steps during training and 50 diffusion steps for sampling.
+The autoencoder follows a longer training process of 5000
+epochs, with a learning rate of 1 × 10−6.
+4. Experimental Results
+4.1. Experimental Setup
+We conduct experiments using the 26 publicly available
+datasets in SpaRED [18], for both data completion and gene
+expression prediction from histopathology images. The ex-
+act details of the dataset composition are provided on the
+SpaRED website. To focus only on genes with strong spa-
+tial autocorrelation, SpaRED filters ST data using Moran’s
+I, retaining either 32 or 128 genes with the highest spatial
+autocorrelation scores for each dataset. We use SpaRED’s
+suggested genes as our set of HSAGs. To include additional
+context genes (CGs), we adopt the same pre-processing
+strategy as described in [18], but we adjust the filtering cri-
+teria to select 1,024 genes based on Moran’s I. This process
+preserves each dataset’s original 32 or 128 HSAGs while
+integrating the additional informative context genes. We
+evaluate performance by computing the standard MSE met-
+ric and Pearson Correlation Coefficient (PCC) between the
+ground truth and the completed or predicted expression val-
+ues.
+4.2. Missing Data Completion
+We compare the performance of LGDiST on the data com-
+pletion task against SpaCKLE [18], the previous state-of-
+
+===== PAGE 6 =====
+ENSG00000075624:
+V10S29-108_B1
+Masked Map
+Ground Truth
+LGDiST
+MSE = 0.439
+SpaCKLE
+MSE = 1.049
+11
+12
+13
+14
+15
+16
+Ground Truth
+11
+12
+13
+14
+15
+16
+Prediction
+Ground Truth
+LGDiST
+SpaCKLE
+ENSG00000140416:
+V10S29-108_B1
+MSE = 0.365
+MSE = 0.873
+9
+10
+11
+12
+13
+14
+15
+Ground Truth
+9
+10
+11
+12
+13
+14
+15
+Prediction
+Ground Truth
+LGDiST
+SpaCKLE
+6
+8
+10
+12
+14
+16
+6
+8
+10
+12
+14
+16
+Figure 5. Optimal qualitative results for data completion with LGDiST vs with SpaCKLE [18].
+the-art among reference-free methods, and a modified ver-
+sion of stDiff [12], which, like our method, employs DiT
+for data completion. To ensure a fair comparison, we adapt
+stDiff to work exclusively with ST data by restructuring its
+diffusion conditioning, ensuring it no longer relies on exter-
+nal information.
+Fig. 4 displays the distribution of the MSE values ob-
+tained by the three models when completing missing data on
+each one of the 26 datasets. These results demonstrate that
+LGDiST consistently outperforms the previous state-of-the-
+art with an average MSE 18% lower than SpaCKLE’s.
+Moreover, despite stDiff also being based on DiT, the sum
+of our workflow strategies proves to maximize the potential
+of the generative model.
+In Fig. 5, we present the result of completing simulated
+missing values (black dots on the masked map) for two dif-
+ferent genes with optimal results for LGDiST. Our method
+completes missing data without degrading the general spa-
+tial pattern followed by a gene.
+Unlike SpaCKLE [18],
+LGDiST’s predictions clean the noisy expression map with-
+out inducing data sparsity or smoothing. The scatter plots
+in Fig. 5 further demonstrate that the data completed with
+LGDiST exhibits a distribution closer to the ground-truth
+than the data completed with SpaCKLE [18].
+On the other hand, Fig. 6 presents examples of subopti-
+mal performance from our model. In these cases, LGDiST’s
+predictions deviate further from the target values, and, in
+some cases, align more closely with the median expression
+in the tissue. The compression of LGDiST’s predicted val-
+ues toward a narrow expression range in the scatter plot re-
+flects this behavior. This tendency is also noticeable in the
+predicted expression map of the second row, where the red
+spots have a lighter tone than the ground truth and present
+an underestimation of the gene expression in that location.
+However, despite reducing the range of expression in these
+suboptimal results, LGDiST is still capable of preserving
+spatial patterns.
+To evaluate the robustness of our model, we explore the
+completion results with a varied fraction of masked val-
+ues that act as synthetically missing data.
+Fig.
+7 illus-
+trates the MSE as a function of the percentage of missing
+data for LGDiST and SpaCKLE in the 10XGMBSP data
+set. Across all percentages, LGDiST consistently achieves a
+lower MSE compared to SpaCKLE, demonstrating its supe-
+rior performance in handling incomplete data. SpaCKLE’s
+error increases sharply at higher levels of missing data (70%
+and 80%), whereas LGDiST maintains a stable and low
+MSE even as the task becomes more challenging.
+4.3. Gene Prediction Models Enhancement
+To further evaluate the significance of our contributions,
+we use six models previously proposed in the literature to
+tackle the gene expression prediction task [7, 17, 20, 27, 29,
+30]. We assess these models’ ability to predict gene expres-
+sion profiles from histopathology images when trained on
+data whose dropout was completed by either SpaCKLE [18]
+or LGDiST. Following [18], during testing, we compute the
+evaluation metric (MSE) only on gene expression values
+that were directly measured by ST technology, excluding
+those that were completed. This ensures that performance
+improvements are not artificially influenced by the comple-
+tion method itself, but rather reflect a genuine enhancement
+
+===== PAGE 7 =====
+ENSG00000188157:
+V10F24-015_D1
+Masked Map
+Ground Truth
+LGDiST
+MSE = 1.028
+SpaCKLE
+MSE = 1.566
+4
+6
+8
+10
+12
+14
+Ground Truth
+4
+6
+8
+10
+12
+14
+Prediction
+Ground Truth
+LGDiST
+SpaCKLE
+ENSG00000244617:
+V10F24-015_D1
+MSE = 1.254
+MSE = 0.969
+6
+8
+10
+12
+14
+Ground Truth
+6
+8
+10
+12
+14
+Prediction
+Ground Truth
+LGDiST
+SpaCKLE
+2
+4
+6
+8
+10
+12
+4
+6
+8
+10
+12
+14
+Figure 6. Suboptimal qualitative results for data completion with LGDiST vs with SpaCKLE [18].
+10
+30
+50
+70
+80
+% Missing Values
+0.52
+0.54
+0.56
+0.58
+0.60
+0.62
+0.64
+Completion MSE
+LGDiST
+SpaCKLE
+Figure 7. Line plot displaying completion MSE for LGDiST and
+SpaCKLE [18] methods across different percentages of syntheti-
+cally masked data.
+in the models’ predictive capabilities.
+Fig.
+8 compares the (a) MSE and (b) PCC, of gene
+expression prediction models when trained with LGDiST
+and SpaCKLE [18].
+The left Y-axis displays the num-
+ber of datasets in which each prediction method improved,
+while the right Y-axis indicates the improvement percent-
+age in the corresponding evaluation metric when training on
+LGDiST-completed data versus SpaCKLE-completed data
+[18]. These results indicate that all models achieve better
+gene expression prediction in more than half of the datasets
+when trained on LGDiST-completed data.
+Additionally,
+all six models exhibit an average improvement in MSE
+and PCC, confirming the benefit of training on dropout-
+corrected data using LGDiST.
+The reduction in MSE indicates that the predicted gene
+expression values are more accurate and closer to the true
+expression levels when trained on LGDiST completed data.
+Notably, BLEEP demonstrates the greatest improvement,
+achieving an average MSE reduction of 10%. Furthermore,
+the improvement in PCC reflects a stronger preservation
+of spatial patterns in the predicted gene expression values.
+This is crucial in spatial transcriptomics, as it ensures that
+spatial relationships between gene expressions across tissue
+regions are better captured. SEPAL, in particular, demon-
+strates the highest PCC improvement with a 188% increase,
+highlighting its ability to better align spatial gene expres-
+sion patterns when training on LGDiST-completed data.
+4.4. Ablation Experiments
+To better understand the effectiveness of our proposed
+method, we conduct ablation experiments using a random
+selection of six datasets from SpaRED. First, we evaluate
+the impact of removing context genes from our input data,
+meaning that we rely solely on the HSAGs in their latent
+representation. Then, we explore working without the au-
+toencoder component, directly training the diffusion branch
+on gene expression values.
+Table 1 presents the results of the ablation experiments,
+demonstrating a 23% decline in average performance when
+neighborhoods contain only the HSAGs instead of using a
+latent space that includes context genes. Removing also the
+autoencoder component and working directly on gene ex-
+pression values leads to a 62% increase in completion error
+
+===== PAGE 8 =====
+a.
+b.
+Figure 8. (a) MSE and (b) PCC of gene-expression prediction models when trained on LGDiST-completed data compared to training on
+data completed with SpaCKLE [18].
+Table 1. Average MSE in ablation experiments.
+Latent space
+Context genes
+Average MSE
+✓
+✓
+0.573 ± 0.136
+✓
+0.710 ± 0.214
+1.007 ± 0.200
+Table 2.
+Average MSE with varying number of neighbors for
+LGDiST. We present the number of floating point operations
+(FLOPs) of each neighborhood configuration.
+Neighbors
+Average MSE
+FLOPs (G)
+0
+1.891 ± 0.988
+0.64
+6
+0.573 ± 0.136
+3.22
+18
+0.588 ± 0.155
+8.74
+compared to removing only the context genes.
+As a final ablation experiment, we evaluate the complete
+LGDiST model (including both the autoencoder and con-
+text genes) under three neighborhood size configurations.
+Our default setup uses six neighbors, equivalent to 1-hop in
+the hexagonal geometry of Visium. We also examine the
+effects of removing neighborhood conditioning altogether,
+as well as expanding the neighborhood to 18 neighbors (2-
+hops). The results in Table 2 underscore the importance of
+neighboring spots for accurate predictions, considering that
+removing neighborhood information increases the MSE by
+230%. Although expanding to a 2-hop neighborhood yields
+similar performance to 1-hop, it increases the number of
+FLOPs by 171%, resulting in a substantially higher compu-
+tational cost without performance improvement.
+These findings indicate that including known data from
+neighboring spots successfully guides the completion pro-
+cess and that latent representations provide biologically
+meaningful information for data completion.
+Similarly,
+context genes prove to be valuable for certain ST analy-
+ses, despite having a low spatial autocorrelation.
+While
+LGDiST is computationally expensive by design, with a dif-
+fusion model backbone that requires 3.22 GFLOPs, restrict-
+ing the neighborhood to 1-hop achieves strong performance
+without substantially increasing the computational cost.
+5. Conclusions
+In this paper, we present LGDiST, a reference-free ST com-
+pletion model that effectively addresses the challenges of
+tackling data dropout. We show the suitability of gener-
+ative models combined with AEs to predict missing val-
+ues in ST and propose a novel approach to harness the
+contextual information available in low spatially autocor-
+related genes. Our results prove that LGDiST outperforms
+the previous state-of-the-art with an average MSE reduction
+of 18% across the SpaRED database. Finally, we demon-
+strate that completing ST data with LGDiST improves its
+reliability and unlocks the full potential of this sequencing
+technology. By improving the performance of gene expres-
+sion prediction models when training them on LGDiST-
+completed data, we highlight its broader impact on advanc-
+ing histopathology image analysis and related biomedical
+research.
+6. Acknowledgments
+Daniela Vega acknowledges the support of a UniAn-
+des
+Google-DeepMind
+2024
+scholarship.
+This
+work
+was
+supported
+by
+Azure
+sponsorship
+cred-
+its
+granted
+by
+Microsoft’s
+AI
+for
+Good
+Research
+Lab.
+References
+[1] Tamim Abdelaal, Soufiane Mourragui, Ahmed Mahfouz, and
+Marcel JT Reinders. Spage: spatial gene enhancement using
+
+===== PAGE 9 =====
+scrna-seq. Nucleic acids research, 48(18):e107–e107, 2020.
+1, 2
+[2] Kamal Berahmand,
+Fatemeh Daneshfar,
+Elaheh Sadat
+Salehi, Yuefeng Li, and Yue Xu.
+Autoencoders and their
+applications in machine learning: a survey. Artificial Intelli-
+gence Review, 57(2):28, 2024. 2
+[3] Tommaso Biancalani, Gabriele Scalia, Lorenzo Buffoni,
+Raghav Avasthi, Ziqing Lu, Aman Sanger, Neriman Tokcan,
+Charles R Vanderburg, ˚Asa Segerstolpe, Meng Zhang, et al.
+Deep learning and alignment of spatially resolved single-cell
+transcriptomes with tangram. Nature methods, 18(11):1352–
+1362, 2021. 1
+[4] Mengnan Cheng, Yujia Jiang, Jiangshan Xu, Alexios-
+Fotios A Mentis, Shuai Wang, Huiwen Zheng, Sunil Kumar
+Sahu, Longqi Liu, and Xun Xu. Spatially resolved transcrip-
+tomics: a comprehensive review of their technological ad-
+vances, applications, and challenges.
+Journal of Genetics
+and Genomics, 50(9):625–640, 2023. 1
+[5] Thomas Defard, Hugo Laporte, Mallick Ayan, Juliette
+Soulier, Sandra Curras-Alonso, Christian Weber, Florian
+Massip, Jos´e-Arturo Londo˜no-Vallejo, Charles Fouillade,
+Florian Mueller, et al. A point cloud segmentation frame-
+work for image-based spatial transcriptomics. Communica-
+tions Biology, 7(1):823, 2024. 1
+[6] Ashraful Haque, Jessica Engel, Sarah A Teichmann, and
+Tapio L¨onnberg.
+A practical guide to single-cell rna-
+sequencing for biomedical research and clinical applications.
+Genome medicine, 9:1–12, 2017. 1
+[7] Bryan
+He,
+Ludvig
+Bergenstr˚ahle,
+Linnea
+Stenbeck,
+Abubakar Abid,
+Alma Andersson,
+˚Ake Borg,
+Jonas
+Maaskola, Joakim Lundeberg, and James Zou. Integrating
+spatial gene expression and breast tumour morphology
+via deep learning.
+Nature biomedical engineering, 4(8):
+827–834, 2020. 1, 6
+[8] Jonathan Ho, Ajay Jain, and Pieter Abbeel. Denoising dif-
+fusion probabilistic models. Advances in neural information
+processing systems, 33:6840–6851, 2020. 2
+[9] Yang Jin, Yuanli Zuo, Gang Li, Wenrong Liu, Yitong Pan,
+Ting Fan, Xin Fu, Xiaojun Yao, and Yong Peng. Advances
+in spatial transcriptomics and its applications in cancer re-
+search. Molecular Cancer, 23(1):129, 2024. 1
+[10] Diederik P Kingma and Jimmy Ba. Adam: A method for
+stochastic optimization.
+arXiv preprint arXiv:1412.6980,
+2014. 5
+[11] Daisuke Komura, Mieko Ochi, and Shumpei Ishikawa. Ma-
+chine learning methods for histopathological image analysis:
+Updates in 2024. Computational and Structural Biotechnol-
+ogy Journal, 2024. 1
+[12] Kongming Li, Jiahao Li, Yuhao Tao, and Fei Wang. stdiff: a
+diffusion model for imputing spatial transcriptomics through
+single-cell transcriptomics. Briefings in Bioinformatics, 25
+(3):bbae171, 2024. 1, 2, 5, 6
+[13] Yijun Li, Stefan Stanojevic, and Lana X Garmire. Emerging
+artificial intelligence applications in spatial transcriptomics
+analysis. Computational and Structural Biotechnology Jour-
+nal, 20:2895–2908, 2022. 1
+[14] Erpai Luo, Minsheng Hao, Lei Wei, and Xuegong Zhang.
+scdiffusion: conditional generation of high-quality single-
+cell data using diffusion model.
+Bioinformatics, 40(9):
+btae518, 2024. 1
+[15] Ricfrid van der Marel. Navigating the complexity of data
+imputation in spatial transcriptomics: Strategies, challenges,
+and future directions. 2024. 3
+[16] Vivien Marx. Method of the year: spatially resolved tran-
+scriptomics. Nature methods, 18(1):9–14, 2021. 1
+[17] Gabriel Mejia, Paula C´ardenas, Daniela Ruiz, Angela
+Castillo, and Pablo Arbel´aez. Sepal: Spatial gene expres-
+sion prediction from local graphs.
+In Proceedings of the
+IEEE/CVF International Conference on Computer Vision
+(ICCV) Workshops, pages 2294–2303, 2023. 3, 5, 6
+[18] Gabriel Mejia, Daniela Ruiz, Paula C´ardenas, Leonardo
+Manrique, Daniela Vega, and Pablo Arbel´aez.
+Enhancing
+gene expression prediction from histology images with spa-
+tial transcriptomics completion. In International Conference
+on Medical Image Computing and Computer-Assisted Inter-
+vention, pages 91–101. Springer, 2024. 2, 3, 5, 6, 7, 8
+[19] Patrick AP Moran. Notes on continuous stochastic phenom-
+ena. Biometrika, 37(1/2):17–23, 1950. 3
+[20] Minxing Pang, Kenong Su, and Mingyao Li.
+Leverag-
+ing information in spatial transcriptomics to predict super-
+resolution gene expression from histology images in tumors.
+BioRxiv, pages 2021–11, 2021. 6
+[21] William Peebles and Saining Xie. Scalable diffusion models
+with transformers. In Proceedings of the IEEE/CVF inter-
+national conference on computer vision, pages 4195–4205,
+2023. 2
+[22] Duy Pham, Xiao Tan, Jun Xu, Laura F Grice, Pui Yeng Lam,
+Arti Raghubar, Jana Vukovic, Marc J Ruitenberg, and Quan
+Nguyen. stlearn: integrating spatial location, tissue morphol-
+ogy and gene expression to find cell types, cell-cell inter-
+actions and spatial trajectories within undissociated tissues.
+biorxiv, pages 2020–05, 2020. 3
+[23] Robin Rombach, Andreas Blattmann, Dominik Lorenz,
+Patrick Esser, and Bj¨orn Ommer.
+High-resolution image
+synthesis with latent diffusion models.
+In Proceedings of
+the IEEE/CVF conference on computer vision and pattern
+recognition, pages 10684–10695, 2022. 4
+[24] Chen Shengquan, Zhang Boheng, Chen Xiaoyang, Zhang
+Xuegong, and Jiang Rui. stplus: a reference-based method
+for the accurate enhancement of spatial transcriptomics.
+Bioinformatics, 37(Supplement 1):i299–i307, 2021. 1, 2
+[25] Farzan Soleymani, Eric Paquet, Herna Lydia Viktor, and
+Wojtek Michalowski.
+Structure-based protein and small
+molecule generation using egnn and diffusion models:
+A comprehensive review.
+Computational and Structural
+Biotechnology Journal, 2024. 2
+[26] Ye Wang, Bin Liu, Gexin Zhao, YooJin Lee, Anton Buzdin,
+Xiaofeng Mu, Joseph Zhao, Hong Chen, and Xinmin Li.
+Spatial transcriptomics: Technologies, applications and ex-
+perimental considerations. Genomics, 115(5):110671, 2023.
+1
+[27] Ronald Xie, Kuan Pang, Sai Chung, Catia Perciani, Sonya
+MacParland, Bo Wang, and Gary Bader. Spatially resolved
+
+===== PAGE 10 =====
+gene expression prediction from histology images via bi-
+modal contrastive learning. Advances in Neural Information
+Processing Systems, 36:70626–70637, 2023. 1, 6
+[28] Chaorui Yan, Yanxu Zhu, Miao Chen, Kainan Yang, Feifei
+Cui, Quan Zou, and Zilong Zhang.
+Integration tools for
+scrna-seq data and spatial transcriptomics sequencing data.
+Briefings in Functional Genomics, 23(4):295–302, 2024. 3
+[29] Yan Yang, Md Zakir Hossain, Eric A Stone, and Shafin Rah-
+man. Exemplar guided deep neural network for spatial tran-
+scriptomics analysis of gene expression prediction. In Pro-
+ceedings of the IEEE/CVF Winter Conference on Applica-
+tions of Computer Vision, pages 5039–5048, 2023. 1, 6
+[30] Yan Yang, Md Zakir Hossain, Eric Stone, and Shafin Rah-
+man. Spatial transcriptomics analysis of gene expression pre-
+diction using exemplar guided graph neural network. Pattern
+Recognition, 145:109966, 2024. 1, 6
+[31] Sichen Zhu, Yuchen Zhu, Molei Tao, and Peng Qiu. Dif-
+fusion generative modeling for spatially resolved gene ex-
+pression inference from histology images.
+arXiv preprint
+arXiv:2501.15598, 2025. 2

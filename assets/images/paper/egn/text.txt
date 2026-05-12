@@ -1,0 +1,1282 @@
+
+===== PAGE 1 =====
+Exemplar Guided Deep Neural Network for Spatial Transcriptomics
+Analysis of Gene Expression Prediction
+Yan Yang1
+Md Zakir Hossain1
+Eric A Stone 1
+Shafin Rahman2
+1 BDSI, Australian National University, Australia
+2 ECE, North South University, Bangladesh
+{Yan.Yang, zakir.hossain, eric.stone}@anu.edu.au
+shafin.rahman@northsouth.edu
+Abstract
+Spatial transcriptomics (ST) is essential for understand-
+ing diseases and developing novel treatments. It measures
+gene expression of each fine-grained area (i.e., different
+windows) in the tissue slide with low throughput. This pa-
+per proposes an Exemplar Guided Network (EGN) to accu-
+rately and efficiently predict gene expression directly from
+each window of a tissue slide image. We apply exemplar
+learning to dynamically boost gene expression prediction
+from nearest/similar exemplars of a given tissue slide image
+window. Our EGN framework composes of three main com-
+ponents: 1) an extractor to structure a representation space
+for unsupervised exemplar retrievals; 2) a vision trans-
+former (ViT) backbone to progressively extract representa-
+tions of the input window; and 3) an Exemplar Bridging
+(EB) block to adaptively revise the intermediate ViT rep-
+resentations by using the nearest exemplars. Finally, we
+complete the gene expression prediction task with a sim-
+ple attention-based prediction block. Experiments on stan-
+dard benchmark datasets indicate the superiority of our
+approach when comparing with the past state-of-the-art
+(SOTA) methods.
+1. Introduction
+Based on an editorial report of the Natural Methods [23],
+Spatial Transcriptomics (ST) is the future of studying dis-
+ease because of its capabilities in measuring gene expres-
+sion of fine-grained areas (i.e., different windows) of tissue
+slides. However, ST is in low throughput due to limitations
+in concurrent analysis for the candidate windows [1]. To
+accurately predict gene expression from each window of a
+tissue slide image (Fig. 1), this paper proposes a solution
+named Exemplar Guided Network (EGN), while allowing
+efficient and concurrent analysis.
+In literature, previous works adopt end-to-end neural net-
+works, namely STNet [13] and NSL [8], to establish a map-
+ping between gene expression and the slide image win-
+Gene Expression
+Gene 
+Expression
+Gene Expression
+Figure 1: Overview of fields. Each fine-grained area (i.e.,
+window) of a tissue slide image is with distinct gene ex-
+pression. Here is an example, we have a tissue slide image
+with three windows, and each of the windows corresponds
+with expression of four different gene types. Our goal is to
+predict the gene expression of each window.
+dow. STNet is a transfer learning-based approach that fine-
+tunes a pretrained DenseNet for this task. On the contrary,
+NSL maps the color intensity of the slide image window to
+gene expression by a single convolution operation. Though
+amenable to high throughput because of using neural net-
+works, their prediction performance is inferior.
+We investigate two important limitations of the existing
+approaches [13, 8]. 1) Local feature aggregation: gene ex-
+pression prediction can be considered as individually group-
+ing the identified feature of each gene type from the slide
+image window. The long-range dependency among identi-
+fied features is needed to reason about complex scenarios
+[35, 22], as those features are generally non-uniformly dis-
+tributed across the slide image window (see Sec. 3 for de-
+tails). STNet (i.e., a pure convolution approach) emphasizes
+local context during feature aggregation. It fails to bring in-
+teraction among features that are apart from each other. By
+experimenting with extensive SOTA architectures, we show
+that models with local feature aggregation achieve low per-
+formance when comparing to models with long-range de-
+pendencies.
+2) Vulnerable assumption: identifying gene
+arXiv:2210.16721v1  [cs.CV]  30 Oct 2022
+
+===== PAGE 2 =====
+expression by directly detecting the color intensity of the
+slide image window is vulnerable. By experimenting on
+standard benchmark datasets, we show this approach only
+works in extreme cases (for example, in the STNet dataset
+[13], tumour areas of slide image windows are usually pur-
+ple, which benefits predicting tumour-related gene expres-
+sion). This method shows a negative Pearson correlation
+coefficient (PCC) when evaluating the model with the least
+reliable gene expression prediction, i.e., PCC@F in Tab. 1.
+In this paper, we propose an EGN framework to address
+the above limitations. EGN uses ViT [9] as a backbone and
+incorporates exemplar learning concepts for the gene ex-
+pression prediction task. To enable unsupervised exemplar
+retrieval of a given slide image window, we use an extrac-
+tor for defining a representation space to amount similarity
+between slide image windows. For brevity, we name the ex-
+tractor output as a global view, which avoids confusion with
+the ViT representations. Note that, the representation ability
+of the global view is evidenced in the experiment section.
+Then, we have a ViT backbone to progressively construct
+presentations of the given slide image window under long-
+range dependency. Meanwhile, we have an EB block to
+revise intermediate ViT representations by the global views
+of the given slide image window, the global views of the ex-
+emplars, and the gene expression of exemplars. The global
+view of the given slide image window additionally serves
+as a prior to facilitating the long-range dependency, apart
+from the ViT backbone.
+To allow dynamic information
+propagation, we iteratively update the global views of the
+given slide image window and exemplars based on the sta-
+tus of the intermediate ViT representations. Semantically,
+the former update corresponds with ‘what gene expression
+is known ?’, and the latter corresponds with ‘what is gene
+expression the model wants to know ?’. Finally, we have an
+attention-based prediction block to aggregate the exemplar-
+revised ViT representations and the global view of the given
+slide image window to predict gene expression.
+Our contributions are summarised below:
+• We propose an EGN framework, a ViT-based exemplar
+learning approach, to accurately predict gene expres-
+sion from the slide image window.
+• We propose an EB block to revise the intermediate ViT
+representation by using the nearest exemplars of the
+given slide image window.
+• Experiments on two standard benchmark datasets
+demonstrate our superiority when comparing with
+SOTA approaches.
+2. Related work
+This section first review the study of gene expression
+prediction.
+Then, we summarise recent achievements of
+exemplar learning in both natural language processing and
+computer vision domains.
+Gene Expression Prediction. Measuring gene expression
+is a basic process in developing novel treatments and moni-
+toring human diseases [2]. To increase process accessibility,
+deep learning methods have been introduced to this task.
+Existing methods predict the gene expression either from
+DNA sequences [2] or slide images [13, 8, 30]. This paper
+explores the latter approach. Meanwhile, these image-based
+approaches are divided into two streams. First, Schmauch et
+al. [30] employs a multi-stage method including pretrained
+ResNet feature extractions [14] and a K-Means algorithm to
+model the Bulk RNA-Seq technique [21]. It measures the
+gene expression across cells within a large predefined area
+that is up to 105 × 105 pixels in a corresponding slide im-
+age [30]. However, this approach is ineffective for studies
+that require fine-grained gene expression information, such
+as tumour heterogeneity [11]. Second, on the contrary, He
+et al. [30, 15] and Dawood et al. [8] design a STNet and
+an NSL framework to predict the gene expression for each
+window (i.e., fine-grained area) of a slide image. This corre-
+sponds with the ST technique [24]. We model ST to predict
+gene expression, as this potentially solves the bulk RNA-
+Seq prediction task simultaneously [13]. For example, ag-
+gregation of gene expression predictions for each window
+across a slide image results in a bulk RNA-Seq prediction.
+Exemplar Learning. The K-nearest neighborhood clas-
+sifier is the most straightforward case of exemplar learn-
+ing.
+It classifies the input by considering the class la-
+bels of the nearest neighbors.
+Exemplar learning is a
+composition of retrieval tasks and learning tasks [3].
+It
+has been widely employed to increase the model capabil-
+ity by bringing in extra knowledge of similar exemplars
+[27, 7, 31, 10, 5, 33, 17, 12, 4, 20, 32, 28, 25]. Patro et
+al. [27], Chen et al. [7], Teney et al. [31], and Farazi et al.
+[10] refine the representation of given input with the closest
+match of text embedding and/or other visual embeddings
+to help the Visual Question Answering task. Borgeaud et
+al. [5], Wu et al. [33], Urvashi et al. [4], and Kelvin
+et al. [12] combine the examplar learning with transform-
+ers for language generation tasks. Their key idea is to en-
+able a more knowledgeable attention mechanism, by pick-
+ing exemplars as key and value representation. Similarly,
+Philippe et al. [4] incorporates the attention mechanism
+with exemplar learning to bring a real-time visual object
+tracking framework. Other applications of exemplar learn-
+ing, including fact checking, fact completion, and dialogue,
+could be found in [20, 32, 28, 25]. However, most of the
+above approach does not apply to our task because of the
+domain shift. This paper investigates an application of ex-
+emplar learning in gene expression prediction from slide
+image windows. As a result, we devise an EB block to adapt
+exemplar learning into our task.
+
+===== PAGE 3 =====
+Projector
+Patch Embedding
+Vision
+Transformer
+Blocks
+EB
+Block
+Vision
+Transformer
+Blocks 
+EB
+Block
+Prediction
+Block
+0.15
+0.32
+0.42
+
+
+0.77
+Gene 
+Expression
+Slide Image
+Window
+Extractor
+Decoder
+Reconstructed
+Slide Image Window
+Dataset
+Unsupervised Exemplar
+Retrieval (Sec. 3.1) with
+Retrieve
+Exemplar Learning
+(Sec. 3.2) with
+Discarded
+Figure 2: EGN framework. Our networks are trained in a two-stage manner. In the stage of unsupervised exemplar retrieval
+(Sec. 3.1), we learn an extractor E(·) and a decoder G(·) with image reconstruction objectives. After convergence, we use
+the extractor E(·) with a distance metric for unsupervised exemplar retrieval. For example, given Xi, we obtain the global
+view of Xi, i.e., ei and ei = E(Xi), and construct the nearest exemplar set KXi = {ej, yj}, where ej is the exemplar global
+view, and yj is the exemplar gene expression. In the stage of exemplar learning (Sec. 3.2), we train a network C(·, ·, ·) to
+predict gene expression yi from Xi, ei, and KXi. We use a vision transformer (ViT) as our backbone. The proposed EB
+block is interleaved with the vision transformer blocks. With a projector, we refine ei and KXi = {ej, yj} to h0, {r0}, and
+{s0}. Then, they are used by the EB block to revise the ViT patch representation and are updated to ht, {rt}, and {st}, where
+1 ≤t ≤T, and T is the number of layers. Finally, we have a prediction block that concatenates the refined global view hT
+of Xi and the attention-pooled ViT patch representation, to achieve the gene expression prediction task.
+3. EGN Framework
+Problem Formulation. We have a dataset collection of tis-
+sue slide images, where each image contains multiple win-
+dows, and each window is annotated with gene expression.
+For brevity, we denote the dataset collection as pairs of a
+slide image window Xi ∈R3×H×Wand gene expression
+yi ∈RM, i.e., {(Xi, yi)}N
+i=1, where N is the collection size,
+H and W are the height and width of Xi, and M is the num-
+ber of gene types. We aim to train a deep neural network
+model to predict yi from Xi.
+From the ST study, there exist two main challenges. 1)
+Long-range dependency: gene expression-related features
+are non-uniformly distributed over the slide image window
+Xi. Refer to Fig. 3 of [13] for evidence. The interactions
+among these features are needed to group expression of the
+same gene type. 2) Skewed gene expression distribution:
+the expression of some gene types has a skewed distribu-
+tion, similar to the imbalance class distribution problem.
+This skewed distribution (see Fig. 3 for an example) poses
+challenges in predicting expression of these gene types. In
+this paper, we attempt to mitigate them by learning from
+similar exemplars.
+Model Overview.
+With these motivations, we have de-
+signed the EGN framework (Fig. 2) containing an extractor
+network for exemplar retrieval and a prediction network that
+learns from retrieved exemplars. Networks are trained on
+two stages. 1) Unsupervised exemplar retrieval (Sec. 3.1):
+we train an extractor E(·) to construct the global view of
+the slide image window Xi, i.e., ei = E(Xi) and ei ∈RD,
+where D is the representation dimension. This global view
+ei is used for retrieving the nearest exemplar of Xi to form
+a set KXi = {[ej, yj] | j ∈Υi}, where Υi contains in-
+dexes of nearest exemplars, ej is a global view of a nearest
+exemplar, and yj is the paired gene expression of the ex-
+emplar. 2) Exemplar learning (Sec. 3.2): we train a model
+C(·, ·, ·) that maps Xi, ei, and KXi, to yi. Our C(·, ·, ·) is
+based on a ViT backbone. We bring interactions between
+ei and ej to leverage yj with a proposed EB block. Then,
+for accurately predicting yi, the updated ei is used to re-
+vise intermediate ViT representations of Xi. Note that, ei
+also serves as a prior to facilitating the long-range interac-
+tions. With the introduction of exemplars, our framework
+dynamically benefits when predicting gene expression.
+3.1. Unsupervised Exemplar Retrieval
+To retrieve the exemplar of a given slide image Xi in an
+unsupervised manner, we propose to train an extractor (i.e.,
+an encoder) with a decoder for image reconstructions. After
+
+===== PAGE 4 =====
+Expression
+Density
+(a) RPS18
+Expression
+Density
+(b) S100A8
+Expression
+Density
+(c) RPS10
+Figure 3: Gene expression distributions of STNet dataset
+[13]. Each gene expression is log-transformed. (a) is well
+distributed expression of gene RPS18. (b) and (c) are long-
+tail distributed expression of gene S100A8 and gene RPS10.
+convergence, we discard the decoder, and couple the extrac-
+tor with a distance metric to amount the similarity between
+each pair of slide image windows for the exemplar retrieval.
+Method. The StyleGAN [16] applies a style code (i.e., a
+low dimension vector) to modulate convolution operations
+during image generations. As indicated by [34], the style
+code captures both fine-grained and high-level image at-
+tributes of a training dataset in an unsupervised manner.
+Meanwhile, in the style code, each scalar is highly disen-
+tangled, i.e., each of them tends to independently control
+an image attribute. This attribute independency is desired
+when amounting similarly between images. Thus, we bor-
+row the style code for our unsupervised exemplar retrieval,
+where the style code is a global view of the given image in-
+put. Conventionally, to obtain the style code of a given slide
+image window, one needs to train a styleGAN and perform a
+GAN inversion [34] separately. Instead, we jointly train an
+encoder/extractor E(·) (which replaces the GAN inversion)
+and a StyleGAN generator G(·), with an image reconstruc-
+tion objective. Afterwards, we can directly obtain the style
+code by a simple forward pass in the extractor E(·).
+Objective. We employ a least absolute deviation loss L1,
+a LPIPS loss LLPIPS, and a discriminator loss LF to opti-
+mize the image reconstruction, where F(·) is a discrimi-
+nator. Note that, the reconstruction indirectly impacts the
+representation ability of the style code. L1 constrains pixel-
+wise correspondence, while LLPIPS and LF promotes a bet-
+ter reconstruction fidelity. We have
+  & \ma t hcal {L}_{
+1} = \ l vert \ m athbf {X}_{i} 
+- \ m
+a
+t
+h
+bf
+ {
+G }
+(
+\ m
+a
+thbf {E}
+(\
+mathbf {X}_{i})) \rvert , \\ &\mathcal {L}_{\text {LPIPS}} = \lVert \phi (\mathbf {X}_{i}) - \phi (\mathbf {G}(\mathbf {E}(\mathbf {X}_{i}))) \rVert _{2}, \\ &\mathbf {L}_{\mathbf {F}} = u\Big (\mathbf {F}\big (\mathbf {X}_{i}\big )\Big ) + u\Big (-\mathbf {F}\big (\mathbf {G}(\mathbf {E}(\mathbf {X}_{i}))\big )\Big ),
+where ϕ(·) is a pretrained LPIPS network [37], and u(·) is
+a Softplus function [16]. Let X be a distribution of slide
+image windows. The overall objective is
+  \ mat
+hca l {
+L
+}_{\m
+a
+th b f {E}}  = 
+\
+min _{\mathbf {G},\mathbf {E}} \max _{\mathbf {F}} ~ \mathbb {E}_{\mathbf {X}_{i} \sim \mathbf {X}} \Big [\mathcal {L}_{1} + \mathcal {L}_{\text {LPIPS}} + \mathcal {L}_{\mathbf {F}} \big ]. 
+In a later section, we show E(·) effectively encodes the gene
+expression-related features, by combining a pretrained E(·)
+with a linear layer for gene expression prediction.
+Slide Image
+Window
+Closest 
+Image
+Pre Encoded 
+Figure 4: Overview of the exemplar retrieval. For example,
+blue cycles are pre encoded global views. Given Xi, we
+extract ei with E(·) and retrieve the nearest exemplars.
+Exemplar Retrieval. After convergence, we use the rep-
+resentation space of the extractor E(·) for the exemplar re-
+trieval. Note that, we call the extractor output, the style
+code, as a global view.
+The slide image window Xi is
+encoded into a global view, by ei = E(Xi). Then, we
+measure the similarity between each given pair of the slide
+image, for example, Xi and Xj, with the Euclidean dis-
+tance L2, for constructing the nearest exemplar set KXi.
+We empirically verify the optimal size of KXi in Sec. 4.3.
+To generalize the model performance, we restrict that the
+candidate image pairs are from different patients. The over-
+all process is presented in Fig. 4. In the experiment section,
+we compare the proposed exemplar retrieval with alterna-
+tive retrieval approaches.
+3.2. Exemplar Learning
+Our model C(·, ·, ·) is composed of a projector, a back-
+bone, an EB block, and a prediction block. It maps a slide
+image window Xi, a corresponding global view ei, and a
+retrieved nearest exemplar set KXi to gene expression yi,
+i.e., yi = C(Xi, ei, KXi). Our model brings interactions
+between KXi and ei to progressively revise the intermediate
+representations of Xi in the ViT backbone.
+Projector. The global views ei and ej ∈KXi summarise
+a wide range of dataset-dependent attributes. We refine the
+global view to concentrate on the gene expression of in-
+terest by several multi-layer perceptrons (MLPs). Firstly,
+the global view ei of the given slide image window Xi is
+projected by MLP0
+h(·). Secondly, for ej ∈KXi, as the
+associated gene expression yi ∈KXi is available, we em-
+power the refinement of ej by yj. We concatenate ej and
+yj before feeding to MLP0
+r(·). Thirdly, with MLP0
+s(·), yj
+is projected to the model dimension. We have
+  
+\ m athb
+f {h}^ {0
+} _ {i} 
+= \tex t {ML P}
+^ { 0}_{
+h}(\mathbf {e}_{i}), \;\; \mathbf {r}^{0}_{j} = \text {MLP}^{0}_{r}([\mathbf {e}^{j}, \mathbf {Y}{j}]), \;\; \mathbf {s}^{0}_{j} = \text {MLP}^{0}_{s}(\mathbf {y}_{j}),
+where the superscript of h0
+i , r0
+j, and s0
+j denotes that they
+are initial refined global view, and [·, ·] is a concatenation
+operator. MLP0
+h(·) and MLP0
+s(·) are two layer perceptrons
+with a ReLU activation function. MLP0
+r(·) shares the same
+parameters with MLP0
+h(·) but has an extra linear layer on
+top of it.
+
+===== PAGE 5 =====
+Sigmoid
+Sigmoid
+Chunk
+Avg
+Chunk
+Avg
+Figure 5: EB block architecture. The inputs are hi, {rt
+j |
+j ∈Υi}, and {st
+j | j ∈Υi}, and Zt. Firstly, we project sj
+to st+1
+i
+and have interactions between hi and rj. This inter-
+action is assisted by st+1
+i
+and obtains
+ˆ
+ht+1i and rt+1
+i
+. Sec-
+ondly, ˆht
+i is projected to the number of patches in the ViT
+backbone, to scale the magnitude of the ViT patch represen-
+tation Zt. By their interactions, ˆht+1
+i
+and Zt are updated to
+ht+1
+i
+and Zt+1.
+Backbone. We use the ViT as our backbone [9]. It has a
+patch embedding layer and vision transformer blocks. The
+patch embedding layer tiles the slide image window Xi into
+non-overlapping patches before flattening and feeding to a
+linear layer. The outputs are Z0 = [z0
+l | l ∈1, · · · , L],
+where L is the total number of patches, and Z0 is a matrix
+representation of the projected patches. Each vision trans-
+former block composes of a self-attention layer and a feed-
+forward layer, which performs global interaction among Z0.
+Assuming there are T layers, and let t ∈[1, · · · , T]. We de-
+note the lth patch representation at tth layer as zt
+l.
+EB Block. This block is interleaved with the vision trans-
+former blocks, which brings st
+j, i.e., knowledge about gene
+expression of the nearest exemplar, to each ViT patch repre-
+sentation zt
+l. Firstly, we project st
+j (i.e., a projection of gene
+expression of the exemplars) to st+1
+j
+. With st+1
+j
+, we have
+interactions between ht
+i and rt
+j (i.e., refined global views) to
+obtain ˆht+1
+i
+and rt+1
+j
+. As ˆht+1
+i
+and rt+1
+j
+are initialized from
+the same extractor E(·), their interactions could serve as a
+bridge for the revision of the ViT patch representation. Sec-
+ondly, considering ˆht+1
+i
+is initially extracted by the recon-
+struction based-network E(·), ˆht+1
+i
+is expected to contain
+spatial information about the input image distribution. With
+ˆht+1
+i
+, we revise the ViT patch representation zt
+l, obtaining
+ht+1
+i
+and zt+1
+l
+. This revision process brings interactions be-
+tween ˆht+1
+i
+and zt
+l to propagate information about possible
+gene expression (which receives from the exemplars) and
+patch representation statuses. The overall process is shown
+in Fig. 5.
+To do so, firstly, we concatenate ht
+i and the difference
+ht
+i −rt
+j to bring interactions between ht
+i and rt
+j, with
+MLPt
+m(·). We chunk the outputs to mh,j and mr,j. Then,
+they are fused with ˆsj to retrieve gene expression from st+1
+j
+(a projection of st
+j). Semantically, mh,j summarises ‘the
+existing knowledge of gene expression’, and mr,j tells ‘the
+desired knowledge’. Mathematically, we have
+  &\h
+a
+t  {
+\ m athbf {h} } ^{t+
+1
+} _{ i } = \
+math
+b
+f  {
+h } ^{t} _ {i} 
++
+ 
+\text  {Av g }([\mathbf {
+m}_{
+h, j}
+ \ cd
+ot \m
+athb
+f
+ {s}^
+{t+1
+}_{j} \mid \forall j \in \Upsilon _{i}]), \\ &\mathbf {r}^{t+1}_{i} = \mathbf {r}^{t}_{i} + \mathbf {m}_{r,j} \cdot \mathbf {s}^{t+1}_{j}, \\ &\mathbf {m}_{h,j}, \mathbf {m}_{r,j} = \text {Chunk}(\sigma (\text {MLP}^{t}_{m} (\mathbf {h}^{t}_{i},\mathbf {h}^{t}_{i} - \mathbf {r}^{t}_{j}))),\\ &\mathbf {s}^{t+1}_{j} = \text {MLP}^{t}_{s}(\mathbf {s}^{t}_{j})
+where MLPt
+m(·) is a Multi-layer perceptron, the Chunk(·)
+operator equally splits the input into two outputs, and σ(·)
+is a Sigmoid function. To avoid notation overloading, we
+remain to use MLPt
+s(·) as a single-layer perceptron. Sec-
+ondly, ˆht+1
+i
+and Zt reciprocate each other by scaling the
+magnitude of each patch representation zt
+l ∈Zt:
+  &\ m at h bf {
+Z}^{
+t+1
+} = 
+\
+m athbf
+ 
+{ Z}^{
+t} + \te
+xt {
+ML
+P} ^{
+t } _{z}(\math
+bf {O } ^{t}_{
+z}), \\ 
+&
+\mathbf {h}^{t+1}_{i} = \hat {\mathbf {h}}^{t+1}_{i} + \text {MLP}^{t}_{h}(\text {Avg}(\mathbf {O}^{t}_{h})), \\ &\mathbf {O}^{t}_{h},\mathbf {O}^{t}_{z}= \text {Chunk}(\text {MLP}^{t}_{o}(\mathbf {Z}^{t}) \cdot \sigma (\text {MLP}^{t}_{\hat {h}}(\hat {\mathbf {h}}^{t+1}_{i}))),
+where MLPt
+z(·), MLPt
+h(·), MLPt
+o(·), and MLPt
+ˆh(·) are
+single-layer perceptrons. Ot
+h and Ot
+z are the fusion of the
+ViT patch representations Zt and ˆht+1
+i
+. Note that, the out-
+put dimension of MLPt
+o(·) is the number of patches in the
+ViT, and each scalar of the output is used to scale a corre-
+sponding patch from MLPt
+o(Zt). By scaling the magnitudes
+of each ViT patch representation, we indirectly inject the
+knowledge about gene expression of the exemplars, while
+updating the refined global view ˆht+1
+i
+to facilitate both in-
+teractions with the exemplars and the ViT representation in
+following layers. One may note that the current operation is
+single-head based, which can be extended to a multi-head
+operation by expanding the output dimension of MLPt
+o(·)
+in practice.
+Prediction Block. Following [38], each ViT patch repre-
+sentation shows different priorities toward the gene expres-
+sion prediction task. We apply an attention pooling layer
+AttPool(·) to aggregate zT
+l ∈ZT. Moreover, hT
+i is a pro-
+gressively refined global view of the slide image window
+Xi, which captures high-level attributes of Xi. We con-
+catenate hT
+i and AttPool(ZT) for the prediction. We have
+  \ mathbf {
+y } _{i} = \text {MLP}_{g}([ \mathbf {h}^{\mathsf {T}}_{i},\text {AttPool}(\mathbf {Z}^{\mathsf {T}})]),
+
+===== PAGE 6 =====
+Table 1: Quantitative gene expression prediction comparisons with SOTA methods in STNet dataset and 10xProteomic
+dataset. We bold the best results. We use ‘-’ to denote unavailable results. Models are evaluated by four-fold cross-
+validation and three-fold cross-validation in the above datasets. Our proposed EGN framework consistently outperforms
+the SOTA methods in MAE×101, PCC@F×101, PCC@S×101 and PCC@M×101 for both datasets. The CycleMLP finds the
+best MSE×102 in the 10xProteomic dataset.
+Methods
+STNet [13]
+NSL [8]
+ViT [9]
+CycleMLP [6]
+MPViT [19]
+Retro [5]
+ViTExp
+Ours
+STNet
+Dataset
+MSE×102
+4.52
+-
+4.28
+4.41
+4.49
+4.53
+4.46
+4.10
+MAE×101
+1.70
+-
+1.67
+1.68
+1.70
+1.71
+1.69
+1.61
+PCC@F×101
+0.05
+-0.71
+0.97
+1.11
+0.91
+0.99
+0.87
+1.51
+PCC@S×101
+0.92
+0.25
+1.86
+1.95
+1.54
+1.74
+1.72
+2.25
+PCC@M×101
+0.93
+0.11
+1.82
+1.91
+1.69
+1.79
+1.74
+2.02
+10xProteomic
+Dataset
+MSE×102
+12.40
+-
+7.54
+4.69
+5.45
+5.25
+5.04
+5.49
+MAE×101
+2.64
+-
+2.27
+1.55
+1.56
+1.65
+1.66
+1.55
+PCC@F×101
+1.25
+-3.73
+5.11
+5.88
+6.40
+5.46
+5.59
+6.78
+PCC@S×101
+2.26
+1.84
+4.64
+6.60
+7.15
+6.35
+6.36
+7.21
+PCC@M×101
+2.15
+0.25
+4.90
+6.32
+6.84
+6.04
+6.00
+7.07
+where MLPg is a single-layer perception.
+Objective. We optimize C(·, ·, ·) with mean squared loss
+(i.e., the Euclidean distance) L2 and batch-wise PCC Lppc.
+We have
+  \mat h ca l  {L}_{total} = \mathcal {L}_{2} + \mathcal {L}_{ppc}
+4. Experiments
+Datasets. We perform experiments in the publicly avail-
+able STNet dataset [13] and 10xProteomic datasets1. The
+STNet dataset contains roughly 30,612 pairs of the slide
+image window and the gene expression. This dataset cov-
+ers 68 slide images from 23 patients. Following [13], we
+target predicting expression of 250 gene types that have the
+largest mean across the dataset. The 10xProteomic dataset
+has 32,032 slide image windows and gene expression pairs
+from 5 slide images. We select target gene types in the same
+way as the STNet dataset. We apply log transformation and
+min-max normalization to the target gene expression. Note
+that, our normalization method is different from [13] (they
+use log transformation and a custom normalization, i.e., di-
+viding the expression of each gene type by the sum of ex-
+pression from all gene types, for each slide image window).
+Our normalization method allows independent analysis of
+gene expression prediction.
+4.1. Experimental set-up
+Baseline methods.
+We compare with extensive SOTA
+methods from gene expression prediction, ImageNet clas-
+sification benchmarks, and exemplar learning.
+• STNet [13] and NSL [8]. They are the SOTA methods
+in gene expression prediction.
+1https://www.10xgenomics.com/resources/datasets
+• ViT [9], MPViT [19] and CycleMLP [6]. We use the
+SOTA ImageNet classification methods in our task.
+They are strong baselines in our task. Specifically, we
+use ViT-B, MPViT-Base, and CycleMLP-B2. Please
+refer to [9, 19, 6] for details.
+• Retro [5] and ViTExp. We explore the SOTA exemplar
+learning methods. However, Retro is originally devel-
+oped for natural language processing. We adapt it by
+providing the extractor output e as the exemplar repre-
+sentations. ViTExp directly concatenates the exemplar
+representations to the ViT patch representation. The
+exemplar representations are added with an embedding
+to be differentiated from the patch representation of the
+slide image window. Both Retro and ViTExp are based
+on the ViT-B architecture [9].
+Evaluation metrics. We evaluate the proposed methods
+and alternative baselines with PCC, mean squared error
+(MSE), and mean absolute error (MAE). We use PCC@F,
+PCC@S, and PCC@M to denote the first quantile, median,
+and mean of the PCC. The PCC@F verifies the least per-
+formed model predictions. The PCC@S and PCC@M mea-
+sure the median and mean of correlations for each gene
+type, given predictions and GTs for all of the slide im-
+age windows. Meanwhile, the MSE and MAE measure the
+sample-wise deviation between predictions and GTs of each
+slide image window for each gene type. Note that, for MSE
+and MAE, the lower value means better performance. In
+contrast, for PCC@F, PCC@S, and PCC@M, the higher
+value indicates better performance.
+Implementation details2. The architectures and optimiza-
+tion settings for our extractor follow [36]. For the exemplar
+learning, we implement EGN by using the Pytorch frame-
+2Codes are available at: https://github.com/Yan98/EGN
+
+===== PAGE 7 =====
+(a) Retro [4] (PCC@M: 0.179)
+Tumour
+Normal
+(b) CycleMLP [5] (PCC@M: 0.191)
+Tumour
+Normal
+(c) Backbone only (PCC@M: 0.180)
+Tumour
+Normal
+(d) w/o Projector (PCC@M: 0.185)
+Tumour
+Normal
+(e) Ours (PCC@M: 0.202)
+Tumour
+Normal
+Figure 6: Quantitative evaluation of the top performed models from Tab. 1 and Tab. 4. We employ t-SNE [29] for dimension
+reduction of model latent space. We use the extra labels (i.e., tumour and normal) from the STNet dataset for annotations.
+work [26]. EGN is trained from scratch for 50 epochs with
+batch size 32. We set the learning rate to 5 × 10−4 with a
+cosine annealing scheduler. Our weight decay is 1 × 10−4.
+We use a ViT backbone with the following settings: patch
+size 32, embedding dimension 1024, feedforward dimen-
+sion 4096, attention heads 16, and depth 8. We interleave
+the proposed EB block with the ViT backbone at frequency
+2, where each block has 16 heads and dimension 64, namely
+the block has 16 unique operations with dimension 64. Our
+EB block uses 9 nearest exemplars. All the experiments are
+conducted in 2 NVIDIA Tesla P100 GPUs.
+4.2. Experimental results
+We compare our EGN framework with the baselines on
+the STNet dataset and the 10xProteomic dataset (Tab. 1).
+As the gene expression prediction task emphasizes captur-
+ing the relativity variation, we bias on the PCC-related eval-
+uation metrics, i.e., PCC@F, PCC@S, and PCC@M. Our
+EGN consistently achieves the SOTA performance in MAE,
+PCC@F, PCC@S, and PCC@M. Our findings are as fol-
+lows: 1) It’s worth noting that Retro and ViTExp use the
+ViT as the backbone. However, their performance is lower
+than the ViT. Both Retro and ViTExp use attention-based
+operations to directly have interactions between the ViT
+representations and the global views of the exemplars, when
+comparing with our EB block. This validates the necessity
+of using the global view of the input slide image window as
+a bridge to introduce the knowledge of exemplars to the ViT
+representations; 2) CycleMLP and MPViT, the SOTA meth-
+ods in the ImageNet classification task, lead to the second-
+best performance in the STNet dataset and 10xProteomic
+dataset in PCC-related evaluations. Meanwhile, CycleMLP
+finds the best MSE in 10xProteomic.
+Note that, PCC-
+related evaluation metrics are most important in our task.
+By using the exemplars, our model that uses the vanilla ViT
+backbone outperforms them with a reason marginal in PCC-
+related evaluation metrics, while overall achieving similar
+MSE and MAE with them; 3) The PCC@F of our model
+significantly outperforms the baseline methods. This met-
+ric evaluates the worst model capability, by calculating the
+first quantile of PCC across all gene types. Note that, the
+majority of gene types covered by the first quantile have
+skewed expression distributions, which are the most chal-
+lenging part of the prediction task. Our method has 0.038
+- 0.040 higher than the second-best method in PCC@F;
+and 4) STNet and NSL fail to achieve good performance.
+Again, the gene expression-related feature is usually non-
+uniformly distributed across the slide image window input.
+They do not have long-range interactions to capture the ex-
+pression of the same gene type from these features. More-
+over, NSL even shows a negative correlation with PCC@F.
+This validates our claims that predicting gene expression di-
+rectly with the color intensity is vulnerable, and it is only
+feasible in extreme cases (recall the example of tumour-
+related gene expression in Sec. 1).
+Quantitative Evaluation. We present the latent space visu-
+alization (Fig. 6), by considering the top performed models
+from Tab. 1 and Tab. 4 (see details of ‘Backbone only’ and
+‘w/o Projector’ settings in Sec. 4.3). Note that, the ‘Back-
+bone only’ setting has a smaller number of parameters than
+a regular ViT-B. The extra labels (i.e., tumour and normal)
+from the STNet dataset are used for annotations. To enable
+a clean visualization, we randomly sample 256 representa-
+tions of the slide image window for each label, i.e., tumour
+and normal. By gradually using the proposed components
+(from Fig. 6 (c) to Fig. 6 (e)), i.e., introduction exemplars
+to our model, our method sufficiently separates the tumour
+representations from the normal representations, by having
+an improved gene expression prediction than alternative ap-
+proaches.
+4.3. Ablation study
+We study the capability of each model component by
+conducting a detailed ablation study in the STNet dataset.
+Extractor Capability. We explore alternative approaches
+for retrieving exemplars (Tab. 2). We compare with repre-
+sentations from AlexNet [18] and ResNet50 [14]. Note that,
+they are pretrained on ImageNet, and our E(·) is learned in
+an unsupervised manner. We explore diverse distance ma-
+trices including LPIPS [37], L2, L1, and cosine (i.e., cosine
+similarity). We have the following findings: 1) LPIPS dis-
+tance retrieved exemplars lead to bad model performance.
+This distance is trained based on the human perception of
+regular images, where these images are different from the
+
+===== PAGE 8 =====
+0
+5
+10
+0.180
+0.188
+0.196
+0.204
+(a) PCC@M
+0
+5
+10
+0.0410
+0.0415
+0.0420
+0.0425
+(b) MSE
+0
+5
+10
+0.161
+0.163
+0.165
+0.167
+(c) MAE
+Figure 7: Ablation study on number of exemplar used in EB block.
+This number is varied from one to fifteen, and we present PCC@M,
+MSE, and MAE in sub-figure (a), (b), and (c).
+Table 2: Ablation study on exemplar retrieval. We
+compare with representation from AlexNet and
+ResNet50 for exemplar retrieval.
+Feature
+Space
+Distance
+Metrics
+MSE×102
+MAE×101
+PCC@M×101
+E(·)
+L2
+4.10
+1.61
+2.02
+E(·)
+L1
+4.13
+1.64
+1.80
+E(·)
+cosine .
+4.24
+1.63
+1.83
+AlexNet
+LPIPS
+4.46
+1.70
+1.74
+ResNet50
+L2
+4.12
+1.62
+1.89
+ResNet50
+L1
+4.13
+1.62
+1.83
+ResNet50
+cosine
+4.16
+1.64
+1.94
+Table 3: Ablation study on the EB block.
+Heads
+Head Dim
+Frequency
+PCC@M×101
+4
+32
+2
+1.84
+4
+64
+2
+1.76
+4
+64
+3
+1.78
+8
+32
+2
+1.85
+8
+64
+2
+2.02
+8
+64
+3
+1.88
+16
+32
+2
+1.86
+16
+64
+2
+1.82
+16
+64
+3
+1.80
+slide image windows. Thus, it retrieves bad exemplars and
+damages the model performance; 2) Retrieving exemplars
+with ResNet50 lead to decent performance, though the pre-
+trained ResNet50 lacks gene expression-related knowledge.
+This retrieval method complements the knowledge about
+image textures learned from the ImageNet for our task,
+which enhances the versatility of our model representation
+and verifies our model robustness; and 3) Using the extrac-
+tor E(·) with L2 distance achieves the best performance.
+EB Block Settings. Firstly, we present PCC@M (Fig. 7(a)),
+MSE (Fig. 7(b)), and MAE (Fig. 7(c)), by varying the num-
+ber of exemplars used in the EB block from one to fifteen.
+Having nine exemplars find the best PCC@M and MAE,
+and we have the best MSE by using ten exemplars. Again,
+our task emphasizes capturing relative changes. Thus, our
+final recommendation is to use nine exemplars. Secondly,
+we ablate the EB block architectures and the frequency of
+interleaving with the vision transformer blocks (Tab. 3).
+This balances the model’s capability in structuring the ViT
+representations and receiving knowledge from the exem-
+plars. We have the best PCC@M, by setting heads, head
+dimension, and frequency to 8, 64, and 2.
+Model Architectures. We present the performance of ‘Pre-
+trained E(·)’, ‘Backbone only’, ‘w/o EB block’, and ‘w/o
+projector’ in Tab. 4. ‘Pretrained E(·)’ adds one trainable
+linear layer to E(·), while freezing weights of E(·) for gene
+expression prediction. This is also known as linear probing
+in the literature. ‘Backbone only’ uses the ViT backbone
+Table 4: Ablation study on model architectures.
+Settings
+MSE×102
+MAE×101
+PCC@M×101
+Pretrained E(·)
+4.85
+1.76
+1.56
+Backbone only
+4.31
+1.67
+1.80
+w/o EB Block
+4.65
+1.72
+1.70
+w/o projector
+4.22
+1.63
+1.85
+Ours
+4.10
+1.55
+2.02
+architecture. Note that, we use a non-regular ViT archi-
+tecture which is determined by a binary search. ‘w/o EB
+block’ is equivalent to concatenating the pooled ViT repre-
+sentations with the global view for predicting gene expres-
+sion. ‘w/o projector’ replaces the projector with a linear
+layer to unify the dimension. Our findings are as follows:
+1) The ‘Pretrained E(·)’ setting is a strong baseline. Note
+that, this setting has better performance than the STNet and
+NSL (Tab. 1). Our E(·) captures gene expression-related
+features in an unsupervised manner, showing the potential
+of our unsupervised exemplar retrieval; 2) The ‘w/o EB
+block’ setting achieves worse performance than the ‘Back-
+bone only’ setting. Concatenating the global view for gene
+expression prediction with a single linear layer disables in-
+teractions between the global view and the ViT represen-
+tations. This potentially causes inconsistent behaviors and
+results in poor performance; and 3) With all proposed com-
+ponents, we have the best performance.
+5. Conclusion
+This paper proposes an EGN framework to accurately
+predict gene expression from each fine-grained area of tis-
+sue slide image, i.e., different windows. EGN uses the ViT
+as a backbone while integrating with exemplar learning con-
+cepts. We first have an extractor to retrieve the exemplars
+of the given tissue slide image window in an unsupervised
+manner. Then, we propose an EB block to progressively re-
+vise the ViT representation by reciprocating with the nearest
+exemplars. With extensive experiments, we demonstrate the
+superiority of the EGN framework over the SOTA methods.
+EGN is promising to facilitate studies on diseases and novel
+treatments with accurate gene expression prediction.
+
+===== PAGE 9 =====
+References
+[1] Michaela Asp, Joseph Bergenstr˚ahle, and Joakim Lunde-
+berg.
+Spatially resolved transcriptomes—next generation
+tools for tissue exploration.
+BioEssays, 42:1900221, 05
+2020.
+[2] ˇZiga Avsec, Vikram Agarwal, Daniel Visentin, Joseph Led-
+sam, Agnieszka Grabska-Barwinska, Kyle Taylor, Yannis
+Assael, John Jumper, Pushmeet Kohli, and David Kelley.
+Effective gene expression prediction from sequence by inte-
+grating long-range interactions. Nature Methods, 18:1196–
+1203, 10 2021.
+[3] Miguel Bautista, Artsiom Sanakoyeu, Ekaterina Sutter, and
+Bj¨orn Ommer.
+Cliquecnn: Deep unsupervised exemplar
+learning. 08 2016.
+[4] Philippe Blatter, Menelaos Kanakis, Martin Danelljan, and
+Luc Gool. Efficient visual tracking with exemplar transform-
+ers. 12 2021.
+[5] Sebastian Borgeaud, Arthur Mensch, Jordan Hoffmann,
+Trevor Cai, Eliza Rutherford, Katie Millican, George Driess-
+che, Jean-Baptiste Lespiau, Bogdan Damoc, Aidan Clark,
+Diego Casas, Aurelia Guy, Jacob Menick, Roman Ring, Tom
+Hennigan, Saffron Huang, Loren Maggiore, Chris Jones, Al-
+bin Cassirer, and Laurent Sifre. Improving language models
+by retrieving from trillions of tokens. 12 2021.
+[6] Shoufa Chen, Enze Xie, Chongjian Ge, Ding Liang, and Ping
+Luo. Cyclemlp: A mlp-like architecture for dense prediction.
+CoRR, abs/2107.10224, 2021.
+[7] Zhuo Chen, Jiaoyan Chen, Yuxia Geng, Jeff Pan, Zonggang
+Yuan, and Huajun Chen. Zero-Shot Visual Question Answer-
+ing Using Knowledge Graph, pages 146–162. 09 2021.
+[8] Muhammad Dawood, Kim Branson, Nasir Rajpoot, and
+Fayyaz ul Amir Afsar Minhas. All you need is color: Image
+based spatial gene expression prediction using neural stain
+learning. 08 2021.
+[9] Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov,
+Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner,
+Mostafa Dehghani, Matthias Minderer, Georg Heigold, Syl-
+vain Gelly, Jakob Uszkoreit, and Neil Houlsby. An image
+is worth 16x16 words: Transformers for image recognition
+at scale. In 9th International Conference on Learning Rep-
+resentations, ICLR 2021, Virtual Event, Austria, May 3-7,
+2021. OpenReview.net, 2021.
+[10] Moshiur Farazi, Salman Khan, and Nick Barnes.
+From
+known to the unknown: Transferring knowledge to answer
+questions about novel visual and semantic concepts. Image
+and Vision Computing, 103:103985, 08 2020.
+[11] Marco Gerlinger, Andrew Rowan, Stuart Horswell, James
+Larkin, David Endesfelder, Eva Gronroos, Pierre Martinez,
+Nik Matthews, Aengus Stewart, Patrick Tarpey, Ignacio
+Varela, Benjamin Phillimore, Sharmin Begum, Neil Mcdon-
+ald, Adam Butler, David Jones, Keiran Raine, Calli Latimer,
+Claudio Santos, and Charles Swanton. Intratumor hetero-
+geneity and branched evolution revealed by multiregion se-
+quencing. The New England journal of medicine, 366:883–
+92, 03 2012.
+[12] Kelvin Guu, Kenton Lee, Zora Tung, Panupong Pasupat, and
+Ming-Wei Chang.
+Realm: Retrieval-augmented language
+model pre-training. 02 2020.
+[13] Bryan
+He,
+Ludvig
+Bergenstr˚ahle,
+Linnea
+Stenbeck,
+Abubakar Abid,
+Alma Andersson,
+Ake Borg,
+Jonas
+Maaskola, Joakim Lundeberg, and James Zou. Integrating
+spatial gene expression and breast tumour morphology via
+deep learning. Nature Biomedical Engineering, 4:1–8, 08
+2020.
+[14] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun.
+Deep residual learning for image recognition. pages 770–
+778, 06 2016.
+[15] Gao Huang, Zhuang Liu, Laurens van der Maaten, and Kil-
+ian Weinberger. Densely connected convolutional networks.
+07 2017.
+[16] Tero Karras, Samuli Laine, Miika Aittala, Janne Hellsten,
+Jaakko Lehtinen, and Timo Aila. Analyzing and improving
+the image quality of stylegan. In 2020 IEEE/CVF Confer-
+ence on Computer Vision and Pattern Recognition, CVPR
+2020, Seattle, WA, USA, June 13-19, 2020, pages 8107–
+8116. Computer Vision Foundation / IEEE, 2020.
+[17] Urvashi Khandelwal, Omer Levy, Dan Jurafsky, Luke Zettle-
+moyer, and Mike Lewis. Generalization through memoriza-
+tion: Nearest neighbor language models. 10 2019.
+[18] Alex Krizhevsky, Ilya Sutskever, and Geoffrey E. Hinton.
+Imagenet classification with deep convolutional neural net-
+works. Commun. ACM, 60(6):84–90, 2017.
+[19] Youngwan Lee, Jonghee Kim, Jeffrey Willette, and Sung Ju
+Hwang. Mpvit: Multi-path vision transformer for dense pre-
+diction. CoRR, abs/2112.11010, 2021.
+[20] Patrick Lewis, Ethan Perez, Aleksandara Piktus, Fabio
+Petroni,
+Vladimir Karpukhin, Naman Goyal, Heinrich
+K¨uttler, Mike Lewis, Wen-tau Yih, Tim Rockt¨aschel, Sebas-
+tian Riedel, and Douwe Kiela. Retrieval-augmented genera-
+tion for knowledge-intensive nlp tasks. 05 2020.
+[21] Xinmin Li and Cun-Yu Wang. From bulk, single-cell to spa-
+tial rna sequencing. International Journal of Oral Science,
+13, 12 2021.
+[22] Hui Lin, Zhiheng Ma, Rongrong Ji, Yaowei Wang, and Xi-
+aopeng Hong. Boosting crowd counting via multifaceted at-
+tention. CoRR, abs/2203.02636, 2022.
+[23] Vivien Marx. Method of the year: spatially resolved tran-
+scriptomics. Nature Methods, 18:9–14, 01 2021.
+[24] Vivien Marx. Method of the year: spatially resolved tran-
+scriptomics. Nature Methods, 18:9–14, 01 2021.
+[25] Nikita Moghe, Siddhartha Arora, Suman Banerjee, and
+Mitesh Khapra. Towards exploiting background knowledge
+for building conversation systems. 09 2018.
+[26] Adam Paszke, Sam Gross, Francisco Massa, Adam Lerer,
+James Bradbury, Gregory Chanan, Trevor Killeen, Zem-
+ing Lin, Natalia Gimelshein, Luca Antiga, Alban Desmai-
+son, Andreas K¨opf, Edward Z. Yang, Zachary DeVito, Mar-
+tin Raison, Alykhan Tejani, Sasank Chilamkurthy, Benoit
+Steiner, Lu Fang, Junjie Bai, and Soumith Chintala. Pytorch:
+An imperative style, high-performance deep learning library.
+In Hanna M. Wallach, Hugo Larochelle, Alina Beygelzimer,
+Florence d’Alch´e-Buc, Emily B. Fox, and Roman Garnett,
+
+===== PAGE 10 =====
+editors, Advances in Neural Information Processing Systems
+32: Annual Conference on Neural Information Processing
+Systems 2019, NeurIPS 2019, December 8-14, 2019, Van-
+couver, BC, Canada, pages 8024–8035, 2019.
+[27] Badri Patro and Vinay Namboodiri. Deep exemplar networks
+for vqa and vqg. 12 2019.
+[28] F Petroni, PSH Lewis, A Piktus, Tim Rockt¨aschel, Yuxiang
+Wu, AH Miller, and Sebastian Riedel. How context affects
+language models’ factual predictions. 06 2020.
+[29] Paulo E. Rauber, Alexandre X. Falc˜ao, and Alexandru C.
+Telea. Visualizing time-dependent data using dynamic t-sne.
+In Enrico Bertini, Niklas Elmqvist, and Thomas Wischgoll,
+editors, 18th Eurographics Conference on Visualization, Eu-
+roVis 2016 - Short Papers, Groningen, The Netherlands, June
+6-10, 2016, pages 73–77. Eurographics Association, 2016.
+[30] Benoit Schmauch, Alberto Romagnoni, Elodie Pronier,
+Charlie Saillard, Pascale Maill´e, Julien Calderaro, Aur´elie
+Kamoun, Meriem Sefta, Sylvain Toldo, Mikhail Zaslavskiy,
+Thomas Clozel, Matahi Moarii, Pierre Courtiol, and Gilles
+Wainrib. A deep learning model to predict rna-seq expres-
+sion of tumours from whole slide images. Nature Communi-
+cations, 11, 08 2020.
+[31] Damien Teney and Anton Hengel. Zero-shot visual question
+answering. 11 2016.
+[32] James Thorne, Andreas Vlachos, Christos Christodoulopou-
+los, and Arpit Mittal. Fever: a large-scale dataset for fact
+extraction and verification. 04 2018.
+[33] Yuhuai Wu, Markus Rabe, DeLesley Hutchins, and Christian
+Szegedy. Memorizing transformers. 03 2022.
+[34] Zongze Wu, Dani Lischinski, and Eli Shechtman. Stylespace
+analysis: Disentangled controls for stylegan image genera-
+tion. In IEEE Conference on Computer Vision and Pattern
+Recognition, CVPR 2021, virtual, June 19-25, 2021, pages
+12863–12872. Computer Vision Foundation / IEEE, 2021.
+[35] Shuo-Diao Yang, Hung-Ting Su, Winston H. Hsu, and Wen-
+Chin Chen.
+Class-agnostic few-shot object counting.
+In
+IEEE Winter Conference on Applications of Computer Vi-
+sion, WACV 2021, Waikoloa, HI, USA, January 3-8, 2021,
+pages 869–877. IEEE, 2021.
+[36] Yan Yang, Md. Zakir Hossain, Tom Gedeon, and Shafin Rah-
+man.
+S2FGAN: semantically aware interactive sketch-to-
+face translation.
+In IEEE/CVF Winter Conference on Ap-
+plications of Computer Vision, WACV 2022, Waikoloa, HI,
+USA, January 3-8, 2022, pages 3162–3171. IEEE, 2022.
+[37] Richard Zhang, Phillip Isola, Alexei A. Efros, Eli Shecht-
+man, and Oliver Wang. The unreasonable effectiveness of
+deep features as a perceptual metric. In 2018 IEEE Con-
+ference on Computer Vision and Pattern Recognition, CVPR
+2018, Salt Lake City, UT, USA, June 18-22, 2018, pages 586–
+595. Computer Vision Foundation / IEEE Computer Society,
+2018.
+[38] Ke Zhu and Jianxin Wu. Residual attention: A simple but
+effective method for multi-label recognition, 10 2021.

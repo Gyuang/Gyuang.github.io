@@ -1,0 +1,2446 @@
+
+===== PAGE 1 =====
+Vision-Language Models Encode Clinical Guidelines for
+Concept-Based Medical Reasoning
+Mohamed Harmanani1,4, Bining Long1∗, Zhuoxin Guo1,4∗, Paul F.R. Wilson1,4,
+Amirhossein Sabour3, Minh Nguyen Nhat To2, Gabor Fichtinger1,
+Purang Abolmaesumi2†, Parvin Mousavi1,4†
+1Queen’s University
+2University of British Columbia
+3McMaster University
+4Vector Institute
+mohamed.harmanani@queensu.ca
+Abstract
+Concept Bottleneck Models (CBMs) are a prominent frame-
+work for interpretable AI that map learned visual features
+onto a set of meaningful concepts, to be used for task-
+specific downstream predictions.
+Their sequential struc-
+ture enhances transparency by connecting model predic-
+tions to the underlying concepts that support them.
+In
+medical imaging, where transparency is essential, CBMs
+offer an appealing foundation for explainable model de-
+sign. However, their discrete concept representations over-
+look broader clinical context such as diagnostic guide-
+lines and expert heuristics, reducing reliability in com-
+plex cases.
+We propose MedCBR, a concept-based rea-
+soning framework that integrates clinical guidelines with
+vision–language and reasoning models. Labeled clinical
+descriptors are transformed into guideline-conformant text,
+and a concept-based model is trained with a multi-task ob-
+jective combining multi-modal contrastive alignment, con-
+cept supervision, and diagnostic classification to jointly
+ground image features, concepts, and pathology. A rea-
+soning model then converts these predictions into struc-
+tured clinical narratives that explain the diagnosis, emulat-
+ing expert reasoning based on established guidelines. Med-
+CBR achieves superior diagnostic and concept-level perfor-
+mance, with AUROCs of 94.2% on ultrasound and 84.0% on
+mammography. Further experiments were also performed
+on non-medical datasets, with 86.1% accuracy. Our frame-
+work enhances interpretability and forms an end-to-end
+bridge from medical image analysis to decision-making.
+1. Introduction
+As the demand for transparent and explainable AI grows,
+Concept Bottleneck Models (CBMs) have become a widely
+*denotes equal contribution (with interchangeable order)
+†denotes co-senior authorship
+Vision 
+Model
+⋮
+𝑦#
+Reasoning 
+Model
+Clinical 
+Guideline
+𝑐̂!
+𝑐̂"
+𝑐̂#
+“Spiculated 
+margins 
+are highly 
+indicative 
+of cancer.”
+Figure 1. MedCBR: We frame interpretable medical image analy-
+sis as reasoning over diverse sources of evidence, including model
+predictions and clinical guidelines.
+studied approach [18, 22, 45] for connecting model pre-
+dictions to human-interpretable concepts.
+These mod-
+els achieve interpretability by learning an intermediate
+layer of meaningful concepts, which are then mapped to
+task-specific outcomes through a separate predictive head.
+CBMs are widely used in computer vision tasks that benefit
+from concept-level prediction such as fine-grained recog-
+nition [41], visual question answering [11], and scene un-
+derstanding [5] , but their appeal is particularly strong in
+medical imaging, where interpretability and trust are essen-
+tial for clinical adoption [7, 8, 25].
+However, concept-based interpretability remains chal-
+lenging in practice. In certain clinical tasks such as cancer
+detection, intermediate concepts often reflect risk assess-
+ments (e.g., BI-RADS categories for breast cancer) rather
+than definitive outcomes. These assessments may incorpo-
+rate the clinician’s intuition or concern based on subtle cues
+in the image, even when individual features appear benign.
+Standard CBMs lack the capacity to capture this nuanced,
+experience-driven reasoning. Consequently, they may fail
+to identify cases that appear benign but raise concern when
+considered within the broader clinical context, thereby lim-
+iting performance in complex cases. Furthermore, concept
+annotations in medical datasets are often noisy or incom-
+1
+arXiv:2603.08921v1  [cs.CV]  9 Mar 2026
+
+===== PAGE 2 =====
+plete due to inter-observer variability and inherent ambigu-
+ity in imaging findings. This weakens the correspondence
+between visual evidence and concept labels, making it diffi-
+cult for traditional CBMs to learn reliable medical represen-
+tations. Bridging these gaps requires models that combine
+structured reasoning with domain knowledge by linking in-
+terpretable concepts and contextual guidelines within a uni-
+fied framework.
+To that end, we introduce MedCBR, a medical concept-
+based reasoning framework for interpretable cancer detec-
+tion.
+MedCBR explicitly models the structured clinical
+workflow used in diagnostic imaging, progressing from vi-
+sual descriptors to high-level findings to diagnostic con-
+clusions. By aligning model predictions with clinical rea-
+soning, MedCBR enables both accurate and transparent
+decision-making, offering rich and structured text outputs
+that closely reflect how radiologists communicate uncer-
+tainty, risk, and next steps. In particular, we make the fol-
+lowing contributions:
+1. We present a clinician-facing reasoning module that
+generates structured diagnostic narratives by integrating
+clinical guidelines with the predictions of a concept-based
+model to emulate the reasoning process used by clinicians,
+and produce transparent explanations of its predictions.
+2. We develop a concept enrichment strategy that mit-
+igates noise and incompleteness in human-annotated con-
+cepts by leveraging a large vision–language model (LVLM)
+to generate structured reports conditioned on the image, the
+concept ground truths, and the guideline. These enriched
+textual representations capture the contextual and relational
+meaning of visual findings, providing stronger and more
+consistent supervision.
+3. We train a multi-task vision–language concept model
+that contrastively aligns images with the LVLM-enriched
+reports while jointly optimizing for concept and diagno-
+sis prediction. This formulation encourages the vision en-
+coder to learn clinically meaningful representations within a
+shared embedding space. Models trained under this strategy
+demonstrate improved generalization and higher diagnostic
+performance across multiple benchmarks.
+2. Related Work
+Explainable AI. A wide range of methods have been pro-
+posed to explain the decision-making process of neural net-
+works. Classical approaches include parameter attribution
+methods [20, 28], gradient- and saliency-based visualiza-
+tions [32, 34–36], and attention-based models [2, 9] that
+highlight influential image regions.
+Concept Bottleneck
+Models (CBMs) [18] extend this idea by introducing struc-
+tured, human-interpretable variables that mediate predic-
+tions [16], and have since become a central paradigm for
+interpretable AI across domains, including medical imag-
+ing [7, 17, 25, 39, 43].
+Several extensions to the CBM
+framework have been proposed to move beyond the need
+for labelled concepts. These label-free variants typically
+transform pre-trained backbones into CBMs by relying on
+LLM-generated concept vocabularies and image-text align-
+ment objectives [22, 42, 44, 45]. AdaCBM [8] adapts this
+framework for medical imaging by introducing a learnable
+adapter between CLIP and the bottleneck to refines visual
+representations and mitigate domain shift. A limitation of
+label-free methods, however, is their reliance on automati-
+cally generated textual concepts, which can omit clinically
+important features or introduce spurious correlations.
+A
+complementary line of work aligns predictions with inter-
+mediate evidence using auxiliary objectives, such as en-
+forcing diagnosis-evidence consistency with logical con-
+straints [40], or supervising attribution behavior with fore-
+ground masks [6]. Much of the literature on intermediate
+concepts or auxiliary evidence improves interpretability by
+surfacing relevant clinical cues. However, tightly coupling
+standardized concept predictions with domain guidelines,
+especially in applications where concepts must adhere to
+strict definitions, remains less explored. To address this, we
+predict fine-grained clinical descriptors and condition the
+reasoning stage on them, yielding auditable and clinically
+verifiable decisions.
+Integrating Clinical Knowledge. Another class of ex-
+plainable methods have explored the integration of clini-
+cal knowledge into LLM-based systems to improve trans-
+parency in medical imaging.
+Agentic approaches or-
+chestrate tools and guidelines for interpretable diagnos-
+tic assistance.
+For instance, MAGDA [4] proposes a
+guideline-driven agentic system for screening diagnosis.
+MedRAX [10] couples chest X-ray foundation models with
+multi-modal LLMs to answer complex clinical queries us-
+ing retrieval augmentation.
+Other works have sought to
+improve medical image analysis using reasoning [15, 24]
+whilst others use clinical concepts to improve report gen-
+eration [13, 19]. Besides structured concepts and clinical
+guidelines, another related direction incorporates knowl-
+edge graphs [1] to enhance radiological explanations [14].
+However, prior work has focused on the use of concepts or
+guidelines as added context rather than explicit mechanisms
+to constrain concept-to-decision reasoning. We fill this gap
+by conditioning the reasoning process on fine-grained con-
+cept predictions, yielding verifiable and auditable reasoning
+from concepts and clinical guidelines.
+3. Methods
+3.1. Problem Formulation
+Let D = {(x, c, y)} denote a dataset of medical images
+x ∈X, concept annotations c ∈{0, 1}Nc, and diag-
+nostic labels y ∈Y = {benign, malignant}.
+Classical
+CBMs decompose the prediction ˆy into a feature extrac-
+2
+
+===== PAGE 3 =====
+r0·xn
+… 
+r0·x0
+… 
+… 
+… 
+rn·xn
+… 
+rn·x0
+Concepts
+Vision-Language Model
+Clinical Guideline
+Findings
+Medical 
+Images
+Vision 
+Encoder
+Prompt
++
++
+The image shows an 
+irregularly-shaped mass 
+with spiculated and 
+indistinct margins, ...
+The image shows an 
+irregularly-shaped mass 
+with spiculated and 
+indistinct margins, ...
+Text 
+Encoder
+Concept 
+Adapter
+Concept 
+Predictions
+copy
+Diagnostic
+Classiﬁer
+Cancer 
+Detection
+Reasoning 
+Model
+The irregular shape, 
+spiculated and indistinct 
+margins are highly 
+suggestive of malignancy 
+(BI-RADS 5).
+Natural Language Explanation
+❄
+🔥
+🔥
+❄
+🔥
+🔥
+(a) Guideline-Driven Concept Enrichment
+(b) Vision-Language Concept Modelling
+(c) Concept-Based Reasoning
+Guideline
+Contrastive Loss
+Figure 2. Overview of the MedCBR framework. MedCBR integrates clinical knowledge, vision–language alignment, and reasoning for
+interpretable cancer detection. (a) A large vision–language model (LVLM) generates guideline-conformant reports from input images and
+coarse concept annotations. (b) A concept-based CLIP model aligns visual and textual embeddings while jointly predicting concepts and
+diagnostic labels. (c) A frozen large reasoning model (LRM) synthesizes guideline information, predicted concepts, and model outputs to
+produce structured clinical explanations.
+tor f : X →Rd, a concept predictor g : Rd →[0, 1]Nc,
+and a downstream classifier q : [0, 1]Nc →[0, 1], yield-
+ing ˆy = q(g(f(x))). While this structure provides inter-
+pretability, it assumes that (i) the concept set c is complete
+and noise-free, and (ii) diagnostic reasoning is a determinis-
+tic function of concept presence. In medical imaging, these
+assumptions are restrictive: concept annotations are often
+uncertain or incomplete, and real-world reasoning depends
+on contextual information encoded in clinical guidelines.
+MedCBR (Fig. 2) addresses these limitations by mod-
+eling diagnosis as reasoning over multiple sources of evi-
+dence rather than a direct function of predicted concepts.
+Our framework jointly considers visual information from
+the image, interpretable concept predictions, and contextual
+knowledge from clinical guidelines to arrive at an explain-
+able diagnostic conclusion. Formally, given a visual repre-
+sentation h = f(x), the model predicts both a diagnostic
+label and an accompanying explanation:
+ˆy = q(h),
+ˆc = g(h),
+E = R(ˆy, ˆc, G),
+where q : Rd →{0, 1} maps image features to cancer
+predictions, g : Rd →[0, 1]Nc infers interpretable clini-
+cal concepts, and R integrates these with the guideline G to
+produce the corresponding explanation.
+3.2. Guideline-Driven Concept Enrichment
+The discrete concept vector c provides a structured yet lim-
+ited description of image content: it indicates which find-
+ings are present but not how they relate or what they imply
+diagnostically. However, clinical interpretation, depends on
+relational and contextual meaning, specifically how combi-
+nations of findings align with reasoning patterns prescribed
+by diagnostic guidelines. To address this, we enrich c into a
+continuous, guideline-conditioned representation that cap-
+tures both the semantics and diagnostic context of the ob-
+served findings. Formally, we define an enrichment func-
+tion r = T (x, c, G), which fuses the visual information in
+x, the concept structure c, and the contextual knowledge en-
+coded in G into a coherent textual representation r. We in-
+stantiate T using a pre-trained large vision–language model
+(LVLM) that generates structured reports from clinically
+defined concepts.
+For each image x, our goal is to obtain an enriched
+textual report that situates the set of exhibited concepts
+c+ = {cj | cj = 1, ∀cj ∈c} within a clinically meaningful
+narrative. To achieve this, we prompt the LVLM with the
+image x, the positive concept set c+, the label y, and the
+clinical guideline G. The model is instructed to generate a
+report that (i) describes the visual findings corresponding to
+the provided concepts and (ii) summarizes their diagnostic
+3
+
+===== PAGE 4 =====
+implications according to G. This process transforms the
+discrete concept vector c into a clinically grounded textual
+representation r that links observed evidence to diagnostic
+reasoning in a guideline-consistent manner.
+3.3. Vision–Language Concept Modelling
+Given the enriched reports generated in the previous stage,
+we train a vision–language model to align images and their
+textual explanations while preserving concept-level inter-
+pretability.
+We adopt CLIP [27] as the backbone, con-
+sisting of a vision encoder f v
+θ (·) and a text encoder f t
+ϕ(·).
+CLIP’s contrastive formulation provides a natural induc-
+tive bias for aligning heterogeneous modalities: in the clin-
+ical setting, it enables the model to associate visual at-
+tributes (e.g., shape, margin) with their textual counterparts,
+grounding the visual embedding in interpretable semantics.
+For each image–report pair (x, r), we compute embeddings
+hv = f v
+θ (x) and ht = f t
+ϕ(r) and apply a symmetric In-
+foNCE contrastive loss:
+LCLIP = −log
+
+exp(sim(hv, ht)/τ)
+P
+r′ exp(sim(hv, h′
+t)/τ)
+
+,
+where sim(·, ·) denotes cosine similarity and τ is a temper-
+ature parameter. Image–text alignment provides richer and
+more grounded supervision, reinforcing cross-modal con-
+sistency between visual and textual semantics.
+To incorporate clinical supervision, two auxiliary heads
+operate on the visual embedding hv: a diagnostic classi-
+fier Wy predicting the disease label y via a linear projec-
+tion, supervised with Ly = LCE(Wyhv, y), and a concept
+prediction module g = {gψi}Nc
+i=1 that captures fine-grained
+attributes through Nc specialized adapters, optimized by
+Lc = 1
+Nc
+Nc
+X
+i=1
+LCE(gψi(hv), ci).
+The diagnostic head promotes task-level separability, while
+the concept head encourages disentanglement along clini-
+cally meaningful axes of variation. The final objective com-
+bines all terms:
+LMedCBR = λLCLIP + µLy + νLc,
+where λ, µ, and ν control task weighting. Both encoders
+are initialized from pretrained CLIP checkpoints and fine-
+tuned jointly on D. Concept adapters gψi are implemented
+as lightweight two-layer MLPs. This multi-task formula-
+tion jointly enforces (i) cross-modal alignment between im-
+age and report, (ii) concept-level interpretability, and (iii)
+discriminative power for diagnostic classification, yielding
+representations that are both semantically rich and clinically
+grounded.
+3.4. Concept-Based Clinical Reasoning
+The final stage of our framework integrates clinical knowl-
+edge, visual evidence, and concept predictions into a co-
+herent diagnostic rationale. While previous stages produce
+aligned vision–language representations, they do not explic-
+itly model the reasoning process that links these observa-
+tions to a diagnostic conclusion. To that end, we prompt a
+large reasoning model (LRM), conditioned on the outputs
+of the concept-based CLIP module, to explain its predic-
+tions. Let ˆy = σ
+ f y
+θ (hv)
+
+∈[0, 1] denote the CLIP model’s
+predicted probability of malignancy and ˆc = (ˆc1, . . . , ˆcNc)
+with ˆci = σ
+ f ci
+θ (hv)
+
+the predicted concept probabilities.
+Given the relevant clinical guideline text G, the LRM R re-
+ceives a structured prompt π comprising (ˆy, ˆc, G) and pro-
+duces a guideline-referenced explanation: E = R(π).
+Prompt Structure. Each prompt π follows a fixed tem-
+plate consisting of four components: (i) a brief task instruc-
+tion, (ii) the model’s cancer prediction ˆy, (iii) the list of pre-
+dicted concepts and their associated confidences, and (iv)
+the relevant section of the BI-RADS guideline G defining
+relationships between clinical descriptors and malignancy
+risk. The LRM is instructed to first interpret how each con-
+cept contributes to the final decision, then cross-check the
+reasoning against G, and finally provide a concise, step-by-
+step justification of the outcome. Formally, π can be rep-
+resented as a concatenation π =
+ Q, ˆy, ˆc, G
+
+, where Q
+specifies the reasoning task, ˆy and ˆc denote the model’s di-
+agnostic and concept-level outputs, and G provides the rel-
+evant clinical guideline for context.
+Grounded and Reliable Reasoning. Because the LRM
+operates over a structured prompt π and is explicitly con-
+ditioned on G, its reasoning remains anchored to verifiable
+clinical knowledge rather than unconstrained text genera-
+tion. The inclusion of model-derived predictions (ˆy, ˆc) and
+standardized guideline excerpts constrains the search space
+of possible outputs, reducing the likelihood of unsupported
+or speculative statements, minimizing hallucination risk.
+4. Experiments
+4.1. Setup
+Datasets. We train and evaluate our models on three pri-
+mary datasets spanning medical and natural images. For
+breast ultrasound, we use BrEaST [26] and BUS-BRA [12].
+BUS-BRA contains 1,875 images from 1,064 patients with
+biopsy-proven pathology and BI-RADS 2–5 assessments,
+and is used for cross-validation-based training, valida-
+tion, and testing. BrEaST contains a total of 256 expert-
+annotated images, and is used to augment the training
+data.
+For mammography, we use CBIS-DDSM [29], a
+widely used benchmark for breast cancer detection contain-
+ing 10,239 mammography images curated from the Digi-
+tal Database for Screening Mammography with lesion an-
+4
+
+===== PAGE 5 =====
+Table 1. Quantitative classification results on Ultrasound and Mammography (5-fold cross-validation), with external validation on CUB-
+200 (holdout set). All results are averaged across multiple runs, with standard deviation shown. ∗indicates reported accuracy.
+Method
+BUS-BRA
+CBIS-DDSM
+CUB-200-2011
+AUROC
+Bal. Accuracy
+AUROC
+Bal. Accuracy
+Accuracy
+CLIP RN50
+87.4 ±1.4
+80.9 ±1.7
+73.3 ±1.7
+67.7 ±1.6
+60.1 ±1.1
+CLIP ViT-B/32
+90.1 ±1.5
+83.1 ±1.9
+79.8 ±0.9
+72.3 ±0.9
+69.0 ±0.4
+CLIP ViT-L/14
+93.5 ±1.2
+88.1 ±1.7
+82.4 ±2.5
+75.5 ±2.4
+85.7 ±0.2
+SigLIP
+90.8 ±0.8
+85.0 ±1.5
+82.3 ±1.4
+74.6 ±1.3
+78.6 ±0.6
+BiomedCLIP
+89.0 ±0.5
+82.1 ±0.9
+77.9 ±0.5
+71.1 ±0.7
+–
+CBM [18]
+84.8 ±2.3
+79.1 ±2.0
+79.6 ±1.3
+73.3 ±1.3
+62.9∗
+CLIP CBM [18]
+91.8 ±0.9
+86.4 ±1.7
+81.8 ±1.0
+75.8 ±0.9
+67.0 ±0.4
+P-CBM [45]
+80.1 ±0.5
+73.9 ±0.3
+72.7 ±0.0
+67.0 ±0.5
+59.6∗
+P-CBMh [45]
+87.0 ±1.7
+75.0 ±3.0
+77.2 ±1.8
+69.3 ±1.0
+61.0∗
+Label-free CBM [22]
+60.0 ±2.8
+59.1 ±2.1
+70.0 ±0.4
+65.3 ±0.5
+74.3 ±0.3∗
+AdaCBM [8]
+87.9 ±0.5
+80.5 ±0.8
+75.6 ±3.0
+68.9 ±2.4
+69.8 ±0.2
+MedCBR
+94.2 ±0.4
+89.0 ±0.9
+84.0 ±0.7
+76.4 ±0.6
+86.1 ±0.2
+Table 2. Ablation on model components. Performance improves
+as concept and text supervision are successively introduced.
+Variant
+BUS-BRA
+CBIS-DDSM
+CUB-200
+CLIP ViT
+93.5
+82.4
+85.7
+CLIP+CBL
+91.8
+81.8
+67.0
++Guideline
+92.0↑0.2
+83.1↑1.3
+72.9↑5.0
+CLIP+MTL
+93.6
+83.2
+82.3
++Guideline
+94.2↑0.8
+84.0↑0.8
+86.1↑3.8
+notations and verified pathology. For external validation
+beyond the medical domain, we use CUB-200-2011 [38],
+which contains 11,788 images across 200 bird species with
+part locations and 312 concept annotations. Following prior
+work, we used the 112 most prominent concepts [18, 45].
+To construct the guideline for each dataset, we used Chat-
+GPT [23] to condense the Sibley Field Guide to Birds [33]
+for CUB-200 and paraphrase the relevant BI-RADS Atlas
+sections [21] for BUS-BRA and CBIS-DDSM.
+Baselines. To evaluate our method, we benchmark it
+against several prominent baselines in the literature:
+• CBM [18]: the original concept bottleneck model.
+• PCBM [45]: post-hoc CBM that learns a linear classifier
+over concept activations extracted from a frozen backbone.
+• Label-free CBM [22]: discovers latent concept represen-
+tations on top of CLIP without explicit concept supervision.
+• AdaCBM [8]: an adaptive label-free CBM that leverages
+a learnable adapter to improve medical classification.
+• CLIP [27]:
+strong vision encoders pre-trained on
+language-image alignment.
+We evaluate OpenAI CLIP
+RN50 and ViT-B variants [27], a CLIP ViT-L/14 pretrained
+on LAION-2B [30], a SigLIP ViT-B/16 pretrained on We-
+bLI [37], and BiomedCLIP [46].
+• Off-the-shelf VLMs: zero-shot prompt-based VLMs such
+as Qwen2.5VL-7B [3] and MedGemma-4B [31], a refer-
+ence baseline for medical image–text understanding.
+Evaluation.
+We evaluate MedCBR on three aspects:
+classification performance, concept-level performance, and
+reasoning quality. For BUS-BRA and CBIS-DDSM, we re-
+port the AUROC and Balanced Accuracy due to their ro-
+bustness to class imbalance. For CUB-200, we follow the
+literature and use accuracy.
+For concept evaluation, we
+compute per-concept AUROC. Finally, to assess reasoning
+quality, we use a combination of qualitative case studies
+as well as a structured evaluation rubric1 developed by a
+trained radiologist to measure the coherence and clinical
+validity of the model’s explanations (Table 3). The rubric
+includes three metrics: (i) the Concept Interpretation Score
+(CIntS), which measures whether each concept is inter-
+preted correctly; (ii) the Concept Integration Score (CIgS),
+which assesses whether multiple concepts are combined co-
+herently and conflicts between benign and malignant fea-
+tures are resolved; and (iii) the BI-RADS Assignment Score
+(BAS), which evaluates whether the final diagnostic cate-
+gory is assigned according to the correct guideline-based
+criteria given the observed features. A radiologist then eval-
+uated 20 randomly selected cases while being blinded to the
+ground truth pathology and the composition of the evalua-
+tion cohort. The test samples were all drawn by a separate
+investigator to ensure independence between case selection
+and scoring. We further calculated the model’s clinical util-
+ity using sensitivity, specificity, and F1 score.
+Implementation details. All experiments were run with
+1The full rubric can be found in the Appendix.
+5
+
+===== PAGE 6 =====
+Regular
+Shape
+Circumscribed
+Margin
+Microlobulated
+Margin
+Spiculated
+Margin
+Indistinct
+Margin
+Hypoechoic Heterogeneous
+Echo
+Posterior
+Shadowing
+Posterior
+Enhancement
+40
+50
+60
+70
+80
+90
+100
+AUROC (%)
+(a) BUS-BRA
+CBM
+BiomedCLIP
+LAION-2B CLIP
+MedCBR
+Regular
+Shape
+Circumscribed
+Margin
+Microlobulated
+Margin
+Spiculated
+Margin
+Amorphous
+Calcification
+Pleomorphic
+Calcification
+Fine Linear
+Calcification
+Linear
+Calc. Dist.
+Segmental
+Calc. Dist.
+40
+50
+60
+70
+80
+90
+100
+AUROC (%)
+(b) CBIS-DDSM
+CBM
+BiomedCLIP
+LAION-2B CLIP
+MedCBR
+Figure 3. Quantitative results on concept detection for ultrasound and mammography. For each dataset, we focus on a subset of concepts
+most relevant to cancer detection.
+PyTorch 2.1 on a single NVIDIA L40S GPU (24 GB). We
+used AdamW with an initial learning rate of 1 × 10−5, co-
+sine annealing over 150 epochs, and a 10-epoch warmup.
+Images were cropped to lesion ROIs, resized to 224 × 224,
+and augmented with random translation, rotation, and flip.
+4.2. Results
+Diagnostic Performance. Table 1 summarizes the quan-
+titative results for cancer detection and external validation.
+Across all datasets, MedCBR achieves strong performance,
+matching the strongest vision encoders while substantially
+outperforming concept-based models. On BUS-BRA, Med-
+CBR attains the highest AUROC (94.2%) and balanced ac-
+curacy (89.0%), surpassing both CLIP ViT-L/14 (+0.7%)
+and AdaCBM (+6.3%). Similarly, on CBIS-DDSM, it out-
+performs concept-based baselines like CBM (+4.4%) and
+PCBM-h (+6.7%) and remains competitive with large-scale
+CLIP models. Across both datasets, MedCBR consistently
+outperforms both interpretable and black-box vision mod-
+els, achieving the strongest performance without sacrificing
+transparency. The improvement over CBM variants high-
+lights the complementary strengths of its design. The gain
+over classical CBMs and PCBM-h indicates that replacing
+the bottleneck layer with multi-task supervision grounded
+in guidelines enhances contextual understanding. Further-
+more, the improvement over AdaCBM, which adapts CLIP
+to medical data, demonstrates that domain grounding pro-
+vides a stronger inductive bias over adapter fine-tuning
+alone.
+Finally, on CUB-200-2011, MedCBR achieves
+86.1% accuracy, outperforming the label-free CBM by over
+10%. This underscores the limitations of unguided concept
+discovery and highlights the benefit of coupling concepts
+with domain context. Overall, our framework for grounding
+representations in domain guidelines has shown strong gen-
+eralization capabilities in ultrasound, mammography, and
+natural images.
+Ablation Study. Table 2 summarizes how each archi-
+tectural component contributes to performance.
+We be-
+gin with removing the text branch entirely and introduce
+a Concept Bottleneck Layer (CBL), enforcing a determin-
+istic mapping y = Wy · g(hv) from predicted concepts to
+diagnosis, and leading to reduced performance. When CBL
+is trained with guideline-based reports (CBL+Guideline),
+performance improves, suggesting that multi-modal su-
+pervision helps structure the concept space in semanti-
+cally meaningful ways. Finally, the multi-task formulation
+6
+
+===== PAGE 7 =====
+Posterior shadowing
+is
+a
+malignant-leaning
+feature.
+It
+indicates
+desmoplastic
+response,
+which
+is
+commonly
+associated
+with
+malignancy.
+Indistinct margins
+are
+malignant-leaning.
+They
+suggest
+invasive
+growth
+or
+lack
+of
+well-defined
+boundaries. Microlobulated margins are malignant-leaning, associated with invasive
+tumors and poor prognosis.
+Regular shape is benign-leaning, but that's outweighed by the others.
+Conclusion: Multiple high-risk features justifies BI-RADS 5.
+Next Steps: immediate biopsy and staging.
+Label: Malignant
+Pred: Malignant
+Fine Pleomorphic calcifications are classified as higher suspicion.
+Segmental distribution is strongly linked to ductal/lobar systems and is a key
+indicator
+of
+malignancy.
+While
+high density
+alone
+is
+not
+diagnostic,
+it
+increases suspicion when combined with other suspicious features. If
+there are
+multiple high-risk features forming a classic malignant constellation, it’s
+BI-RADS 5.
+Conclusion:
+Classic
+malignant
+constellation,
+aligns
+with
+BI-RADS
+5
+(Highly
+Suggestive of Malignancy).
+Next Steps: immediate biopsy and treatment planning.
+Label: Malignant
+Pred: Malignant
+Posterior enhancement, Circumscribed margins are benign.
+However,
+Microlobulated margins
+are
+suspicious.
+Any
+single
+suspicious
+feature
+would lead to BI-RADS 4. But the model predicted Benign, which would be BI-RADS
+2
+or
+3.
+Assuming
+the
+model’s
+prediction
+is
+correct,
+the
+presence
+of
+microlobulated
+margins
+must
+be
+reconciled
+as
+part
+of
+a
+benign
+entity
+(e.g.,
+fibroadenoma
+with
+atypical
+features).
+This
+is
+possible
+in
+rare
+cases
+where
+benign masses exhibit mild suspicious features.
+Conclusion: BI-RADS 3 (Probably Benign).
+Next Steps: 6-month follow-up.
+Label: Benign
+Pred: Benign
+Figure 4. Case study of MedCBR’s reasoning on medical images. Clinical concepts highlighted in green support a benign conclusion,
+those in red support cancer, and those in yellow are neutral. Key observations are emphasized in green (benign) and red (cancer).
+(MTL+Guideline, i.e., MedCBR) jointly optimizes diag-
+nostic and concept objectives while maintaining contrastive
+alignment, achieving the highest performance across all
+datasets. These results show that integrating contrastive,
+concept-level, and diagnostic supervision yields represen-
+tations that are both robust and semantically expressive.
+Concept-Level Performance.
+Figure 3 compares
+MedCBR’s concept detection performance against CBM,
+BiomedCLIP, and LAION-2B CLIP. Across both datasets,
+MedCBR achieves the highest concept AUROC, due to
+its multi-modal supervision, which allows it to capture
+discriminative and clinically meaningful feature represen-
+tations.
+In contrast, CBMs show lower performance
+across most concept groups in our setting, likely due to
+their sole reliance on concept-label supervision and lack
+of pre-training.
+BiomedCLIP improves over CBM due
+to its domain-specific pretraining, but is outperformed
+by LAION-2B CLIP which benefits from broader web-
+scale vision–language pretraining.
+However, the latter’s
+performance declines on modality-specific cues such as
+echogenicity and posterior features in ultrasound, and calci-
+fications in mammography. We hypothesize that these phe-
+nomena depend on modality-specific imaging physics, and
+are thus under-represented in natural image corpora. Fi-
+nally, MedCBR achieves consistently higher concept de-
+tection across categories and datasets.
+Its integration of
+multi-modal supervision allows it to capture both visually
+grounded and modality-specific features, indicating that
+clinically meaningful representations can emerge when vi-
+sual, conceptual, and contextual cues are learned jointly.
+Reasoning Quality. Table 3 summarizes clinical util-
+ity and decision-making performance across VLM base-
+lines. Most off-the-shelf VLMs attain near-ceiling guide-
+line conformity scores, yet their sensitivity and F1 remain
+substantially lower. This suggests that while they followed
+guideline logic fluently, their rationales were often incon-
+sistent with the actual visual evidence. We hypothesize that
+weaker grounding can coincide with higher coherence, es-
+pecially when VLMs invoke the concepts that yield the most
+straightforward explanation, even when they are not well
+supported by the image, thereby circumventing the need to
+reconcile ambiguous or conflicting visual cues. Notably,
+MedGemma achieves a high specificity and the best F1
+among the VLM baselines, although its sensitivity remains
+low. CLIP+Qwen3 provides a more grounded baseline by
+conditioning on vision-predicted concepts, but its reasoning
+7
+
+===== PAGE 8 =====
+Table 3. Evaluation of clinical utility against general-purpose and medical VLMs on BUS-BRA (left) / CBIS-DDSM (right).
+(I: image, G: guideline, ˆc: vision-predicted concepts.)
+Method
+I, G, ˆc
+Sens. (%)
+Spec. (%)
+F1 (%)
+CIntS (%)
+CIgS (%)
+BAS. (%)
+n = 379 / n = 721
+n = 20
+Radiologist
+–
+93.9 / 90.8
+75.8 / 52.3
+75.1 / 70.9
+–
+–
+–
+Llama 3.2-11B
+✓, ✓, ×
+33.0 / 0.00
+70.0 / 58.0
+32.6 / 0.00
+17.5 / 0.00
+15.0 / 0.00
+0.00 / 0.00
+Qwen2.5VL-7B
+✓, ✓, ×
+30.0 / 42.0
+0.00 / 53.0
+16.6 / 40.7
+100 / 100
+100 / 95.0
+98.0 / 90.0
+MedGemma-4B
+✓, ✓, ×
+35.0 / 45.0
+85.0 / 100
+41.2 / 62.1
+100 / 100
+100 / 100
+99.0 / 100
+CLIP+Qwen3-8B
+✓, ×, ✓
+82.5 / 61.5
+92.5 / 87.5
+82.5 / 68.9
+98.4 / 93.9
+86.3 / 80.0
+73.0 / 65.0
+MedCBR-8B
+✓, ✓, ✓
+82.5 / 78.7
+94.3 / 76.0
+84.3 / 74.4
+95.4 / 95.2
+98.3 / 87.5
+86.0 / 80.0
+competence scores are lower because it lacks explicit guide-
+line structure and must operate on imperfect evidence.
+MedCBR achieves the highest overall clinical utility on
+both BUS-BRA and CBIS-DDSM, attaining the best F1
+while maintaining high sensitivity and specificity. Com-
+pared to radiologists, MedCBR achieves markedly higher
+specificity on both datasets, indicating fewer false positives,
+and it also attains the highest sensitivity among the VLM
+baselines. These gains are illustrated by the model’s behav-
+ior in Fig. 4: MedCBR produces coherent reasoning and
+decision patterns that mirror how radiologists weigh con-
+flicting evidence, correctly interpreting malignant-leaning
+descriptors and linking them to plausible pathological cor-
+relates such as invasive growth (Fig. 4a). The model also
+demonstrates the ability to integrate multiple features coher-
+ently. When several malignant findings are present, Med-
+CBR correctly links them into a diagnostic constellation
+consistent with the appropriate BI-RADS risk score of 5
+(Fig. 4b). Remarkably, in this case, the radiologist’s risk
+assessment was BI-RADS 3 (i.e. probably benign), indi-
+cating that the model’s reasoning matched the underlying
+pathology more closely. When confronted with a mix of
+benign and suspicious cues, MedCBR appropriately weighs
+competing evidence and arrives at a clinically plausible
+and contextually justified conclusion. This is exemplified
+in atypical cases such as Fig. 4c, where despite identify-
+ing microlobulated margins, the model recognizes that the
+co-occurrence of less suspicious features is more consis-
+tent with a benign fibroadenoma. This hypothesis was con-
+firmed by pathology, indicating that the model captures how
+descriptor constellations relate to the final diagnosis.
+Interestingly, on CUB-200 (Fig. 5), the LRM also
+demonstrates an ability to challenge the concept model’s
+predictions, explicitly noting inconsistencies between pre-
+dicted attributes and the guideline. This suggests that the
+model is capable of reconciling conflicting inputs through
+rule-based reasoning grounded in the guideline, highlight-
+ing a degree of awareness absent from conventional CBMs.
+Blue
+Jays
+have
+a
+stout,
+black
+bill,
+not
+hooked.
+This
+might
+be
+a
+conflict.
+Has
+upperparts 
+color 
+blue
+(69.28%):
+This
+matches the field guide's "blue back with
+black
+barring."
+So
+this
+is
+a
+positive
+match.
+Has
+upperparts
+color
+iridescent
+(52.8%):
+Again,
+the
+blue
+might
+be
+iridescent,
+[…]
+Has
+head pattern crested 
+(79.77%):
+The
+field
+guide
+says
+"blue
+crest,"
+so
+this
+is
+a
+direct
+match.
+Has
+underparts color red (89.29%) […] directly
+contradicts the field guide.
+Conclusion:
+Despite
+the
+conflicting
+concepts,
+the
+Blue
+Jay
+remains
+the
+most
+plausible
+class
+based
+on
+the
+key
+diagnostic
+features
+highlighted
+in
+the
+field guide: Blue crest and black collar,
+White underparts.
+Label: 
+Blue Jay
+Prediction: 
+Blue Jay
+Figure 5. Validation of MedCBR’s reasoning on CUB-200. Obser-
+vations matching the guideline are highlighted in blue , conflicting
+ones are highlighted in orange .
+5. Conclusion
+Reasoning Improves Transparency.
+By modeling the
+reasoning process that connects clinical guidelines, con-
+cepts, and diagnosis, MedCBR provides radiologist-like im-
+age interpretation with coherent risk assessments and next-
+step recommendations. A guideline-conditioned reasoning
+module integrates model predictions with clinical rules, ar-
+ticulates how specific imaging concepts map to diagnostic
+implications and underlying mechanisms, and relates each
+presentation to canonical patterns described in guidelines
+and representative pathology cases. In short, MedCBR ex-
+plains why specific concepts matter and how combinations
+of concepts alter risk, yielding reliable clinical reasoning.
+Limitations and Future Work. A limitation of our ap-
+proach is the reliance on annotated concept labels, which
+are costly to obtain at scale.
+The development of reli-
+able methods for label-free reasoning and concept modeling
+should thus be the subject of immediate future work. It is
+also worth investigating how this framework can be adapted
+for clinical deployment.
+8
+
+===== PAGE 9 =====
+References
+[1] Abdullah Abdullah and Seong Tae Kim.
+Vlm-kg: Multi-
+modal radiology knowledge graph generation. arXiv preprint
+arXiv:2505.17042, 2025. 2
+[2] Samira Abnar and Willem Zuidema.
+Quantifying atten-
+tion flow in transformers. arXiv preprint arXiv:2005.00928,
+2020. 2
+[3] Shuai Bai, Keqin Chen, Xuejing Liu, Jialin Wang, Wenbin
+Ge, Sibo Song, Kai Dang, Peng Wang, Shijie Wang, Jun
+Tang, et al. Qwen2. 5-vl technical report. arXiv preprint
+arXiv:2502.13923, 2025. 5
+[4] David Bani-Harouni, Nassir Navab, and Matthias Keicher.
+Magda: Multi-agent guideline-driven diagnostic assistance.
+In International workshop on foundation models for general
+medical AI, pages 163–172. Springer, 2024. 2
+[5] Pietro Barbiero, Francesco Giannini, Gabriele Ciravegna,
+Michelangelo Diligenti, and Giuseppe Marra.
+Relational
+concept bottleneck models. Advances in Neural Information
+Processing Systems, 37:77663–77685, 2024. 1
+[6] Sagi Ben Itzhak, Nahum Kiryati, Orith Portnoy, and Arnaldo
+Mayer. Localization-guided supervision for robust medical
+image classification by vision transformers.
+In European
+Conference on Computer Vision, pages 118–133. Springer,
+2024. 2
+[7] Arianna Bunnell, Yannik Glaser, Dustin Valdez, Thomas
+Wolfgruber, Aleen Altamirano, Carol Zamora Gonz´alez,
+Brenda Y Hernandez, Peter Sadowski, and John A Shepherd.
+Learning a clinically-relevant concept bottleneck for lesion
+detection in breast ultrasound. In International Conference
+on Medical Image Computing and Computer-Assisted Inter-
+vention, pages 650–659. Springer, 2024. 1, 2
+[8] Townim F Chowdhury, Vu Minh Hieu Phan, Kewen Liao,
+Minh-Son To, Yutong Xie, Anton van den Hengel, Johan W
+Verjans, and Zhibin Liao. Adacbm: An adaptive concept
+bottleneck model for explainable and accurate diagnosis.
+In International Conference on Medical Image Computing
+and Computer-Assisted Intervention, pages 35–45. Springer,
+2024. 1, 2, 5
+[9] Timoth´ee Darcet, Maxime Oquab, Julien Mairal, and Pi-
+otr Bojanowski. Vision transformers need registers. arXiv
+preprint arXiv:2309.16588, 2023. 2
+[10] Adibvafa Fallahpour, Jun Ma, Alif Munim, Hongwei Lyu,
+and Bo Wang. Medrax: Medical reasoning agent for chest
+x-ray. Proceedings of the 42nd International Conference on
+Machine Learning (ICML), 2025. 2
+[11] Xingyu Fu, Ben Zhou, Sihao Chen, Mark Yatskar, and Dan
+Roth.
+Dynamic clue bottlenecks: Towards interpretable-
+by-design visual question answering.
+arXiv preprint
+arXiv:2305.14882, 2023. 1
+[12] Wilfrido G´omez-Flores, Maria Julia Gregorio-Calas, and
+Wagner Coelho de Albuquerque Pereira. Bus-bra: a breast
+ultrasound dataset for assessing computer-aided diagnosis
+systems. Medical Physics, 51(4):3110–3123, 2024. 4, 11
+[13] Difei Gu, Yunhe Gao, Yang Zhou, Mu Zhou, and Dimitris
+Metaxas. Radalign: Advancing radiology report generation
+with vision-language concept alignment.
+In International
+Conference on Medical Image Computing and Computer-
+Assisted Intervention, pages 484–494. Springer, 2025. 2
+[14] Ameer Hamza, Yong Hyun Ahn, Sungyoung Lee, Seong Tae
+Kim, et al.
+Llava needs more knowledge: Retrieval aug-
+mented natural language generation with knowledge graph
+for explaining thoracic pathologies. In Proceedings of the
+AAAI Conference on Artificial Intelligence, volume 39, pages
+3311–3319, 2025. 2
+[15] Xiaoke Huang, Juncheng Wu, Hui Liu, Xianfeng Tang, and
+Yuyin Zhou. Medvlthinker: Simple baselines for multimodal
+medical reasoning. arXiv preprint arXiv:2508.02669, 2025.
+2
+[16] Been Kim, Martin Wattenberg, Justin Gilmer, Carrie Cai,
+James Wexler, Fernanda Viegas, et al. Interpretability be-
+yond feature attribution: Quantitative testing with concept
+activation vectors (tcav). In International conference on ma-
+chine learning, pages 2668–2677. PMLR, 2018. 2
+[17] Injae Kim, Jongha Kim, Joonmyung Choi, and Hyunwoo J
+Kim. Concept bottleneck with visual concept filtering for
+explainable medical image classification. In International
+Conference on Medical Image Computing and Computer-
+Assisted Intervention, pages 225–233. Springer, 2023. 2
+[18] Pang Wei Koh, Thao Nguyen, Yew Siang Tang, Stephen
+Mussmann, Emma Pierson, Been Kim, and Percy Liang.
+Concept bottleneck models. In International Conference on
+Machine Learning, pages 5338–5348. PMLR, 2020. 1, 2, 5,
+11
+[19] Ruochen Li, Jun Li, Bailiang Jian, Kun Yuan, and Youxiang
+Zhu. Reevalmed: Rethinking medical report evaluation by
+aligning metrics with real-world clinical judgment. In Pro-
+ceedings of the 2025 Conference on Empirical Methods in
+Natural Language Processing, pages 11823–11837, 2025. 2
+[20] Scott M Lundberg and Su-In Lee.
+A unified approach to
+interpreting model predictions. Advances in neural informa-
+tion processing systems, 30, 2017. 2
+[21] Samuel J Magny, Rachel Shikhman, and Ana L Keppke.
+Breast imaging reporting and data system. In StatPearls [In-
+ternet]. StatPearls publishing, 2023. 5
+[22] Tuomas Oikarinen, Subhro Das, Lam M Nguyen, and Tsui-
+Wei Weng. Label-free concept bottleneck models. Interna-
+tion Conference on Learning Representations, 2023. 1, 2, 5,
+11
+[23] OpenAI. Gpt-4 technical report. arXiv, 2023. 5
+[24] Jiazhen Pan, Che Liu, Junde Wu, Fenglin Liu, Jiayuan Zhu,
+Hongwei Bran Li, Chen Chen, Cheng Ouyang, and Daniel
+Rueckert. Medvlm-r1: Incentivizing medical reasoning ca-
+pability of vision-language models (vlms) via reinforcement
+learning. arXiv preprint arXiv:2502.19634, 2025. 2
+[25] Winnie Pang, Xueyi Ke, Satoshi Tsutsui, and Bihan Wen.
+Integrating clinical knowledge into concept bottleneck mod-
+els. In International Conference on Medical Image Com-
+puting and Computer-Assisted Intervention, pages 243–253.
+Springer, 2024. 1, 2
+[26] Anna Pawłowska, Anna ´Cwierz-Pie´nkowska, Agnieszka Do-
+malik, Dominika Jagu´s, Piotr Kasprzak, Rafał Matkowski,
+Łukasz Fura, Andrzej Nowicki, and Norbert ˙Zołek. Curated
+benchmark dataset for ultrasound based breast lesion analy-
+sis. Scientific Data, 11(1):148, 2024. 4, 11
+[27] Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya
+Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry,
+Amanda Askell, Pamela Mishkin, Jack Clark, Gretchen
+9
+
+===== PAGE 10 =====
+Krueger, and Ilya Sutskever.
+Learning transferable visual
+models from natural language supervision. In Proceedings of
+the International Conference on Machine Learning (ICML).
+PMLR, 2021. 4, 5
+[28] Marco Tulio Ribeiro, Sameer Singh, and Carlos Guestrin.
+” why should i trust you?” explaining the predictions of any
+classifier. In Proceedings of the 22nd ACM SIGKDD interna-
+tional conference on knowledge discovery and data mining,
+pages 1135–1144, 2016. 2
+[29] Rebecca Sawyer-Lee, Francisco Gimenez, Assaf Hoogi, and
+Daniel Rubin.
+Curated breast imaging subset of digital
+database for screening mammography (cbis-ddsm). TCIA:
+The cancer imaging archive, 2016. 4, 11
+[30] Christoph Schuhmann, Romain Beaumont, Richard Vencu,
+Cade Gordon,
+Ross Wightman,
+Mehdi Cherti,
+Theo
+Coombes, Aarush Katta, Clayton Mullis, Mitchell Worts-
+man, et al. Laion-5b: An open large-scale dataset for training
+next generation image-text models. Advances in neural in-
+formation processing systems, 35:25278–25294, 2022. 5
+[31] Andrew Sellergren,
+Sahar Kazemzadeh,
+Tiam Jaroen-
+sri, Atilla Kiraly, Madeleine Traverse, Timo Kohlberger,
+Shawn Xu, Fayaz Jamil, Ci´an Hughes, Charles Lau,
+et al.
+Medgemma technical report.
+arXiv preprint
+arXiv:2507.05201, 2025. 5
+[32] Ramprasaath R Selvaraju, Michael Cogswell, Abhishek Das,
+Ramakrishna Vedantam, Devi Parikh, and Dhruv Batra.
+Grad-cam:
+Visual explanations from deep networks via
+gradient-based localization. In Proceedings of the IEEE in-
+ternational conference on computer vision, pages 618–626,
+2017. 2
+[33] David Allen Sibley. The Sibley field guide to birds of western
+North America. Knopf, 2022. 5
+[34] Karen Simonyan, Andrea Vedaldi, and Andrew Zisserman.
+Deep inside convolutional networks:
+Visualising image
+classification models and saliency maps.
+arXiv preprint
+arXiv:1312.6034, 2013. 2
+[35] Daniel Smilkov, Nikhil Thorat, Been Kim, Fernanda Vi´egas,
+and Martin Wattenberg.
+Smoothgrad: removing noise by
+adding noise. arXiv preprint arXiv:1706.03825, 2017.
+[36] Mukund Sundararajan, Ankur Taly, and Qiqi Yan. Axiomatic
+attribution for deep networks. In International conference on
+machine learning, pages 3319–3328. PMLR, 2017. 2
+[37] Michael Tschannen, Alexey Gritsenko, Xiao Wang, Muham-
+mad
+Ferjad
+Naeem,
+Ibrahim
+Alabdulmohsin,
+Nikhil
+Parthasarathy, Talfan Evans, Lucas Beyer, Ye Xia, Basil
+Mustafa, et al. Siglip 2: Multilingual vision-language en-
+coders with improved semantic understanding, localization,
+and dense features. arXiv preprint arXiv:2502.14786, 2025.
+5
+[38] C. Wah, S. Branson, P. Welinder, P. Perona, and S. Belongie.
+Caltech-ucsd birds-200-2011 (cub-200-2011). Technical Re-
+port CNS-TR-2011-001, California Institute of Technology,
+2011. 5, 11
+[39] Hongmei Wang, Junlin Hou, and Hao Chen. Concept com-
+plement bottleneck model for interpretable medical image
+diagnosis. arXiv preprint arXiv:2410.15446, 2024. 2
+[40] Peiqi Wang, Ruizhi Liao, Daniel Moyer, Seth Berkowitz,
+Steven Horng, and Polina Golland. Image classification with
+consistent supporting evidence.
+In Machine Learning for
+Health, pages 168–180. PMLR, 2021. 2
+[41] Yan Xie, Zequn Zeng, Hao Zhang, Yucheng Ding, Yi Wang,
+Zhengjue Wang, Bo Chen, and Hongwei Liu. Discovering
+fine-grained visual-concept relations by disentangled opti-
+mal transport concept bottleneck models. In Proceedings of
+the Computer Vision and Pattern Recognition Conference,
+pages 30199–30209, 2025. 1
+[42] An Yan, Yu Wang, Yiwu Zhong, Chengyu Dong, Zexue He,
+Yujie Lu, William Yang Wang, Jingbo Shang, and Julian
+McAuley.
+Learning concise and descriptive attributes for
+visual recognition. In Proceedings of the IEEE/CVF Inter-
+national Conference on Computer Vision, pages 3090–3100,
+2023. 2
+[43] An Yan, Yu Wang, Yiwu Zhong, Zexue He, Petros Karypis,
+Zihan Wang, Chengyu Dong, Amilcare Gentili, Chun-Nan
+Hsu, Jingbo Shang, et al. Robust and interpretable medi-
+cal image classifiers via concept bottleneck models. arXiv
+preprint arXiv:2310.03182, 2023. 2
+[44] Yue Yang, Artemis Panagopoulou, Shenghao Zhou, Daniel
+Jin, Chris Callison-Burch, and Mark Yatskar.
+Language
+in a bottle: Language model guided concept bottlenecks
+for interpretable image classification.
+In Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, pages 19187–19197, 2023. 2
+[45] Mert Yuksekgonul, Maggie Wang, and James Zou.
+Post-
+hoc concept bottleneck models. Internation Conference on
+Learning Representations, 2023. 1, 2, 5, 11
+[46] Sheng Zhang, Yanbo Xu, Naoto Usuyama, Hanwen Xu,
+Jaspreet Bagga, Robert Tinn, Sam Preston, Rajesh Rao,
+Mu Wei, Naveen Valluri, et al. Biomedclip: a multimodal
+biomedical foundation model pretrained from fifteen million
+scientific image-text pairs. arXiv preprint arXiv:2303.00915,
+2023. 5
+10
+
+===== PAGE 11 =====
+Appendix
+A. Additional Experimental Details
+A1. Code and configuration files
+Our code and configuration files are publicly available at:
+github.com/mharmanani/medcbr.
+A2. Datasets and Concepts
+BUS-BRA [12] is a publicly available breast ultrasound
+dataset containing 1,875 images from 1,064 patients with
+biopsy-proven pathology labels and BI-RADS 2–5 assess-
+ments. Images were acquired retrospectively at the Univer-
+sity of Bras´ılia using a variety of scanners and linear-array
+transducers (5–14 MHz), resulting in heterogeneous imag-
+ing conditions characteristic of routine clinical practice. Le-
+sions include masses abnormalities and are accompanied by
+radiologist-verified segmentation masks. All metadata were
+de-identified and curated to remove duplicates and low-
+quality scans. Dataset splits are constructed at the patient
+level to avoid data leakage. For this study, a trained radiol-
+ogist annotated each lesion with 15 clinically relevant BI-
+RADS concepts to support concept-based modeling. The
+15 concepts are shown in Table 4.
+Concept Category
+Concepts
+Posterior features
+(1) shadowing; (2) enhancement
+Other findings
+(3) halo; (4) skin thickening;
+(5) calcifications
+Margins
+(6) circumscribed; (7) indistinct;
+(8) angular; (9) microlobulated;
+(10) spiculated
+Shape
+(11) regular
+Echogenicity
+(12) hypoechoic; (13) hyperechoic;
+(14) heterogeneous; (15) cystic
+Table 4. Clinically annotated BI-RADS concepts used for concept-
+based modeling.
+BrEaST [26] is a high-quality breast ultrasound dataset
+containing 256 expertly annotated B-mode images with
+pixel-level lesion masks and BI-RADS descriptors. Images
+originate from multiple clinical settings and were curated
+to ensure consistent image quality, standardized acquisi-
+tion views, and reliable expert annotations. In this work,
+BrEaST is used to augment BUS-BRA by providing addi-
+tional training examples. Only images with complete anno-
+tations and verified pathology labels are included. Concept
+labels were provided by the authors of the dataset, and are
+the same as the ones highlighted in Table 4.
+CBIS-DDSM [29] is a curated subset of the Digital
+Database for Screening Mammography and provides ROI-
+level patches for benign and malignant lesions, each paired
+Concept Category
+Concepts
+Mass Shape
+(1) regular (round/oval); (2) irregular;
+(3) lobulated
+Mass Margins
+(4) circumscribed; (5) ill-defined;
+(6) spiculated; (7) obscured;
+(8) microlobulated
+Calcification
+(9) pleomorphic; (10) amorphous;
+(11) fine linear; (12) branching;
+(13) vascular; (14) coarse;
+(15) punctate; (16) lucent-centered;
+(17) eggshell; (18) round; (19) regular;
+(20) dystrophic
+Calcif. Distrib.
+(21) clustered; (22) segmental;
+(23) linear; (24) scattered;
+(25) regional
+Breast Density
+(26) low density
+(27) moderate density
+(28) high density
+Other Findings
+(29) architectural distortion;
+(30) asymmetry; (31) lymph node
+Table 5. Ground-truth concept labels for CBIS-DDSM.
+with pathology-confirmed labels. The dataset includes cal-
+cification and mass subsets with standardized training and
+test partitions. For each ROI, structured clinical concepts
+such as margin, shape, breast density, calcification shape,
+and calcification distribution are available. Only cropped
+ROIs are used in this work, and the mass and calcification
+subsets were merged to create a single unified dataset of
+3500 images. As done in BUS-BRA, dataset splits for each
+fold were constructed at the patient level.
+CUB-200-2011 [38] is a fine-grained natural image
+dataset containing 11,788 bird images spanning 200
+species. Each image is annotated with 312 binary part- and
+appearance-based attributes covering shape, color, and tex-
+ture. We adopt the standard train/test split provided by the
+dataset’s creators and use a reduced concept bank of 112
+concepts, as is commonly done in the literature [18, 22, 45].
+This dataset serves as a natural image benchmark to evalu-
+ate the generality of MedCBR’s concept grounding and rea-
+soning beyond medical imaging.
+B. Integrating Domain Guidelines
+In this section, we provide further details on the construc-
+tion of domain guidelines and their integration with large
+language and reasoning models. The full guideline text is
+available in our code.
+B1. BI-RADS Clinical Guideline
+For breast cancer detection, we constructed the following
+domain guidelines to support synthetic report generation
+11
+
+===== PAGE 12 =====
+BIRADS_REPORTING_GUIDELINE_US = """
+SUCCINCT DESCRIPTION OF THE OVERALL BREAST COMPOSITION (screening only)
+Tissue composition patterns can be estimated more easily in the large FOVs of automated US scans but
+can also be discerned in the small FOV of a handheld US scan. The three US descriptors for tissue
+composition described earlier in the US lexicon, ’homogeneous
+background echotexture-fat,’ ’homogeneous background echotexture-fibroglandular,’
+and ’heterogeneous background echotexture’ (Table 3) (below) correspond loosely to
+the four density descriptors of mammography and the four fibroglandular tissue descriptors of MRI. At
+US, breast tissue composition is determined by echogenicity. Subcutaneous fat, the tissue relative
+to which echogenicity is compared, is medium gray and darker
+than fibroglandular tissue, which is light gray. Heterogeneous breasts show an admixture
+of hypoechoic and more echogenic areas. Careful real-time scanning will help differentiate a small
+hypoechoic area of normal tissue from a mass.
+Table 3. Breast Tissue
+Tissue Composition
+a. Homogeneous background echotexture-fat
+b. Homogeneous background echotexture-fibroglandular
+c. Heterogeneous background echotexture
+CLEAR DESCRIPTION OF ANY IMPORTANT FINDINGS
+The description of important findings should be made, in order of clinical relevance, using
+lexicon terminology, and should include: [...]
+"""
+BIRADS_DIAGNOSTIC_GUIDELINE_US = """
+# BI-RADS Ultrasound Diagnostic & Stratification Guideline
+## Scope & Purpose
+Standardizes description and assessment of breast findings on ultrasound (US).
+Descriptors (shape, orientation, margins, echo pattern, posterior features, associated findings) are
+integrated to assign a BI-RADS category communicating malignancy likelihood.
+The most suspicious (’dominant’) feature determines the category.
+---
+## 1. Mass: Shape
+- **Oval / Round / Gently Lobulated** - favors benignity (e.g., fibroadenoma).
+- **Irregular** - suspicious; upgrade to BI-RADS 4-5 depending on context.
+## 2. Mass: Orientation
+- **Parallel (Wider-than-tall)** - benign-leaning.
+- **Not Parallel (Taller-than-wide)** - malignant-leaning; indicates tissue plane invasion.
+## 3. Mass: Margins
+- **Circumscribed** - benign (e.g., fibroadenoma, cyst).
+- **Microlobulated / Indistinct / Angular / Spiculated** - suspicious for invasion. [...]
+"""
+Figure 6. Example guideline snippets used to condition the LVLM (reporting) and the LRM (diagnostic).
+and clinical reasoning:
+1. BIRADS REPORTING GUIDELINE US,
+2. BIRADS REPORTING GUIDELINE MG,
+3. BIRADS DIAGNOSTIC GUIDELINE US,
+4. BIRADS DIAGNOSTIC GUIDELINE MG,
+The two reporting guidelines describe how to structure
+a BI-RADS-compliant clinical report from ultrasound and
+mammography images respectively, including phrasing, or-
+dering of findings, and required components (lesion de-
+scription, assessment, and recommendation).
+These are
+used to steer the LVLM during text generation.
+The two diagnostic guidelines specify the clinical im-
+plications of relevant BI-RADS concepts (e.g., which find-
+ings suggest benign or malignant pathology, how specific
+12
+
+===== PAGE 13 =====
+{
+"Pomarine Jaeger": """
+SPECIES ID: Pomarine Jaeger (Stercorarius pomarinus)
+OVERALL IMPRESSION: Largest jaeger; bulky with heavy chest and broad wings; breeding adults with
+twisted spoon-shaped tail projections.
+KEY IDENTIFICATION FEATURES: Head: Dark cap; pale nape; heavy bill. Chest: Whitish to buffy chest
+with dark sides. Back/Wings: Dark back; broad wings with pale bases to primaries. Tail: Two
+thick twisted tail spoons in breeding adults. Legs/Feet: Dark.
+BEHAVIOR AND POSTURE: Powerful, aggressive flier; pirates food from gulls/terns; hunts lemmings on
+tundra.
+HABITAT CONTEXT: High Arctic tundra for breeding; winters offshore worldwide.
+SIMILAR SPECIES: Parasitic Jaeger smaller; Long-tailed Jaeger slimmer with long streamers.
+DIAGNOSTIC FIELD MARKS: Large bulky build, twisted tail spoons in breeding, heavy flight. """,
+"Blue Jay": """SPECIES ID: Blue Jay (Cyanocitta cristata)
+OVERALL IMPRESSION: Bold, noisy corvid; blue above, white below, black necklace; common in eastern
+North America.
+KEY IDENTIFICATION FEATURES: Head: Blue crest; black collar; stout black bill. Chest: White chest
+and belly. Back/Wings: Blue back with black barring; white wing patches. Tail: Long blue tail
+with black bars and white tips. Legs/Feet: Dark.
+BEHAVIOR AND POSTURE: Noisy calls; mimics hawks; caches acorns; social at feeders.
+HABITAT CONTEXT: Woodlands, parks, suburbs in eastern North America.
+SIMILAR SPECIES: Florida Jay, Western Scrub-Jay; Blue Jay larger with crest.
+DIAGNOSTIC FIELD MARKS: Blue crest, black necklace, barred wings and tail, noisy calls. """, [...]
+}
+Figure 7. Example snippets of the field guide used to prompt the LVLM and LRM for CUB-200.
+descriptors alter risk). These are used by the LRM to pro-
+duce guideline-aware diagnostic narratives.
+B2. Sibley-Inspired Field Guide
+For the CUB-200 images, we provide a compact field-guide
+entry inspired by the Sibley bird identification manual.
+Each entry summarizes key visual traits (color, shape, pat-
+tern, behaviors) and their taxonomic relevance. These de-
+scriptions serve as lightweight analogues of clinical guide-
+lines for non-medical domains. An example of the guideline
+can be seen in Figure 7.
+B3. Prompting the LVLM
+Prompt Structure.
+For BUS-BRA and CBIS-DDSM,
+the LVLM is conditioned using the appropriate report-
+ing guideline, which provides a structured template for
+BI-RADS–compliant report generation.
+For CUB-200,
+the LVLM instead receives the corresponding Sibley-
+inspired field-guide entry for the species, offering a compact
+attribute-oriented template.
+Prompting Strategy. We explored several prompting
+strategies to ensure that LVLM outputs were reliable and
+grounded. First, we supplied only the image and requested
+a clinical report; this produced text that was stylistically co-
+herent but frequently inaccurate or logically inconsistent.
+Incorporating the BI-RADS reporting guideline improved
+the structure and style of the output but did not fully correct
+factual errors. We therefore augmented the prompt with the
+ground-truth concept labels to anchor the LVLM to verifi-
+able findings, as shown in Figure 8. For each configuration,
+outputs were evaluated by comparing the main assertions in
+the generated report with the clinical ground truth, and all
+reports were subsequently reviewed by a trained radiologist
+for fact-checking.
+B4. Prompting the LRM
+The LRM receives the predicted concepts from the concept-
+based model together with the appropriate diagnostic guide-
+line.
+These guidelines specify the clinical or taxonomic
+implications of each concept (e.g., “spiculated margins in-
+crease suspicion for malignancy” or “a blue crest is charac-
+teristic of a blue jay”), enabling the LRM to generate coher-
+ent reasoning narratives that reflect domain conventions. By
+grounding its explanation in both the structured predictions
+and the diagnostic rules, the LRM produces interpretable
+statements aligned with established clinical or field-guide
+knowledge. A snippet of our LRM prompting strategy can
+be seen in Figure 9.
+C. Hyperparameter Tuning
+Original CBM. For the baseline concept bottleneck model,
+we performed grid searches over batch size, learning rate,
+data augmentations, loss formulations, and optimizers. We
+evaluated two loss functions: (i) µLCE(y, ˆy) + νLCE(c, ˆc)
+and (ii) LCE(y, ˆy) + LMSE(c, ˆc).
+Formulation (i) per-
+formed consistently better, and we adopted µ = 1.0, ν =
+13
+
+===== PAGE 14 =====
+concept_data = "Finally, you are given the
+following ’concepts’ " \
+"that are present in the image.\n"
+for i in range(len(selected_concepts)):
+if metadata["concepts"][i] == 1:
+name = named_concepts[i].replace("_", "
+").capitalize()
+concept_data += f"{name}: 1\n"
+prompt = f"""
+You are given the following {modality} <image>.
+{auxiliary_data}
+You are also given the following
+{type_of_guideline} guideline:
+{GUIDELINE}
+{concept_data}
+Write a report based on the image, the guideline
+provided, and the concepts present in the
+image.
+"""
+messages = [{
+"role": "user",
+"content": [
+{"type": "image", "image": image},
+{"type": "text", "text": prompt},
+],
+}]
+Figure 8. LVLM prompting strategy used in our experiments. The
+LVLM receives the image, the appropriate reporting guideline (BI-
+RADS or field-guide), the predicted concepts, and a final instruc-
+tion describing the reporting task.
+0.8. Across optimizers (SGD, Adam, AdamW), AdamW
+yielded the most stable results. All models were trained for
+150 epochs with early stopping based on validation loss.
+CLIP CBM. We evaluated several CLIP encoders (ViT-
+B/32, ViT-L/14, and RN50) as the visual backbone. CLIP
+ViT-L/14 consistently achieved the strongest performance
+and was therefore used as the default. We searched over the
+concept and label loss weights and retained µ = 1.0 and
+ν = 1.0. All other hyperparameters followed the original
+CBM setup.
+Label-Free CBM. For LF-CBM, the primary hyperpa-
+rameter is the strategy used to generate concept labels via
+GPT. Directly prompting GPT often resulted in redundant
+or noisy concepts, inflating the concept bank and reducing
+performance. We also tested bypassing GPT entirely and
+inserting curated concept labels before training using the
+authors’ code. Performance varied by dataset, and we re-
+port the best-performing configuration in each case.
+We additionally tuned the visual backbone and compared
+CLIP RN50 and CLIP ViT-L/14. The optimal backbone
+introduction = "You are given the final
+diagnostic prediction of an AI system, which
+is {diagnosis}. The system also detected the
+following concepts:\n"
+concept_data = ""
+for i, name in enumerate(named_concepts):
+score = metadata["concepts"][i] * 100
+if metadata["concepts"][i] >= 0.5:
+cname = name.replace("_"," ").capitalize()
+concept_data += f"{cname} ({score:.1f}%
+confidence)\n"
+else:
+if dataset_name == "BREAST_US" and name ==
+"regular_shape":
+concept_data += f"Irregular shape
+({score:.1f}% confidence)\n"
+# for CUB, this would say "field guide"
+instructions = "Assuming the diagnosis is
+correct, explain the implications of these
+concepts according to the BI-RADS clinical
+guideline provided. Interpret each concept,
+assess agreement with the predicted
+diagnosis, infer the most likely BI-RADS
+category, and provide a recommended
+follow-up.\n"
+reasoning_prompt = f"""{introduction}
+{concept_data}
+{instructions}
+{GUIDELINE}
+"""
+Figure 9. LRM prompting strategy. The LRM receives the model’s
+final prediction, the predicted concepts, a domain-specific diag-
+nostic or field-guide guideline, and instructions describing how to
+construct a reasoned explanation grounded in those concepts.
+varied by dataset; we selected the best-performing one for
+each experiment.
+AdaCBM. As with LF-CBM, the main hyperparameter
+in AdaCBM is the source of concept labels (GPT-generated
+vs. curated). On CUB-200, models using the GPT-derived
+concepts provided in the LF-CBM repository significantly
+outperformed those using the official ground-truth concept
+bank. We also tuned the visual backbone, comparing CLIP
+ViT-B/32 and CLIP ViT-L/14.
+For each dataset, we re-
+tained the backbone that yielded the highest validation per-
+formance.
+AdaCBM uses a two-stage concept selection procedure:
+a t-test to filter non-informative concepts, followed by
+correlation-based redundancy removal. This process was
+often overly aggressive for CUB-200, removing nearly all
+concepts. We therefore tuned the interpretability cutoff as-
+sociated with the t-test threshold to reduce over-pruning.
+When the available concept bank was small, we adopted a
+very permissive (low) cutoff to preserve a sufficient number
+14
+
+===== PAGE 15 =====
+Metric
+Description and Scoring Criteria
+Concept
+Interpretation
+Score
+(CIntS)
+Definition:
+Measures whether each predicted concept is interpreted correctly according to
+BI-RADS semantics.
+Score:
+CIntS = # correctly interpreted concepts
+# predicted concepts
+Concept Integration Score
+(CIgS)
+Definition: Evaluates whether multiple concepts are integrated coherently and consistently with
+BI-RADS guidelines.
+Scoring Levels:
+1.0
+Fully Correct: All concept combinations follow BI-RADS guidelines; no contra-
+dictions.
+0.75
+Mostly Correct: Most interpretations are reasonable, but some combinations de-
+viate from BI-RADS (e.g., many malignant cues and a few misinterpreted concept
+combinations, yet the overall impression is still malignant).
+0.25
+Partially Correct: Only a small portion is reasonable; several contradictions or
+guideline violations (e.g., several malignant cues and a few benign concept combi-
+nations, with a benign overall impression).
+0.0
+Incorrect: Concept combinations or guideline references are entirely inconsistent
+or unreasonable.
+BI-RADS
+Assignment
+Score
+(BAS)
+Definition: Measures whether the final BI-RADS category aligns with guideline-based decision
+criteria for the given case.
+Scoring Levels:
+1.0
+Correct Assignment: Correct BI-RADS category chosen based on BI-RADS deci-
+sion logic.
+0.8
+Near-Correct: Unreasonable category, but correct malignant/benign implication
+(e.g., 4C vs. 5).
+0.0
+Incorrect: Category contradicts BI-RADS criteria and results in an incorrect impli-
+cation.
+Table 6. Rubric used by the radiologist for evaluating the clinical validity of model reasoning. CIntS measures accuracy of individual
+concept interpretation, CIgS measures the coherence of multi-concept integration, and BAS evaluates correctness of the final BI-RADS
+assignment.
+of concepts and improve downstream accuracy.
+For each model and dataset, we report results from the
+best-performing configuration.
+D. Evaluation of Model Reasoning
+D1. Radiologist Evaluation
+To complement our quantitative reasoning metrics, we con-
+ducted an expert evaluation with an attending radiologist
+with specialized breast imaging training.
+The radiolo-
+gist assessed 20 randomly selected cases drawn indepen-
+dently by a separate investigator to avoid bias. For each
+case, the radiologist reviewed the predicted concepts, the
+LRM-generated reasoning statement, and the final diagnos-
+tic assignment, while remaining blinded to the ground-truth
+pathology and overall dataset composition.
+The assessment followed a structured evaluation rubric,
+which is outlined in full in Table 6.
+The rubric evalu-
+ates (i) the Concept Interpretation Score (CIntS), measur-
+ing whether each concept is interpreted correctly within
+BI-RADS semantics; (ii) the Concept Integration Score
+(CIgS), which evaluates whether multiple concepts are com-
+bined logically and conflicts between benign and malignant
+cues are resolved; and (iii) the BI-RADS Assignment Score
+(BAS), which assesses whether the final diagnostic category
+is justified according to BI-RADS guideline criteria.
+D2. Additional Examples of Model Reasoning
+We include additional qualitative reasoning examples on
+complex cases from BUS-BRA and CBIS-DDSM (shown
+in Figure 10), as well as CUB-200 (shown in Figure 11) to
+illustrate how MedCBR integrates concept predictions with
+domain-specific guidelines. Each example includes the im-
+age, instances of predicted concepts, the LRM-generated
+15
+
+===== PAGE 16 =====
+Circumscribed margins and
+posterior enhancement
+are
+benign.
+While
+heterogeneous 
+echo
+is
+suspicious,
+the
+model’s
+confidence
+in
+a
+benign
+diagnosis
+implies
+this
+feature
+is
+not
+definitive
+for
+malignancy.
+This
+could
+indicate:
+A
+complicated
+cyst
+(BI-RADS
+3,
+with
+internal
+echoes but no solid vascular component);
+a
+fibroadenoma with atypical features.
+None of the detected concepts are high-risk
+(e.g.,
+shadowing,
+irregular
+margins,
+or
+calcifications).
+The heterogeneous echo and
+lack
+of
+classic
+benign
+findings
+(e.g.,
+simple
+cyst)
+justify
+a
+BI-RADS
+3
+classification rather than BI-RADS 2.
+Label: 
+Benign
+Prediction: 
+Benign
+Microlobulated 
+margins
+are
+explicitly
+listed
+as
+suspicious
+for
+invasion.
+A
+regular shape
+(e.g.,
+oval
+or
+round)
+is
+consistent
+with
+benign
+lesions
+like
+fibroadenomas.
+Posterior enhancement
+is
+typical
+of
+benign
+cysts
+or
+fibroadenomas.
+Microlobulated
+margins
+are
+the
+dominant
+feature,
+while
+other
+features
+are
+benign.
+Hypoechoic
+is
+ambiguous
+but
+does
+not
+override
+the
+suspicion.
+The
+model's
+prediction of "Cancer" aligns with BI-RADS
+4A–5,
+but
+the
+dominant
+feature
+(microlobulated
+margins)
+places
+it
+in
+BI-
+RADS
+4
+(low
+suspicion)
+unless
+additional
+high-risk features are present.
+Label: 
+Benign
+Prediction: 
+Malignant
+Regular shapes
+are
+benign-leaning
+and
+strongly favor benignity. However, it is
+not
+a
+standalone
+indicator
+and
+must
+be
+evaluated
+in
+conjunction
+with
+other
+features.
+Obscured margins alone do not
+justify a malignant diagnosis. However, if
+the
+obscured
+margins
+are
+part
+of
+a
+suspicious
+margin
+pattern,
+this
+could
+contribute to BI-RADS 4. Moderate density
+is not inherently suspicious but increases
+suspicion
+when
+combined
+with
+irregular
+shape
+or
+non-circumscribed
+margins.
+Conclusion:
+The
+combination
+of
+obscured
+margins
+and
+moderate
+density
+raises
+suspicion,
+leading
+to
+BI-RADS
+4.
+The
+regular
+shape
+does
+not
+negate
+the
+malignancy risk.
+Label: 
+Benign
+Prediction: 
+Malignant
+Fine Pleomorphic calcifications
+are
+listed
+as
+suspicious
+morphology
+associated
+with
+higher suspicion. However, they can occur in
+benign
+conditions
+like
+fibrocystic
+changes
+or post-mammoplasty.
+Clustered calcifications are associated with
+malignant
+potential
+(e.g.,
+ductal
+carcinoma
+in situ).
+However, clustered calcifications
+can
+also
+be
+benign
+if
+they
+are
+coarse,
+dystrophic,
+or
+vascular.
+Clustered
+distribution raises concern, but the model’s
+Benign diagnosis suggests that other factors
+or
+mild
+morphology
+(e.g.,
+pleomorphic
+but
+not
+fine)
+may
+have
+been
+considered.
+The
+model's
+Benign
+diagnosis
+likely
+corresponds
+to
+BI-RADS
+3
+(Probably
+Benign).
+BI-RADS
+3
+allows
+for
+limited
+suspicion
+(e.g.,
+mildly
+suspicious calcifications) with ≤2% risk.
+Label: 
+Benign
+Prediction: 
+Benign
+Figure 10. Additional examples of model reasoning on four challenging cases from BUS-BRA (top) and CBIS-DDSM (bottom). Malignant
+and benign-leaning clinical concepts are highlighted in red and green , and their corresponding reasoning steps are emphasized. Neutral
+concepts are highlighted in yellow .
+reasoning statement, and the final classification. For each
+of BUS-BRA and CBIS-DDSM, we highlight both a suc-
+cess case (left) and a failure case (right). For CUB-200, we
+highlight 4 complex cases where the concept model predic-
+tions are either partially correct or entirely incorrect, and
+show the LRM weighing conflicting evidence to support a
+coherent conclusion.
+Reasoning on medical images. In the top left image
+of Figure 10, the model predicts a benign outcome and the
+LRM correctly explains that an isolated suspicious feature
+can still appear in benign lesions. In the top right image, the
+model incorrectly predicts malignancy; although the final
+diagnosis is benign, this case presents mixed or mislead-
+ing features, leading to a higher risk score. In the bottom
+left image, despite multiple suspicious concepts, the model
+predicts benign correctly, and the LRM explains how these
+findings may still be compatible with a low-risk assessment.
+In the bottom right image, the model incorrectly predicts
+malignancy, and some detected concepts contradict the vi-
+sual appearance (e.g., regular shape), leading the LRM to
+assign an overly high BI-RADS category.
+Reasoning on natural images. In Figure 11’s top left
+example, the model detects the correct concepts, and gener-
+ates a reliable explanation. In the subsequent two examples
+(top right and bottom left), the final prediction is correct,
+but the concepts contain multiple mistakes. These mistakes
+are then correctly identified by the LRM and highlighted to
+the user. Finally, in the bottom right case, the LRM rejects
+the concept model’s prediction due to too many predicted
+concepts conflicting with the field guide.
+E. Ethical Considerations
+First, there is a risk that clinicians may place undue trust
+in model-generated narratives, even when predictions are
+incorrect.
+Our framework is intended to support expert
+judgment, not replace it. Second, LLMs are computation-
+ally expensive to train and deploy, raising concerns about
+their environmental impact. Future work may explore ef-
+ficient alternatives such as small language models (SLMs)
+or distillation-based techniques. Finally, while our method
+greatly reduces the likelihood of hallucinated outputs by
+conditioning on auxiliary information (e.g., predicted con-
+cepts), the risk of factual inaccuracy remains, especially in
+16
+
+===== PAGE 17 =====
+The
+model
+detected
+"Has bill shape hooked"
+(74%).
+The
+field
+guide
+mentions
+a
+"heavy
+bill,"
+which
+might
+be
+hooked,
+so
+that's
+a
+match.
+Next,
+the
+wings.
+The
+model
+has
+several
+entries:
+brown
+(53%),
+iridescent
+(81%),
+black
+(89%).
+Darker
+wings
+could
+be
+black,
+but
+the
+model
+also
+has
+iridescent.
+The
+guide
+doesn't
+mention
+iridescent.
+The
+guide says "white to pale gray belly," which
+is
+smooth,
+not
+spotted.
+Wait,
+that's
+a
+conflict.
+Breast color: grey
+(56%).
+The
+guide
+says
+"white
+to
+pale
+gray
+belly,"
+so
+grey
+is
+a
+possible
+match.
+Conclusion:
+The
+model’s
+detection
+of
+heavy bill,
+dark
+eye
+mask,
+white underparts,
+and
+black wings 
+supports
+the
+classification
+of
+Gray
+Kingbird. While some features conflict with
+the field guide, this may stem from image-
+specific variability, or misclassification.
+Label: 
+Gray Kingbird
+Prediction: 
+Gray Kingbird
+The
+model
+detected
+"wing color green”.
+However,
+the
+field
+guide
+says
+blue
+wings,
+that's
+a
+problem.
+Let
+me
+check
+other
+features.
+The
+model
+has
+"upper tail color
+white" with 89% confidence. The field guide
+says "blue tail." So the implications would
+be
+that
+the
+model's
+concepts
+are
+not
+accurate,
+but
+the
+prediction
+is
+correct,
+which could be due to other features being
+accurate.
+For
+example,
+the
+high
+confidence
+in "capped" likely refers to the blue head
+(a
+key
+diagnostic
+feature),
+which
+matches
+the field guide.
+Conclusion: The model's prediction of Florida
+Scrub-Jay
+is
+justified
+by
+key
+diagnostic
+features,
+but
+conflicting
+concepts
+(e.g.,
+green wings,
+white tail,
+spotted breast)
+suggest
+potential
+misinterpretations
+of
+color or texture.
+Label: 
+Florida Jay
+Prediction: 
+Florida Jay
+The field guide says the back and wings are
+olive-green.
+However,
+the
+model
+has
+high
+confidence
+in
+red [wings].
+But
+the
+model's
+underparts color olive
+is
+84.84%,
+which
+might
+be
+the
+chest.
+The
+field
+guide
+says
+"yellow-olive
+chest,"
+so
+maybe
+the
+underparts color olive is correct. The field
+guide
+mentions
+a
+faint
+orange
+crown,
+which
+might
+be
+detected
+as
+orange in the upper 
+tail.
+So
+the
+model's
+detection
+of
+orange
+could
+align
+with
+the
+"faint
+orange
+crown"
+mentioned in the guide.
+Conclusion:
+The
+model's
+predictions,
+while
+containing
+some
+features
+that
+diverge
+from
+the
+field
+guide,
+are
+consistent
+with
+the
+Orange-crowned Warbler when considering: The
+faint
+orange
+crown
+(interpreted
+as
+upper
+tail 
+orange),
+Olive-green 
+tones
+in
+upperparts and underparts.
+Label: 
+Orange
+Crowned 
+Warbler
+Prediction: 
+Orange 
+Crowned 
+Warbler
+The model detected "Has bill shape hooked" 
+with high confidence. But the field guide 
+says the House Wren has a "fine thin bill." 
+Wait, hooked vs. thin? That seems 
+conflicting. Next, wing colors. The model 
+has white [wings]. The field guide mentions 
+brown wings with fine barring. Underparts: 
+The model has red [underparts] with 88% 
+confidence. The field guide says "pale gray-
+brown with faint barring." That's a big 
+discrepancy. The model says "notched tail". 
+The field guide mentions "short, barred; 
+often cocked upward.”
+Conclusion: The model's high confidence in 
+hooked bill, red underparts, and notched 
+tail strongly conflict with the House Wren's 
+description. These may indicate 
+misclassification, overfitting, or confusion 
+with similar species.
+Label: 
+Winter Wren
+Prediction: 
+House Wren
+Figure 11. Additional examples of model reasoning on 4 complex cases from CUB-200. Observations highlighted in orange contradict
+the guideline, whereas ones in blue are consistent. Key reasoning steps are emphasized in blue when they support the final conclusion and
+red when they do not.
+cases where the concept model fails to output reliable pre-
+dictions. Additional safeguards and validation strategies are
+needed to ensure the reliability of generated narratives in
+clinical settings.
+17

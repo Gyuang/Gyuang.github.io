@@ -1,0 +1,1468 @@
+
+===== PAGE 1 =====
+From Spots to Pixels: Dense Spatial Gene Expression Prediction from Histology
+Images
+Ruikun Zhang1,
+Yan Yang2,
+and
+Liyuan Pan1
+1Beijing Institute of Technology
+2 The Australian National University
+{ruikun.zhang, liyuan.pan}@bit.edu.cn,
+{yan.yang}@anu.edu.au
+Abstract
+Spatial transcriptomics (ST) measures gene expression at
+fine-grained spatial resolution, offering insights into tissue
+molecular landscapes. Previous methods for spatial gene
+expression prediction typically crop spots of interest from
+histopathology slide images, and train models to map each
+spot to a corresponding gene expression profile. However,
+these methods inherently lose the spatial resolution in gene
+expression: 1) each spot often contains multiple cells with
+distinct gene expression profiles; 2) spots are typically de-
+fined at fixed spatial resolutions, limiting the ability to pre-
+dict gene expression at varying scales. To address these lim-
+itations, this paper presents PixNet, a dense prediction net-
+work capable of predicting spatially resolved gene expres-
+sion across spots of varying sizes and scales directly from
+histopathology slide images. Different from previous meth-
+ods that map individual spots to gene expression values, we
+generate a spatially dense continuous gene expression map
+from the histopathology slide image, and aggregate values
+within spots of interest to predict the gene expression. Our
+PixNet outperforms state-of-the-art methods on four com-
+mon ST datasets in multiple spatial scales. The source code
+will be publicly available.
+1. Introduction
+Spatial transcriptomics (ST) enables spatially resolved gene
+expression profiling and offers significant clinical benefits,
+but the experimental process remains costly and techni-
+cally demanding.
+Therefore, numerous studies have ex-
+plored predicting spatial gene expression directly from
+more accessible and cost-effective histopathology slide im-
+ages [8, 14, 26, 33, 35–37]. To retain spatial information,
+researchers have formulated the prediction task as a regres-
+sion problem that maps spots of interest from histopathol-
+ogy slides to their corresponding gene expression.
+Formally, previous works address this task by crop-
+ping spots with measured gene expression from available
+…
+Model
+ViT
+GCN
+(a) Pipelines of existing methods
+Fixed resolution cropping
+Fixed spot size prediction
+(b) Ours
+Arbitrary regions of interest
+Dense gene expression map
+PixNet
+Figure 1. Overview of fields. (a) Existing approaches treat spatial
+gene expression prediction as a regression problem, training vari-
+ous networks on fixed crops from a slide image. (b) Our method
+formulates it as a dense prediction task, generating a gene expres-
+sion map and aggregating values within spots of interest.
+datasets and training networks on the resulting paired data
+for prediction. Various network architectures have been ex-
+plored, including fine-tuning models pretrained on large-
+scale datasets [35, 37], as well as designing multi-scale
+[8] and graph-based models [36] to exploit the spatial con-
+text of histopathology slides and enhance prediction per-
+formance. An overview of these approaches is illustrated
+in Fig. 1 (a). While these approaches have demonstrated
+promising results, they fall short of achieving truly spa-
+tially resolved gene expression prediction. Specifically, the
+cropped spots typically exceed 100 µm in size to capture
+sufficient visual and spatial information for model input. As
+a result, these models aggregate features from multiple cells
+within each spot and associate a fixed crop with a single ex-
+pression profile, leading to a loss of spatial resolution and,
+consequently, a diminished capability to predict spatially re-
+solved gene expression.
+Moreover, previous methods are typically designed for
+spots with a fixed spatial scale. However, real-world ap-
+arXiv:2503.01347v4  [cs.CV]  25 Nov 2025
+
+===== PAGE 2 =====
+plications often require gene expression prediction across
+varying spatial resolutions and spot sizes, which limits the
+adaptability of existing methods.
+For example, a model
+trained on 100 µm spots struggles to generalize to 2 µm
+spots, as it depends on larger areas to capture sufficient
+spatial context for accurate prediction. Furthermore, 2 µm
+spots offer approximately single-cell resolution—the finest
+level of detail typically sought in spatial transcriptomics [6].
+In practice, however, this corresponds to just ∼20 pixels in
+the image space. This resolution constraint further restricts
+the applicability of existing methods in emerging ST tech-
+nologies, such as Visium HD, which provides spatial gene
+expression at 2 µm spots. The reliance on large visual fields
+makes it difficult for these methods to adapt to such high-
+resolution advances.
+To address these challenges, we reformulate spatial gene
+expression prediction from slide images as a dense predic-
+tion task. We propose PixNet, a model that maps the en-
+tire slide image to a dense gene expression map. For arbi-
+trary regions of interest, gene expression is predicted by ag-
+gregating values from the corresponding area of the dense
+expression map. Fig. 1 (b) provides a visual summary of
+the proposed approach.
+We leverage the inherent multi-
+scale nature of slide images [8] to generate the expression
+map. To capture features at multiple spatial scales, we ex-
+tract a pyramidal feature map and progressively decode it
+into a high-resolution gene expression map, enabling dense
+spatial predictions. During training, we employ a sparse
+loss module that provides supervision only at spots with
+measured gene expression, effectively handling the inher-
+ent sparsity of spatial transcriptomics data. Our generalized
+approach enables accurate prediction of spatial gene expres-
+sion across multiple scales and resolutions. We evaluate
+our method on four common ST datasets and demonstrate
+its effectiveness in predicting gene expression at scales and
+spot sizes different from those seen during training, out-
+performing previous methods. For example, when trained
+on 100 µm spots, PixNet generalizes to single-cell resolu-
+tion (2 µm), achieving a Pearson correlation coefficient of
+0.198—57.1% higher than the previous best approach.
+Our key contributions can be summarized as follows:
+• We reformulate spatial gene expression prediction as a
+dense prediction task.
+• We introduce a sparse supervision strategy designed to
+accommodate the limited coverage of spatial transcrip-
+tomics data.
+• We demonstrate state-of-the-art performance on four
+widely used ST datasets in multiple spatial scales.
+2. Related work
+In this section, we first review deep learning-based ap-
+proaches for predicting spatial gene expression from whole
+slide images (WSIs). We then summarize relevant research
+on dense prediction networks in medical imaging that has
+informed the architectural design of our PixNet.
+Spatial Gene Expression Prediction from WSIs.
+Due
+to the high cost and low throughput of spatial transcrip-
+tomics (ST), recent studies have leveraged deep learning
+to predict spatial gene expression from whole slide images
+(WSIs). ST-Net [14] fine-tune a DenseNet-121 [17] pre-
+trained on ImageNet [10], using histology–gene expression
+pairs for supervised learning. HisToGene [26] introduces
+spatial context via a Vision Transformer, enabling context-
+aware feature learning. Hist2ST [38] further enhance per-
+formance by extracting patch-level features and modeling
+spatial dependencies with GraphSAGE [21].
+EGN [35, 37] employs an exemplar-based framework
+that dynamically selects the most similar samples for each
+target spot, enhancing prediction accuracy. BLEEP [33],
+inspired by CLIP [7], uses gene expression embeddings to
+guide the pretraining of a ResNet-50 [15] image encoder,
+learning biologically meaningful visual features. TRIPLEX
+[8] adopts a multi-scale strategy with three parallel encoders
+to capture spatial and morphological context at different
+resolutions. MERGE [13] constructs a hierarchical graph
+to model dependencies among morphologically similar but
+spatially distant clusters, enabling long-range node interac-
+tions.
+Despite progress in multi-scale modeling, existing meth-
+ods predict gene expression at the spot level and rely on
+datasets with fixed resolutions and uniform spot sizes, limit-
+ing their generalizability to heterogeneous spatial scales and
+geometries. To address this, we propose PixNet, a frame-
+work that predicts spatial gene expression at arbitrary reso-
+lutions and scales directly from histopathology images.
+Dense Prediction in Histopathology and Medical Imag-
+ing.
+Recent advances in pixel-level dense predic-
+tion—particularly in medical image segmentation [16, 30,
+41] and super-resolution [18, 39]—have laid a technical
+foundation for constructing dense spatial gene expression
+maps from histopathology images.
+H-DenseFormer [30]
+combines CNNs and Transformers to achieve accurate seg-
+mentation with low complexity. U-Netmer [16] integrates
+Transformer-based self-attention into U-Net to address fea-
+ture degradation and scale sensitivity. SelfReg-UNet [41]
+enhances U-Net’s robustness via adaptive feature recalibra-
+tion. Deform-Mamba [18] uses deformable encoding and
+multi-view context learning to reconstruct high-quality MRI
+from low-resolution input, preserving fine structural details.
+Dense prediction networks remain underexplored for
+spatial gene expression.
+Existing methods typically ex-
+tract fixed-size patches (spots) to predict gene expression,
+causing loss of spatial resolution and limiting multi-scale
+prediction. iSTar [39] pioneers pixel-wise mapping from
+
+===== PAGE 3 =====
+UNI2-h
+Encoder
+DWC
+Conv1×1
+SiLU
+BN
+C
+Conv 1×1
+Softmax
+Q
+K
+V
+C
+DWC
+LN
+BN
+Separable attention fusion block (SAFB)
+Element-wise addition
+Element-wise multiplication
+Concatenation
+Batch normalization
+Layer normalization
+3×3 Depthwise convolution
+SAFB
+SAFB
+SAFB
+SiLU
+LN
+Fl
+Ul
+/
+ˆUl
+Eq. 9
+L
+I
+G
+{ˆyn}N
+n=1
+{yn}N
+n=1
+Figure 2. Overview of our framework. We extract a pyramidal feature map {Fl}L
+l=1 from a slide image I and progressively decode them
+into a gene expression map G using multiple separable attention fusion blocks (SAFBs). The predicted gene expression values {ˆyn}N
+n=1
+are aggregated (Eq. 9) from G based on the positions and radiuses of spots of interest. The loss L is computed sparsely on spots with
+ground truth gene expression {yn}N
+n=1 during training.
+WSIs to gene expression, enabling high-resolution predic-
+tions. However, it focuses on super-resolution—inferring
+fine details from coarse data—which is ill-posed [32] and
+often yields predictions inconsistent with true tissue mor-
+phology.
+In this work, we directly predict gene expression from
+histology images without ill-posed upsampling, avoiding
+challenges of super-resolution and fixed spot sizes. This
+allows spatial gene expression prediction at arbitrary scales
+and resolutions.
+3. Method
+Overview.
+Given a slide image I
+∈
+RH×W ×3 and
+N spots {xn, yn}N
+n=1, each spot is centered at location
+(xn, yn) on the histopathology slide image with a circu-
+lar radius rn and is paired with expression yn ∈RM for
+M genes. H and W are height and width of the slide im-
+age. We train a network to predict the gene expression with
+three steps: 1) the slide image is encoded into L levels of
+pyramidal feature map {Fl}L
+l=1; 2) the pyramidal feature
+map {Fl}L
+l=1 is decoded propressively into a dense gene ex-
+pression map G ∈RH×W ×M; 3) the gene expression ˆyn
+is predicted for the spot centered at (xn, yn) by summing
+over the values within a circular region of radius rn in the
+dense gene expression map G. During training, {ˆyn}N
+n=1 is
+optimized with the ground truth gene expression {y}N
+n=1,
+forming our sparse loss module. During testing, the spot
+location (x′
+n, y′
+n) and radius r′
+n can be varied dynamically,
+allowing for flexible gene expression prediction across dif-
+ferent spatial resolutions and spot sizes. Figure 2 provides
+an overview of the proposed method.
+3.1. Pyramidal Feature Extraction
+To capture the features with varying scales and sizes in the
+slide image I, we extract a pyramidal feature map {Fl}L
+l=1
+using UNI2-h [4] encoder pretrained on a large WSI dataset.
+The encoder first projects I into token embeddings Z0, The
+embeddings are then processed by L sequential vision trans-
+former (ViT) groups to progressively enrich their semantic
+abstraction:
+ZL = ViTL ◦ViTL−1 ◦· · · ◦ViT1(Z0),
+(1)
+where ViTl(·) denotes the l-th vision transformer group.
+Then we generate spatially pyramidal feature maps from
+intermediate transformer groups (e.g., from 2th, 4th, 6th
+transformer groups): Fl = Downsample
+ R(Zl)
+
+, where
+R(·) converts the sequence of tokens back to a 2D feature
+map.
+3.2. Gene Expression Map Decoding
+We faciliate the interactions among pyramidal feature map
+{Fl}L
+l=1 to progressively decode a gene expression map G.
+Our decoder network has L −1 layers, and follows an u-
+net style. Setting FL as the initial decoder feature DL, we
+iteratively decode the pyramidal feature map {Fl}L
+l=1. In
+deep stages we adopt a depth-to-space upsampling block
+(DSUB), which rearranges feature maps into higher spatial
+resolution without altering their content. This design aims
+
+===== PAGE 4 =====
+to minimize information loss, because in the task of spatial
+gene expression prediction, better preservation of spatial in-
+formation learned by the encoder often leads to improved
+prediction performance [8].
+Specifically, given an input feature map Fl, the number
+of filters required for the upsampling operation is computed
+as: K = CFl × 2d, where CFl denotes the number of chan-
+nels in current feature map Fl, and d = 2 represents the
+downsampling factor. The depth-to-space (D2S) [31] oper-
+ation then reshapes the channel dimension into higher spa-
+tial resolution. The overall process can be formulated as:
+Ul−1 = CB
+
+ReLU
+ Conv
+ D2S(ReLU(Conv(Fl))), K
+
+,
+(2)
+where Ul−1 denotes the upsampled feature map, CB repre-
+sents an composite convolutional block, and Conv denotes
+a 3 × 3 convolutional layer.
+In the shallow stages, we adopt bilinear interpolation in-
+stead of the depth-to-space operation for upsampling, as it
+better preserves spatial details. Since shallow features re-
+tain rich spatial information, they mainly benefit from res-
+olution recovery rather than complex semantic transforma-
+tion. This operation ensures smoother reconstruction and
+maintains spatial coherence, which is essential for accurate
+spatial gene expression prediction. Prior to interpolation, a
+composite convolutional block is applied to suppress noise
+from non-informative features. A second composite block
+is then applied after interpolation to further refine the fea-
+ture map. This process can be formally represented as:
+ˆUl−1 = CB
+
+BlIntp
+ CB(Fl)
+
+,
+(3)
+where ˆUl−1 denotes the upsampled feature map in the shal-
+low stages, and BlIntp donotes bilinear interpolation up-
+sampling operation.
+Then we adopt a separable attention fusion block
+(SAFB) to refine and aggregate the pyramidal feature map
+Fl−1 and the upsampled feature map Ul−1/ ˆUl−1. Specif-
+ically, a specialized residual block is first applied to refine
+the pyramidal feature map Fl−1. This process can be for-
+mulated as:
+ˆFmid = LN
+
+Conv1×1
+ SiLU(DWC(Fl−1))
+
+,
+(4)
+ˆFl−1 = BN
+
+SiLU
+ DWC(Fl−1) + ˆFmid
+
+,
+(5)
+where ˆFl−1 denotes the refined pyramidal feature map,
+ˆFmid denotes the intermediate feature map, LN, BN, SiLU,
+DWC denote layer normalization, batch normalization, Sig-
+moid linear unit, and depthwise convolution, respectively.
+Next, we concatenate the refined pyramidal output ˆFl−1
+with the upsampled feature map Ul−1/ ˆUl−1 to fuse high-
+resolution details from the encoder and contextual informa-
+tion from the decoder. A linear projection is applied to gen-
+erate queries (Q), keys (K), and values (V), followed by the
+computation of attention weights to enhance feature repre-
+sentations. The entire process can be formulated as:
+Attention = softmax
+QKT
+β
+
+V ,
+(6)
+Fu =
+(
+Concat(ˆFl−1, Ul−1) ,
+for L ≥l > 3
+Cancat(ˆFl−1, ˆUl−1) ,
+for 3 ≥l > 1
+(7)
+Dl−1 = Fu + Attention
+ Conv1×1(Fu)
+
+,
+(8)
+where β is a normalization factor that is typically set to the
+square root of the latent dimension, and BI donotes bilinear
+interpolation upsampling.
+For the last feature map D1, we apply a 1×1 convolution
+produce the gene expression map G.
+3.3. Gene Expression Prediction
+For a spot with location (xn, yn) and radius rn on the slide
+image I, the predicted gene expression ˆyn is
+ˆyn =
+X
+∆x,∆y
+G(∆x, ∆y) ,
+(9)
+where the sum enumeration all postions (∆x, ∆y) on the
+domain of (∆x−xn)2+(∆y−yn)2 ≤r2
+n, and G(∆x, ∆y)
+denotes the predicted gene expression at position (∆x, ∆y).
+This aggregation effectively pools the gene expression val-
+ues within the spot, yielding a robust prediction for each
+spot.
+3.4. Loss Function
+We sparsely supervise the predicted gene expression map
+G with the mean square error Lmse and batch-wise Pear-
+son correlation coefficient (PCC) loss Lpcc. The loss func-
+tion penalizes penalizes deviations of aggregated gene ex-
+pression {ˆyn}N
+n=1 from the ground truth gene expression
+{yn}N
+n=1, and encourages a correlation between them. The
+overall training loss L is
+L = Lmse + λ · Lpcc ,
+(10)
+where λ is a hyperparameter that controls the relative im-
+portance of the PCC loss compared to the mean square er-
+ror.
+4. Experiment
+Datasets.
+We experiment with four common datasets: 1)
+STNet dataset [14] that has 68 slide images with 30K spots
+on 100 µm; 2) Her2ST dataset [2] that has 36 slide images
+with 13K spots on 100 µm; 3) Breast cancer Visium HD
+dataset, providing 2 slide images with 18.7M, 1.17M, and
+294K spots on 2 µm, 8 µm, and 16 µm; 4) Brain cancer
+Visium HD dataset with 14.2M, 889K, and 223K spots on
+2 µm, 8 µm, and 16 µm from 2 slide images; We follow
+
+===== PAGE 5 =====
+Table 1. Quantitative gene expression prediction comparisons with state-of-the-art methods on two Visium HD datasets. The best-
+performing method is highlighted in bold.
+Method
+MSE (↓)
+MAE (↓)
+PCC@F (↑)
+PCC@S (↑)
+PCC@M (↑)
+Experiments on the breast cancer Visium HD dataset.
+STNet [14]
+0.269±0.03
+0.482±0.05
+-0.009±0.05
+-0.001±0.06
+-0.001±0.06
+HistoGene [26]
+0.265±0.02
+0.438±0.05
+0.089±0.07
+0.159±0.10
+0.157±0.10
+EGN [35]
+0.264±0.03
+0.413±0.03
+0.102±0.03
+0.166±0.10
+0.161±0.08
+EGGN [37]
+0.241±0.02
+0.423±0.05
+0.143±0.02
+0.209±0.05
+0.200±0.06
+BLEEP [33]
+0.247±0.05
+0.435±0.05
+0.157±0.03
+0.216±0.08
+0.205±0.08
+HGGEP [22]
+0.267±0.10
+0.446±0.12
+0.118±0.03
+0.191±0.03
+0.187±0.04
+Junayed, et al. [20]
+0.306±0.06
+0.511±0.08
+0.047±0.10
+0.133±0.12
+0.134±0.12
+TRIPLEX [8]
+0.259±0.04
+0.432±0.08
+0.122±0.03
+0.200±0.04
+0.199±0.07
+iStar [13]
+0.285±0.03
+0.479±0.06
+0.119±0.05
+0.213±0.02
+0.216±0.03
+SGN [36]
+0.230±0.03
+0.358±0.06
+0.173±0.07
+0.227±0.04
+0.226±0.02
+BG-TRIPLEX [28]
+0.255±0.03
+0.448±0.07
+0.109±0.03
+0.187±0.04
+0.190±0.06
+ScstGCN [34]
+0.229±0.03
+0.352±0.04
+0.159±0.08
+0.231±0.10
+0.225±0.14
+MERGE [13]
+0.290±0.06
+0.458±0.03
+0.125±0.07
+0.227±0.04
+0.221±0.02
+Ours
+0.153±0.02
+0.274±0.05
+0.196±0.02
+0.313±0.03
+0.325±0.02
+Experiments on the brain cancer Visium HD dataset.
+STNet [14]
+0.282±0.03
+0.514±0.05
+-0.002±0.05
+0.046±0.06
+0.044±0.06
+HistoGene [26]
+0.279±0.02
+0.457±0.05
+0.100±0.07
+0.171±0.10
+0.166±0.10
+EGN [35]
+0.277±0.03
+0.463±0.03
+0.096±0.03
+0.177±0.10
+0.171±0.08
+EGGN [37]
+0.259±0.02
+0.459±0.05
+0.131±0.02
+0.195±0.05
+0.191±0.06
+BLEEP [33]
+0.243±0.05
+0.477±0.05
+0.121±0.03
+0.189±0.08
+0.186±0.08
+HGGEP [22]
+0.301±0.06
+0.476±0.04
+0.100±0.07
+0.168±0.10
+0.170±0.12
+Junayed, et al. [20]
+0.335±0.06
+0.549±0.08
+0.083±0.07
+0.119±0.07
+0.110±0.08
+TRIPLEX [8]
+0.257±0.04
+0.462±0.08
+0.132±0.03
+0.195±0.04
+0.188±0.07
+iStar [13]
+0.304±0.03
+0.481±0.06
+0.118±0.05
+0.190±0.02
+0.191±0.03
+SGN [36]
+0.228±0.03
+0.447±0.06
+0.133±0.07
+0.199±0.04
+0.195±0.02
+BG-TRIPLEX [28]
+0.255±0.02
+0.446±0.04
+0.136±0.05
+0.191±0.07
+0.190±0.07
+ScstGCN [34]
+0.242±0.03
+0.468±0.05
+0.117±0.05
+0.183±0.04
+0.185±0.06
+MERGE [13]
+0.274±0.03
+0.501±0.06
+0.126±0.07
+0.187±0.04
+0.190±0.02
+Ours
+0.144±0.02
+0.298±0.05
+0.176±0.02
+0.305±0.03
+0.304±0.02
+the preprocessing and cross-fold validation protocols out-
+lined in [36, 37]. The Visium HD dataset is downloaded
+from 10xProteomic, including the Visium HD Spatial Gene
+Expression Library, Human Breast Cancer; and Visium HD
+Spatial Gene Expression Library, Mouse Brain.
+Evaluation Metrics.
+Our method is evaluated using the
+following metrics: mean squared error (MSE), mean abso-
+lute error (MAE), first quartile of Pearson correlation co-
+efficient (PCC@F), median of Pearson correlation coeffi-
+cient (PCC@S), and mean of Pearson correlation coefficient
+(PCC@M).
+Implementation Details.
+Our method is fully imple-
+mented using Pytorch [12, 27], and all experiments are con-
+ducted on a single NVIDIA RTX A6000 GPU. Our method
+is trained entirely from scratch, with the AdamW [23] op-
+timizer for 200 epochs, using a learning rate of 5 × 10−4
+and a weight decay of 1 × 10−4. The decoder is configured
+with standard filter sizes [64, 128, 256, 512, 512, 512] fol-
+lowing common encoder–decoder design practice [1]. We
+set λ to 0.5. A fixed random seed (42) is used across all im-
+plementations and reruns. Following the approach in [14],
+we select the 250 genes with the highest mean expression
+across the dataset as prediction targets. The gene expres-
+sion values are normalized by dividing by the sum of ex-
+pressions in each spot, followed by a log transformation [8].
+For reproducibility and fair comparison, each experiment is
+repeated five times, and the average score is reported. More
+implementation details can be found in the supplementary
+material.
+Baseline Methods.
+We compare with 13 state-of-the-art
+(SOTA) spatial gene expression prediction methods [8, 13,
+14, 20, 22, 26, 28, 33–37, 39]. To maintain evaluation con-
+sistency and reproducibility, most of the methods in Tab. 1
+are retrained within the same local setup. A portion of the
+results in Tab. 2 are adapted from [8].
+
+===== PAGE 6 =====
+Table 2. Quantitative gene expression prediction comparisons with state-of-the-art methods on STNet and Her2ST datasets. The best-
+performing method is highlighted in bold.
+Method
+MSE (↓)
+MAE (↓)
+PCC@F (↑)
+PCC@S (↑)
+PCC@M (↑)
+Experiments on the STNet [14] dataset.
+STNet [14]
+0.209±0.02
+0.502±0.05
+0.005±0.06
+0.092±0.07
+0.093±0.06
+HistoGene [26]
+0.194±0.09
+0.418±0.12
+0.097±0.10
+0.126±0.11
+0.119±0.12
+EGN [35]
+0.192±0.02
+0.449±0.04
+0.106±0.05
+0.221±0.07
+0.203±0.09
+EGGN [37]
+0.189±0.03
+0.424±0.06
+0.184±0.05
+0.305±0.05
+0.292±0.06
+BLEEP [33]
+0.235±0.02
+0.451±0.05
+0.155±0.05
+0.208±0.05
+0.193±0.10
+HGGEP [22]
+0.212±0.04
+0.406±0.05
+0.137±0.07
+0.265±0.07
+0.253±0.08
+Junayed, et al. [20]
+0.239±0.02
+0.472±0.04
+0.138±0.04
+0.195±0.05
+0.190±0.05
+TRIPLEX [8]
+0.202±0.02
+0.413±0.03
+0.159±0.04
+0.364±0.05
+0.352±0.10
+iStar [13]
+0.241±0.03
+0.507±0.06
+0.155±0.05
+0.312±0.02
+0.320±0.03
+SGN [36]
+0.186±0.02
+0.388±0.05
+0.179±0.05
+0.289±0.06
+0.269±0.07
+BG-TRIPLEX [28]
+0.201±0.03
+0.415±0.06
+0.162±0.07
+0.366±0.04
+0.357±0.02
+ScstGCN [34]
+0.223±0.03
+0.405±0.03
+0.158±0.06
+0.337±0.16
+0.325±0.14
+MERGE [13]
+0.195±0.03
+0.396±0.06
+0.153±0.03
+0.351±0.05
+0.344±0.05
+Ours
+0.146±0.04
+0.301±0.04
+0.207±0.03
+0.416±0.02
+0.409±0.05
+Experiments on the Her2ST [2] dataset.
+STNet [14]
+0.260±0.04
+0.491±0.07
+0.093±0.05
+0.126±0.06
+0.145±0.16
+HistoGene [26]
+0.314±0.09
+0.531±0.05
+0.128±0.07
+0.297±0.15
+0.302±0.17
+EGN [35]
+0.241±0.06
+0.464±0.03
+0.129±0.03
+0.330±0.17
+0.328±0.17
+EGGN [37]
+0.259±0.02
+0.459±0.05
+0.131±0.02
+0.332±0.05
+0.326±0.06
+BLEEP [33]
+0.277±0.05
+0.498±0.05
+0.106±0.03
+0.285±0.08
+0.277±0.08
+HGGEP [22]
+0.312±0.02
+0.547±0.05
+0.100±0.10
+0.244±0.08
+0.239±0.08
+Junayed, et al. [20]
+0.315±0.05
+0.532±0.07
+0.099±0.15
+0.284±0.09
+0.280±0.12
+TRIPLEX [8]
+0.226±0.04
+0.462±0.08
+0.151±0.03
+0.415±0.04
+0.404±0.07
+iStar [13]
+0.296±0.03
+0.541±0.06
+0.138±0.05
+0.336±0.02
+0.347±0.03
+SGN [36]
+0.247±0.03
+0.465±0.06
+0.117±0.07
+0.360±0.04
+0.355±0.02
+BG-TRIPLEX [28]
+0.238±0.04
+0.478±0.05
+0.135±0.16
+0.358±0.09
+0.344±0.11
+ScstGCN [34]
+0.301±0.02
+0.506±0.04
+0.094±0.05
+0.295±0.04
+0.290±0.02
+MERGE [13]
+0.244±0.03
+0.481±0.03
+0.130±0.07
+0.349±0.12
+0.342±0.10
+Ours
+0.199±0.02
+0.368±0.04
+0.185±0.02
+0.452±0.03
+0.453±0.03
+4.1. Experimental Result
+We benchmark our method against state-of-the-art ap-
+proaches on four ST datasets. Results on the Breast Can-
+cer Visium HD and Brain Cancer Visium HD datasets are
+shown in Tab. 1, while comparisons on the STNet [14] and
+Her2ST [2] datasets are shown in Tab. 2.
+Our method achieves state-of-the-art performance across
+all four ST datasets, demonstrating competitive results and,
+in particular, leading PCC-based performance. This is par-
+ticularly important for gene expression prediction, as it re-
+flects the model’s ability to capture relative variations in
+gene expression more effectively.
+For instance, on the
+breast cancer Visium HD dataset, our method achieves
+a PCC@M of 0.325—an 43.8% improvement over the
+previous state-of-the-art method, SGN (0.226 PCC@M).
+Similarly, on the Her2ST dataset, our method achieves
+a PCC@M of 0.453—representing a 12.1% improvement
+over the previous best method, TRIPLEX (0.404 PCC@M).
+Fig. 3 shows qualitative comparisons with competitive
+methods. Our method produces visual patterns that more
+closely resemble the ground truth gene expression at both
+large (100 µm) and single-cell (2 µm) spot sizes, demon-
+strating robustness across scales.
+Table 3. Ablation study of our proposed SAFB module .
+Decoder
+MSE(↓)
+MAE(↓)
+PCC@M(↑)
+Conv
+0.368±0.04
+0.470±0.07
+0.169±0.13
+ResNet18
+0.226±0.03
+0.374±0.05
+0.213±0.09
+ViT
+0.297±0.07
+0.435±0.12
+0.188±0.04
+SAFB
+0.153±0.02
+0.274±0.05
+0.325±0.02
+4.2. Ablation Study
+Model
+Architecture.
+We
+compare
+several
+decoders
+for mapping pyramidal features to dense expression
+maps—plain Conv, ResNet18 [15], ViT [11], and our SAFB
+module (Tab. 3). SAFB delivers the best results across all
+
+===== PAGE 7 =====
+Zoom-in Image
+Image
+App (2 µm)
+SGN
+Ours
+Zoom-in Image
+Image
+FASN (2 µm)
+SGN
+Ours
+Zoom-in Image
+Image
+XBP1 (100 µm)
+SGN
+Ours
+Zoom-in Image
+Image
+GNAS (100 µm)
+SGN
+Ours
+Figure 3. Examples of predicted expression of gene types that are related to cancers [3, 5, 14, 19, 24, 25, 40]. From left to right, we show
+the slide image, ground truth gene expression, and predictions from various methods are shown for regions cropped from the colored boxes
+in the slide image.
+Table 4. Ablation study of gene expression measured for different
+loss functions used in training.
+Lmse
+Lpcc
+MSE(↓)
+MAE(↓)
+PCC@M(↑)
+✓
+✗
+0.170±0.06
+0.286±0.10
+0.293±0.03
+✗
+✓
+0.192±0.09
+0.305±0.15
+0.319±0.08
+✓
+✓
+0.153±0.02
+0.274±0.05
+0.325±0.02
+metrics, demonstrating that its lightweight, relation-aware
+aggregation better preserves local fidelity and global con-
+sistency of expression hotspots.
+Loss
+Function.
+We
+evaluate
+three
+training
+objectives—Lmse only, Lpcc only, and their combina-
+tion—on the breast-cancer Visium HD set (Tab. 4). The
+joint objective achieves the best overall balance, simultane-
+ously reducing errors and improving correlation, indicating
+that combining fidelity and correlation terms stabilizes
+training and better aligns predicted spatial patterns with
+measured gene expression.
+Generalization.
+Our network generalizes well to spot
+sizes different from those used during training. We compare
+our method’s performance with state-of-the-art approaches
+to evaluate its robustness and adaptability across varying
+
+===== PAGE 8 =====
+Table 5. Performance generalization. All models are trained on the STNet [14] dataset (with spot size 100µm), and tested on the breast
+cancer Visium HD dataset with varying spot sizes (2µm, 8µm, and 16µm) and slide images from different environments. The standard
+deviation is not displayed due to space limitations.
+2µm
+8µm
+16µm
+Method
+MSE(↓)
+MAE(↓)
+PCC@M(↑)
+MSE(↓)
+MAE(↓)
+PCC@M(↑)
+MSE(↓)
+MAE(↓)
+PCC@M(↑)
+STNet [14]
+0.420
+0.515
+0.000
+0.397
+0.498
+0.002
+0.395
+0.501
+0.005
+HistoGene [26]
+0.388
+0.501
+0.088
+0.389
+0.500
+0.093
+0.373
+0.485
+0.097
+EGN [35]
+0.371
+0.492
+0.091
+0.377
+0.479
+0.087
+0.365
+0.481
+0.100
+EGGN [37]
+0.368
+0.483
+0.087
+0.372
+0.499
+0.088
+0.361
+0.487
+0.102
+BLEEP [33]
+0.323
+0.441
+0.115
+0.302
+0.431
+0.127
+0.301
+0.435
+0.125
+HGGEP [22]
+0.405
+0.587
+0.068
+0.411
+0.543
+0.083
+0.412
+0.537
+0.094
+Junayed, et al. [20]
+0.339
+0.469
+0.106
+0.343
+0.496
+0.116
+0.337
+0.446
+0.120
+TRIPLEX [8]
+0.365
+0.488
+0.092
+0.355
+0.451
+0.100
+0.356
+0.457
+0.099
+iStar [39]
+0.327
+0.453
+0.126
+0.324
+0.439
+0.133
+0.344
+0.480
+0.137
+SGN [36]
+0.303
+0.437
+0.118
+0.289
+0.422
+0.136
+0.286
+0.431
+0.123
+BG-TRIPLEX [28]
+0.370
+0.492
+0.103
+0.366
+0.501
+0.094
+0.348
+0.482
+0.111
+ScstGCN [34]
+0.346
+0.445
+0.109
+0.341
+0.450
+0.112
+0.351
+0.459
+0.107
+MERGE [13]
+0.352
+0.454
+0.112
+0.345
+0.458
+0.127
+0.334
+0.474
+0.139
+Ours
+0.215
+0.382
+0.198
+0.197
+0.370
+0.219
+0.199
+0.365
+0.226
+Table 6. Ablation study of different spot sizes used in training.
+Spot size
+MSE(↓)
+MAE(↓)
+PCC@M(↑)
+16 µm
+8 µm
+2 µm
+✓
+✗
+✗
+0.208±0.03
+0.297±0.04
+0.244±0.06
+✗
+✓
+✗
+0.209±0.03
+0.302±0.05
+0.288±0.06
+✗
+✗
+✓
+0.186±0.02
+0.291±0.04
+0.299±0.04
+✓
+✓
+✗
+0.177±0.04
+0.285±0.06
+0.303±0.07
+✓
+✓
+✓
+0.153±0.02
+0.274±0.05
+0.325±0.02
+spot sizes, as shown in Tab. 5. Our method achieves sig-
+nificantly better performance than the previous competitive
+method, SGN [36], which is trained to predict gene expres-
+sion from fixed spots. In contrast, our method reformulates
+the task as dense prediction, enabling more flexible and ac-
+curate gene expression prediction.
+Foundation Encoder.
+We conduct an ablation study on
+the pretrained image encoder for pyramidal feature extrac-
+tion, comparing ResNet-18 [9] and ViT-L [4, 7, 29, 42], in-
+cluding pathology foundation models (e.g., Virchow2 [42],
+UNI [4], H-Optimus-0 [29]). Results on the breast cancer
+Visium HD dataset (Fig. 4) show UNI2 [4] achieves the best
+performance.
+Spot Size.
+We conduct an ablation study on gene expres-
+sion for spots of different sizes on the breast cancer Visium
+HD dataset in Tab. 6. The best performance is achieved
+when all data are utilized.
+ResNet18
+CLIP
+UNI
+UNI2-h
+1.4
+1.6
+1.8
+2.0
+2.2
+3.2
+2.4
+3.0
+2.6
+2.8
+2.6
+2.8
+3.0
+3.2
+3.4
+3.8
+3.6
+H-Optimus-0
+Virchow2
+(a) MSE×101 (↓)
+(b) MAE×101 (↓)
+(c) PCC@M×101 (↑)
+Figure 4. Ablation study of the pretrained image encoder [4, 7, 9,
+29, 42].
+5. Limitation
+Despite its strong performance, PixNet still depends on
+sparse supervision from measured gene expression. Future
+work will explore unsupervised or self-supervised learning
+on large-scale histopathology data to achieve more general-
+izable spatial transcriptomic representations.
+6. Conclusion
+In this paper, we introduce PixNet, for densely predict-
+ing the spatial gene expression from histopathology slide
+images.
+Our method generates a dense gene expression
+map from the slide image while applying sparse supervi-
+sion only to spots with available ground truth gene expres-
+sion. This approach enables our method to generalize ef-
+fectively, allowing for accurate gene expression prediction
+across spots of varying scales and sizes. Extensive exper-
+iments demonstrate that our PixNet framework performs
+competitively compared to state-of-the-art gene expression
+prediction methods.
+
+===== PAGE 9 =====
+References
+[1] Nikolas Adaloglou. Intuitive explanation of skip connections
+in deep learning. AI Summer, 23, 2020. 5
+[2] Alma Andersson, Ludvig Larsson, Linnea Stenbeck, Fredrik
+Salm´en, Anna Ehinger, Sunny Wu, Ghamdan Al-Eryani,
+Daniel Roden, Alex Swarbrick, ˚Ake Borg, et al. Spatial de-
+convolution of her2-positive breast tumors reveals novel in-
+tercellular relationships. bioRxiv, pages 2020–07, 2020. 4,
+6
+[3] Suchi Chaturvedi, Mainak Biswas, Sushabhan Sadhukhan,
+and Avinash Sonawane. Role of egfr and fasn in breast can-
+cer progression. Journal of Cell Communication and Signal-
+ing, 17(4):1249–1282, 2023. 7
+[4] Richard J Chen, Tong Ding, Ming Y Lu, Drew FK
+Williamson, Guillaume Jaume, Andrew H Song, Bowen
+Chen, Andrew Zhang, Daniel Shao, Muhammad Shaban,
+et al.
+Towards a general-purpose foundation model for
+computational pathology. Nature medicine, 30(3):850–862,
+2024. 3, 8
+[5] Shanshan Chen, Jing Chen, Xin Hua, Yue Sun, Rui Cui, Jun
+Sha, and Xiaoli Zhu. The emerging role of xbp1 in cancer.
+Biomedicine & Pharmacotherapy, 127:110069, 2020. 7
+[6] Wei-Ting Chen, Ashley Lu, Katleen Craessaerts, Benjamin
+Pavie, Carlo Sala Frigerio, Nikky Corthout, Xiaoyan Qian,
+Jana Lal´akov´a, Malte K¨uhnemund, Iryna Voytyuk, Leen
+Wolfs, Renzo Mancuso, Evgenia Salta, Sriram Balusu, An
+Snellinx, Sebastian Munck, Aleksandra Jurek, Jose Fernan-
+dez Navarro, Takaomi C. Saido, Inge Huitinga, Joakim Lun-
+deberg, Mark Fiers, and Bart De Strooper. Spatial transcrip-
+tomics and in situ sequencing to study alzheimer’s disease.
+Cell, 182(4):976–991.e19, 2020. 2
+[7] Mehdi Cherti, Romain Beaumont, Ross Wightman, Mitchell
+Wortsman, Gabriel Ilharco, Cade Gordon, Christoph Schuh-
+mann, Ludwig Schmidt, and Jenia Jitsev. Reproducible scal-
+ing laws for contrastive language-image learning. In Pro-
+ceedings of the IEEE/CVF Conference on Computer Vision
+and Pattern Recognition, pages 2818–2829, 2023. 2, 8
+[8] Youngmin Chung, Ji Hun Ha, Kyeong Chan Im, and
+Joo Sang Lee. Accurate spatial gene expression prediction
+by integrating multi-resolution features. In Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, pages 11591–11600, 2024. 1, 2, 4, 5, 6, 8
+[9] Ozan Ciga, Tony Xu, and Anne Louise Martel. Self super-
+vised contrastive learning for digital histopathology.
+Ma-
+chine Learning with Applications, 7:100198, 2022. 8
+[10] Jia Deng, Wei Dong, Richard Socher, Li-Jia Li, Kai Li,
+and Li Fei-Fei. Imagenet: A large-scale hierarchical image
+database. In 2009 IEEE conference on computer vision and
+pattern recognition, pages 248–255. Ieee, 2009. 2
+[11] Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov,
+Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner,
+Mostafa Dehghani, Matthias Minderer, Georg Heigold, Syl-
+vain Gelly, Jakob Uszkoreit, and Neil Houlsby. An image
+is worth 16x16 words: Transformers for image recognition
+at scale. In 9th International Conference on Learning Rep-
+resentations, ICLR 2021, Virtual Event, Austria, May 3-7,
+2021. OpenReview.net, 2021. 6
+[12] Matthias Fey and Jan Eric Lenssen. Fast graph representation
+learning with pytorch geometric.
+CoRR, abs/1903.02428,
+2019. 5
+[13] Aniruddha Ganguly, Debolina Chatterjee, Wentao Huang,
+Jie Zhang, Alisa Yurovsky, Travis Steele Johnson, and Chao
+Chen. Merge: Multi-faceted hierarchical graph-based gnn
+for gene expression prediction from whole slide histopathol-
+ogy images. In Proceedings of the Computer Vision and Pat-
+tern Recognition Conference, pages 15611–15620, 2025. 2,
+5, 6, 8
+[14] Bryan
+He,
+Ludvig
+Bergenstr˚ahle,
+Linnea
+Stenbeck,
+Abubakar Abid,
+Alma Andersson,
+Ake Borg,
+Jonas
+Maaskola, Joakim Lundeberg, and James Zou. Integrating
+spatial gene expression and breast tumour morphology via
+deep learning. Nature Biomedical Engineering, 4:1–8, 2020.
+1, 2, 4, 5, 6, 7, 8
+[15] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun.
+Deep residual learning for image recognition. pages 770–
+778, 2016. 2, 6
+[16] Sheng He, Rina Bao, P Ellen Grant, and Yangming Ou. U-
+netmer: U-net meets transformer for medical image segmen-
+tation. arXiv preprint arXiv:2304.01401, 2023. 2
+[17] Gao Huang, Zhuang Liu, Laurens van der Maaten, and Kil-
+ian Weinberger. Densely connected convolutional networks.
+2017. 2
+[18] Zexin Ji, Beiji Zou, Xiaoyan Kui, Pierre Vera, and Su Ruan.
+Deform-mamba network for mri super-resolution.
+In In-
+ternational Conference on Medical Image Computing and
+Computer-Assisted Intervention, pages 242–252. Springer,
+2024. 2
+[19] Yanhui Jiang, Lewei Yang, Ling Jiang, Wenyan Yu, Zhong-
+wen Jin, Yeqing Qiu, Yifeng Liao, Jihong Liu, and Hongyu
+Zhang. X-box binding protein 1 is a potential immunother-
+apy target in ovarian cancer.
+Frontiers in Genetics, 13:
+818917, 2022. 7
+[20] Masum Shah Junayed, Afsana Ahsan Jeny, Sheida Nabavi,
+and Ion Mandoiu.
+A fused transformer-based model for
+gene expression prediction using histopathology images. In
+2024 IEEE International Conference on Bioinformatics and
+Biomedicine (BIBM), pages 4942–4949. IEEE, 2024. 5, 6, 8
+[21] Thomas N Kipf and Max Welling. Semi-supervised classi-
+fication with graph convolutional networks. arXiv preprint
+arXiv:1609.02907, 2016. 2
+[22] Bo Li, Yong Zhang, Qing Wang, Chengyang Zhang, Men-
+gran Li, Guangyu Wang, and Qianqian Song. Gene expres-
+sion prediction from histology images via hypergraph neural
+networks. Briefings in Bioinformatics, 25(6):bbae500, 2024.
+5, 6, 8
+[23] Ilya Loshchilov and Frank Hutter. Decoupled weight decay
+regularization. arXiv preprint arXiv:1711.05101, 2017. 5
+[24] Javier A Menendez and Ruth Lupu.
+Fatty acid synthase
+(fasn) as a therapeutic target in breast cancer. Expert opinion
+on therapeutic targets, 21(11):1001–1016, 2017. 7
+[25] Kseniia S Orobets and Andrey L Karamyshev. Amyloid pre-
+cursor protein and alzheimer’s disease. International journal
+of molecular sciences, 24(19):14794, 2023. 7
+
+===== PAGE 10 =====
+[26] Minxing Pang, Kenong Su, and Mingyao Li.
+Leverag-
+ing information in spatial transcriptomics to predict super-
+resolution gene expression from histology images in tumors.
+BioRxiv, pages 2021–11, 2021. 1, 2, 5, 6, 8
+[27] Adam Paszke, Sam Gross, Francisco Massa, Adam Lerer,
+James Bradbury, Gregory Chanan, Trevor Killeen, Zem-
+ing Lin, Natalia Gimelshein, Luca Antiga, Alban Desmai-
+son, Andreas K¨opf, Edward Z. Yang, Zachary DeVito, Mar-
+tin Raison, Alykhan Tejani, Sasank Chilamkurthy, Benoit
+Steiner, Lu Fang, Junjie Bai, and Soumith Chintala. Pytorch:
+An imperative style, high-performance deep learning library.
+In Advances in Neural Information Processing Systems 32:
+Annual Conference on Neural Information Processing Sys-
+tems 2019, NeurIPS 2019, December 8-14, 2019, Vancouver,
+BC, Canada, pages 8024–8035, 2019. 5
+[28] Mingcheng Qu, Yuncong Wu, Donglin Di, Anyang Su,
+Tonghua Su, Yang Song, and Lei Fan.
+Boundary-guided
+learning for gene expression prediction in spatial transcrip-
+tomics. In 2024 IEEE International Conference on Bioin-
+formatics and Biomedicine (BIBM), pages 445–450. IEEE,
+2024. 5, 6, 8
+[29] Charlie Saillard, Rodolphe Jenatton, Felipe Llinares-L´opez,
+Zelda Mariet, David Cahan´e, Eric Durand, and Jean-Philippe
+Vert. H-optimus-0, 2024. 8
+[30] Jun Shi, Hongyu Kan, Shulan Ruan, Ziqi Zhu, Minfan Zhao,
+Liang Qiao, Zhaohui Wang, Hong An, and Xudong Xue. H-
+denseformer: An efficient hybrid densely connected trans-
+former for multimodal tumor segmentation. In International
+Conference on Medical Image Computing and Computer-
+Assisted Intervention, pages 692–702. Springer, 2023. 2
+[31] Wenzhe Shi, Jose Caballero, Ferenc Husz´ar, Johannes Totz,
+Andrew P Aitken, Rob Bishop, Daniel Rueckert, and Zehan
+Wang. Real-time single image and video super-resolution
+using an efficient sub-pixel convolutional neural network. In
+Proceedings of the IEEE conference on computer vision and
+pattern recognition, pages 1874–1883, 2016. 4
+[32] Zhihao Wang, Jian Chen, and Steven CH Hoi. Deep learn-
+ing for image super-resolution: A survey. IEEE transactions
+on pattern analysis and machine intelligence, 43(10):3365–
+3387, 2020. 3
+[33] Ronald Xie, Kuan Pang, Sai Chung, Catia Perciani, Sonya
+MacParland, Bo Wang, and Gary Bader. Spatially resolved
+gene expression prediction from histology images via bi-
+modal contrastive learning. Advances in Neural Information
+Processing Systems, 36:70626–70637, 2023. 1, 2, 5, 6, 8
+[34] Shuailin Xue, Fangfang Zhu, Jinyu Chen, and Wenwen
+Min.
+Inferring single-cell resolution spatial gene expres-
+sion via fusing spot-based spatial transcriptomics, location,
+and histology using gcn. Briefings in Bioinformatics, 26(1):
+bbae630, 2025. 5, 6, 8
+[35] Yan Yang, Md Hossain, Eric Stone, and Shafin Rahman.
+Exemplar guided deep neural network for spatial transcrip-
+tomics analysis of gene expression prediction. 2022. 1, 2, 5,
+6, 8
+[36] Yan Yang, Md Zakir Hossain, Xuesong Li, Shafin Rahman,
+and Eric Stone. Spatial transcriptomics analysis of zero-shot
+gene expression prediction. In International Conference on
+Medical Image Computing and Computer-Assisted Interven-
+tion, pages 492–502. Springer, 2024. 1, 5, 6, 8
+[37] Yan Yang, Md Zakir Hossain, Eric Stone, and Shafin Rah-
+man. Spatial transcriptomics analysis of gene expression pre-
+diction using exemplar guided graph neural network. Pattern
+Recognition, 145:109966, 2024. 1, 2, 5, 6, 8
+[38] Yuansong Zeng, Zhuoyi Wei, Weijiang Yu, Rui Yin, Yuchen
+Yuan, Bingling Li, Zhonghui Tang, Yutong Lu, and Yue-
+dong Yang. Spatial transcriptomics prediction from histol-
+ogy jointly through transformer and graph neural networks.
+Briefings in Bioinformatics, 23(5), 2022. 2
+[39] Daiwei Zhang, Amelia Schroeder, Hanying Yan, Haochen
+Yang, Jian Hu, Michelle YY Lee, Kyung S Cho, Katalin
+Susztak, George X Xu, Michael D Feldman, et al. Infer-
+ring super-resolution tissue architecture by integrating spa-
+tial transcriptomics with histology.
+Nature biotechnology,
+42(9):1372–1377, 2024. 2, 5, 8
+[40] Zhi-dong Zhou, Christine Hui-shan Chan, Quan-hong Ma,
+Xiao-hong Xu, Zhi-cheng Xiao, and Eng-King Tan.
+The
+roles of amyloid precursor protein (app) in neurogenesis: Im-
+plications to pathogenesis and therapy of alzheimer disease.
+Cell adhesion & migration, 5(4):280–292, 2011. 7
+[41] Wenhui Zhu, Xiwen Chen, Peijie Qiu, Mohammad Farazi,
+Aristeidis Sotiras, Abolfazl Razi, and Yalin Wang. Selfreg-
+unet: Self-regularized unet for medical image segmenta-
+tion. In International Conference on Medical Image Com-
+puting and Computer-Assisted Intervention, pages 601–611.
+Springer, 2024. 2
+[42] Eric Zimmermann, Eugene Vorontsov, Julian Viret, Adam
+Casson, Michal Zelechowski, George Shaikovski, Neil
+Tenenholtz, James Hall, David Klimstra, Razik Yousfi,
+et al. Virchow2: Scaling self-supervised mixed magnifica-
+tion models in pathology. arXiv preprint arXiv:2408.00738,
+2024. 8

@@ -1,0 +1,2193 @@
+
+===== PAGE 1 =====
+Briefings in Bioinformatics, 2024, pp. 1–12
+doi: DOI HERE
+Advance Access Publication Date: Day Month Year
+Paper
+PAPER
+SpaDiT: Diffusion Transformer for Spatial Gene
+Expression Prediction using scRNA-seq
+Xiaoyu Li,1# Fangfang Zhu2# and Wenwen Min
+1∗
+1the School of Information Science and Engineering, Yunnan University,
+650091, Kunming, Yunnan, China and 2College of Nursing Health
+Sciences, Yunnan Open University, 650599, Kunming, China
+∗Corresponding author:minwenwen@ynu.edu.cn and #Co-first authors
+FOR PUBLISHER ONLY Received on Date Month Year; revised on Date Month Year; accepted on Date Month Year
+Abstract
+The rapid development of spatial transcriptomics (ST) technologies is revolutionizing our understanding of the spatial
+organization of biological tissues. Current ST methods, categorized into next-generation sequencing-based (seq-based) and
+fluorescence in situ hybridization-based (image-based) methods, offer innovative insights into the functional dynamics of
+biological tissues. However, these methods are limited by their cellular resolution and the quantity of genes they can
+detect. To address these limitations, we propose SpaDiT, a deep learning method that utilizes a diffusion generative
+model to integrate scRNA-seq and ST data for the prediction of undetected genes. By employing a Transformer-based
+diffusion model, SpaDiT not only accurately predicts unknown genes but also effectively generates the spatial structure of
+ST genes. We have demonstrated the effectiveness of SpaDiT through extensive experiments on both seq-based and image-
+based ST data. SpaDiT significantly contributes to ST gene prediction methods with its innovative approach. Compared
+to eight leading baseline methods, SpaDiT achieved state-of-the-art performance across multiple metrics, highlighting its
+substantial bioinformatics contribution.
+Key words: diffusion model, spatial transcriptomics data, scRNA-seq data, Transformer
+Introduction
+Single-cell RNA sequencing (scRNA-seq) can represent the
+entire transcriptome of a specific cell in an organ, providing
+an excellent perspective for in-depth study of various behaviors
+and mechanisms between cells [1].
+However,
+since scRNA-
+seq must undergo sample tissue dissociation, it also leads to
+the inability of scRNA-seq to capture the spatial distribution
+and spatial information of cells,
+which is often crucial for
+understanding the complex physiological processes between
+cells [2]. Therefore, spatial transcriptomics (ST) has emerged
+as an advanced technology that can retain spatial location
+information while measuring gene expression in tissue or cell
+samples [3]. This technology enables researchers to parse the
+spatial distribution of gene expression in tissues, enhancing the
+understanding of cell types, functions, interactions, and key
+details in development, disease, and biological processes.
+At present, ST technology can be mainly divided into two
+categories: Based on next-generation sequencing technology
+(seq-based): such as 10x Visium [4], Slide-seq [5] and Stereo-
+seq [6], transcriptome-wide gene expression within a spatial
+point can be detected.
+Fluorescence in situ hybridization
+(image-based): such as seqFish [7] and MERFISH [8], can
+measure thousands of genes at the resolution of single cells,
+but they usually lack full transcriptome coverage, resulting
+in only a few hundred genes in actual sequencing. Although
+these two technologies can detect gene expression in the whole
+transcriptome range, their capture rate is low due to their
+resolution [9, 10].
+The current solution mainly focuses on
+increasing the capture rate and predicting uncaptured genes
+by using scRNA-seq data to enhance ST data to improve its
+resolution [11, 12, 13].
+In recent years, a variety of methods have been proposed
+to use scRNA-seq data to improve the resolution of ST
+data and predict uncaptured genes. These methods, such as
+Tangram [14], scVI [15], SpaGE [16], stplus [17], SpaOTsc [18],
+novoSpaRc [19], SpatialScope [20], stDiff [21]. They all assume
+that scRNA-seq data and ST data have similar expression
+distributions, and they identify the similarity between scRNA-
+seq cells and ST cells by detecting the expression patterns of
+shared genes. Then, these methods use similar scRNA-seq cells
+to predict the unmeasured part of ST data. However, due to
+the sparse nature of scRNA-seq and ST data, and the reliance
+on common genes to calculate similarity, this poses a huge
+challenge to how to align the two data. In addition, simply using
+scRNA-seq as a reference for ST data prediction is difficult
+to avoid introducing batch bias of scRNA, which increases the
+difficulty of predicting unknown genes [22].
+In this paper, we introduce a novel method named SpaDiT,
+which uses a conditional diffusion model to understand and
+generate unmeasured gene expression in ST data. Although
+© The Author 2024. Published by Oxford University Press. All rights reserved. For permissions, please e-mail:
+journals.permissions@oup.com
+1
+arXiv:2407.13182v1  [cs.LG]  18 Jul 2024
+
+===== PAGE 2 =====
+2
+Xiaoyu Li et al.
+Table 1. The list of ten paired scRNA-seq and spatial transcriptomic datasets. The first five ST datasets are image-based, the next five
+datasets are sequencing-based. HPR: hypothalamic preoptic region; PMC: primary motor cortex.
+Platform
+Number of Cells/Spots
+Number of Genes
+Prepro. Cells/Spots
+Prepro. Genes
+Dropout Rate
+Datasets
+Tissue
+GEO ID
+SC
+ST
+SC (Cells)
+ST (Spots)
+SC (Genes)
+ST (Genes)
+SC (Cells)
+ST (Spots)
+SC (Genes)
+ST (Genes)
+SC
+ST
+MH [26]
+mouse hippocampus
+GSE158450
+10X Chromium
+seqFish
+8596
+3585
+16384
+249
+8584
+3585
+1260
+249
+80.3%
+6.3%
+MHPR [27]
+mouse HPR
+GSE113576
+10X Chromium
+MERFISH
+31299
+4975
+18646
+154
+31297
+4975
+1939
+153
+73.7%
+62.2%
+ML [28]
+mouse liver
+GSE109774
+Smart-seq2
+seqFISH
+981
+2177
+17533
+19532
+887
+2177
+2279
+569
+73.2%
+75.4%
+MG [28]
+mouse gastrulation
+GSE15677
+10X Chromium
+seqFISH
+4651
+8425
+19103
+351
+4651
+8425
+1945
+345
+58.6%
+74.1%
+MVC [29]
+mouse visual cortex
+-
+Smart-seq
+STARmap
+14249
+1549
+34041
+1020
+14249
+1549
+3774
+844
+58.2%
+76.2%
+MHM [30]
+mouse hindlimb muscle
+GSE161318
+10X Chromium
+10X Visium
+4816
+995
+15460
+33217
+4809
+995
+1667
+416
+80.3%
+68.9%
+HBC [31]
+human breast cancer
+CID3586
+10X Chromium
+10X Visium
+6178
+4784
+21164
+28402
+6143
+4784
+625
+125
+76.6%
+70.6%
+ME [32]
+mouse embryo
+GSE160137
+10X Chromium
+10X Visium
+3415
+198
+19374
+53574
+3415
+198
+2163
+540
+61.1%
+62.3%
+MPMC [33]
+mouse PMC
+-
+10X Chromium
+10X Visium
+3499
+9852
+24340
+24518
+3499
+9852
+2544
+636
+70.6%
+81.7%
+MC [34]
+mouse cerebellum
+SCP948
+10X Chromium
+Slide-seqV2
+26252
+41674
+24409
+23264
+26252
+41674
+822
+205
+79.5%
+83.9%
+diffusion models have made significant contributions in the field
+of computer vision and have shown excellent performance in the
+field of protein or drug generation [23, 24, 25], their application
+in genomics is still relatively limited. The goal of SpaDiT is
+to utilize scRNA-seq as a prior input in the diffusion model
+to help the model understand the relationship between gene
+expressions, thereby guiding the model to generate genes that
+are not measured in ST data. SpaDiT utilizes genes in single
+cells as unique identifiers by incorporating them in the diffusion
+model along with the corresponding genes in ST, and employs
+the Transformer-based diffusion model to enhance the model’s
+prediction accuracy of specific genes.
+We conduct a comprehensive performance evaluation on
+10 ST datasets based on different sequencing technologies,
+different tissues,
+and different sample sizes,
+and compare
+them with the current state of the art (SOTA) methods. The
+results show that our model achieves the best performance
+on all five evaluation indicators, and the correlation between
+predicted gene expression and actual gene expression shows the
+best accuracy. This shows that SpaDiT can effectively make
+predictions when predicting unmeasured gene expression in ST
+data. In addition, the genes predicted by our model have a high
+spatial similarity with the genes in the actual ST data. For
+the spatial expression patterns of each data set, our model can
+accurately predict and clearly divide the spatial boundaries.
+This demonstrates SpaDiT’s ability to predict ST data gene
+expression and provide subsequent analysis.
+Materials and methods
+Datasets and pre-processing
+In this paper, we collected ten benchmark datasets (scRNA
+sequencing and spatial transcriptomics data) from different
+tissues of various organisms. As illustrated in Table 1, these
+datasets originate from various biological organizations and
+utilize differing sequencing platforms and technologies. They
+also vary in sample sizes, number of spatially measured genes,
+and missing data rates. Specifically, the sequencing platforms
+for single-cell data in these datasets include 10X Chromium,
+Smart-seq, and Smart-seq2. For spatial transcriptomics data,
+the platforms are seqFISH, MERFISH, 10X Visium, STARmap,
+and Slide-seqV2. These datasets are derived from different
+biological tissues, primarily from mouse and human breast
+cancer tissue sections.
+For the implementation of SpaDiT, we adhered to the data
+preprocessing protocols as established in prior studies [35].
+More specifically, we first removed genes with no expression
+from both the single-cell and spatial transcriptomics datasets.
+Subsequently, we screened the remaining genes to identify those
+that were highly expressed, using criteria based on the number
+of genes in each dataset.
+We partitioned the processed data into training, validation,
+and test sets with ratios of 7:2:1, respectively. These subsets are
+mutually independent, with the test set being strictly separate
+from the training set. All reported results were derived solely
+from evaluations on the test set.
+The architeture of SpaDiT
+SpaDiT is a conditional diffusion-based deep generative model
+that enhances spatial transcriptomics data by leveraging single-
+cell RNA sequencing (scRNA-seq) data as prior information,
+aiming to accurately predict the expression of unmeasured
+or unknown genes. As illustrated in the Figure 1, SpaDiT
+takes two types of input data:
+a gene expression matrix
+from spatial transcriptomics data and another from scRNA-
+seq data.
+Utilizing a conditional diffusion model,
+SpaDiT
+uses
+scRNA-seq
+data
+as
+a
+conditioning
+factor
+to
+guide
+the model through the diffusion and denoising processes,
+thereby generating the targeted gene expression profiles for
+the spatial transcriptomic data.
+The SpaDiT architecture
+comprises three key modules: the Latent Embedding module
+for
+processing
+spatial
+transcriptomic
+data,
+the
+Condition
+Embedding module for processing scRNA-seq data, and the
+core network architecture: Diffusion with Transformer, which
+facilitates the integration and generation of data.
+In the
+following sections,
+we will introduce the main modules of
+SpaDiT.
+Latent Embedding in SpaDiT
+In the proposed SpaDiT, the latent embedding module is
+crucial. Instead of operating directly on real data, we work
+within an efficient,
+low-dimensional latent space,
+which is
+better suited for likelihood-based generative models. Therefore,
+we utilize an encoder to map the high-dimensional input data
+to a low-dimensional representation, and we train the diffusion
+model within this latent space.
+Notably, our proposed method involves two types of data
+input: spatial transcriptomics data (Xst) and scRNA-seq data
+(Xsc). The genes in Xsc are divided into shared genes (Gshare)
+with spatial transcriptomics data and unique genes (Gunique).
+For the input of Latent Embedding, we define it as follows: for
+each sample (i,e., gene) xi
+st ∈Xst in the spatial transcription
+data, we integrate it with the scRNA-seq data xi
+sc ∈Xsc, where
+xi
+st and xi
+sc in Gshare are utilized as inputs. In latent embedding,
+we employ a simple feed-forward network to project xi
+st and xi
+sc
+into the same dimensional space, concatenating the projected
+ˆxi
+st and ˆxi
+sc as the output of the latent embedding, that is,
+xϕ = ˆxi
+st ⊕ˆxi
+sc.
+Condition Embedding in SpaDiT
+The condition embedding module leverages scRNA-seq data
+as a conditioning factor in our model,
+integrating it into
+the diffusion process to guide the model in generating the
+
+===== PAGE 3 =====
+SpaDiT
+3
+A. Training Phase of SpaDiT
+FFN
+FFN
+Flash
+Attention
+Conditioning
+Input Tensor
+Layer Norm
+Scale, Shift
+Scale
+Layer Norm
+Scale, Shift
+Potinwise
+Feedforward
+Feed Forward
+Output Layer
+B. Inference Phase of SpaDiT
+Multi-Head
+Self-
+Attention
+Cells
+genes
+Predicted genes
+Spots
+Mask Nonzero   
+Mask zero   
+:Condition Embedding
+:Latent Embedding
+Shared genes
+Spots
+Diffusion
+Process
+Cells
+genes
+FFN
+Flash
+Attention
+Conditioning
+Input Tensor
+Layer Norm
+Scale, Shift
+Multi-Head
+Self-
+Attention
+Scale
+Layer Norm
+Scale, Shift
+Potinwise
+Feedforward
+Feed Forward
+Output Layer
+Prediction noise
+FFN
+:N x Backbone Blocks
+:N x Backbone Blocks
+Diffusion Phase
+Input Data
+Reverse Phase
+Fig. 1. The architecture of SpaDiT. There are three parts in total: latent embedding, conditional embedding and network backbone. (A) is the training
+process where each gene is considered as a sample, and (B) is the inference process.
+required
+gene
+expression.
+Given
+that
+scRNA-seq
+data
+is
+high-dimensional, directly using the entire matrix as input
+would result in the curse of dimensionality. Consequently, the
+condition embedding module utilizes an attention mechanism
+to convert the high-dimensional single-cell data matrix into a
+lower-dimensional representation. This reduces the data to a
+low-dimensional, high-expression latent representation, which
+is then used as a conditional mechanism in subsequent diffusion
+model training.
+For the input of Condition Embedding, the high-dimensional
+input matrix Xsc is processed using Flash-attention to compute
+a lower-dimensional representation Xψ as output:
+Q = XscW Q, K = XscW K, V = XscW V ,
+Xψ = softmax
+ 
+QΦK(K)T
+√dk
+!
+ΦV (V )
+(1)
+Where:
+•
+W Q, W K, and W V are projection matrices that transform
+X into queries Q, keys K, and values V , respectively.
+•
+ΦK and ΦV
+are the dimensionality reduction functions
+applied to K and V , resulting in lower-dimensional.
+•
+dk is the dimension of K after projection, used to scale the
+softmax computation.
+•
+The softmax function is applied over each row, normalizing
+the dot product scores into a probability distribution used
+to compute the weighted sum of values ΦV (V ).
+Diffusion with Transformer in SpaDiT
+The backbone network of our proposed SpaDiT is Diffusion
+Transformers (DiTs), a new architecture for diffusion models.
+For the backbone network model, we refer to previous work [36]
+and make modifications based on the challenges we encounter.
+Our backbone model has two types of input: xϕ, representing
+latent embedding, and xψ, representing condition embedding.
+We initialize each residual block in the backbone network as an
+identity function and incorporate the condition embedding into
+the backbone. At each layer, we also perform scaling regression
+on all residual connections within the backbone, facilitating
+rapid model convergence.
+After
+the
+final
+DiT
+block,
+the
+gene
+expression
+token
+sequence needs to be decoded into output noise prediction
+and output diagonal covariance prediction. The shapes of both
+outputs are identical to the input in the original space, and
+a standard linear decoder is employed to achieve this. Finally,
+
+===== PAGE 4 =====
+4
+Xiaoyu Li et al.
+the decoded tokens are rearranged to match the layout of the
+original expression, yielding the predicted noise and covariance.
+Training phase in SpaDiT
+Here in, SpaDiT works with two types of input data: the
+spatial transcriptomics data Xst = {xi
+st}n
+i ∈Rn×p and scRNA-
+seq data Xsc = {xj
+sc}m
+j
+∈Rm×q. Among them, n and p
+respectively represent the number of genes and the number of
+spots in spatial transcriptomics data, and m and q respectively
+represent the number of genes and the number of cells in
+scRNA-seq data.
+The training phase of SpaDiT is shown in the Figure 1 (A).
+We first mask the genes of the original spatial transcriptomics
+data according to a certain proportion, where the mask is
+divided into two parts: the part with an expression value of
+zero and the part with an expression value that is not zero.
+The input tensor of the training phase is defined as follows:
+x0 = ˆxi
+st ⊕ˆxi
+sc
+(2)
+where ˆxi
+st and ˆxi
+sc are projection of xi
+st and xi
+sc by a simple
+feed-forward network.
+In the realm of DDPMs [23, 37], consider the task of learning
+a model distribution pθ(x0) that closely approximates a given
+data distribution q(x0). Suppose we have a sequence of latent
+variables xt for t = 1, . . . , T , existing within the same sample
+space as x0, which is denoted as X. DDPMs are latent variable
+models that are composed of two primary processes: the forward
+process and the reverse process. The forward process is defined
+by a Markov chain, as follows:
+q(x1:T |x0) :=
+T
+Y
+t=1
+q(xt|xt−1),
+(3)
+where q(xt|xt−1) := N(√1 −βtxt−1, and the variable βt is a
+small positive constant indicative of a noise level. The sampling
+of xt can be described by the closed-form expression q(xt|x0) =
+N (xt; √αtx0, (1 −αt)I), where ˆαt := 1 −βt and αt is the
+cumulative product αt := Qt
+i=1 ˆαi. Consequently, xt is given
+by the equation xt = √αtx0 + (1 −αt)ϵ, with ϵ ∼N(0, I). In
+contrast, the reverse process aims to denoise xt to retrieve x0,
+a process which is characterized by the ensuing Markov chain:
+pθ(x0:T ) := p(xT )
+T
+Y
+t=1
+pθ(xt−1|xt),
+xT ∼N (0, I),
+pθ(xt−1|xt) := N(xt−1; µθ(xt, t), σ2
+θ(xt, t)I),
+µθ(xt, t) =
+1
+αt
+
+xt −
+βt
+√1 −αt
+ϵθ(xt, t)
+
+,
+σθ(xt, t) = β1/2
+t
+(4)
+where ϵθ(xt, t) is a trainable denoising function and
+βt =
+
+
+
+1−¯
+αt−1
+1−¯
+αt β1,
+for t > 1,
+β1,
+for t = 1.
+(5)
+SpaDiT aims to help models understand and estimate the
+expression of missing genes in ST data by utilizing scRNA-seq
+data as prior information, thereby enabling the model to better
+predict gene expression from ST data. We represent the data of
+the condition as xc
+0 = xψ. Therefore, our goal is to estimate the
+posterior p((En,1 −m1) ⊙((En,1 −m2) ⊙x0))|xc
+0), where En,1
+is an all-1 matrix n × 1 with dimension , m1, m2 ∈{0, 1}n×1 is
+an element-wise indicator, representing the zero and non-zero
+parts of the mask respectively.
+We also denote predicted genes as x∗
+t , where t is the time
+step. Therefore, the goal of our SpaDiT conditional mechanism
+is to estimate the probability:
+pθ(x∗
+t−1|x∗
+t , xc
+0).
+(6)
+In order to better use the scRNA-seq data as a priori conditions
+for the diffusion model to perform prediciting gene expression,
+we transform the Equation 3 and Equation 4 into:
+pθ(x∗
+0:T |xc
+0) := p(x∗
+T )
+T
+Y
+t=1
+pθ(x∗
+t−1|x∗
+t , xc
+0), x∗
+T ∼N(0, I).
+pθ(x∗
+t−1|x∗
+t , xc
+0) := N(x∗
+t−1; µθ(x∗
+t , t|xc
+0), σθ(x∗
+t , t|xc
+0)I).
+(7)
+We can optimize the Equation 7 parameters by minimizing
+the variational lower bound:
+Eq
+
+−log pθ(x0 | xc
+0)
+
+≤Eq
+
+−log pθ(x0:T | xc
+0)
+q(x1:T | x0)
+
+.
+(8)
+Also we can get a simplified training objective:
+Ex0∼q(x0),ϵ∼N (0,I),t∥(ϵ −ϵθ(x∗
+t , t|xc
+0))∥2
+2.
+(9)
+We
+provide
+the
+training
+procedure
+of
+SpaDiT
+in
+Algorithm 1.
+Algorithm 1 Training of SpaDiT
+1: Input: ST data Xst = {xi
+st}n
+i
+∈Rn×p, SC data Xsc =
+{xj
+sc}m
+j
+∈Rm×q, Number of iterations Niter, {αt}T
+t=1, T
+2: Output: Trained denoising function ϵθ
+3: for i = 1 to Niter do
+4:
+xi ∼Xst, xj ∼Xsc
+5:
+x0 = Φ(xi, xj), xc
+0 = ψ(Xsc), where[i, j] ∈(Xst ∩Xsc)
+6:
+t ∼Uniform({1, . . . , T })
+7:
+ϵ ∼N (0, I)
+8:
+Take gradient step on
+∇θ∥
+ ϵ −ϵθ(√αtx∗
+0 +
+√
+1 −αtϵ, t|xc
+0)
+
+∥2
+2
+9: end for
+Inference phase in SpaDiT
+We
+focus
+on
+improving
+the
+conditional
+diffusion
+model
+characterized by the inverse process described in Equation 7.
+Our goal is to accurately model the conditional distribution
+p
+ x∗
+t−1|x∗
+t , xc
+0
+
+without
+resorting
+to
+approximations
+.
+To
+achieve this, we adapt the parameterization of DDPM from
+Equation
+4
+for
+the
+conditional
+setting.
+We
+introduce
+a
+conditional denoising function ϵθ
+:
+(X ∗× R | X c)
+→
+X ∗
+accepts conditional observation value xc
+0 as input parameter.
+On this basis, we use ϵθ for parameterization, as follows:
+µθ(x∗
+t , t|xc
+0) = µ
+ x∗
+t , t, sθ
+ x∗
+t , t|xc
+0
+
+,
+σθ(x∗
+t , t|xc
+0) = σ
+ x∗
+t , t
+
+,
+(10)
+where µ and σ are defined in Equation 4. Utilizing the function
+ϵθ and the data x0, we can simulate samples of x∗
+0 by employing
+the reverse process outlined in Equation 7. We provide the
+inference procedure of SpaDiT in Algorithm 2.
+
+===== PAGE 5 =====
+SpaDiT
+5
+Fig. 2. Performance evaluation is based on the comprehensive metric of Accuracy Score (AS) on ten real paired ST and scRNA-seq datasets. Accuracy
+Score (AS) is a comprehensive indicator for evaluating model performance. The definition can be found in subsection 2.3. The central line represents the
+median, the box depicts the interquartile range, whiskers extend to 1.5 times the interquartile range, and dots represent the AS of individual datasets.
+Algorithm 2 Inference of SpaDiT
+1: Input: Gaussian Noise N (0, I), SC data Xsc = {xi
+sc}m
+i
+∈
+Rm×q
+2: Output: Predicted gene expression x0
+3: for t = T to 1 do
+4:
+xc
+t = ψ(Xsc)
+5:
+Sample xt, ϵt ∼N(0, I)
+6:
+xt = Φ(xt, xi
+sc), where[i] ∈(Xst ∩Xsc)
+7:
+xt−1 ←
+1
+√αt
+
+xt −
+1−αt
+√1−αt ϵθ(xt, t|xc
+t)
+
++ √βtεt
+8:
+t ←t −1
+9: end for
+Evaluation metrics
+To evaluate the performance of SpaDiT and other baseline
+methods, we use five evaluation indicators: Pearson Correlation
+Coefficient
+(PCC),
+Structural
+Similarity
+Index
+Measure
+(SSIM), Root Mean Square Error (RMSE), Jensen-Shannon
+Divergence (JS) and Accuracy Score (AS) to evaluate the gene
+prediction performance of different methods on ten datasets.
+The specific definition of the evaluation metrics can be found
+in Supplementary Materials.
+Baselines
+We compared the performance of SpaDiT to eight baseline
+methods, with data processing procedures (e.g., normalization
+and scaling) consistent for each method. The specific baselines
+are as follows:
+•
+Tangram [14]: It is a method that can map any type of
+sc/snRNA-seq data,
+including multimodal data such as
+those from SHARE-seq, which can be used to reveal spatial
+patterns of chromatin accessibility. We refer to the guide
+on the Tangram GitHub repository: https://github.com/
+broadinstitute/Tangram.
+•
+scVI [15]:
+It is a scalable framework for probabilistic
+representation and analysis of single-cell gene expression.
+We refer to the guide on the scVI GitHub repository: https:
+//github.com/YosefLab/scVI.
+•
+SpaGE
+[16]:
+It
+is
+a
+method
+that
+integrates
+spatial
+and scRNA-seq datasets to predict whole-transcriptome
+expressions in their spatial configuration. We refer to the
+guide on the SpaGE GitHub repository: https://github.
+com/tabdelaal/SpaGE.
+•
+stPlus [17]: It is a reference-based method that leverages
+information
+in
+scRNA-seq
+data
+to
+enhance
+spatial
+transcriptomics. We refer to the guide on the stPlus GitHub
+repsitory: https://github.com/xy-chen16/stPlus.
+•
+SpaOTsc [18]: It is a method that relies on structured
+optimal transfer to recover the spatial properties of scRNA-
+seq data by exploiting spatial measurements of a relatively
+small number of genes.
+We refer to the guide on the
+SpaOTsc
+GitHub
+repository:
+https://github.com/zcang/
+SpaOTsc.
+•
+novoSpaRc [19]: It is a method that reconstructs tissue
+based
+on
+this
+hypothesis
+and
+optionally
+improves
+the
+reconstruction by including a reference map of marker genes.
+We refer to the guide on the SpaOTsc GitHub repository:
+https://github.com/rajewsky-lab/novosparc.
+•
+SpatialScope [20]:
+It is a method to integrate scRNA-
+seq reference data and ST data using deep generative
+models. We refer to the guide on the SpatialScope GitHub
+repository: https://github.com/YangLabHKUST/SpatialScope.
+•
+stDiff [21]: It is a method that capturing gene expression
+abundance relationships in scRNA-seq data through two
+Markov processes.
+We refer to the guide on the stDiff
+GitHub
+repository:
+https://github.com/fdu-wangfeilab/
+stDiff
+
+===== PAGE 6 =====
+6
+Xiaoyu Li et al.
+Table 2. Comparison with baseline methods on the ten paired scRNA-seq and ST datasets.
+PCC↑
+MG
+MH
+MHPR
+MVC
+MHM
+HBC
+ME
+MPMC
+MC
+ML
+Tangram [14]
+0.458±0.203
+0.523±0.116
+0.683±0.012
+0.623±0.117
+0.536±0.053
+0.703±0.142
+0.503±0.025
+0.727±0.026
+0.745±0.003
+0.714±0.056
+scVI [15]
+0.476±0.157
+0.446±0.157
+0.691±0.143
+0.594±0.023
+0.511±0.117
+0.656±0.005
+0.496±0.007
+0.716±0.014
+0.736±0.015
+0.637±0.001
+SpaGE [16]
+0.526±0.114
+0.438±0.163
+0.653±0.063
+0.603±0.107
+0.545±0.226
+0.639±0.025
+0.512±0.013
+0.753±0.066
+0.769±0.011
+0.653±0.007
+stPlus [17]
+0.503±0.233
+0.401±0.037
+0.483±0.231
+0.574±0.059
+0.476±0.007
+0.597±0.111
+0.526±0.026
+0.689±0.007
+0.701±0.099
+0.699±0.014
+SpaOTsc [18]
+0.522±0.014
+0.485±0.107
+0.657±0.002
+0.629±0.147
+0.496±0.018
+0.587±0.107
+0.547±0.006
+0.734±0.201
+0.738±0.064
+0.723±0.005
+novoSpaRc [19]
+0.563±0.158
+0.567±0.252
+0.613±0.146
+0.656±0.037
+0.515±0.003
+0.647±0.122
+0.569±0.013
+0.756±0.015
+0.756±0.015
+0.766±0.056
+SpatialScope [20]
+0.612±0.143
+0.582±0.183
+0.637±0.031
+0.683±0.114
+0.547±0.103
+0.733±0.183
+0.563±0.056
+0.769±0.022
+0.776±0.006
+0.803±0.014
+stDiff [21]
+0.482±0.021
+0.527±0.013
+0.621±0.007
+0.601±0.043
+0.471±0.009
+0.544±0.021
+0.553±0.014
+0.629±0.011
+0.604±0.019
+0.736±0.099
+SpaDiT (Ours)
+0.657±0.035
+0.621±0.099
+0.770 ±0.043
+0.725±0.106
+0.573±0.083
+0.772±0.057
+0.590±0.146
+0.808±0.043
+0.812±0.039
+0.784±0.096
+SSIM↑
+MG
+MH
+MHPR
+MVC
+MHM
+HBC
+ME
+MPMC
+MC
+ML
+Tangram [14]
+0.355±0.114
+0.541±0.203
+0.681±0.025
+0.653±0.115
+0.388±0.109
+0.656±0.007
+0.521±0.047
+0.889±0.043
+0.789±0.004
+0.689±0.005
+scVI [15]
+0.487±0.155
+0.422±0.128
+0.647±0.121
+0.564±0.025
+0.374±0.115
+0.617±0.028
+0.587±0.013
+0.674±0.012
+0.736±0.006
+0.694±0.014
+SpaGE [16]
+0.503±0.003
+0.403±0.158
+0.631±0.011
+0.611±0.004
+0.401±0.006
+0.588±0.189
+0.513±0.064
+0.653±0.011
+0.667±0.055
+0.703±0.023
+stPlus [17]
+0.533±0.114
+0.367±0.127
+0.657±0.176
+0.656±0.007
+0.426±0.013
+0.638±0.221
+0.479±0.023
+0.627±0.103
+0.693±0.011
+0.736±0.014
+SpaOTsc [18]
+0.547±0.126
+0.503±0.013
+0.701±0.026
+0.637±0.021
+0.484±0.170
+0.626±0.118
+0.601±0.188
+0.663±0.114
+0.718±0.004
+0.688±0.007
+novoSpaRc [19]
+0.587±0.028
+0.537±0.026
+0.713±0.123
+0.631±0.018
+0.477±0.201
+0.633±0.107
+0.622±0.023
+0.726±0.055
+0.726±0.006
+0.705±0.006
+SpatialScope [20]
+0.612±0.016
+0.588±0.014
+0.731±0.054
+0.674±0.026
+0.512±0.122
+0.659±0.055
+0.701±0.022
+0.826±0.014
+0.753±0.014
+0.714±0.003
+stDiff [21]
+0.463±0.017
+0.548±0.118
+0.673±0.013
+0.576±0.007
+0.462±0.017
+0.514±0.012
+0.563±0.017
+0.598±0.019
+0.701±0.023
+0.688±0.017
+SpaDiT (Ours)
+0.632±0.037
+0.574±0.125
+0.738±0.044
+0.689±0.114
+0.495±0.175
+0.717±0.111
+0.688±0.144
+0.781±0.050
+0.787±0.042
+0.751±0.107
+RMSE↓
+MG
+MH
+MHPR
+MVC
+MHM
+HBC
+ME
+MPMC
+MC
+ML
+Tangram [14]
+1.263±0.053
+1.412±0.018
+1.263±0.012
+1.587±0.041
+1.237±0.005
+1.542±0.003
+1.633±0.004
+1.324±0.048
+1.216±0.184
+1.346±0.015
+scVI [15]
+1.155±0.012
+1.363±0.026
+1.374±0.026
+1.327±0.106
+1.213±0.103
+1.378±0.005
+1.581±0.013
+1.207±0.034
+1.179±0.067
+1.411±0.056
+SpaGE [16]
+1.187±0.025
+1.433±0.037
+1.287±0.029
+1.354±0.047
+1.347±0.025
+1.413±0.101
+1.553±0.024
+1.137±0.011
+1.213±0.005
+1.233±0.008
+stPlus [17]
+1.254±0.003
+1.367±0.045
+1.384±0.121
+1.289±0.022
+1.156±0.014
+1.331±0.077
+1.496±0.033
+1.656±0.007
+1.154±0.024
+1.303±0.014
+SpaOTsc [18]
+1.433±0.058
+1.213±0.058
+1.203±0.027
+1.253±0.007
+1.227±0.058
+1.203±0.114
+1.403±0.004
+1.227±0.026
+1.016±0.007
+1.263±0.005
+novoSpaRc [19]
+1.275±0.143
+1.526±0.213
+1.252±0.011
+1.206±0.014
+1.412±0.117
+1.198±0.007
+1.556±0.021
+1.334±0.015
+0.967±0.153
+1.523±0.007
+SpatialScope [20]
+1.019±0.022
+1.288±0.258
+1.201±0.003
+1.009±0.007
+1.217±0.005
+1.102±0.005
+1.483±0.007
+1.104±0.056
+0.863±0.004
+1.343±0.014
+stDiff [21]
+1.326±0.019
+1.325±0.022
+1.081±0.013
+1.219±0.066
+1.312±0.007
+1.217±0.023
+1.561±0.023
+1.326±0.016
+1.224±0.003
+1.223±0.009
+SpaDiT (Ours)
+0.877±0.049
+1.103±0.015
+1.184±0.058
+1.116±0.038
+1.125±0.060
+0.992±0.045
+1.376±0.118
+1.089±0.038
+1.004±0.037
+1.121±0.047
+JS↓
+MG
+MH
+MHPR
+MVC
+MHM
+HBC
+ME
+MPMC
+MC
+ML
+Tangram [14]
+0.477±0.057
+0.254±0.003
+0.458±0.033
+0.343±0.007
+0.502±0.056
+0.397±0.105
+0.803±0.026
+0.403±0.056
+0.547±0.005
+0.347±0.014
+scVI [15]
+0.426±0.088
+0.324±0.147
+0.496±0.011
+0.403±0.001
+0.537±0.113
+0.427±0.089
+0.749±0.015
+0.423±0.115
+0.601±0.014
+0.363±0.047
+SpaGE [16]
+0.437±0.054
+0.272±0.023
+0.511±0.007
+0.387±0.114
+0.528±0.007
+0.415±0.026
+0.882±0.003
+0.374±0.004
+0.617±0.006
+0.403±0.011
+stPlus [17]
+0.481±0.146
+0.288±0.057
+0.503±0.014
+0.399±0.005
+0.488±0.125
+0.439±0.005
+0.814±0.036
+0.393±0.005
+0.576±0.004
+0.423±0.016
+SpaOTsc [18]
+0.513±0.126
+0.334±0.058
+0.411±0.022
+0.403±0.147
+0.503±0.111
+0.411±0.015
+0.792±0.007
+0.417±0.011
+0.463±0.026
+0.311±0.007
+novoSpaRc [19]
+0.488±0.003
+0.401±0.017
+0.389±0.005
+0.412±0.003
+0.496±0.015
+0.429±0.085
+0.683±0.015
+0.401±0.005
+0.431±0.005
+0.401±0.006
+SpatialScope [20]
+0.403±0.002
+0.263±0.174
+0.366±0.007
+0.389±0.008
+0.487±0.026
+0.455±0.002
+0.622±0.150
+0.389±0.107
+0.407±0.014
+0.355±0.014
+stDiff [21]
+0.467±0.001
+0.412±0.015
+0.387±0.021
+0.461±0.011
+0.467±0.021
+0.456±0.011
+0.663±0.017
+0.436±0.022
+0.432±0.063
+0.396±0.007
+SpaDiT (Ours)
+0.346±0.012
+0.246±0.005
+0.337±0.010
+0.369±0.029
+0.463±0.116
+0.381±0.061
+0.549±0.134
+0.356±0.012
+0.371±0.013
+0.421±0.064
+Results
+SpaDiT improves prediction accuracy of
+spatial gene expression
+To
+rigorously
+assess
+the
+SpaDiT
+method’s
+capabilities
+in
+predicting
+gene
+expression,
+we
+conducted
+a
+comparative
+analysis with eight other widely recognized methods in the
+field. We used four key performance metrics, as outlined in
+subsection 2.3, to systematically evaluate both SpaDiT and
+the comparator baseline methods. The evaluation focused on
+computing the mean and variance of these metrics across all
+genes within each dataset. The results are depicted in Table 2.
+Our findings indicate that SpaDiT consistently achieves
+state-of-the-art (SOTA) performance in all four metrics across
+the
+ten
+examined
+datasets.
+However,
+it
+is
+important
+to
+note that in a few cases, SpaDiT slightly lags behind some
+established methods in one particular metric. This deviation
+provides critical insights into scenarios where SpaDiT might be
+further optimized.
+In addition to these traditional metrics, we introduced an
+advanced scoring system, referred to as AS metrics, to further
+evaluate SpaDiT’s performance.
+The results,
+illustrated in
+Figure 2, confirm that SpaDiT not only meets but often exceeds
+the performance benchmarks set by the baseline methods
+across all ten spatial transcriptomics (ST) datasets.
+The
+inclusion of AS metrics provides a more nuanced understanding
+of SpaDiT’s predictive prowess, underscoring its robustness
+and effectiveness in diverse experimental conditions.
+This
+comprehensive
+approach
+solidifies
+SpaDiT’s
+position
+as
+a
+leading method in gene expression prediction, highlighting its
+potential to significantly enhance the accuracy and reliability
+of spatial transcriptomics analyses.
+SpaDiT enhances the similarity of predicted
+gene expression in high-dimensional space
+To fully demonstrate the superior ability of the SpaDiT method
+in gene expression prediction,
+especially its advantages in
+maintaining the global and local structural characteristics
+of
+gene
+expression
+data,
+we
+used
+UMAP
+technology
+for
+visualization analysis for conducting in-depth comparisons with
+other benchmark methods.
+As shown in the Figure 3, we conducted an analysis of ten
+different datasets. The results clearly show that the prediction
+results of the SpaDiT method (in orange) closely resemble the
+real gene expression data (in blue), with minimal perceptible
+deviation. This is in sharp contrast to the prediction results
+generated by several other methods, such as Tangram, scVI,
+SpaGE, stPlus, SpaOTsc, novoSpaRc, SpatialScope, and stDiff.
+Although the prediction results of these methods have their
+own focuses, compared with SpaDiT, they all fail to accurately
+capture the structural characteristics of real gene data and
+exhibit significant deviations. In addition, the UMAP analysis
+further underscores SpaDiT’s superiority in maintaining data
+integrity, enabling it to accurately simulate complex biological
+information.
+SpaDiT preserves the similarity between genes
+To fully demonstrate the accuracy of the SpaDiT method in
+predicting gene expression, we employed hierarchical clustering
+
+===== PAGE 7 =====
+SpaDiT
+7
+Fig. 3. UMAP plots illustrating gene predicted by SpaDiT,Tangram, scVI, SpaGE, stPlus, SpaOTsc, novoSpaRc, SpatialScope and stDiff. The closer the
+two scatter points are, the better the prediction effect is. The scatter points predicted by SpaDiT and the real scatter points almost overlap, indicating
+that the genes predicted by SpaDiT are closer to the real genes.
+to visualize the similarity between the predicted genes and the
+true gene labels, and compared the results with those from
+other benchmark methods.
+First, we calculated the Euclidean distance between each
+pair of genes in the gene expression matrix predicted by each
+method to reflect the similarity of the expression patterns of two
+genes: the smaller the distance, the higher the similarity. After
+
+===== PAGE 8 =====
+8
+Xiaoyu Li et al.
+Fig. 4. Visualization of the prediction performance of various baseline methods. The first column of the figure shows the results after clustering the
+true labels. The closer the predicted results of each method are to the true labels, the better the effect. The clustering effect of SpaDiT is closest to the
+true labels.
+calculating the distance of all gene pairs, we used hierarchical
+clustering to sort these genes to ensure that the genes within
+the cluster show the greatest similarity. With this sorting, we
+can reorganize the rows and columns of the distance matrix so
+that similar genes are adjacent to each other in the heat map.
+As shown in the Figure 4, the first column of the figure
+visualizes the true gene labels after clustering. The closer the
+predicted gene heat map is to the true labels, the higher the
+prediction accuracy of the method. As evident from the figure,
+the prediction results of the SpaDiT method are very close to
+the true labels, demonstrating its high accuracy in predicting
+gene expression.
+SpaDiT accurately predicts ST Spatial
+Patterns
+In addition to quantitatively evaluating the gene expression
+similarity between the true genes of ST and the genes predicted
+by ST, we also visually demonstrate the consistency of spatial
+patterns in Figure 5.
+
+===== PAGE 9 =====
+SpaDiT
+9
+Fig. 5. Predicted expression abundance of genes with known spatial patterns in four datasets. Each column corresponds to a gene with a clear spatial
+pattern. The first column represents the spatial pattern genes with true labels. Subsequent columns show the corresponding predicted expression patterns
+obtained by using SpaDiT, Tangram, scVI, SpaGE, stPlus, SpaOTsc, novoSpaRc, SpatialScope, and stDiff.
+Due to limited space, we selected five datasets with clear
+spatial patterns:
+MG, MHPR, HBC, MPMC, and MC to
+illustrate the consistency of the spatial patterns between the
+genes predicted by the methods and the true labels.
+We
+display the predicted genes with the highest Pearson correlation
+coefficient (PCC) values in the datasets. The other five datasets
+not shown can be found in the Supplementary Materials.
+As illustrated in Figure 5, in the MG dataset, SpaDiT
+restores the overall spatial pattern more accurately, followed
+by stDiff and stPlus, while the other methods show less obvious
+spatial contours in the upper right part. In the MHPR dataset,
+SpaDiT provides more accurate predictions in the middle part,
+while the high expression area and low expression area of
+other methods appear somewhat chaotic. In the HBC and
+MPMC datasets, all methods predict relatively accurate spatial
+patterns, but SpaDiT is the method with expression value
+predictions closest to the true labels.
+In the MC dataset,
+SpaDiT has a clear spatial recognition contour for the lower
+half,
+which is closest to the actual situation,
+while other
+methods are more blurred at the boundary.
+Robustness evaluation of SpaDiT across
+various sampling rates
+In our study, the sparsity of the ten dataset pairs varies. Most
+of the datasets are highly sparse spatial transcriptomic data,
+except for the MH dataset, which has a sparsity of 6.7%. To test
+the ability of SpaDiT to resist data sparsity, we downsampled
+the expression matrix of MH’s spatial transcriptomics data to
+simulate different high-sparse data. To quantify the stability of
+the SpaDiT and its ability to resist data sparsity, we counted
+the percentage of genes with a prediction accuracy (PCC)
+greater than 0.5 in both the original data and the downsampled
+data, defined as the Robustness Score (RS). As shown in the
+Figure 6, the red points represent genes with a PCC value
+greater than 0.5, and the gray points represent genes with a
+PCC value less than 0.5. We tested different downsampling
+rates: 0.1, 0.3, 0.5, and 0.7, and found that the stability scores
+of all methods decreased with the increase of data sparsity,
+while the stability score of SpaDiT was always higher than
+that of other baseline methods. In addition, we compared the
+changing trends of model performance under different sampling
+rates and different sparsity levels on ten datasets. For detailed
+results on other datasets, please refer to the Supplementary
+Materials.
+Ablation studies: The impact of different
+modules of SpaDiT on model performance
+As mentioned above,
+Condition Embedding and Backbone
+network in SpaDiT are the key parts of our proposed method. In
+order to verify the importance of these two parts, we conducted
+ablation experiments in this section.
+For the backbone network part (Figure 1), we used three
+different network backbones and used AS as the evaluation
+indicator. As shown in the Table 3, we compared three different
+network architectures: U-Net, Mamba, and Transformer. It is
+worth noting that the model using Transformer as the network
+backbone has the best performance,
+which further proves
+the importance of Transformer and verifies the superiority of
+SpaDiT.
+In our proposed, SpaDiT, the main innovation involves using
+spatial transcriptomics (ST) and single-cell (SC) common genes
+to concatenate by gene in latent embedding. We use the known
+part (concatenated SC gene) to infer the gene expression of
+the unknown part (ST gene to be predicted). This approach
+enables the model to learn the similarity between different spots
+and cells across genes. Additionally, the Condition module
+utilizes the overall SC data as the prior condition to guide the
+model’s generation process. To verify the effectiveness of the
+
+===== PAGE 10 =====
+10
+Xiaoyu Li et al.
+Fig. 6. Robustness of prediction accuracy for original data and data with different downsampling rates for the MH dataset. PCC of the spatial
+distribution of transcripts predicted from the original data and the MH dataset at different downsampling ratios. The PCC values of red transcripts are
+greater than 0.5 for both the original data and the downsampled data. The proportion of red transcripts in all transcripts is defined as the “robustness
+score” (RS).
+Table 3. Result of different network backbone.
+MG
+MH
+MHPR
+MVC
+MHM
+Backbone w/Unet
+0.454±0.011
+0.453±0.011
+0.477±0.013
+0.482±0.011
+0.466±0.011
+Backbone w/Mamba
+0.477±0.008
+0.471±0.026
+0.475±0.014
+0.474±0.011
+0.461±0.102
+Backbone w/Transformer
+0.514±0.032
+0.553±0.057
+0.506±0.038
+0.572±0.033
+0.553±0.037
+HBC
+ME
+MPMC
+MC
+ML
+Backbone w/Unet
+0.478±0.012
+0.470±0.010
+0.458±0.013
+0.470±0.010
+0.487±0.013
+Backbone w/Mamba
+0.462±0.086
+0.489±0.051
+0.421±0.022
+0.478±0.015
+0.488±0.021
+Backbone w/Transformer
+0.613±0.024
+0.589±0.060
+0.488±0.033
+0.564±0.026
+0.619±0.024
+proposed method, we conducted ablation experiments on these
+two modules separately.
+The specific experimental results are shown in Table 4.
+First, for the Condition module (ψ), to verify the effectiveness
+of the Attention mechanism, we replaced Attention with a
+simple MLP (Part: w/o Flash-Attention). We found that the
+performance of the model dropped significantly across ten
+datasets. Further, to verify the effectiveness of the Condition
+module (ψ) (Part: w/o Condition ψ), we replaced the output
+of the entire part with a vector of all zeros. We observed that
+compared to replacing Attention, the performance of the model
+further declined. Additionally, to verify the effectiveness of the
+overall SC data as a priori conditions (Part: w/ Common Gene
+in ψ), we replaced the overall SC data with SC that only
+retained the common genes. We found that the performance
+also declined compared to the overall SC. Finally, to verify
+the effectiveness of the splicing of the common genes (Part:
+w/o Concat in ϕ), we removed this part and found that the
+performance significantly declined. Therefore, we conclude that
+the method we proposed is highly effective. In addition, we
+also tried using Condition modules with different Condition
+methods.
+For
+details,
+please
+refer
+to
+the
+Supplementary
+Materials.
+Table 4. Ablation study of Condition Embedding module and Latent Embedding module.
+MG
+MH
+MHPR
+MVC
+MHM
+SpaDiT(Ours)
+0.514±0.032
+0.553±0.057
+0.506±0.038
+0.572±0.033
+0.553±0.037
+w/o Flash-Attention
+0.439±0.092
+0.485±0.027
+0.431±0.028
+0.429±0.013
+0.415±0.017
+w/o Condition ψ
+0.383±0.094
+0.336±0.115
+0.404±0.161
+0.394±0.066
+0.318±0.013
+w/ Common Gene in ψ
+0.483±0.126
+0.503±0.008
+0.437±0.125
+0.533±0.161
+0.489±0.088
+w/o Concat in ϕ
+0.462±0.093
+0.501±0.140
+0.432±0.020
+0.489±0.076
+0.485±0.042
+HBC
+ME
+MPMC
+MC
+ML
+SpaDiT(Ours)
+0.613±0.024
+0.589±0.060
+0.488±0.033
+0.564±0.026
+0.619±0.024
+w/o Flash-Attention
+0.431±0.034
+0.422±0.021
+0.425±0.013
+0.438±0.019
+0.459±0.033
+w/o Condition module: ψ
+0.407±0.053
+0.376±0.169
+0.401±0.050
+0.417±0.108
+0.423±0.022
+w/ Common Gene in ψ
+0.537±0.032
+0.426±0.142
+0.411±0.083
+0.503±0.050
+0.526±0.062
+w/o Concat in ϕ
+0.407±0.128
+0.512±0.161
+0.311±0.106
+0.489±0.074
+0.503±0.114
+
+===== PAGE 11 =====
+SpaDiT
+11
+Discussion
+In
+this
+paper,
+we
+present
+SpaDiT,
+a
+novel
+approach
+to
+predict
+unmeasured
+genes
+in
+spatial
+transcriptomics
+(ST)
+data. Methodologically, SpaDiT is significantly different from
+existing ensemble techniques.
+While traditional approaches
+primarily enhance ST data by aligning ST data to similar
+cells within a reference scRNA-seq dataset, SpaDiT employs
+a diffusion-based generative model that utilizes the inherent
+relationships within the gene expression data. This approach
+enables
+it
+to
+precisely
+model
+and
+generate
+spatial
+gene
+expression patterns.
+SpaDiT, as a conditional diffusion model, employs noise
+addition and denoising stages to learn complex relationships
+from
+scRNA-seq
+data.
+In
+the
+inference
+stage,
+SpaDiT
+incorporates
+raw
+ST
+data
+during
+the
+denoising
+process,
+resulting in accurate predictions of spatial gene expression.
+The application of diffusion models in genomics, especially
+transcriptomics, is relatively new, marking this as a largely
+unexplored area. We assessed SpaDiT using ten ST datasets,
+employing multiple metrics to evaluate performance,
+gene
+spatial structure, and gene similarity. The results show that
+SpaDiT not only maintains the intricate topology inherent
+in cell layout but also excels in accurately aligning predicted
+gene expression with actual data, demonstrating its robustness
+and accuracy in reproducing spatial patterns. These features
+highlight the utility of SpaDiT in enhancing the resolution and
+richness of ST data analysis.
+Future
+research
+may
+combine
+SpaDiT’s
+diffusion-based
+approach with traditional similarity-based methods to enhance
+the accuracy of ST data predictions.
+These advances may
+significantly improve the analysis and interpretation of ST data,
+potentially setting new standards in the field. It is important
+to acknowledge the potential limitations. For example, when
+ST data lack sufficient markers to accurately identify cell
+types, SpaDiT’s efficacy may be diminished, similar to other
+methods. This is due to the reliance on existing gene expression
+signals to guide the prediction process, potentially resulting in
+inaccuracies if the initial data are too sparse or ambiguous. This
+underscores the need for improvements in handling datasets
+with limited information, ensuring that SpaDiT can adapt to
+various levels of data completeness and quality.
+Key Points
+•
+In this study, we propose SpaDiT, a deep learning
+method
+that
+utilizes
+a
+conditional
+diffusion
+generative model to synthesize scRNA-seq data
+and ST data to predict undetected genes.
+•
+We utilize scRNA-seq as a prior condition and
+integrate it into the diffusion model through
+the attention mechanism to guide the model
+in learning the relationship between ST and
+scRNA-seq. At the same time, the common genes
+in ST and scRNA-seq are concatenated as the
+”token” input of the model, so that SpaDiT can
+learn multi-scale feature information and more
+accurately predict unknown genes.
+•
+Our
+method
+was
+compared
+with
+competing
+methods on ten real ST and scRNA-seq datasets.
+The results show that, compared with the most
+advanced methods,
+our method demonstrates
+significant improvements in all five evaluation
+metrics in predicting gene expression. In addition,
+the genes predicted by our proposed SpaDiT
+effectively maintain high-dimensional similarity
+with the real labels, clearly restoring the spatial
+patterns
+between
+genes
+and
+the
+similarities
+between genes.
+Acknowledgments
+The work was supported in part by the National Natural
+Science Foundation of China (62262069), in part by the Yunnan
+Fundamental Research Project (202301BF070001-019) and the
+Yunnan Talent Development Program - Youth Talent Project.
+References
+1.
+Angela R Wu, Norma F Neff, et al. Quantitative assessment
+of single-cell rna-sequencing methods.
+Nature Methods,
+11(1):41–46, 2014.
+2.
+Sophia K Longo, Margaret G Guo, et al. Integrating single-
+cell and spatial transcriptomics to elucidate intercellular
+tissue dynamics.
+Nature Reviews Genetics, 22(10):627–
+644, 2021.
+3.
+Anjali
+Rao,
+Dalia
+Barkley,
+et
+al.
+Exploring
+tissue
+architecture
+using
+spatial
+transcriptomics.
+Nature,
+596(7871):211–220, 2021.
+4.
+Ludvig Larsson, Jonas Fris´en, et al.
+Spatially resolved
+transcriptomics adds a new dimension to genomics. Nature
+Methods, 18(1):15–18, 2021.
+5.
+Robert R Stickels, Evan Murray, et al.
+Highly sensitive
+spatial
+transcriptomics
+at
+near-cellular
+resolution
+with
+slide-seqv2. Nature Biotechnology, 39(3):313–319, 2021.
+6.
+Ao Chen, Sha Liao, et al.
+Spatiotemporal transcriptomic
+atlas of mouse organogenesis using dna nanoball-patterned
+arrays. Cell, 185(10):1777–1792, 2022.
+7.
+Sheel Shah, Yodai Takei, et al.
+Dynamics and spatial
+genomics of the nascent transcriptome by intron seqfish.
+Cell, 174(2):363–376, 2018.
+8.
+Jeffrey
+R
+Moffitt,
+Dhananjay
+Bambah-Mukku,
+et
+al.
+Molecular,
+spatial,
+and
+functional
+single-cell
+profiling
+of
+the
+hypothalamic
+preoptic
+region.
+Science,
+362(6416):eaau5324, 2018.
+9.
+Luyi Tian, Fei Chen, et al. The expanding vistas of spatial
+transcriptomics.
+Nature Biotechnology,
+41(6):773–782,
+2023.
+10. Lucia Cassella and Anne Ephrussi.
+Subcellular spatial
+transcriptomics identifies three mechanistically different
+classes
+of
+localizing
+rnas.
+Nature
+Communications,
+13(1):6355, 2022.
+11. Chiara Baccin, Jude Al-Sabah, et al. Combined single-cell
+and spatial transcriptomics reveal the molecular, cellular
+and spatial bone marrow niche organization. Nature Cell
+Biology, 22(1):38–48, 2020.
+12. Susanne C van den Brink, Anna Alemany, et al.
+Single-
+cell and spatial transcriptomics reveal somitogenesis in
+gastruloids. Nature, 582(7812):405–409, 2020.
+
+===== PAGE 12 =====
+12
+Xiaoyu Li et al.
+13. Zhiwei Fan,
+Yangyang Luo,
+et al.
+Spascer:
+spatial
+transcriptomics annotation at single-cell resolution. Nucleic
+Acids Research, 51(D1):D1138–D1149, 2023.
+14. Tommaso
+Biancalani,
+Gabriele
+Scalia,
+et
+al.
+Deep
+learning
+and
+alignment
+of
+spatially
+resolved
+single-
+cell
+transcriptomes
+with
+tangram.
+Nature
+Methods,
+18(11):1352–1362, 2021.
+15. Romain Lopez, Jeffrey Regier, et al.
+Deep generative
+modeling for single-cell transcriptomics. Nature Methods,
+15(12):1053–1058, 2018.
+16. Tamim Abdelaal, Soufiane Mourragui, et al. Spage: spatial
+gene enhancement using scrna-seq. Nucleic Acids Research,
+48(18):e107–e107, 2020.
+17. Chen Shengquan, Zhang Boheng, et al. stplus: a reference-
+based method for the accurate enhancement of spatial
+transcriptomics.
+Bioinformatics, 37(Supplement 1):i299–
+i307, 2021.
+18. Zixuan Cang and Qing Nie. Inferring spatial and signaling
+relationships between cells from single cell transcriptomic
+data. Nature Communications, 11(1):2084, 2020.
+19. Noa Moriel, Enes Senel, et al. Novosparc: flexible spatial
+reconstruction of single-cell gene expression with optimal
+transport. Nature Protocols, 16(9):4177–4200, 2021.
+20. Xiaomeng Wan, Jiashun Xiao, et al.
+Integrating spatial
+and single-cell transcriptomics data using deep generative
+models
+with
+spatialscope.
+Nature
+Communications,
+14(1):7848, 2023.
+21. Kongming
+Li,
+Jiahao
+Li,
+et
+al.
+stdiff:
+a
+diffusion
+model for imputing spatial transcriptomics through single-
+cell
+transcriptomics.
+Briefings
+in
+Bioinformatics,
+25(3):bbae171, 2024.
+22. Xiang Zhou,
+Shihua Zhang,
+et al.
+Integrating spatial
+transcriptomics
+data
+across
+different
+conditions,
+technologies
+and
+developmental
+stages.
+Nature
+Computational Science, 3(10):894–906, 2023.
+23. Jascha Sohl-Dickstein, Eric Weiss, et al. Deep unsupervised
+learning
+using
+nonequilibrium
+thermodynamics.
+In
+International Conference on Machine Learning,
+pages
+2256–2265. PMLR, 2015.
+24. Lvmin Zhang,
+Anyi Rao,
+et al.
+Adding conditional
+control to text-to-image diffusion models.
+In Proceedings
+of the IEEE/CVF International Conference on Computer
+Vision, pages 3836–3847, 2023.
+25. Ilia
+Igashov,
+Hannes
+St¨ark,
+et
+al.
+Equivariant
+3d-
+conditional diffusion model for molecular linker design.
+Nature Machine Intelligence, pages 1–11, 2024.
+26. Anoushka Joglekar, Andrey Prjibelski, et al.
+A spatially
+resolved brain region-and cell type-specific isoform atlas
+of the postnatal mouse brain.
+Nature Communications,
+12(1):463, 2021.
+27. Jeffrey
+R
+Moffitt,
+Dhananjay
+Bambah-Mukku,
+et
+al.
+Molecular,
+spatial,
+and
+functional
+single-cell
+profiling
+of
+the
+hypothalamic
+preoptic
+region.
+Science,
+362(6416):eaau5324, 2018.
+28. Nicholas
+Schaum,
+Jim
+Karkanias,
+et
+al.
+Single-cell
+transcriptomics of 20 mouse organs creates a tabula muris:
+The tabula muris consortium. Nature, 562(7727):367, 2018.
+29. Xiao Wang, William E Allen, et al.
+Three-dimensional
+intact-tissue sequencing of single-cell transcriptional states.
+Science, 361(6400):eaat5691, 2018.
+30. David W McKellar,
+Lauren D Walter,
+et al.
+Large-
+scale integration of single-cell transcriptomic data captures
+transitional progenitor states in mouse skeletal muscle
+regeneration. Communications Biology, 4(1):1280, 2021.
+31. Sunny Z Wu, Ghamdan Al-Eryani, et al. A single-cell and
+spatially resolved atlas of human breast cancers.
+Nature
+Genetics, 53(9):1334–1347, 2021.
+32. Oraly Sanchez-Ferras, Alain Pacis, et al.
+A coordinated
+progression of progenitor cell states initiates urinary tract
+development. Nature Communications, 12(1):2627, 2021.
+33. Yan Zhou, Dong Yang, et al.
+Single-cell rna landscape
+of
+intratumoral
+heterogeneity
+and
+immunosuppressive
+microenvironment
+in
+advanced
+osteosarcoma.
+Nature
+Communications, 11(1):6322, 2020.
+34. Alla Mikheenko, Andrey D Prjibelski, et al.
+Sequencing
+of individual barcoded cdnas using pacific biosciences and
+oxford nanopore technologies reveals platform-specific error
+patterns. Genome Research, 32(4):726–737, 2022.
+35. Bin Li, Wen Zhang, et al. Benchmarking spatial and single-
+cell
+transcriptomics
+integration
+methods
+for
+transcript
+distribution prediction and cell type deconvolution. Nature
+Methods, 19(6):662–670, 2022.
+36. William Peebles and Saining Xie. Scalable diffusion models
+with transformers.
+In Proceedings of the IEEE/CVF
+International
+Conference
+on
+Computer
+Vision,
+pages
+4195–4205, 2023.
+37. Jonathan Ho, Ajay Jain, and Pieter Abbeel.
+Denoising
+diffusion probabilistic models.
+In Advances in Neural
+Information Processing Systems, volume 33, pages 6840–
+6851, 2020.

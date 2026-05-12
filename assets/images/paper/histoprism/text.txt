@@ -1,0 +1,1790 @@
+
+===== PAGE 1 =====
+Published as a conference paper at ICLR 2026
+HISTOPRISM:
+UNLOCKING FUNCTIONAL PATHWAY
+ANALYSIS FROM PAN-CANCER HISTOLOGY VIA GENE
+EXPRESSION PREDICTION
+Susu Hu1,2,3,4∗, Qinghe Zeng5,6, Nithya Bhasker1,2,3,4,
+Jakob Nikolas Kather5,6,7,8, Stefanie Speidel1,2,3,4
+1Translational Surgical Oncology, National Center for Tumor Diseases (NCT/UCC) Dresden, Germany
+2Faculty of Medicine and University Hospital Carl Gustav Carus, TUD Dresden University of Technology, Germany
+3Helmholtz-Zentrum Dresden-Rossendorf (HZDR), Dresden, Germany
+4German Cancer Research Center (DKFZ), Heidelberg, Germany
+5Else Kroener Fresenius Center for Digital Health, Faculty of Medicine, TUD Dresden University of Technology, Germany
+6Medical Oncology, National Center for Tumor Diseases (NCT), University Hospital Heidelberg, Heidelberg, Germany
+7Department of Medicine I, Faculty of Medicine, TUD Dresden University of Technology, Germany
+8Pathology & Data Analytics, Leeds Institute of Medical Research at St James’s, University of Leeds, Leeds, United Kingdom
+ABSTRACT
+Predicting spatial gene expression from H&E histology offers a scalable and clin-
+ically accessible alternative to sequencing, but realizing clinical impact requires
+models that generalize across cancer types and capture biologically coherent sig-
+nals. Prior work is often limited to per-cancer settings and variance-based evalu-
+ation, leaving functional relevance underexplored. We introduce HistoPrism, an
+efficient transformer-based architecture for pan-cancer prediction of gene expres-
+sion from histology. To evaluate biological meaning, we introduce a pathway-
+level benchmark, shifting assessment from isolated gene-level variance to co-
+herent functional pathways. HistoPrism not only surpasses prior state-of-the-art
+models on highly variable genes , but also more importantly, achieves substantial
+gains on pathway-level prediction, demonstrating its ability to recover biologi-
+cally coherent transcriptomic patterns. With strong pan-cancer generalization and
+improved efficiency, HistoPrism establishes a new standard for clinically relevant
+transcriptomic modeling from routinely available histology. Code is available at
+https://github.com/susuhu/HistoPrism.
+1
+INTRODUCTION
+Spatial transcriptomics (ST) combines high-resolution imaging with transcriptomic profiling to map
+the spatial distribution of gene expression within intact tissues (Khan et al., 2024). By preserving
+spatial context, ST has enabled advances across developmental biology, oncology, immunology, and
+histopathology (Choe et al., 2023). However, ST remains costly, labor-intensive, and not yet widely
+scalable. In contrast, hematoxylin and eosin (H&E) stained whole-slide images (WSIs) are routinely
+acquired in clinical workflows, motivating computational approaches to infer spatial gene expression
+directly from histology for cost-effective and scalable histogenomic analysis.
+Early approaches to this problem often relied on complex, multi-stage pipelines involving brittle
+learning heuristics such as contrastive learning with ill-defined negative samples (Xie et al., 2023;
+Long et al., 2023), retrieval-based inference schemes that limit generalization (Xie et al., 2023), or
+intricate multi-resolution engineering with significant computational overhead (Chung et al., 2024).
+Generative and contextual approaches, including diffusion-based STEM (Zhu et al., 2025) and flow-
+based STFlow (Huang et al., 2025a), model the uncertainty of one-to-many mapping between WSIs
+and gene expressions, but have been limited to single-cancer settings and are computationally in-
+tensive. Pan-cancer models, such as STPath (Huang et al., 2025b), achieve zero-shot generalization
+using masked gene prediction on large-scale datasets. Nevertheless, they rely on stable gene-gene
+correlations, which can be inconsistent across heterogeneous tissues and sequencing techniques.
+∗Correspondence to Susu Hu: susu.hu@nct-dresden.de.
+1
+arXiv:2601.21560v3  [cs.LG]  9 Feb 2026
+
+===== PAGE 2 =====
+Published as a conference paper at ICLR 2026
+Moreover, the evaluation of predicted gene expression has largely focused on Pearson correlation of
+top-N highly variable genes, neglecting functional coherence.
+To address these gaps, we introduce HistoPrism, an efficient transformer-based architecture for pan-
+cancer gene expression prediction, alongside Gene Pathway Coherence (GPC), a new evaluation
+framework based on 50 Hallmark gene sets and 87 Gene Ontology pathway gene sets. GPC quan-
+tifies the biological fidelity of predictions by assessing pathway-level coherence, moving beyond
+variance-based metrics. Our pan-cancer benchmark shows that HistoPrism delivers state-of-the-art
+performance in both top-N variable gene prediction and pathway-focused prediction, while main-
+taining a substantially smaller and more computationally efficient footprint. Crucially, pathway-
+focused evaluation is key for identifying models suitable for clinical use, as it prioritizes biological
+interpretability rather then relying solely on aggregated accuracy.
+2
+RELATED WORK
+2.1
+COMPUTATIONAL PREDICTION OF SPATIAL TRANSCRIPTOMICS
+Regression-Based Approaches. Early methods typically framed histology-to-gene prediction as a
+regression problem. BLEEP (Xie et al., 2023) employs contrastive learning to align paired histology
+and gene expression into a joint embedding space, enabling inference via nearest-neighbor matching.
+However, defining negative pairs in pathology remains ambiguous, and retrieving-based inference
+limits generalization to unseen queries. GraphST (Long et al., 2023) incorporates spatial structure
+through graph neural networks (GNNs), but inherits similar weaknesses from contrastive training.
+TRIPLEX (Chung et al., 2024) introduces a multi-resolution architecture with distillation losses
+to capture both local and global context, yet its complexity results in high computational cost and
+reduced interpretability.
+Generative Approaches. More recent work has reframed this task through generative modeling
+(Zhu et al., 2025; Huang et al., 2025a), motivated by the inherently one-to-many mapping from
+histology to gene expression (Zhu et al., 2025). These methods aim to capture distributions of
+plausible expression profiles, but have thus far been validated primarily in single-cancer settings.
+Extending them to pan-cancer prediction introduces a far greater challenge, where heterogeneity
+across multiple cancer types raises concerns of scalability and mode collapse.
+A notable advance is STPath (Huang et al., 2025b), a pan-cancer foundation model built on a BERT-
+style framework (Devlin et al., 2019). Using masked-gene modeling on a massive 38k gene panel,
+STPath learns complex contextual dependencies and achieved a new state-of-the-art on standard
+variance-based benchmarks. However, this strategy implicitly assumes that gene–gene correlations
+are stable signals, an assumption that often breaks down in heterogeneous, tissue-specific pan-cancer
+settings. In practice, the model’s considerable size makes training and fine-tuning highly resource-
+intensive, which can be a barrier for broad adoption and adaptation in many research and clinical
+settings.
+Our Approach. We propose HistoPrism, a transformer-based model that leverages rich visual
+features to predict gene expression in pan-cancer datasets.
+Its design effectively captures vi-
+sual–molecular relationships and supports pathway-level prediction coherence, achieving state-of-
+the-art predictive performance while being more efficient and practical for clinical deployment than
+previous approaches.
+2.2
+FOUNDATION MODELS IN DIGITAL PATHOLOGY
+The advent of self-supervised learning on massive, gigapixel-scale datasets has given rise to power-
+ful Pathology Foundation Models (PFMs). Models such as CTransPath (Wang et al., 2022), GigaP-
+ath (Xu et al., 2024), and UNI (Chen et al., 2024b) are pre-trained on millions of histology patches,
+learning rich visual representations of tissue morphology that are highly effective for a wide range
+of downstream tasks. These PFMs serve as a crucial backbone for modern computational pathol-
+ogy, including the prediction of spatial gene expression. With PFMs standardizing the extraction of
+high-quality, patch-level visual features, the core research challenge shifts from feature engineering
+to the subsequent problem: modeling how these patch representations can be contextually integrated
+2
+
+===== PAGE 3 =====
+Published as a conference paper at ICLR 2026
+Figure 1: HistoPrism architecture. Patch level image embeddings are obtained via pathology foun-
+dation models. A cross-attention module injects pan-cancer conditioning. A Transformer Encoder
+models contextual relations before a final MLP head regresses gene expression values.
+and spatially structured to capture the underlying biology of the tumor microenvironment. Our work
+directly addresses this challenge.
+3
+METHODOLOGY
+In this section, we first formally define the problem, then detail the HistoPrism architecture, its
+training objective and our gene pathway coherence evaluation framework.
+3.1
+PROBLEM FORMULATION
+We consider an H&E-stained whole-slide image, divided into N non-overlapping patches. Each
+patch is represented by a feature vector xi ∈RDimg, extracted by a pre-trained pathology foun-
+dation model (PFM). Spatial transcriptomics provides the corresponding raw count vector of gene
+expressions, which we normalize as yi ∈RDgene using a log1p transformation. Additionally, each
+slide is associated with a global condition cancer type, encoded as a one-hot vector c ∈{0, 1}Donco.
+The goal is to learn a parameterized mapping function fθ : (RN×Dimg, RDonco) →RN×Dgene that
+predicts gene expression from H&E image features. For each input patch feature xi, the model
+outputs gene expression vector ˆyi = fθ(X, c)i, where X denotes the set of all patch embeddings.
+The model parameters θ are optimized to minimize the difference between the predicted expression
+ˆY = {ˆy1, . . . , ˆyN} and the ground-truth expression Y = {y1, . . . , yN}.
+3.2
+HISTOPRISM: A DIRECT-MAPPING ARCHITECTURE
+HistoPrism is a transformer-based regressor designed for efficient and direct mapping from visual
+features to gene expression. It eschews the complex contextual reconstruction of prior work in favor
+of a streamlined architecture that models cancer-aware contextualized pathology image features for
+corresponding gene profiles. The architecture, depicted in Figure 1, consists of three main stages.
+1. Pan-Cancer Conditioning via Cross-Attention.
+To make the model aware of the global cancer
+type, we condition the visual features using a cross-attention mechanism. The one-hot cancer type
+vector c is first projected into a dense embedding cemb ∈RDimg via a linear layer. This embedding
+serves as the context for the cross-attention module, providing the Key (K) and Value (V), while
+3
+
+===== PAGE 4 =====
+Published as a conference paper at ICLR 2026
+the patch features X serve as the Query (Q).
+Q = XWQ
+(1)
+K, V = cembWK,
+cembWV
+(2)
+Xcond = CrossAttention(Q, K, V)
+(3)
+This allows the model to modulate the patch representations based on the overarching cancer type,
+enabling it to learn both pan-cancer and cancer-specific histopathological patterns.
+2. Contextual Aggregation with a Transformer Encoder.
+The conditioned patch features Xcond
+are first projected into a hidden dimension Dhidden and then processed by a standard Transformer
+Encoder (Vaswani et al., 2017). This module captures both short and long-range spatial dependen-
+cies between patches, modeling higher-level tissue structures such as tumor boundaries and immune
+infiltration patterns. The output of the transformer, Hlatent ∈RN×Dhidden, is a set of contextually
+rich latent representations for each patch.
+3. Gene Expression Regression.
+Finally, a multi-layer perceptron (MLP) serves as the regression
+head. It takes the latent representation hi ∈Hlatent for each patch and maps it directly to the
+predicted Dgene-dimensional gene expression vector ˆyi.
+ˆyi = MLPhead(hi)
+(4)
+HistoPrism is trained end-to-end by minimizing the Mean Squared Error (MSE) LMSE between the
+predicted and ground-truth gene expression values across all N patches.
+LMSE = 1
+N
+X
+i∈N
+(ˆyi −yi)2
+(5)
+Our design favors direct feature fusion over contrastive alignment for regression tasks, employ-
+ing self-attention to robustly aggregate sparse biological signals from variable-sized tissue patches
+where standard pooling fails.
+3.3
+A FRAMEWORK FOR EVALUATING BIOLOGICAL COHERENCE
+To rigorously assess model performance, we employ a two-tiered evaluation strategy. We first use
+the standard metric for comparability with prior work and then introduce our proposed benchmark,
+which is designed to measure a model’s ability to predict biologically meaningful expression pat-
+terns.
+Baseline Metric: Highly Variant Gene Correlation.
+The standard protocol in this domain is to
+evaluate the Pearson Correlation Coefficient (PCC) between predicted and ground-truth expression
+for the top-N most highly-variant genes (HVGs) across a test set. While this metric is useful for
+gauging a model’s ability to capture high-magnitude signals, its clinical and biological relevance
+is limited. It focuses on a small, statistically-driven subset of genes, ignoring thousands of others,
+and it fails to measure whether a model has learned the coordinated expression patterns that de-
+fine a functional biological process. A model can achieve a high HVG while failing to generate
+biologically coherent predictions, thus limiting its translational potential.
+The Gene Pathway Coherence (GPC) Benchmark.
+To address the limitations of variance-based
+metrics, we propose the Gene Pathway Coherence (GPC) benchmark. Our goal is to bridge the
+gap between standard machine learning evaluation and the principles of biological inquiry. While
+computational biology has long relied on pathway analysis to understand function, this approach
+has not yet been formalized as a standard benchmark for deep learning models in this domain.
+The GPC benchmark is designed to fill this void. It assesses a model’s ability to reconstruct the
+coordinated expression of functionally related genes, thereby aligning the evaluation protocol with
+the true scientific objective of understanding cellular function.
+The construction of our benchmark follows a rigorous, multi-stage curation process:
+4
+
+===== PAGE 5 =====
+Published as a conference paper at ICLR 2026
+1. Source Curation: We begin by aggregating a comprehensive set of pathways from two
+authoritative, widely-used biological databases: the Hallmark gene sets from the Molecu-
+lar Signatures Database (MSigDB) (Broad Institute, 2025), which represent well-defined
+biological states or processes, and the Gene Ontology (GO) database (Gene Ontology Con-
+sortium, 2025), from which we include terms for Biological Process (BP), Cellular Com-
+ponent (CC), and Molecular Function (MF).
+2. Size Filtering: Recognizing that these collections contain thousands of pathways of vary-
+ing size, we first filter for those of a tractable and meaningful length. We retain only
+pathways containing between 50 and 100 genes, a range that avoids both overly specific
+sets prone to noise and overly broad pathways. Hallmark pathways are retained in full, as
+there are only 50.
+3. Redundancy Filtering: To create a non-redundant benchmark, we address the significant
+topical overlap between pathways. We compute the Jaccard similarity, J(A, B) = |A ∩
+B|/|A ∪B|, for all pairs of pathways (A, B) based on their member genes. For any pair
+where the similarity exceeds a threshold of τ = 0.1, we iteratively remove the larger of the
+two pathways until no pairs violate this condition.
+For each pathway, the evaluation score is the computed across all of its member genes.
+Let
+Y = {(yi, ˆyi)}N
+i=1 denote the paired ground-truth and predicted gene expression sets for N
+whole-slide images (WSIs). Each WSI i contains ni patches, with yi = [yi1, . . . , yini]⊤and
+ˆyi = [ˆyi1, . . . , ˆyini]⊤, where yij, ˆyij ∈RDgene represent the expression vectors of Dgene genes.
+For each gene g ∈{1, . . . , Dgene} within WSI i, we compute the Pearson correlation coefficient
+(PCC) across all patches:
+ri,g = cov(yi,:,g, ˆyi,:,g)
+σ(yi,:,g) σ(ˆyi,:,g),
+(6)
+where yi,:,g = [yi1g, . . . , yinig]⊤and ˆyi,:,g = [ˆyi1g, . . . , ˆyinig]⊤denote the expression profiles of
+gene g across all patches of WSI i.
+Given a curated collection of M gene pathways P
+=
+{P1, . . . , PM}, where each Pm
+⊆
+{1, . . . , Dgene} indexes the genes in pathway m, the final pathway-level coherence score is defined
+as
+sm = 1
+N
+N
+X
+i=1
+1
+|Pm|
+X
+g∈Pm
+ri,g.
+(7)
+By evaluating with biologically coherent patterns rather than variance alone, this framework yields
+a clinically relevant perspective on evaluating ST prediction performance.
+4
+EXPERIMENTS AND RESULTS
+4.1
+EXPERIMENTAL SETUP
+We conduct experiments on the HEST1k dataset (Jaume et al., 2024), using two splits that retain
+the original hold-out test splits from HESKT1k HEST-Bench. Training and validation splits are
+stratified by cancer type. HEST1k is a large-scale dataset aggregating 153 distinct cohorts from 36
+independent studies. This collection encapsulates high inter-center variability, including diverse spa-
+tial transcriptomics technologies, staining protocols, and scanner vendors, ensuring that the holdout
+evaluation reflects true cross-center generalization. We also considered STimage-1K4M (Chen et al.,
+2024a), another large-scale resource. However, we determined it was unsuitable for this study due
+to its use of non-standard, single-resolution image formats and its partial data overlap with HEST1k.
+STPath serves as our primary benchmark, as it outperforms MLP with UNI and GigaPath PFM, as
+well as two deep learning methods BLEEP, and TRIPLEX in pan-cancer gene prediction. Due to
+limited computational resources and the unavailability of the STPath training code, we only per-
+formed inference using their corresponding PFM GigaPath (Xu et al., 2024), which aligns with
+STPath’s intended use as a foundation model for inference.
+Since state-of-the-art regression models have already been extensively evaluated in STPath, we focus
+on extending our comparison with recent generative approaches. Specifically, we include STEM
+5
+
+===== PAGE 6 =====
+Published as a conference paper at ICLR 2026
+(Zhu et al., 2025), a diffusion-based model, and STFlow(Huang et al., 2025a), a flow-matching
+generative model. Both were originally benchmarked on single-cancer datasets, whereas we evaluate
+their generalization in a more challenging pan-cancer setting. Due to the computational cost of
+STEM and STFlow training, we restrict both models to the union of the top 50 highly variable genes
+across all cancer types. Although this smaller gene subset emphasizes the most variable signals,
+STEM performs significantly worse than other methods, calling into question the robustness of its
+original leave-one-out evaluation. Similarly, STFlow struggles to generalize beyond single-cancer
+settings, underscoring the limitations of current generative models in capturing complex multimodal
+relationships between histology and gene expression across diverse tumor types.
+Our proposed model HistoPrism consists of 1 cross attention layer with 4 heads and 2 transformer
+layers with 8 heads and 256 hidden dimension receptively. HistoPrism is trained end-to-end with
+UNI PFM (Chen et al., 2024b) with a gene panel of size 38,982 curated by STPath. The training
+details are included in Appendix B.
+4.2
+HISTOPRISM ACHIEVES STATE-OF-THE-ART PAN-CANCER PERFORMANCE
+We first evaluate pan-cancer gene prediction performance on the top 50 highly variable genes
+(HVGs) using Pearson correlation coefficient (PCC). As expected, STEM performs poorly in the
+pan-cancer setting, likely because diffusion-based models struggle to capture the high heterogeneity
+and complex multi-modal relationships between histology and gene expression across diverse can-
+cer types. In Table 1, we report both macro-average PCC, computed as the mean PCC across the
+two splits for each cancer type, and micro-average PCC, computed across all individual samples to
+account for class imbalance. Macro-average treats each cancer type equally, while micro-average
+reflects overall predictive performance weighted by sample counts. Detailed sample counts can be
+found in the Appendix 6. HistoPrism demonstrates competitive performance, slightly below STPath
+on macro-average PCC but higher on micro-average PCC. Since micro-average PCC captures per-
+formance across all samples, it provides a more balanced view of predictive quality, highlighting
+HistoPrism’s robustness across heterogeneous cancers.
+Table 1: Macro- and Micro-Average PCC ↑of Top50 HVGs across 10 different cancer types. Best in bold.
+Cancer Type
+Macro-Average PCC
+Micro-Average PCC
+STPath
+STFlow*
+STEM*
+HistoPrism
+STPath
+STFlow*
+STEM*
+HistoPrism
+CCRCC
+0.1170.001
+0.1400.002
+0.1240.029
+0.2060.008
+0.1170.146
+0.1400.126
+0.1230.041
+0.2060.102
+COAD
+0.3930.185
+0.3460.135
+0.2360.001
+0.3530.125
+0.4590.132
+0.3940.098
+0.2350.021
+0.3970.096
+HCC
+0.0940.052
+0.0700.001
+0.0980.032
+0.1130.014
+0.0940.052
+0.0700.001
+0.0980.032
+0.1130.014
+IDC
+0.6290.126
+0.5470.080
+0.1780.029
+0.4770.019
+0.6290.126
+0.5470.080
+0.1780.029
+0.4770.019
+LUNG
+0.5180.028
+0.4680.075
+0.2200.018
+0.4980.020
+0.5180.028
+0.4680.075
+0.2200.018
+0.4980.020
+LYMPH IDC
+0.1820.075
+0.1850.034
+0.1600.010
+0.2150.042
+0.1820.075
+0.1850.034
+0.1600.010
+0.2150.042
+PAAD
+0.4930.100
+0.4200.203
+0.1950.064
+0.4200.019
+0.4930.100
+0.4200.203
+0.1950.064
+0.4200.019
+PRAD
+0.2570.012
+0.2020.010
+0.1850.056
+0.3240.030
+0.2550.139
+0.2000.107
+0.1840.070
+0.3170.134
+READ
+0.2800.030
+0.2280.075
+0.2180.012
+0.2950.023
+0.2790.028
+0.2280.071
+0.2200.029
+0.2950.037
+SKCM
+0.5880.113
+0.5030.102
+0.2280.068
+0.5230.046
+0.5880.113
+0.5030.102
+0.2280.068
+0.5230.046
+Average
+0.3610.072
+0.3110.167
+0.1840.004
+0.3420.138
+0.2920.191
+0.2470.157
+0.1800.064
+0.3180.138
+* STEM and STFlow are trained only with 430 union top50 HVG genes due to limited computing resources.
+4.3
+BEYOND VARIANCE: HISTOPRISM CAPTURES COHERENT BIOLOGY IN LOW-VARIANCE
+PATHWAYS
+We evaluated gene pathway coherence (GPC) for HistoPrism and STPath, on both Hallmark gene
+pathways and Gene Ontology pathways. HistoPrism demonstrates consistent gains, outperforming
+STPath on 86.0% of the 50 Hallmark pathways and on 74.7% of the Gene Ontology pathways.
+Beyond these overall win rates, stratifying pathways by variance level (Figure 2) reveals a more
+fundamental distinction. HistoPrism achieves its largest gains on low-variance pathways, which are
+often associated with stable, core biological processes(Eisenberg & Levanon, 2013).
+This comparison underscores a fundamental difference in modeling strategy: while STPath primar-
+ily leverages the most variable signals, HistoPrism’s direct-mapping architecture effectively captures
+both high-variance genes and the subtler, coordinated expression patterns that define cellular pro-
+grams. These findings suggest that isolated gene-level variance-based metrics provide an incomplete
+6
+
+===== PAGE 7 =====
+Published as a conference paper at ICLR 2026
+assessment of a model’s ability to reconstruct biologically meaningful gene expression. More details
+can be found in Appendix C.
+(a) Hallmark gene pathway performance.
+(b) Gene ontology pathway performance.
+Figure 2: Comparison of gene pathway coherence (GPC) in PCC on both Hallmark gene pathways
+and Gene Ontology pathways.
+4.4
+HOLISTIC ASSESSMENT OF PREDICTED GENE EXPRESSION
+We further evaluate the biological relevance of the predicted expression profiles by clustering all
+samples based on their predicted expression across the full set of 38k genes, and comparing the re-
+sulting clusters to the ground-truth cancer type labels. Table 2 reports Adjusted Mutual Information
+(AMI) and Adjusted Rand Index (ARI) between the predicted clusters and the true cancer types.
+Due to class imbalance, AMI serves as the more informative measure, while ARI is reported for
+completeness. This evaluation provides a holistic view of prediction quality beyond subset-based
+assessments, as successful clustering requires the model to generate a biologically coherent rep-
+resentation across the entire transcriptome. HistoPrism achieves substantially higher scores than
+STPath, which we attribute to its architectural design. By contrast, the ”fill-in-the-blanks” objective
+of STPath, based on a masked autoencoder, is architecturally optimized for reconstruction and impu-
+tation. For a pure predictive task where no gene information is provided at inference, this framework
+is suboptimal. Our proposed direct mapping is more naturally suited for this modality translation
+task, avoiding the inductive bias of an autoencoder on a generative problem.
+Table 2: Quantitative comparison of downstream clustering utility (AMI/ARI). Best in bold.
+Model
+AMI ↑
+ARI ↑
+STPath
+0.3950.523
+0.4020.016
+HistoPrism
+0.6230.015
+0.5210.001
+4.5
+DATA-EFFICIENCY AND SCALABILITY ANALYSIS
+To assess computational efficiency, we benchmarked HistoPrism against the baseline STPath across
+forward-pass runtime, peak GPU memory, and FLOPs (Figure.
+3). Both models used identical
+image and gene embedding dimension and the same number of patches. Profiling shows that Histo-
+Prism consistently requires fewer FLOPs, less memory, and shorter runtimes than STPath, with the
+gap widening as patch counts increase. Notably, HistoPrism scales linearly across all three metrics,
+while STPath exhibits exponential growth, highlighting HistoPrism’s deployment efficiency for real-
+world datasets exceeding 10k patches. Crucially, HistoPrism achieves this performance while being
+trained on only 500 whole-slide images, roughly half the data used for the STPath foundation model,
+underscoring its remarkable data efficiency. These efficiency gains are especially critical in clinical
+settings, where computational resources are often limited, making HistoPrism a practical and scal-
+able solution for whole-slide image analysis. All experiments were run on a single NVIDIA A100
+7
+
+===== PAGE 8 =====
+Published as a conference paper at ICLR 2026
+GPU with 100-run averages. FLOPs and peak memory show no variance, and the inference-time
+standard deviation is negligible.
+Figure 3: Model efficiency comparison of HistoPrism and STPath in terms of forward pass runtime,
+peak GPU memory usage, and FLOPs across different numbers of patches.
+4.6
+ABLATION STUDY
+We conducted an ablation study to disentangle the contributions of cross-attention and explicit spa-
+tial priors. As shown in Table 3, conditioning on cancer type through cross-attention consistently
+improves performance, highlighting the importance of modulating local representations with global
+context. Surprisingly, however, adding explicit positional encoding (PE) yields no measurable ben-
+efit, contrary to common assumptions in Transformer-based architectures. We hypothesize two rea-
+sons for this. First, the prediction task is predominantly local: the rich latent features extracted by
+UNI PFM already capture morphology within and around each patch, leaving little additional signal
+to be gained from absolute spatial coordinates. Second, in the absence of PE, the Transformer be-
+haves as a permutation-invariant set function, effectively leveraging the global compositional struc-
+ture of the tissue without being anchored to fixed positions.
+Table 3: Ablation study of cross attention and positional encoding with predictive accuracy in PCC
+↑on top50 HVGs. Best in bold.
+Cancer Type
+Macro-Average PCC
+Micro-Average PCC
+w/o CrossAttn
+HistoPrism+PE
+HistoPrism
+w/o CrossAttn
+HistoPrism+PE
+HistoPrism
+CCRCC
+0.2270.039
+0.2360.047
+0.2060.008
+0.4980.036
+0.2360.133
+0.2060.102
+COAD
+0.2890.026
+0.3850.118
+0.3530.125
+0.2990.047
+0.4270.088
+0.3970.096
+HCC
+0.1020.004
+0.1080.028
+0.1130.014
+0.1020.004
+0.1080.028
+0.1130.014
+IDC
+0.4430.030
+0.4200.053
+0.4770.019
+0.4430.030
+0.4200.053
+0.4770.019
+LUNG
+0.4650.028
+0.4820.022
+0.4980.020
+0.4650.028
+0.4820.022
+0.4980.020
+LYMPH IDC
+0.2300.067
+0.2080.051
+0.2150.042
+0.2300.067
+0.2080.051
+0.2150.042
+PAAD
+0.3680.049
+0.3940.033
+0.4200.019
+0.3680.049
+0.3940.033
+0.4200.019
+PRAD
+0.3340.038
+0.3210.054
+0.3240.030
+0.3250.134
+0.3100.134
+0.3170.134
+READ
+0.2240.121
+0.2580.008
+0.2950.023
+0.2240.104
+0.2580.039
+0.2950.037
+SKCM
+0.4980.036
+0.4940.040
+0.5230.046
+0.4980.036
+0.4940.040
+0.5230.046
+Average
+0.3180.129
+0.3310.129
+0.3420.138
+0.3060.134
+0.3130.137
+0.3180.138
+To ensure a fair comparison with STPath, we further ablated our model by replacing our PFM with
+the Gigapath as used in STPath. As shown in Table 4 and Figure4, this substitution results in only
+marginal performance differences, indicating that our approach does not rely heavily on pretrained
+PFM representations. Therefore, we exclude the use of Gigapath in the main experiments to isolate
+the contribution of our architecture rather than external foundation model priors.
+5
+DISCUSSION
+We introduced HistoPrism, a direct-mapping transformer for pan-cancer spatial transcriptomics pre-
+diction, together with Gene Pathway Coherence (GPC), a benchmark that aligns evaluation with
+biological function. Variance-based metrics, while useful, are a poor proxy for coordinated cellu-
+8
+
+===== PAGE 9 =====
+Published as a conference paper at ICLR 2026
+Table 4: Ablation study of PFMs and positional encoding with predictive accuracy in PCC ↑on
+top50 HVGs. Best in bold.
+Cancer Type
+Macro-Average PCC
+Micro-Average PCC
+STPath
+HistoPrism+GigaPath
+HistoPrism
+STPath
+HistoPrism+GigaPath
+HistoPrism
+CCRCC
+0.1170.001
+0.2140.023
+0.2060.008
+0.1170.146
+0.2140.127
+0.2060.102
+COAD
+0.3930.185
+0.3310.123
+0.3530.125
+0.4590.132
+0.3750.098
+0.3970.096
+HCC
+0.0940.052
+0.0960.015
+0.1130.014
+0.0940.052
+0.0960.015
+0.1130.014
+IDC
+0.6290.126
+0.4720.037
+0.4770.019
+0.6290.126
+0.4720.037
+0.4770.019
+LUNG
+0.5180.028
+0.5020.015
+0.4980.020
+0.5180.028
+0.5020.015
+0.4980.020
+LYMPH IDC
+0.1820.075
+0.2270.060
+0.2150.042
+0.1820.075
+0.2270.060
+0.2150.042
+PAAD
+0.4930.100
+0.4010.008
+0.4200.019
+0.4930.100
+0.4010.008
+0.4200.019
+PRAD
+0.2570.012
+0.3460.048
+0.3240.030
+0.2550.139
+0.3360.138
+0.3170.134
+READ
+0.2800.030
+0.2630.055
+0.2950.023
+0.2790.028
+0.2630.057
+0.2950.037
+SKCM
+0.5880.113
+0.4600.169
+0.5230.046
+0.5880.113
+0.4600.169
+0.5230.046
+Average
+0.3610.072
+0.3310.139
+0.3420.138
+0.2920.191
+0.3200.142
+0.3180.138
+(a) Hallmark gene pathway performance.
+(b) Gene ontology pathway performance.
+Figure 4: Ablation study of the impact of PFM Gigapath on our model HistoPrism’s GPC perfor-
+mance.
+lar processes. By shifting to pathway-level structure, GPC provides a more rigorous measure of
+performance.
+Across experiments, HistoPrism outperforms strong baselines, including STPath, STFlow and
+STEM, not only on highly variable genes but also at the pathway level, where biological coher-
+ence is critical. Global evaluation using 38,928 gene clustering further shows large gains in AMI
+and ARI, demonstrating that HistoPrism captures both fine-grained gene programs and broad cancer-
+type organization. Crucially, we demonstrate that these gains are architectural and independent of
+the underlying feature extractor: while we utilized UNI features for benchmarking consistency, our
+ablations confirm that HistoPrism remains robust and effective when trained with GigaPath.
+Beyond predictive performance, HistoPrism is optimized for resource-constrained settings, achiev-
+ing SOTA performance with only approximately 50% of standard training data and a minimal com-
+putational footprint. This efficiency directly supports clinical deployment in institutes where large-
+scale compute or massive annotated datasets are unavailable.
+While our work establishes a robust predictive model, a key avenue for future research is to enhance
+its biological interpretability. Moving beyond predictive accuracy to systematically identify the
+causal visual features and cellular concepts the model has learned will be crucial for its adoption as
+a tool for scientific discovery.
+6
+CONCLUSION
+We presented HistoPrism, an efficient transformer for pan-cancer prediction of gene expression from
+histology. HistoPrism achieves state-of-the-art accuracy on highly variable genes, stronger biolog-
+9
+
+===== PAGE 10 =====
+Published as a conference paper at ICLR 2026
+ical coherence at the pathway level, and superior global clustering performance (AMI, ARI) across
+38k genes. In addition to accuracy and fidelity, HistoPrism offers major efficiency gains, enabling
+large-scale pan-cancer analysis at lower cost. By introducing GPC, we move evaluation beyond
+variance-based metrics toward functional interpretability, a prerequisite for clinical relevance. To-
+gether, these advances highlight HistoPrism’s potential to bridge histology and transcriptomics at
+scale, bringing computational spatial genomics closer to practical deployment.
+7
+ACKNOWLEDGEMENT
+This work is partly supported by the Federal Ministry of Research, Technology and Space in DAAD
+project 57616814 (SECAI, School of Embedded Composite AI, https://secai.org/) as part of the
+program Konrad Zuse Schools of Excellence in Artificial Intelligence.
+8
+CONFLICT OF INTEREST
+JNK declares ongoing consulting services for AstraZeneca and Bioptimus. Furthermore, he holds
+shares in StratifAI, Synagen, and Spira Labs, has received an institutional research grant from GSK
+and AstraZeneca, as well as honoraria from AstraZeneca, Bayer, Daiichi Sankyo, Eisai, Janssen,
+Merck, MSD, BMS, Roche, Pfizer, and Fresenius.
+REFERENCES
+Broad Institute. Molecular Signatures Database (MSigDB). https://www.gsea-msigdb.
+org/gsea/msigdb, 2025. Accessed: 2025-09-10.
+Jiawen Chen, Muqing Zhou, Wenrong Wu, Jinwei Zhang, Yun Li, and Didong Li. Stimage-1k4m:
+A histopathology image-gene expression dataset for spatial transcriptomics. In A. Globerson,
+L. Mackey, D. Belgrave, A. Fan, U. Paquet, J. Tomczak, and C. Zhang (eds.), Advances in Neural
+Information Processing Systems, volume 37, pp. 35796–35823. Curran Associates, Inc., 2024a.
+URL
+https://proceedings.neurips.cc/paper_files/paper/2024/file/
+3ef2b740cb22dcce67c20989cb3d3fce-Paper-Datasets_and_Benchmarks_
+Track.pdf.
+Richard J Chen, Tong Ding, Ming Y Lu, Drew FK Williamson, Guillaume Jaume, Bowen Chen,
+Andrew Zhang, Daniel Shao, Andrew H Song, Muhammad Shaban, et al. Towards a general-
+purpose foundation model for computational pathology. Nature Medicine, 2024b.
+Kyongho Choe, Unil Pak, Yu Pang, Wanjun Hao, and Xiuqin Yang. Advances and challenges in
+spatial transcriptomics for developmental biology. Biomolecules, 13(1):156, 2023.
+Youngmin Chung, Ji Hun Ha, Kyeong Chan Im, and Joo Sang Lee. Accurate spatial gene expression
+prediction by integrating multi-resolution features. In Proceedings of the IEEE/CVF Conference
+on Computer Vision and Pattern Recognition, pp. 11591–11600, 2024.
+Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. Bert: Pre-training of deep
+bidirectional transformers for language understanding. In Proceedings of the 2019 conference of
+the North American chapter of the association for computational linguistics: human language
+technologies, volume 1 (long and short papers), pp. 4171–4186, 2019.
+Eli Eisenberg and Erez Y Levanon. Human housekeeping genes, revisited. TRENDS in Genetics,
+29(10):569–574, 2013.
+Gene Ontology Consortium. Gene Ontology (GO). http://geneontology.org/, 2025. Ac-
+cessed: 2025-09-10.
+Tinglin Huang, Tianyu Liu, Mehrtash Babadi, Wengong Jin, and Rex Ying. Scalable generation of
+spatial transcriptomics from histology images via whole-slide flow matching. In International
+Conference on Machine Learning, 2025a.
+10
+
+===== PAGE 11 =====
+Published as a conference paper at ICLR 2026
+Tinglin Huang, Tianyu Liu, Mehrtash Babadi, Rex Ying, and Wengong Jin. Stpath: A generative
+foundation model for integrating spatial transcriptomics and whole slide images. bioRxiv, pp.
+2025–04, 2025b.
+Guillaume Jaume, Paul Doucet, Andrew Song, Ming Yang Lu, Cristina Almagro P´erez, Sophia Wag-
+ner, Anurag Vaidya, Richard Chen, Drew Williamson, Ahrong Kim, et al. Hest-1k: A dataset for
+spatial transcriptomics and histology image analysis. Advances in Neural Information Processing
+Systems, 37:53798–53833, 2024.
+Shawez Khan, Jong Joo Kim, et al. Spatial transcriptomics data and analytical methods: an updated
+perspective. Drug Discovery Today, 29(3):103889, 2024.
+Yahui Long, Kok Siong Ang, Mengwei Li, Kian Long Kelvin Chong, Raman Sethi, Chengwei
+Zhong, Hang Xu, Zhiwei Ong, Karishma Sachaphibulkij, Ao Chen, et al. Spatially informed
+clustering, integration, and deconvolution of spatial transcriptomics with graphst. Nature Com-
+munications, 14(1):1155, 2023.
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez,
+Łukasz Kaiser, and Illia Polosukhin. Attention is all you need. Advances in neural informa-
+tion processing systems, 30, 2017.
+Xiyue Wang, Sen Yang, Jun Zhang, Minghui Wang, Jing Zhang, Wei Yang, Junzhou Huang, and
+Xiao Han. Transformer-based unsupervised contrastive learning for histopathological image clas-
+sification. Medical image analysis, 81:102559, 2022.
+Ronald Xie, Kuan Pang, Sai Chung, Catia Perciani, Sonya MacParland, Bo Wang, and Gary Bader.
+Spatially resolved gene expression prediction from histology images via bi-modal contrastive
+learning. Advances in Neural Information Processing Systems, 36:70626–70637, 2023.
+Hanwen Xu, Naoto Usuyama, Jaspreet Bagga, Sheng Zhang, Rajesh Rao, Tristan Naumann, Cliff
+Wong, Zelalem Gero, Javier Gonz´alez, Yu Gu, Yanbo Xu, Mu Wei, Wenhui Wang, Shuming Ma,
+Furu Wei, Jianwei Yang, Chunyuan Li, Jianfeng Gao, Jaylen Rosemon, Tucker Bower, Soohee
+Lee, Roshanthi Weerasinghe, Bill J. Wright, Ari Robicsek, Brian Piening, Carlo Bifulco, Sheng
+Wang, and Hoifung Poon. A whole-slide foundation model for digital pathology from real-world
+data. Nature, 2024.
+Sichen Zhu, Yuchen Zhu, Molei Tao, and Peng Qiu. Diffusion generative modeling for spatially
+resolved gene expression inference from histology images. arXiv preprint arXiv:2501.15598,
+2025.
+11
+
+===== PAGE 12 =====
+Published as a conference paper at ICLR 2026
+A
+APPENDIX: THE USE OF LARGE LANGUAGE MODELS
+This work benefited from the use of Large Language Models (LLMs) for minor tasks such as text
+and language polishing, as well as for suggesting memorable model names. LLMs were not used to
+generate scientific content, derive conclusions, or perform any form of data analysis. The authors
+are fully responsible for the entire content and integrity of this submission.
+B
+APPENDIX: CODE, TRAINING CONFIGURATION, AND DATA SPLITS
+All code, training configurations, and data splits are provided for reproducibility. The HEST1k
+dataset was obtained following the original publication (Jaume et al., 2024), and PFM preprocessing
+followed official repositories (Chen et al., 2024b; Xu et al., 2024). Baseline models were imple-
+mented according to their official repositories(Huang et al., 2025b; Zhu et al., 2025). Scripts will be
+released upon acceptance.
+B.1
+IMPLEMENTATION AND EVALUATION DETAILS
+Models were trained end-to-end with MSE loss using the AdamW optimizer with learning rate
+5×10−4 and weight decay 0.01. Training was run for up to 1000 epochs with early stopping patience
+of 30 epochs based on validation MSE, while convergence is usually achieved after approximately
+300 epochs. Gradient clipping with a maximum norm of 1.0 was applied. Sample sizes for two
+splits are shown in Table 5. Sample size for each cancer type in test splits are shown in Table 6. All
+experiments used PyTorch on a single NVIDIA A100 GPU.
+Table 5: Number of samples in splits.
+Splits
+#Train
+#Validation
+#Test
+Split 0
+501
+124
+23
+Split 1
+498
+123
+28
+Table 6: Test set sample sizes across 10 cancer types in two splits.
+Cancer Type
+# Samples
+Split 0
+Split 1
+Total
+CCRCC
+4
+4
+8
+COAD
+3
+1
+4
+HCC
+1
+1
+2
+IDC
+1
+1
+2
+LUNG
+1
+1
+2
+LYMPH IDC
+1
+1
+2
+PAAD
+1
+1
+2
+PRAD
+8
+15
+23
+READ
+2
+2
+4
+SKCM
+1
+1
+2
+Total
+23
+28
+51
+C
+APPENDIX: GENE PATHWAY COHERENCE DETAILS
+We compute the variance of each gene across the test set for two splits and discretize them into ten
+variance levels (1–10). For each pathway, we then calculate the unweighted average variance of
+its constituent genes to derive the pathway-level variance. The variance levels are summarized in
+Table 7, while Figure 5 provides a more intuitive visualization of the distribution. Gene counts and
+average variances per pathway are reported in Table 8 9.
+12
+
+===== PAGE 13 =====
+Published as a conference paper at ICLR 2026
+Table 7: Gene variance level thresholds details.
+Levels
+Variance Threshold
+Split 0
+Split 1
+Level 1
+> 0.0000
+>0.0000
+Level 2
+> 0.7525
+>0.7614
+Level 3
+> 0.8663
+>0.8462
+Level 4
+> 0.9070
+>0.8865
+Level 5
+> 0.9360
+>0.9213
+Level 6
+> 0.9662
+>0.9609
+Level 7
+> 1.0079
+>1.0145
+Level 8
+> 1.0698
+>1.0899
+Level 9
+> 1.1764
+>1.2015
+Level 10
+> 1.3743
+>1.3806
+Figure 5: Gene variance distribution density plot.
+13
+
+===== PAGE 14 =====
+Published as a conference paper at ICLR 2026
+Table 8: Comparison of Hallmark pathway-level PCC across models.
+Pathway ID
+#Genes
+Avg. Variance
+Variance Level
+PCC
+HistoPrism
+STPath
+HALLMARK ADIPOGENESIS
+60
+1.0210
+6.5
+0.2597
+0.2590
+HALLMARK ALLOGRAFT REJECTION
+67
+1.3370
+9.5
+0.2292
+0.2291
+HALLMARK ANDROGEN RESPONSE
+36
+1.0500
+7.5
+0.3199
+0.2907
+HALLMARK ANGIOGENESIS
+16
+1.2810
+9.0
+0.2267
+0.2239
+HALLMARK APICAL JUNCTION
+71
+1.1703
+8.5
+0.2488
+0.2534
+HALLMARK APICAL SURFACE
+16
+1.2029
+8.5
+0.2222
+0.2292
+HALLMARK APOPTOSIS
+79
+1.1056
+7.5
+0.2716
+0.2613
+HALLMARK BILE ACID METABOLISM
+28
+1.0077
+6.0
+0.2136
+0.1713
+HALLMARK CHOLESTEROL HOMEOSTASIS
+31
+1.0467
+7.0
+0.2660
+0.2774
+HALLMARK COAGULATION
+33
+1.2280
+8.5
+0.2279
+0.2257
+HALLMARK COMPLEMENT
+62
+1.2166
+8.5
+0.2423
+0.2406
+HALLMARK DNA REPAIR
+40
+0.9847
+5.5
+0.2738
+0.2627
+HALLMARK E2F TARGETS
+56
+1.0199
+6.5
+0.2973
+0.2820
+HALLMARK EPITHELIAL MESENCHYMAL TRANSITION
+83
+1.3331
+9.5
+0.2288
+0.2286
+HALLMARK ESTROGEN RESPONSE EARLY
+53
+1.1473
+8.0
+0.2729
+0.2612
+HALLMARK ESTROGEN RESPONSE LATE
+55
+1.2174
+8.5
+0.2978
+0.2781
+HALLMARK FATTY ACID METABOLISM
+35
+1.0369
+7.0
+0.2748
+0.2614
+HALLMARK G2M CHECKPOINT
+64
+1.0719
+7.5
+0.3008
+0.2816
+HALLMARK GLYCOLYSIS
+47
+1.0945
+7.5
+0.2995
+0.2735
+HALLMARK HEDGEHOG SIGNALING
+11
+1.1500
+8.0
+0.2198
+0.1955
+HALLMARK HEME METABOLISM
+48
+1.0743
+7.5
+0.2678
+0.2446
+HALLMARK HYPOXIA
+71
+1.1004
+8.0
+0.2717
+0.2586
+HALLMARK IL2 STAT5 SIGNALING
+75
+1.1960
+8.5
+0.2505
+0.2330
+HALLMARK IL6 JAK STAT3 SIGNALING
+43
+1.3526
+9.5
+0.2121
+0.2101
+HALLMARK INFLAMMATORY RESPONSE
+76
+1.3428
+9.5
+0.2070
+0.2115
+HALLMARK INTERFERON ALPHA RESPONSE
+34
+1.2280
+9.0
+0.2306
+0.2185
+HALLMARK INTERFERON GAMMA RESPONSE
+77
+1.2545
+9.0
+0.2166
+0.2205
+HALLMARK KRAS SIGNALING DN
+20
+1.2615
+9.0
+0.1836
+0.1787
+HALLMARK KRAS SIGNALING UP
+70
+1.3569
+9.5
+0.2309
+0.2314
+HALLMARK MITOTIC SPINDLE
+56
+1.0445
+6.5
+0.2795
+0.2542
+HALLMARK MTORC1 SIGNALING
+67
+0.9656
+5.0
+0.3044
+0.2963
+HALLMARK MYC TARGETS V1
+62
+0.9274
+4.5
+0.3343
+0.2981
+HALLMARK MYC TARGETS V2
+15
+0.8886
+3.0
+0.1711
+0.1145
+HALLMARK MYOGENESIS
+52
+1.1201
+8.0
+0.2510
+0.2558
+HALLMARK NOTCH SIGNALING
+16
+1.1593
+8.0
+0.2535
+0.2452
+HALLMARK OXIDATIVE PHOSPHORYLATION
+41
+0.8582
+2.5
+0.2435
+0.1985
+HALLMARK P53 PATHWAY
+66
+1.1311
+8.0
+0.2665
+0.2658
+HALLMARK PANCREAS BETA CELLS
+8
+1.4304
+10.0
+0.1312
+0.1069
+HALLMARK PEROXISOME
+32
+1.0145
+7.0
+0.2903
+0.2691
+HALLMARK PI3K AKT MTOR SIGNALING
+51
+1.0554
+7.0
+0.2813
+0.2733
+HALLMARK PROTEIN SECRETION
+33
+0.9266
+4.5
+0.3179
+0.2979
+HALLMARK REACTIVE OXYGEN SPECIES PATHWAY
+15
+0.9336
+4.5
+0.1843
+0.1383
+HALLMARK SPERMATOGENESIS
+16
+1.0683
+7.5
+0.2630
+0.2342
+HALLMARK TGF BETA SIGNALING
+30
+1.1092
+7.5
+0.2610
+0.2466
+HALLMARK TNFA SIGNALING VIA NFKB
+71
+1.2954
+9.0
+0.2369
+0.2269
+HALLMARK UNFOLDED PROTEIN RESPONSE
+24
+0.9069
+4.0
+0.2835
+0.2455
+HALLMARK UV RESPONSE DN
+65
+1.1875
+8.5
+0.2340
+0.2265
+HALLMARK UV RESPONSE UP
+50
+1.1027
+7.5
+0.3034
+0.2699
+HALLMARK WNT BETA CATENIN SIGNALING
+21
+1.1335
+8.0
+0.2284
+0.2193
+HALLMARK XENOBIOTIC METABOLISM
+53
+1.0462
+7.0
+0.2771
+0.2505
+14
+
+===== PAGE 15 =====
+Published as a conference paper at ICLR 2026
+Table 9: Comparison of GO pathway-level PCC across models.
+Pathway ID
+#Genes
+Avg. Variance
+Variance Level
+PCC
+HistoPrism
+STPath
+GOBP ACTIVATION OF INNATE IMMUNE RESPONSE
+100
+1.0227
+6.5
+0.2364
+0.2139
+GOBP B CELL ACTIVATION
+100
+1.1720
+8.5
+0.2325
+0.2218
+GOBP CALCIUM ION TRANSPORT
+100
+1.1175
+7.5
+0.2446
+0.2314
+GOBP NEURON APOPTOTIC PROCESS
+100
+1.0951
+7.5
+0.2545
+0.2654
+GOBP REGULATION OF CELLULAR RESPONSE TO GROWTH FACTOR STIMULUS
+100
+1.1876
+8.5
+0.2165
+0.2270
+GOCC COLLAGEN CONTAINING EXTRACELLULAR MATRIX
+100
+1.3604
+9.5
+0.1953
+0.2048
+GOCC GOLGI MEMBRANE
+100
+1.0275
+7.0
+0.2600
+0.2531
+GOCC MEMBRANE MICRODOMAIN
+100
+1.1672
+8.5
+0.2520
+0.2464
+GOBP CELL PROJECTION ASSEMBLY
+99
+1.0780
+7.5
+0.2317
+0.2237
+GOBP LIPID LOCALIZATION
+99
+1.0686
+7.5
+0.2170
+0.2125
+GOBP MACROAUTOPHAGY
+99
+0.9678
+6.0
+0.2099
+0.2130
+GOCC PRESYNAPSE
+99
+0.9804
+6.0
+0.2710
+0.2468
+GOBP REGULATION OF ENDOCYTOSIS
+98
+1.1148
+8.0
+0.2341
+0.2303
+GOBP RIBONUCLEOPROTEIN COMPLEX BIOGENESIS
+97
+0.9136
+4.0
+0.2035
+0.1648
+GOBP ORGANOPHOSPHATE BIOSYNTHETIC PROCESS
+96
+1.0071
+6.5
+0.2882
+0.2728
+GOBP REGULATION OF NEUROGENESIS
+96
+1.1289
+8.0
+0.2237
+0.2246
+GOMF SIGNALING RECEPTOR REGULATOR ACTIVITY
+96
+1.3151
+9.0
+0.1967
+0.1966
+GOBP RHYTHMIC PROCESS
+95
+1.0576
+7.0
+0.2516
+0.2513
+GOCC NUCLEAR SPECK
+95
+0.9567
+5.5
+0.2261
+0.2274
+GOMF AMINOACYLTRANSFERASE ACTIVITY
+95
+0.9781
+6.0
+0.2969
+0.2799
+GOBP NEGATIVE REGULATION OF MOLECULAR FUNCTION
+94
+1.1241
+8.0
+0.2465
+0.2355
+GOBP RESPONSE TO ALCOHOL
+94
+1.1364
+8.0
+0.2609
+0.2516
+GOMF GUANYL NUCLEOTIDE BINDING
+94
+1.0072
+6.0
+0.2679
+0.2502
+GOBP EPIDERMIS DEVELOPMENT
+93
+1.3638
+9.5
+0.2616
+0.2586
+GOBP POSITIVE REGULATION OF PHOSPHORYLATION
+93
+1.1214
+8.0
+0.2332
+0.2260
+GOBP NEGATIVE REGULATION OF CELL CYCLE
+92
+1.1207
+8.0
+0.2387
+0.2418
+GOBP MALE GAMETE GENERATION
+90
+1.0272
+7.0
+0.2438
+0.2316
+GOBP NEGATIVE REGULATION OF CYTOKINE PRODUCTION
+90
+1.1553
+8.0
+0.2180
+0.2130
+GOBP CELLULAR RESPONSE TO INSULIN STIMULUS
+89
+1.0354
+7.0
+0.2296
+0.2204
+GOBP MEMBRANELESS ORGANELLE ASSEMBLY
+89
+0.9689
+5.5
+0.2445
+0.2484
+GOBP REGULATION OF TRANSLATION
+89
+0.9687
+5.5
+0.2842
+0.2682
+GOMF ACTIN BINDING
+88
+1.0558
+7.0
+0.2709
+0.2615
+GOMF PHOSPHOLIPID BINDING
+88
+0.9990
+6.0
+0.2476
+0.2410
+GOMF TRANSCRIPTION COACTIVATOR ACTIVITY
+88
+0.9709
+6.0
+0.2685
+0.2424
+GOCC MICROTUBULE
+86
+1.0171
+6.5
+0.2903
+0.2666
+GOCC MITOCHONDRIAL MATRIX
+86
+0.9383
+4.5
+0.2907
+0.2763
+GOMF PHOSPHORIC ESTER HYDROLASE ACTIVITY
+85
+1.0700
+7.5
+0.2471
+0.2427
+GOCC TRANSFERASE COMPLEX TRANSFERRING PHOSPHORUS CONTAINING GROUPS
+83
+0.9975
+6.0
+0.2846
+0.2660
+GOBP PROTEIN LOCALIZATION TO CELL PERIPHERY
+82
+0.9707
+5.5
+0.2842
+0.2675
+GOCC BASAL PART OF CELL
+82
+1.1528
+8.5
+0.2798
+0.2724
+GOMF ENZYME INHIBITOR ACTIVITY
+82
+1.1447
+8.0
+0.2280
+0.2239
+GOBP PROTEIN LOCALIZATION TO EXTRACELLULAR REGION
+80
+1.0677
+7.0
+0.2251
+0.2210
+GOBP POSITIVE REGULATION OF CELL CYCLE
+79
+1.1142
+7.5
+0.2598
+0.2419
+GOBP AMEBOIDAL TYPE CELL MIGRATION
+78
+1.1797
+8.5
+0.2417
+0.2416
+GOBP CELLULAR RESPONSE TO RADIATION
+78
+1.0697
+7.5
+0.2265
+0.2304
+GOBP REGULATION OF INTRACELLULAR TRANSPORT
+78
+1.0626
+7.5
+0.2655
+0.2497
+GOCC NUCLEAR MEMBRANE
+78
+1.0141
+6.5
+0.2660
+0.2545
+GOCC VESICLE LUMEN
+78
+1.0847
+7.5
+0.2537
+0.2472
+GOBP REGULATION OF MYELOID CELL DIFFERENTIATION
+77
+1.2347
+8.5
+0.2274
+0.2239
+GOBP FAT CELL DIFFERENTIATION
+75
+1.1462
+8.0
+0.1980
+0.2062
+GOBP REGULATION OF PROTEOLYSIS INVOLVED IN PROTEIN CATABOLIC PROCESS
+75
+0.9792
+6.0
+0.2533
+0.2440
+GOCC SECRETORY GRANULE MEMBRANE
+75
+1.2631
+8.5
+0.2648
+0.2551
+GOBP TISSUE HOMEOSTASIS
+74
+1.2416
+9.0
+0.2463
+0.2481
+GOBP RESPONSE TO MECHANICAL STIMULUS
+73
+1.2086
+8.5
+0.2233
+0.2183
+GOMF CATALYTIC ACTIVITY ACTING ON DNA
+73
+0.9673
+5.5
+0.2535
+0.2400
+GOMF PHOSPHATASE BINDING
+71
+1.1472
+8.0
+0.2587
+0.2621
+GOBP ALCOHOL METABOLIC PROCESS
+70
+1.0000
+6.0
+0.2388
+0.2239
+GOMF PROTEIN HETERODIMERIZATION ACTIVITY
+70
+1.0976
+7.5
+0.2687
+0.2690
+GOBP COGNITION
+69
+1.0499
+7.0
+0.2259
+0.2274
+GOMF SULFUR COMPOUND BINDING
+69
+1.3182
+9.5
+0.2036
+0.2084
+GOBP JNK CASCADE
+68
+1.0452
+7.0
+0.2354
+0.2201
+GOBP PROTEIN COMPLEX OLIGOMERIZATION
+68
+1.0248
+7.0
+0.2520
+0.2359
+GOBP CARBOHYDRATE DERIVATIVE CATABOLIC PROCESS
+67
+1.0404
+7.0
+0.2002
+0.1878
+GOBP PROTEIN PROCESSING
+67
+1.0879
+7.5
+0.2410
+0.2302
+GOMF DNA BINDING TRANSCRIPTION REPRESSOR ACTIVITY
+65
+1.1279
+8.0
+0.2288
+0.2167
+GOBP ORGANIC ACID BIOSYNTHETIC PROCESS
+64
+1.0790
+7.5
+0.2436
+0.2270
+GOBP REGULATION OF EXTRINSIC APOPTOTIC SIGNALING PATHWAY
+64
+1.1024
+7.5
+0.2235
+0.2298
+GOCC POSTSYNAPTIC SPECIALIZATION
+63
+1.0164
+7.0
+0.2580
+0.2416
+GOBP CARTILAGE DEVELOPMENT
+62
+1.2839
+9.0
+0.2165
+0.2282
+GOBP ADAPTIVE THERMOGENESIS
+61
+1.1568
+8.0
+0.2349
+0.2429
+GOBP GLAND MORPHOGENESIS
+61
+1.2464
+9.0
+0.2516
+0.2470
+GOBP REGULATION OF REACTIVE OXYGEN SPECIES METABOLIC PROCESS
+61
+1.0773
+7.5
+0.2501
+0.2394
+GOCC PLASMA MEMBRANE SIGNALING RECEPTOR COMPLEX
+60
+1.1848
+8.5
+0.2476
+0.2481
+GOBP ENDOTHELIUM DEVELOPMENT
+59
+1.2269
+9.0
+0.2375
+0.2355
+GOCC COATED VESICLE
+58
+1.0659
+7.5
+0.2823
+0.2632
+GOBP REGULATION OF CELL MATRIX ADHESION
+57
+1.2320
+8.5
+0.2493
+0.2466
+GOCC CYTOPLASMIC SIDE OF MEMBRANE
+57
+1.1110
+8.0
+0.2631
+0.2553
+GOBP ANATOMICAL STRUCTURE MATURATION
+56
+1.1621
+8.0
+0.2311
+0.2359
+GOBP CELLULAR RESPONSE TO METAL ION
+56
+1.0699
+7.5
+0.2679
+0.2571
+GOBP NEGATIVE REGULATION OF GENE EXPRESSION EPIGENETIC
+56
+0.9559
+5.0
+0.1923
+0.1510
+GOBP ESTABLISHMENT OF CELL POLARITY
+54
+1.0476
+7.0
+0.2370
+0.2313
+GOBP REGULATION OF CELL MORPHOGENESIS
+54
+1.0163
+6.5
+0.2193
+0.2087
+GOBP RESPONSE TO TOPOLOGICALLY INCORRECT PROTEIN
+54
+0.9582
+5.0
+0.2880
+0.2740
+GOBP SENSORY PERCEPTION
+54
+1.1405
+8.0
+0.2216
+0.2162
+GOMF CARBOHYDRATE BINDING
+54
+1.1295
+8.0
+0.2071
+0.2134
+GOBP REGULATION OF RESPONSE TO WOUNDING
+52
+1.2147
+8.5
+0.2394
+0.2385
+GOBP CELL CELL ADHESION VIA PLASMA MEMBRANE ADHESION MOLECULES
+51
+1.2749
+9.0
+0.2401
+0.2455
+15

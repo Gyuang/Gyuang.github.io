@@ -1,0 +1,2170 @@
+
+===== PAGE 1 =====
+Virchow: A Million-Slide Digital Pathology Foundation Model
+Eugene Vorontsov†1, Alican Bozkurt†1, Adam Casson†1, George Shaikovski†1,
+Michal Zelechowski†1, Siqi Liu†‡1, Kristen Severson2, Eric Zimmermann2, James Hall2,
+Neil Tenenholtz2, Nicolo Fusi2, Philippe Mathieu1, Alexander van Eck1, Donghun Lee1,
+Julian Viret1, Eric Robert1, Yi Kan Wang1, Jeremy D. Kunz1, Matthew C. H. Lee1,
+Jan H. Bernhard1, Ran A. Godrich1, Gerard Oakley1, Ewan Millar3, Matthew Hanna1,4,
+Juan Retamero1, William A. Moye1, Razik Yousfi1, Christopher Kanan1,5, David Klimstra1,4,
+Brandon Rothrock1, Thomas J. Fuchs1
+1Paige, NYC, NY United States.
+2Microsoft Research, Cambridge, MA United States.
+3NSW Health Pathology, St George Hospital, Sydney Australia.
+4Memorial Sloan Kettering Cancer Center, NYC, NY United States.
+5University of Rochester, Rochester, NY United States.
+Abstract
+The use of artificial intelligence to enable precision medicine and decision support systems through the analysis of
+pathology images has the potential to revolutionize the diagnosis and treatment of cancer. Such applications will
+depend on models’ abilities to capture the diverse patterns observed in pathology images. To address this challenge,
+we present Virchow, a foundation model for computational pathology. Using self-supervised learning empowered by
+the DINOv2 algorithm, Virchow is a vision transformer model with 632 million parameters trained on 1.5 million
+hematoxylin and eosin stained whole slide images from diverse tissue and specimen types, which is orders of magnitude
+more data than previous works. The Virchow model enables the development of a pan-cancer detection system with
+0.949 overall specimen-level AUC across 17 different cancer types, while also achieving 0.937 AUC on 7 rare cancer
+types. The Virchow model sets the state-of-the-art on the internal and external image tile level benchmarks and slide
+level biomarker prediction tasks. The gains in performance highlight the importance of training on massive pathology
+image datasets, suggesting scaling up the data and network architecture can improve the accuracy for many high-impact
+computational pathology applications where limited amounts of training data are available.
+1 Main
+Pathology is essential for the diagnosis and treatment of
+cancer. As pathology data is not natively digital, for many
+decades, the field has remained relatively unchanged. With
+the rise of digitization of hematoxylin and eosin (H&E)
+stained microscopy slides, also known as whole slide images
+(WSIs), a new field of computational pathology [1–4] is
+‡Corresponding author. siqi.liu AT paige DOT ai
+†These authors contributed equally to this work.
+This is a live paper that will be updated with results from ongoing
+work.
+emerging. Computational pathology applies artificial intel-
+ligence (AI) to digitized WSIs to support the diagnosis,
+characterization, and understanding of disease [5, 6]. Ini-
+tial work has focused on clinical decision support tools
+to enhance current workflows [7–12]. However given the
+incredible gains in performance of computer vision, a sub-
+field of artificial intelligence focused on images, more recent
+studies [13–17] attempt to unlock new insights from routine
+WSIs and reveal undiscovered outcomes such as therapeu-
+tic response [18]. If successful, such efforts would enhance
+the utility of H&E-stained WSIs and reduce reliance on spe-
+cialized and often expensive immunohistochemistry (IHC)
+or genomic testing [19].
+A major factor in the performance gains of com-
+puter vision models has been the creation of very large
+deep neural networks, termed foundation models. Foun-
+dation models are trained on enormous datasets using a
+1
+arXiv:2309.07778v5  [eess.IV]  18 Jan 2024
+
+===== PAGE 2 =====
+119,629 Patients
+Unique individuals 
+represented in the data
+208,815 Cases
+Patient events requiring 
+tissue samples
+392,268 Specimens 
+Tissue samples
+1,207,837 Blocks 
+Paraffin-embedded samples 
+sliced for microscopy
+1,488,550 H&E Slides 
+Diagnostic sample tens of 
+thousands of square pixels after 
+digitization 
+Cancer
+38.0 %
+Precursor
+8.0 %
+Benign
+24.6 %
+Unknown
+29.4 %
+≥ 2.2 %
+neoplasm
+non-neoplasm
+≥ 7.3 %
+Biopsy
+63%
+Resection
+37%
+Breast
+24.9%
+Skin
+18.4%
+Lymph Node
+16.6%
+Lung
+6.1%
+Bladder
+5.5%
+Prostate
+3.7%
+Upper GI
+2.2%
+Pancreas
+1.8%
+Brain
+0.8%
+Peritoneum
+0.4%
+Adrenal Gland
+0.2%
+Stomach
+3.5%
+Endometrium
+3.4%
+Liver
+3.2%
+Ovary
+3.2%
+Colon
+3.2%
+Bone
+2.7%
+a
+b
+e
+Digital Biomarker Prediction
+Novel and replicative biomarker prediction
+Pan-Cancer Detection
+Tissue-agnostic cancer detection
+Pan-Cancer Subtyping
+Tissue-agnostic cancer subtyping
+f
+Adaptation
+Adapt aggregated tile embeddings to predict slide-level attributes across diverse tasks.
+c
+d
+Foundation Model
+Trained to embed tissue tiles in a basic representation that can be adapted to diverse tasks.
+H&E Slide
+Tissue Tiles
+Virchow
+Embeddings
+Aggregator
+H&E Slide
+Tissue Tiles
+224 x 224 pixel crops from 
+tissue regions in the slide
+Virchow
+Foundation Model with ViT-H architecture (632M 
+parameters) trained using DINOv2 framework
+Fig. 1: Overview of the training dataset (a-d), training algorithm (e), and application (f) of Virchow, a foundation
+model for digital pathology. a. The training data can be described in terms of patients, cases, specimens, blocks or
+slides as shown. (b-d) The slide distribution as a function of cancer status (b), surgery (c), and tissue type (d). e. The
+dataflow during training which requires processing the slide into tiles, which are then cropped into global and local views.
+f. Schematic of applications of the foundation model using an aggregator model to predict attributes at the slide level.
+2
+
+===== PAGE 3 =====
+family of algorithms, referred to as self-supervised learn-
+ing (e.g. [20–24]), which do not require task-specific,
+curated labels. Foundation models generate data repre-
+sentations, known as embeddings, that can generalize
+well to a variety of downstream tasks [25]. These proper-
+ties make foundation models well-suited to the pathology
+domain given the increasing volume of unlabeled data
+and diverse AI applications, including cancer detection,
+cancer subtyping, biomarker quantification, mitotic event
+counting, and survival prediction. A successful pathology
+foundation model would capture a broad spectrum of pat-
+terns, including cellular morphology, tissue architecture,
+staining characteristics, nuclear atypia, mitotic figures,
+necrosis, inflammatory response, neovascularization, tex-
+ture features, and biomarker expression and therefore
+would be well-suited to predicting a wide-variety of WSI
+characteristics.
+Foundation model performance crucially depends on
+dataset and model size as demonstrated by scaling law
+results [26–28]. Modern foundation models in the natural
+image domain use millions of images (e.g. ImageNet [29],
+JFT-300M [30] and LVD-142M [31]) to train models with
+hundreds of millions to billions of parameters [32]. Datasets
+of this scale are challenging to collect in the medical domain
+due to the frequency of image acquisition and challenges
+in sharing data between institutions. Most of the proposed
+foundation models in computational pathology [33–37] pri-
+marily leverage The Cancer Genome Atlas (TCGA) [38],
+an open-access repository of approximately 29k H&E-
+stained whole slide images from 32 cancer types, and
+employ architectures with fewer than 100M parameters
+(see Sec. A.1 for detailed discussion of models). Three
+recent works leverage larger, proprietary datasets: (1) 400k
+WSIs corresponding to 77k patients from Mount Sinai
+Health System [39], (2) 100k WSIs from Massachusetts
+General Hospital, Brigham & Women’s Hospital and the
+Genotype-Tissue Expression consortium [40] and (3) 100k
+WSIs combining proprietary data and TCGA [41]. These
+works scale the model size to 22M [39] and 307M [40, 41]
+parameters. From these recent works, it is evident that
+pathology image features produced with self-supervised
+learning by early-stage foundation models outperform
+image features trained on natural images, and that this
+performance improves with dataset and model scale.
+We present the first million-scale pathology founda-
+tion model, Virchow, named in honor of Rudolf Virchow1.
+Virchow is trained on data from approximately 100 thou-
+sand patients corresponding to approximately 1.5 million
+H&E stained WSIs acquired from Memorial Sloan Ketter-
+ing Cancer Center (MSKCC) which is at least an order of
+magnitude larger than prior training datasets in pathol-
+ogy (detailed in Fig. 1a and Sec. 4.1). The training data
+is composed of cancerous and benign tissue, collected via
+biopsy (63%) and resection (37%), from 17 high-level tis-
+sue types (Fig. 1b,c,d). Virchow, a 632M parameter vision
+1Rudolf Virchow (pronounced vir-kov) is the father of modern
+pathology [42, 43] and proposed the first theory of cellular pathology [44]
+transformer model, is trained using the DINOv2 algo-
+rithm [31], a multi-view student-teacher self-supervised
+algorithm (Figure 1e, see Sec. 4.2 for training details).
+DINOv2 leverages global and local regions of tissue tiles to
+learn to produce embeddings of WSI tiles (Fig. 1e), which
+can be aggregated across slides and used to train a variety
+of downstream predictive tasks (Fig. 1f).
+We implemented a wide array of benchmarks to eval-
+uate the performance of Virchow embeddings on the
+downstream computational pathology tasks. Virchow con-
+sistently outperforms competing models on all benchmarks.
+Motivated by highlighting the potential clinical impact of
+the foundation model, we assess the performance of models
+trained using the Virchow embeddings to predict specimen-
+level cancer across different organs. Virchow embeddings
+are shown to outperform or match all the baseline models
+on all tested cancer types, notably including rare cancers
+and out-of-distribution (OOD) data. Similarly, Virchow
+embeddings yield state-of-the-art biomarker prediction
+performance. Our results demonstrate that large-scale
+foundation models can be the basis for robust results in a
+new frontier of computational pathology.
+2 Results
+We evaluated the Virchow model embeddings on two cate-
+gories of slide-level computational pathology applications:
+pan-cancer detection (Sec. 2.1) and biomarker prediction
+(Sec. 2.2). These benchmarks require training a weakly
+supervised aggregator model to transfer tile embeddings
+to slide-level predictions. We also performed a series of
+tile-level linear probing benchmarks to directly assess the
+embeddings on individual tissue tiles (Sec. 2.3).
+2.1 Pan-cancer detection
+A key aim of our work was to develop a single model to
+detect cancer, especially rare cancer, across various tissues.
+The proposed pan-cancer detection system predicts the
+presence of cancer using foundation model embeddings as
+input (see Sec. 4.4 for architecture and training algorithm
+details). The pan-cancer detection model is evaluated on
+slides from MSKCC as well as slides submitted for consul-
+tation to MSKCC from numerous external sites globally.
+Model performance was stratified across 10 common and
+7 rare cancer types (see Sec. 4.4 for a detailed breakdown
+of the evaluation dataset).
+Embeddings generated by the proposed Virchow model,
+Phikon [35], and CTransPath [33] are evaluated (see
+Sec. 4.3 for further detail on embeddings). Pan-cancer
+aggregators are trained using specimen-level labels, main-
+taining the same training protocol for all embeddings (see
+Sec. 4.4 for details).
+Virchow embeddings yielded the best cancer detection
+performance on all cancer types (Fig. 2a). Pancancer detec-
+tion using Phikon embeddings achieved statistically similar
+performance (p < 0.05) for 5 of the 10 common cancer
+types and 4 of the 7 rare cancer types; nevertheless, in all
+3
+
+===== PAGE 4 =====
+Cancer Prediction (AUC)
+Common Cancers
+a
+■ Primary
+■ Metastatic
+Rare Cancers
+MSK
+50%
+External
+50%
+ID
+81.1%
+OOD
+18.9%
+Serosal 
+Membranes
+1.0%
+Salivary 
+Glands
+0.4%
+Kidney
+0.1%
+Urethra
+0.1%
+Miscellaneous
+0.2%
+Cervix
+6.1%
+Testis
+4.6%
+Head and Neck
+3.5%
+Soft Tissue
+1.7%
+Other 
+Gastro
+1.3%
+d
+c
+e
+Overall Performance
+Virchow
+Phikon
+CTransPath
+Model
+Virchow
+Phikon
+CTransPath
+AUC
+0.949
+0.930
+0.904
+Model
+All
+Internal
+External
+AUC
+0.949
+0.938
+0.932
+Model
+All
+Internal
+External
+AUC
+0.904
+0.896
+0.880
+Model
+All
+Internal
+External
+AUC
+0.930
+0.920
+0.912
+b
+Fig. 2: Pan-cancer detection results (a-c). Detection is specimen-level, produced with an aggregator network trained on
+Virchow, Phikon, or CTransPath tile embeddings. a. Cancer prediction performance (AUC) stratified by cancer type as
+determined by origin tissue (“H&N” is head and neck). The incidence rate of each cancer is shown. Virchow embeddings
+enable the best cancer detection performance across all cancer types and performance remains robust on rare cancers.
+For each cancer type, the AUC corresponding to the statistically significantly (p < 0.05) top performing embeddings is
+highlighted in magenta. When more than one AUC is not gray, performance is “tied” (no statistically significant difference)
+b. Receiver operating characteristic (ROC) curves showing the overall pan-cancer detection performance, as well as
+performance stratified across internal MSKCC data vs. data coming from diverse external institutions. All evaluation
+data is withheld from training. c. Sensitivity at 95% specificity for rare cancer detection (* p < 0.05, ** p < 0.01, *** p
+< 0.001, **** p < 0.0001). d. Half of the specimens come from diverse external institutions (OOD data). e. ID vs. OOD
+tissues in the evaluation dataset. Some of the OOD tissues arise from cancer metastases.
+4
+
+===== PAGE 5 =====
+but one case, the specific AUC score was lower. Overall the
+pan-cancer model achieved an AUC of 0.949 with Virchow
+embeddings, 0.930 with Phikon embeddings, and 0.904
+with CTransPath embeddings (Fig. 2b; all significantly
+different with p « 0.001).
+Rare cancer detection performance is particularly note-
+worthy. Compared to the aforementioned AUC of 0.949
+overall, Virchow embeddings yielded an AUC of 0.937
+on rare cancers, demonstrating robust generalization to
+rare data. Performance across the individual rare can-
+cers was however non-uniform with detection of cervical
+and bone cancers proving more challending (AUC < 0.9),
+irrespective of the embeddings used (Fig. 2b,c). Virchow
+embeddings improved cervix detection to 0.875 AUC com-
+pared with 0.810 when using Phikon embeddings or 0.753
+when using CTransPath embeddings. Similarly, Virchow
+embeddings yielded 0.841 AUC for bone cancer detec-
+tion, compared to 0.822 with Phikon and 0.728 with
+CTransPath. Finally, using Virchow embeddings yielded
+the greatest improvement for detecting brain cancer, pro-
+ducing an AUC of 0.954, compared to 0.898 or 0.795 with
+Phikon and CTransPath, respectively.
+The pan-cancer models demonstrated robustness to
+out-of-distribution data when tested on data external to
+MSKCC, regardless of the choice of embeddings. Detection
+performance dropped from 0.938, 0.920, and 0.896 AUC on
+internal MSKCC data by 0.006, 0.008, and 0.016, respec-
+tively for Virchow, Phikon, and CTransPath embeddings
+(Fig. 2b). The performance drop is minor and expected as
+both the Virchow foundation model training set and the
+pan-cancer model training set contained only data inter-
+nal to MSKCC. On the other hand, half of the specimens
+in the evaluation set are sourced externally from MSKCC
+(Fig. 2d).
+In addition to external sites, the evaluation dataset
+contains OOD tissues that were not seen during model
+training. These comprise 18.9% of the specimens in the
+dataset, as shown in Fig. 2e. Overall, pancancer detection
+generalizes across cancer types, including rare cancers,
+as well as on OOD data when using foundation model
+embeddings.
+2.2 Biomarker detection
+Biomarker prediction using standard H&E stained images
+represents another significant use of computational pathol-
+ogy. We train one aggregator network for each biomarker
+using the foundation model embeddings to predict the
+presence of the biomarker. Specifically, models are trained
+to predict colon microsatellite instability (MSI), bladder
+fibroblast growth factor receptor (FGFR), and lung epi-
+dermal growth factor receptor (EGFR). These biomarkers
+play a crucial role in the diagnosis and treatment of various
+cancers and each is described in further detail in Sec. 4.5.
+Samples included in the biomarker detection datasets had
+been previously subjected to targeted sequencing using the
+FDA-authorized MSK-Integrated Mutation Profiling of
+Actionable Targets (MSK-IMPACT) assay. WSIs from the
+histological sections matching the respective blocks utilized
+for DNA extraction and MSK-IMPACT sequencing [45]
+were utilized. MSK-IMPACT targeted sequencing data was
+analyzed to determine the status of genetic alterations and
+establish a binary label indicating the presence or absence
+of the variants, i.e. the biomarker. Similarly to the pan-
+cancer evaluation, the publicly available Phikon model [35]
+and CTransPath model [33] were used as baseline models
+for comparisons.
+The overall AUC scores are shown in Tab. 1. Addition-
+ally, to provide a more comprehensive statistical analysis,
+we have included the 2.5 percentile and 97.5 percentile
+confidence intervals, which were obtained using 1000 boot-
+strapping iterations. The Virchow model demonstrates a
+consistently high performance across all three biomark-
+ers, with AUC scores of 0.972 (95% CI: 0.950, 0.989) for
+ColonMSI, 0.902 (95% CI: 0.862, 0.941) for BladderFGFR,
+and 0.853 (95% CI: 0.804, 0.891) for LungEGFR. The
+table underscores the superior performance of the Virchow
+model in the context of this digital biomarker prediction
+across different tissues.
+2.3 Tile-level benchmarks
+We use the tile-level benchmarks to assess the robustness
+and generalizability of the foundation model embeddings
+on WSI tissue tiles directly. These tasks are evaluated
+using linear probing of the tile embeddings. We therefore
+compare Virchow embeddings to baseline model embed-
+dings by applying the same linear probing protocol for
+each model, using the same training, validation, and test-
+ing data splits (see Sec. 4.6 for further details). Analysis
+is performed both on public datasets and on the internal
+MSKCC pan-cancer dataset.
+The internal multi-tissue dataset for pan-cancer detec-
+tion at the tile level (referred to as PanMSK) is an
+in-distribution (ID) benchmark, as it is composed from
+annotations on a held-out set of patients across the
+entire diverse set of tissue groups selected for training
+(Fig. 1d). The public datasets are out-of-distribution
+(OOD) benchmarks. These include multi-class colorectal
+cancer classification (NCT-CRC-HE-100K and NCT-CRC-
+HE-100K-NONORM, [46, 47]), colorectal polyp classi-
+fication (MHIST, [48]), and breast lymph node cancer
+classification (PatchCamelyon (PCam), [7, 49]).
+In addition to Phikon [35] and CTransPath [33],
+DINOp=8 [37] (49M parameter model trained using TCGA
+and an internal dataset), PLIP [50] (87M parameter model
+trained using pathology image-text pairs), and NatImg [31]
+(1.1B parameter model trained on 142 million natural
+images) are evaluated.
+As shown in Fig. 3a,c, Virchow matches or surpasses
+baseline performance across all datasets containing dif-
+ferent tissue types and cancer subtypes (Fig. 3a-c; see
+Tab. A4 for additional metrics). As shown in Fig. 3a, Vir-
+chow consistently places in the top-1 by weighted F1 score
+across all six tasks, demonstrating robust performance on
+diverse tasks. The closest competing models are Phikon
+5
+
+===== PAGE 6 =====
+Benign (HP)
+Precursor (SSA)
+Normal
+Cancer
+Normal
+Cancer
+Normal
+Cancer
+Adipose
+Glass
+Debris
+Lymph.
+Mucus
+Muscle
+Normal
+Stroma
+Tumor
+6
+6
+4
+3
+1
+6
+5
+5
+2
+1
+2
+Virchow ■
+Phikon ■
+NatImg ■
+DINOp=8 ■
+CTransPath ■
+PLIP ■
+Top 1
+Top 2
+Top 3
+Model Ranking (Based on weighted F1)
+a
+b
+c
+0.970
+0.973
+0.968
+0.950
+0.933
+0.835
+0.971
+0.959
+0.888
+0.923
+0.905
+0.796
+0.957
+0.959
+0.949
+0.903
+0.918
+0.769
+0.947
+0.962
+0.844
+0.897
+0.872
+0.816
+0.867
+0.944
+0.806
+0.862
+0.873
+0.801
+0.934
+0.952
+0.927
+0.883
+0.886
+0.827
+0.7
+0.8
+0.9
+1
+WILDS
+CRC
+CRC (no norm)
+PanMSK
+Pcam
+MHIST
+Weighted F1 Score
+Virchow
+Phikon
+DINOp=8
+CTransPath
+PLIP
+NatImg
+DINOp=8
+d
+Detect cancer in 
+lymph node
+Classify 9 morphologies 
+in colorectal slides
+Detect cancer in
+17 tissues
+Detect cancer in
+lymph node
+Subtype colorectal 
+polyps: benign, precursor
+WILDS
+CRC
+PanMSK
+PCam
+MHIST
+Not Normalized
+Stain Normalized
+Testing
+Training / 
+Validation
+CRC (no norm)
+Image
+Annotation
+1st Component
+2nd Component
+3rd Component
+Eg. 1
+Eg. 2
+Fig. 3: A summary of tile-level linear probing. a. The number of tasks in which each model scored in the top-x. b. A
+description of each task. c. The weighted F1 score for each of the six models and six tasks. d. Virchow discovers cells in
+the CoNSeP dataset: malignant epithelium (
+red), miscellaneous (
+yellow), and inflammatory (
+magenta) cells.
+6
+
+===== PAGE 7 =====
+AUC (2.5% CI, 97.5% CI)
+Backbone
+ColonMSI
+BladderFGFR
+LungEGFR
+CTransPath [33]
+0.970 (0.946, 0.989)
+0.882 (0.824, 0.930)
+0.807 (0.758, 0.852)
+Phikon [35]
+0.957 (0.905, 0.992)
+0.886 (0.838, 0.930)
+0.821 (0.771, 0.864)
+Virchow
+0.972 (0.950, 0.989)
+0.902 (0.862, 0.941)
+0.853 (0.804, 0.891)
+Table 1: Case-level AUC scores on the testing sets for different biomarker targets using the
+aggregator network trained on tile-level embeddings from the baseline backbones and Virchow.
+and DINOp=8, with Phikon tying in top-1 twice and scor-
+ing in the top-2 results four times, and DINOp=8 scoring
+in among the top-2 three times. Virchow demonstrates
+strong OOD performance on the WILDS and “CRC (no
+norm)” tasks. The WILDS test data is sourced from a hos-
+pital that is not encountered in the training set. The “CRC
+(no norm)” task introduces a distribution shift from the
+stain-normalized training set by avoiding stain normaliza-
+tion on the testing set. Without normalization, Virchow’s
+performance declines by only −0.005 in weighted F1 score.
+This indicates that Virchow is robust to variations in data
+preprocessing.
+To qualitatively evaluate whether the embeddings
+learnt by Virchow tend to separate the image into seman-
+tically meaningful clusters of features, we performed an
+unsupervised feature analysis similar to the procedure in
+[31]. We visualized the embedded feature separation on the
+colorectal nuclear segmentation and phenotypes (CoNSeP)
+dataset [51] of H&E stained slides with colorectal adeno-
+carcinoma (detailed in Sec. 4.6.3).
+We observe approximate semantic segmentation of the
+cell types in the CoNSeP images (Fig. 3d). In both exam-
+ples, the first principal component highlighted malignant
+epithelium (
+red) cells. The second principal component
+respectively highlighted miscellaneous cells (
+yellow) and
+inflammatory (
+magenta) cells. DINOv2 was shown to
+learn a similar semantic feature separation on natural
+images, allowing foreground/background separation (e.g.
+discriminating a bus or a bird from the background) as well
+as part annotation (e.g. wheels vs. windows in a bus) [31].
+Here, we show that this emerging property of the model
+carries over to the pathology domain. This encouraging
+result supports our expectation that the unsupervised fea-
+tures learnt by Virchow are meaningful and interpretable
+for a wide range of downstream tasks.
+3 Discussion
+The field of computational pathology achieved a major
+milestone following the successful application of multiple
+instance learning (MIL) [12, 52]. Using MIL with labels at
+the level of groups of slides has enabled clinically relevant
+diagnostics by scaling to training datasets on the order
+of ten thousand WSIs [8–12]. These early works typically
+initialized the model’s embedding parameters using pre-
+trained model weights, often those trained on ImageNet in
+a supervised setting. This process, called transfer learning,
+was motivated by the observation that model performance
+critically depends on the model’s ability to capture image
+features. In-domain transfer learning was not possible
+given the limited availability of labeled datasets. Now
+self-supervised learning is enabling in-domain transfer by
+removing the label requirement, driving a second wave of
+scaling to tens of thousands of WSIs to inform image rep-
+resentation [33–37, 53]. Virchow marks a major increase in
+training data scale to 1.5 million WSIs – a volume of data
+that is over three thousand times the size of ImageNet [29]
+as measured by the total number of pixels. This large scale
+of data in turn motivates large models which can capture
+the diversity of image features in WSIs. In this work we
+have demonstrated the value of this approach.
+There are many design choices made during foundation
+model training that merit further discussion. The impact of
+the particular self-supervised learning algorithm on model
+performance remains an open question. A central character-
+istic of histopathology data is the long tailed distribution
+of interesting features, both in terms of pathologies and
+basic tissue features. This can be perceived as a “class”
+imbalance between benign and pathological features and
+across cancer types. In the natural image domain, class
+imbalance has been shown to produce poor representa-
+tions with contrastive self-supervised learning [54]. While
+DINOv2 can be viewed as primarily a mean teacher based
+method, it also includes a contrastive regularizer. Never-
+theless, many recent works, in addition to ours, choose
+this method [35, 40, 41]. Indeed, prior work found there
+was no clear best performing approach when training four
+different self-supervised algorithms on 37 thousand WSIs
+[37], although the DINO [23] approach most often had the
+best performance. While both mean teacher based meth-
+ods like DINOv2 and reconstruction based methods such
+as the masked autoencoder (MAE) [24] perform well on
+class-imbalanced data, the embeddings produced by the
+latter yield worse linear probing performance and require
+an additional finetuning step [24, 55].
+Another set of open questions pertain to the impor-
+tance of making domain-specific design and training
+decisions as opposed to leveraging techniques demon-
+strated in the natural image domain. Overall, results do
+suggest there is value in training on histopathology data
+as opposed to foundation models trained using natural
+images as was demonstrated in the tile-level results (note
+that due to the model size, the natural image model,
+NatImg, is a particularly strong non-pathology natural
+7
+
+===== PAGE 8 =====
+image baseline). However beyond the training data, there
+are more subtle ways in which one might hope to tailor
+methods to histopathology. For instance, self-supervised
+learning techniques augment the brightness, contrast and
+color of images. Several works [34, 56, 57] have inves-
+tigated the impact of color augmentation motivated by
+stain variation, the effect of differences in staining pro-
+tocol and scanner type which do not reflect underlying
+differences in pathology. All of the aforementioned studies
+have demonstrated improvements in performance using
+color augmentation and several models have employed
+domain-orientated approaches [33, 41]. Digitized WSIs are
+typically stored at fixed magnifications, e.g. 5×, 10×, 20×,
+and have significantly less variability in object scale than
+natural images. This feature also draws into question aug-
+mentation protocols which typically crop and resize images.
+In addition to color variation, Ciga et al. [34] investigated
+the impact of random cropping on model performance and
+found less random cropping generally improved perfor-
+mance although the largest observed delta for any setting
+was 5%. The impact of using cropping parameters from
+the natural image literature as in this work and Filiot et
+al. [35] as opposed to less resizing as in Chen et al. [40]
+and Ciga et al. [34] is unclear.
+Our work has several limitations. The training dataset
+is acquired from one center with limited scanner types. As
+with most histopathology foundation models, embeddings
+are generated at the tile level as opposed to the slide level
+and therefore require training an aggregation model. A
+deep investigation of aggregator architectures and training
+procedures is beyond the scope of this work. As is the case
+for all models aiming for clinical application, thorough
+stratified performance validation is required.
+Although we trained both Virchow and the pan-cancer
+detection aggregator on only data internal to MSKCC, we
+demonstrate that pan-cancer prediction remains robust on
+data from external sites, on OOD tissue types, and on rare
+cancer types. Rare cancers are important and make up
+about 25% of the data. Virchow also outperformed other
+embeddings for biomarker prediction, a type of task with
+limited data that benefits from the expressiveness of a large
+foundation model. Similarly, our technical tile-level bench-
+marks perform well on all OOD data. Virchow embeddings
+outperform those of smaller-scale foundation models on
+all tasks, demonstrating the performance and robustness
+that can be gained from learning a rich representation of
+the diversity of pathology images, at scale.
+4 Methods
+4.1 Million-scale training dataset
+The dataset used for self-supervised training was sourced
+from MSKCC. It is comprised of 1,488,550 WSIs derived
+from 119,629 patients. These WSIs are all stained with
+H&E, a routine stain that stains the nuclei blue and
+the extracellular matrix and cytoplasm pink. The WSIs
+are scanned at 20× resolution, or 0.5 microns-per-pixel
+(mpp), using Leica scanners. 17 high-level tissue groups
+are included, as illustrated in Fig. 1c.
+WSIs are gigapixel in size and are cumbersome to use
+directly during training. Instead Virchow was trained on
+tissue tiles that were sampled from foreground tissue in
+each WSI. To detect foreground, each WSI was downsam-
+pled 16× with bilinear interpolation and every pixel of
+the downsampled image was considered as tissue if its hue,
+saturation, and value were within [90, 180], [8, 255], and
+[103, 255], respectively. All non-overlapping 224 × 244
+tiles containing at least 25% tissue by area were collected.
+4.2 Virchow architecture and training
+Virchow employs the vision transformer (ViT) “huge” archi-
+tecture (ViT-H/14), a vision transformer [32] with 632
+million parameters, and was trained using the DINOv2 [31]
+self-supervised learning algorithm as illustrated in Fig. A2.
+The Vision Transformer (ViT) is an adaptation of the
+transformer model for image analysis, treating an image
+as a sequence of patches. These patches are embedded
+and processed through a transformer encoder that uses
+self-attention mechanisms. This approach allows ViT to
+capture complex spatial relationships across the image.
+DINOv2 is based on a student-teacher paradigm: given
+a student network and a teacher network, each using the
+same architecture, the student is trained to match the
+representation of the teacher. The student network is
+information-limited, as it is trained using noisy variations
+of input tiles. The teacher network is a slowly updated
+exponential moving average (EMA) of past student net-
+works; matching the teacher achieves an effect similar to
+ensembling over prior student predictions [58]. The student
+learns a global representation of an image by matching
+the teacher’s class token, as well as local representations
+by matching the teacher’s patch tokens. Patch tokens are
+only matched for a select subset of tokens that are ran-
+domly masked out of an input image (for the student),
+as done in masked image modeling [59]. Additional regu-
+larization helps DINOv2 trained models outperform the
+earlier DINO variant [23].
+The default hyperparameters for training the DINOv2
+model were used for Virchow, as detailed in [31] with
+the following changes: a learning rate warmup of 495,000
+iterations (instead of 100,000) and a teacher temper-
+ature schedule of 0.04 to 0.07 in 186,000 iterations.
+Virchow was trained using AdamW (β1 = 0.9, β2 =
+0.999) with float16 precision. Note that with ViT-H, we
+used 131,072 prototypes (and thus 131,072-dimensional
+projection heads).
+During distributed training, each minibatch was sam-
+pled by randomly selecting one WSI per GPU and 256
+foreground tiles per WSI.
+4.3 Embeddings
+For a 224×224 input tile image, we define a Virchow
+embedding as the concatenation of the class token and
+the mean across all 256 of the other predicted tokens.
+8
+
+===== PAGE 9 =====
+This produces an embedding size of 2,560 (1,280 × 2).
+For Phikon, we use only the class token, as recommended
+by [35]. For CTransPath, we use the mean of all tokens as
+there is no class token.
+4.4 Pan-cancer detection
+Specimen-level pan-cancer detection requires a model
+which aggregates foundation model embeddings from all
+foreground tiles of all WSIs in a specimen to detect the
+presence of cancer. All pan-cancer detection models trained
+in this work use an Agata [8] aggregator model, weakly
+supervised with multiple instance learning (see Sec. A.4
+for architecture details).
+Training data To train the aggregator model, we
+prepared a subset of the training dataset used for training
+Virchow (Sec. 4.1), combined with specimen-level labels
+(block-level for prostate tissue) indicating the presence or
+absence of cancer extracted from synoptic and diagnostic
+reports. The training and validation datasets combined
+consist of 177,742 slides across 47,839 specimens.
+Aggregator training We trained the Agata aggrega-
+tor, as specified in Sec. A.4. Since the label is at the level of
+the specimen, all tiles belong to the same specimen need to
+be aggregated during training. Training using embeddings
+for all tiles of a specimen is prohibitively memory-intensive.
+We thus select the slide with the highest predicted cancer
+probability per specimen and backpropagate the gradients
+only for that slide.
+As baselines, we also trained aggregators using Phikon
+and CTransPath embeddings. All aggregators were trained
+for 25 epochs using the cross-entropy loss and the AdamW
+optimizer with a base learning rate of 0.0003. During each
+training run, the checkpoint with the highest validation
+AUC was selected for evaluation.
+Testing dataset The pan-cancer detection models are
+evaluated on a combination of data sourced from MSKCC
+and external institutions. None of the patients in the eval-
+uation set were seen during training. The dataset contains
+23,408 slides from 6372 specimens across 17 high-level
+tissue types. We hypothesise that the more data the foun-
+dation model is trained on, the better the downstream task
+performance, especially on data-constrained tasks. In order
+to test this hypothesis, we categorize cancer types into
+common or rare cancer groups. According to the National
+Cancer Institute, rare cancers are defined as those occur-
+ring in fewer than 15 people out of 100 thousand each
+year in the United States [60]. Based on this definition,
+common cancer comprises 14,610 slides from 3770 spec-
+imens originating in breast, prostate, lung, colon, skin,
+lymph nodes, bladder, uterus, pancreas, and head and
+neck (H&N); whereas rare cancer comprises 8798 slides
+from 2602 specimens originating in liver, stomach, brain,
+ovary, cervix, and testis. Note that each cancer type is
+determined by its tissue of origin and thus may appear as
+primary cancer in the same tissue or as metastatic cancer
+in any other tissue. On the other hand, benign specimens
+for each cancer type were sampled only from the tissue of
+origin. Figure 2a shows the distribution between primary
+and metastatic for each cancer type.
+The testing dataset includes 15,941 slides from 3175
+specimens collected at MSKCC (denoted as “Internal” in
+Fig. 2b, in addition to 7467 slides (3197 specimens) sent
+to MSKCC from institutions around the world (“External”
+in Fig. 2b).
+Label extraction To establish the clinical cancer diag-
+nosis at the specimen level, a rule-based natural language
+processing system was employed. This system decomposes
+case-level reports to the specimen level and analyzes the
+associated clinical reports with each specimen, thereby
+providing a comprehensive understanding of each case.
+Metrics The performance of the three models is
+compared using 2 metrics: AUC and specificity at 95%
+sensitivity. For AUC, the pair-wise DeLong’s test [61] with
+Holm’s method [62] for correction is applied to check for
+statistical significance. For specificity, first Cochran’s Q
+test [63] is applied, and then McNemar’s test [64] is applied
+post-hoc for all pairs with Holm’s method for correction.
+The confidence interval in Fig. 2c are calculated using Wil-
+son’s method [65]. In addition to overall analysis, stratified
+analysis is also conducted for each cancer type.
+4.5 Biomarker detection
+We formulated each biomarker prediction task as a binary
+pathology case classification problem, where a positive
+label indicates the presence of the biomarker. Each case
+consists of one or more H&E slides that share the same
+binary label. We randomly split each dataset into train-
+ing, validation, and testing subsets, ensuring no patient
+overlap, as shown in Tab. 2. The clinical importance of
+each biomarker is described below.
+Colon-MSI Microsatellite instability (MSI) occurs
+when DNA regions with short, repeated sequences
+(microsatellites) are disrupted by single nucleotide muta-
+tions, leading to variation in these sequences across cells.
+Normally, mismatch repair (MMR) genes (MSH1, MSH2,
+MSH6, PMS2) correct these mutations, maintaining con-
+sistency in microsatellites. However, inactivation of any
+MMR gene (through germline mutation, somatic muta-
+tion, or epigenetic silencing) results in an increased rate
+of uncorrected mutations across the genome. MSI is
+detected using polymerase chain reaction (PCR) or next-
+generation sequencing, which identifies a high number
+of unrepaired mutations in microsatellites, indicative of
+deficient mismatch repair (dMMR). High-frequency MSI
+(MSI-H) suggests dMMR in cells, identifiable via IHC,
+which shows absent staining for MMR proteins. MSI-H is
+present in approximately 15% of colorectal cancers (CRCs),
+often linked to germline mutations that elevate heredi-
+tary cancer risk. Consequently, routine MSI or IHC-based
+dMMR screening is recommended for all primary colorec-
+tal carcinoma samples. The ColonMSI dataset, comprising
+2,698 CRC samples with 288 MSI-H/dMMR positive cases,
+uses both IHC and MSK-IMPACT sequencing for dMMR
+and MSI-H detection, prioritizing IHC results when both
+test outcomes are available.
+9
+
+===== PAGE 10 =====
+ColonMSI
+BladderFGFR
+LungEGFR
+Split
+Cases
+Slides
+Positive ratio
+Cases
+Slides
+Positive ratio
+Cases
+Slides
+Positive ratio
+Training
+2,029
+2,291
+0.10
+520
+542
+0.24
+2,186
+2,858
+0.28
+Validation
+334
+384
+0.12
+259
+275
+0.29
+356
+457
+0.29
+Testing
+335
+373
+0.13
+259
+270
+0.25
+358
+457
+0.28
+Table 2: Statistics of the case-level biomarker target datasets, including the number of cases,
+the number of slides, and the proportion of positive labels.
+Bladder-FGFR alterations screening in bladder car-
+cinoma allows the identification of patients targetable
+by FGFR inhibitors. Anecdotal experience from pathol-
+ogists suggested there may be a morphologic signal
+for FGFR alterations [66]. The FGFR3 binary label
+focuses on FGFR3 p.S249C, p.R248C, p.Y373C muta-
+tions and FGFR3-TACC3 fusions based on data from
+the MSK-IMPACT cohort. From the total of 1051 WSIs,
+25.8% have FGFR3 alterations.
+Lung-EGFR oncogenic mutation screening in non-
+small cell lung cancer (NSCLC) is essential to determine
+eligibility for targeted therapies in late stage NSCLC [67].
+The oncogenic status of EGFR mutation was determined
+based on OncoKB annotation [68]. EGFR mutations with
+any oncogenic effect (including predicted/likely oncogenic)
+were defined as positive label, and EGFR mutation with
+unknown oncogenic status were excluded.
+For weakly supervised biomarker prediction, we used
+Agata [8], as in Sec. 4.4, to transform a set of tiles extracted
+from WSIs that belong to to the same case to case-level
+target labels.
+Virchow is used to generate tile level embeddings on
+all the evaluated datasets with 224×224 resolution at 20×
+magnification. The aggregator networks were trained on
+the training sets. We selected the best aggregator model
+based on the AUC score on the validation sets. Due to
+the differences between datasets and compared models, we
+performed a grid search for the initial learning rate of the
+aggregator training among 1×10−3, 1×10−4 and 3×10−5
+and report the best observed test AUC scores in Tab. 1.
+4.6 Tile-level benchmarking
+4.6.1 Linear probing protocol
+For each experiment, we trained a linear tile classifier
+with a batch size of 4,096 using the stochastic gradi-
+ent descent (SGD) optimizer with a cosine learning rate
+schedule, from 0.01 to 0, for 12500 iterations, on top of
+embeddings generated by a frozen encoder. All embeddings
+were normalized by z-scoring before classification. Linear
+probing experiments did not use data augmentation.
+4.6.2 Dataset description
+Dataset details, including training, validation, and testing
+splits, are listed in Tab. 3.
+PanMSK. For a comprehensive ID benchmark, 3,999
+slides across the 17 tissue types in Fig. 1d were held-
+out from the training dataset collected from MSKCC. Of
+these, 1,456 contained cancer that was either partially
+or exhaustively annotated with segmentation masks by
+board-certified pathologists. These annotations were used
+to create a tile-level dataset of cancer vs non-cancer clas-
+sification which we refer to as PanMSK. All images in
+PanMSK are 224×224 pixel tiles at 0.5 mpp. See Sec. A.2
+for further details.
+CRC. The CRC classification public dataset [47] con-
+tains 100,000 images (224×224 pixels) at 20× magnifica-
+tion sorted into nine morphological classes. We performed
+linear probing with both the Macenko-stain-normalized
+(NCT-CRC-HE-100K) and unnormalized (NCT-CRC-HE-
+100K-NONORM) variants of the dataset. It should be
+noted that the training set is normalized in both cases
+and only the testing subset is unnormalized in the latter
+variant. Thus, the unnormalized variant of CRC involves
+a distribution shift from training to testing.
+WILDS The Camelyon17-WILDS dataset is a public
+dataset comprising 455,954 images, each with a resolution
+of 96x96 pixels, taken at 10× magnification and downsam-
+pled from 40×. This dataset is derived from the larger
+Camelyon17 dataset and focuses on lymph node metas-
+tases. Each image in the dataset is annotated with a binary
+label indicating the presence or absence of a tumor within
+the central 32x32 pixel region. Uniquely designed to test
+OOD generalization, the training set is composed of data
+from three different hospitals, while the validation and
+testing sets each originate from separate hospitals not
+represented in the training data.
+MHIST. The colorectal polyp classification public
+dataset (MHIST, [48]) contains 3,152 images (224×224
+pixels) presenting either hyperplastic polyp or sessile ser-
+rated adenoma at 5× magnification (downsampled from
+40× to increase the field of view).
+PCam. The PCam public dataset consists of 327,680
+images (96×96 pixels) at 10× magnification, downsampled
+from 40× to increase the field of view [7, 49]. Images are
+labeled as either cancer or benign. We upsampled the
+images to 224×224 pixels to use with Virchow.
+4.6.3 Qualitative feature analysis
+We performed an unsupervised feature analysis similar
+to the procedure in [31], using the CoNSeP dataset [51]
+of H&E stained slides with colorectal adenocarcinoma.
+10
+
+===== PAGE 11 =====
+Dataset
+Tissue
+High-Level Tissue Types
+Classes
+Res
+Tile size
+No. of tiles
+PCam
+Lymph node
+1
+2
+10×
+96×96
+327,680
+WILDS
+Lymph node
+1
+2
+10×
+96×96
+455,954
+CRC
+Colon
+1
+9
+20×
+224×224
+107,180
+CRC (no norm)
+Colon
+1
+9
+20×
+224×224
+107,180
+PanMSK
+PanCancer
+17
+2
+20×
+224×224
+1,196,171
+MHIST
+Colon
+1
+2
+5×
+224×224
+3,152
+Table 3: Summary of the tile-level benchmark datasets used for linear probing.
+CoNSeP provides nuclear annotations of cells in the follow-
+ing 7 categories: normal epithelial, malignant/dysplastic
+epithelial, fibroblast, muscle, inflammatory, endothelial,
+and miscellaneous (including necrotic, mitotic, and cells
+that couldn’t be categorized). Since CoNSeP images are
+of size 1,000×1,000 and Virchow takes in images of size
+224×224, we resized images to 896×896 and divided them
+into a 4×4 grid of non-overlapping 224×224 sub-images
+before extracting tile-level features. For a given image, we
+used principal component analysis (PCA) on all the tile
+features from the sub-images, normalized the first and
+second principal components to values within [0, 1], and
+thresholded at 0.5. Figure 3d shows some examples of the
+unsupervised feature separation achieved in this way.
+Acknowledgements
+We gratefully thank Philip Rosenfield from Microsoft and
+Djamilia Dierov from Paige for their contributions in
+making this collaboration possible.
+References
+[1] Deng, S. et al. Deep learning in digital pathology
+image analysis: a survey. Frontiers of medicine 14,
+470–487 (2020).
+[2] Srinidhi, C. L., Ciga, O. & Martel, A. L. Deep neural
+network models for computational histopathology: A
+survey. Medical Image Analysis 67, 101813 (2021).
+[3] Cooper, M., Ji, Z. & Krishnan, R. G. Machine learn-
+ing in computational histopathology: Challenges and
+opportunities.
+Genes, Chromosomes and Cancer
+(2023).
+[4] Song, A. H. et al.
+Artificial intelligence for digi-
+tal and computational pathology. Nature Reviews
+Bioengineering 1, 930–949 (2023).
+[5] Fuchs, T. J. & Buhmann, J. M.
+Computational
+pathology: challenges and promises for tissue analy-
+sis. Computerized Medical Imaging and Graphics 35,
+515–530 (2011).
+[6] Abels, E. et al. Computational pathology definitions,
+best practices, and recommendations for regulatory
+guidance: a white paper from the digital pathology
+association. The Journal of pathology 249, 286–294
+(2019).
+[7] Bejnordi, B. E. et al.
+Diagnostic assessment of
+deep learning algorithms for detection of lymph node
+metastases in women with breast cancer. Jama 318,
+2199–2210 (2017).
+[8] Raciti, P. et al.
+Clinical validation of artificial
+intelligence–augmented pathology diagnosis demon-
+strates significant gains in diagnostic accuracy in
+prostate cancer detection. Archives of Pathology &
+Laboratory Medicine (2022).
+[9] da Silva, L. M. et al. Independent real-world appli-
+cation of a clinical-grade automated prostate cancer
+detection system.
+The Journal of pathology 254,
+147–158 (2021).
+[10] Perincheri, S. et al. An independent assessment of
+an artificial intelligence system for prostate cancer
+detection shows strong diagnostic accuracy. Modern
+Pathology 34, 1588–1595 (2021).
+[11] Raciti, P. et al. Novel artificial intelligence system
+increases the detection of prostate cancer in whole
+slide images of core needle biopsies. Modern Pathology
+33, 2058–2066 (2020).
+[12] Campanella, G. et al. Clinical-grade computational
+pathology using weakly supervised deep learning on
+whole slide images. Nature medicine 25, 1301–1309
+(2019).
+[13] Reis-Filho, J. S. et al.
+Abstract pd11-01: An
+artificial intelligence-based predictor of cdh1 bial-
+lelic mutations and invasive lobular carcinoma
+(2022).
+URL https://aacrjournals.org/cancerres/
+article/82/4_Supplement/PD11-01/681411/
+Abstract-PD11-01-An-artificial-intelligence-based.
+[14] Wagner, S. J. et al.
+Fully transformer-based
+biomarker prediction from colorectal cancer histol-
+ogy: a large-scale multicentric study. arXiv preprint
+arXiv:2301.09617 (2023).
+[15] Coudray, N. et al. Classification and mutation predic-
+tion from non–small cell lung cancer histopathology
+11
+
+===== PAGE 12 =====
+images using deep learning.
+Nature medicine 24,
+1559–1567 (2018).
+[16] Kather, J. N. et al.
+Deep learning can predict
+microsatellite instability directly from histology in gas-
+trointestinal cancer. Nature medicine 25, 1054–1056
+(2019).
+[17] Bilal, M. et al.
+Development and validation of a
+weakly supervised deep learning framework to predict
+the status of molecular pathways and key mutations
+in colorectal cancer from routine histology images:
+a retrospective study. The Lancet Digital Health 3,
+e763–e772 (2021).
+[18] Xie, C., Vanderbilt, C., Feng, C. et al. Computa-
+tional biomarker predicts lung ici response via deep
+learning-driven hierarchical spatial modelling from
+h&e. Research Square (2022). PREPRINT (Version
+1) available at Research Square.
+[19] Kacew, A. J. et al.
+Artificial intelligence can cut
+costs while maintaining accuracy in colorectal can-
+cer genotyping.
+Frontiers in Oncology 11 (2021).
+URL https://www.frontiersin.org/articles/10.3389/
+fonc.2021.630953.
+[20] Chen, T., Kornblith, S., Norouzi, M. & Hinton, G.
+III, H. D. & Singh, A. (eds) A simple framework for
+contrastive learning of visual representations. Inter-
+national conference on machine learning, 1597–1607
+(PMLR, 2020).
+[21] Zhou, J. et al. iBOT: Image bert pre-training with
+online tokenizer. arXiv preprint arXiv:2111.07832
+(2021).
+[22] Caron, M. et al.
+Unsupervised learning of visual
+features by contrasting cluster assignments. Advances
+in neural information processing systems 33, 9912–
+9924 (2020).
+[23] Caron, M. et al. Emerging properties in self-supervised
+vision transformers. Proceedings of the IEEE/CVF
+international conference on computer vision, 9650–
+9660 (2021).
+[24] He, K. et al. Masked autoencoders are scalable vision
+learners. Proceedings of the IEEE/CVF conference on
+computer vision and pattern recognition, 16000–16009
+(2022).
+[25] Bommasani, R. et al.
+On the opportunities
+and risks of foundation models.
+arXiv preprint
+arXiv:2108.07258 (2021).
+[26] Kaplan, J. et al. Scaling laws for neural language
+models. arXiv preprint arXiv:2001.08361 (2020).
+[27] Zhai, X., Kolesnikov, A., Houlsby, N. & Beyer,
+L. Scaling vision transformers. Proceedings of the
+IEEE/CVF Conference on Computer Vision and
+Pattern Recognition, 12104–12113 (2022).
+[28] OpenAI et al. GPT-4 Technical Report (2023). URL
+http://arxiv.org/abs/2303.08774. ArXiv:2303.08774
+[cs].
+[29] Deng, J. et al. Imagenet: A large-scale hierarchical
+image database. 2009 IEEE conference on computer
+vision and pattern recognition, 248–255 (Ieee, 2009).
+[30] Sun, C., Shrivastava, A., Singh, S. & Gupta, A.
+Revisiting unreasonable effectiveness of data in deep
+learning era. Proceedings of the IEEE international
+conference on computer vision, 843–852 (2017).
+[31] Oquab, M. et al.
+DINOv2: Learning robust
+visual features without supervision. arXiv preprint
+arXiv:2304.07193 (2023).
+[32] Dosovitskiy, A. et al. An image is worth 16x16 words:
+Transformers for image recognition at scale. arXiv
+preprint arXiv:2010.11929 (2020).
+[33] Wang, X. et al.
+Transformer-based unsupervised
+contrastive learning for histopathological image clas-
+sification. Medical image analysis 81, 102559 (2022).
+[34] Ciga, O., Xu, T. & Martel, A. L. Self supervised con-
+trastive learning for digital histopathology. Machine
+Learning with Applications 7, 100198 (2022).
+[35] Filiot, A. et al. Scaling self-supervised learning for
+histopathology with masked image modeling. medRxiv
+2023–07 (2023).
+[36] Azizi, S. et al. Robust and data-efficient generaliza-
+tion of self-supervised machine learning for diagnostic
+imaging. Nature Biomedical Engineering 1–24 (2023).
+[37] Kang, M., Song, H., Park, S., Yoo, D. & Pereira,
+S. Benchmarking self-supervised learning on diverse
+pathology datasets. Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recog-
+nition, 3344–3354 (2023).
+[38] Weinstein, J. N. et al.
+The cancer genome atlas
+pan-cancer analysis project. Nature genetics 45, 1113–
+1120 (2013).
+[39] Campanella, G. et al.
+Computational pathology
+at health system scale–self-supervised foundation
+models from three billion images.
+arXiv preprint
+arXiv:2310.07033 (2023).
+[40] Chen, R. J. et al. A general-purpose self-supervised
+model for computational pathology. arXiv preprint
+arXiv:2308.15474 (2023).
+12
+
+===== PAGE 13 =====
+[41] Dippel, J. et al. RudolfV: A foundation model by
+pathologists for pathologists (2024).
+[42] Schultz, M. Rudolf Virchow. Emerging infectious
+diseases 14, 1480 (2008).
+[43] Reese, D. M.
+Fundamentals–Rudolf Virchow and
+modern medicine. Western journal of medicine 169,
+105 (1998).
+[44] Virchow, R.
+Cellular Pathology as based upon
+physiological and pathological histology (1860).
+[45] Zehir, A. et al. Mutational landscape of metastatic
+cancer revealed from prospective clinical sequencing of
+10,000 patients. Nature Medicine 23, 703–713 (2017).
+URL https://www.nature.com/articles/nm.4333.
+[46] Kather, J. N., Halama, N. & Marx, A. 100,000 histo-
+logical images of human colorectal cancer and healthy
+tissue. Zenodo (2018). URL https://doi.org/10.5281/
+zenodo.1214456.
+[47] Kather, J. N. et al.
+Predicting survival from col-
+orectal cancer histology slides using deep learning: A
+retrospective multicenter study. PLoS medicine 16,
+e1002730 (2019).
+[48] Wei, J. et al. A petri dish for histopathology image
+analysis.
+Artificial Intelligence in Medicine: 19th
+International Conference on Artificial Intelligence in
+Medicine, AIME 2021, Virtual Event, June 15–18,
+2021, Proceedings, 11–24 (Springer, 2021).
+[49] Veeling, B. S., Linmans, J., Winkens, J., Cohen, T.
+& Welling, M. Rotation equivariant cnns for digital
+pathology. Medical Image Computing and Computer
+Assisted Intervention–MICCAI 2018: 21st Interna-
+tional Conference, Granada, Spain, September 16-20,
+2018, Proceedings, Part II 11, 210–218 (Springer,
+2018).
+[50] Huang, Z., Bianchi, F., Yuksekgonul, M., Montine,
+T. J. & Zou, J. A visual–language foundation model
+for pathology image analysis using medical twitter.
+Nature medicine 29, 2307–2316 (2023).
+[51] Graham, S. et al.
+Hover-net: Simultaneous seg-
+mentation and classification of nuclei in multi-tissue
+histology images. Medical image analysis 58, 101563
+(2019).
+[52] Ilse, M., Tomczak, J. & Welling, M. Attention-based
+deep multiple instance learning. International con-
+ference on machine learning, 2127–2136 (PMLR,
+2018).
+[53] Chen, R. J. et al. Scaling vision transformers to
+gigapixel images via hierarchical self-supervised learn-
+ing. Proceedings of the IEEE/CVF Conference on
+Computer Vision and Pattern Recognition, 16144–
+16155 (2022).
+[54] Assran, M. et al.
+The hidden uniform cluster
+prior in self-supervised learning.
+arXiv preprint
+arXiv:2210.07277 (2022).
+[55] Shekhar, S., Bordes, F., Vincent, P. & Morcos,
+A.
+Objectives matter: Understanding the impact
+of self-supervised objectives on vision transformer
+representations.
+arXiv preprint arXiv:2304.13089
+(2023).
+[56] Tellez, D. et al.
+Quantifying the effects of data
+augmentation and stain color normalization in convo-
+lutional neural networks for computational pathology.
+Medical image analysis 58, 101544 (2019).
+[57] Gullapally, S. C. et al. Synthetic domain-targeted aug-
+mentation (S-DOTA) improves model generalization
+in digital pathology. arXiv preprint arXiv:2305.02401
+(2023).
+[58] Tarvainen, A. & Valpola, H.
+Mean teachers are
+better role models: Weight-averaged consistency tar-
+gets improve semi-supervised deep learning results.
+Advances in neural information processing systems
+30 (2017).
+[59] Xie, Z. et al. Simmim: A simple framework for masked
+image modeling. Proceedings of the IEEE/CVF Con-
+ference on Computer Vision and Pattern Recognition,
+9653–9663 (2022).
+[60] NCI
+Dictionary
+of
+Cancer
+Terms:
+rare
+can-
+cer.
+URL https://www.cancer.gov/publications/
+dictionaries/cancer-terms/def/rare-cancer.
+[61] DeLong, E. R., DeLong, D. M. & Clarke-Pearson,
+D. L. Comparing the areas under two or more cor-
+related receiver operating characteristic curves: a
+nonparametric approach. Biometrics 837–845 (1988).
+[62] Holm, S. A simple sequentially rejective multiple test
+procedure. Scandinavian journal of statistics 65–70
+(1979).
+[63] Cochran, W. G. The comparison of percentages in
+matched samples. Biometrika 37, 256–266 (1950).
+[64] McNemar, Q. Note on the sampling error of the differ-
+ence between correlated proportions or percentages.
+Psychometrika 12, 153–157 (1947).
+[65] Wilson, E. B. Probable inference, the law of suc-
+cession, and statistical inference.
+Journal of the
+American Statistical Association 22, 209–212 (1927).
+[66] Al-Ahmadie, H. A. et al. Somatic mutation of fibrob-
+last growth factor receptor-3 (FGFR3) defines a
+13
+
+===== PAGE 14 =====
+distinct morphological subtype of high-grade urothe-
+lial carcinoma.
+The Journal of Pathology 224,
+270–279 (2011). URL http://doi.wiley.com/10.1002/
+path.2892.
+[67] Kalemkerian, G. P. et al. Molecular testing guide-
+line for the selection of patients with lung cancer for
+treatment with targeted tyrosine kinase inhibitors:
+American society of clinical oncology endorsement
+of the college of american pathologists/international
+association for the study of lung cancer/association
+for molecular pathology clinical practice guideline
+update. Journal of Clinical Oncology 36(9) (2018).
+[68] Chakravarty, D. et al. OncoKB: a precision oncology
+knowledge base.
+JCO precision oncology 1, 1–16
+(2017).
+[69] Kim, Y. J. et al. PAIP 2019: Liver cancer segmen-
+tation challenge. Medical image analysis 67, 101854
+(2021).
+[70] Chen, X., Xie, S. & He, K. An empirical study of
+training self-supervised vision transformers. arXiv
+preprint arXiv:2104.02057 (2021).
+[71] Wang, W. et al. When an image is worth 1,024 x
+1,024 words: A case study in computational pathology.
+arXiv preprint arXiv:2312.03558 (2023).
+[72] Ikezogwo, W. O. et al.
+Quilt-1M: One million
+image-text pairs for histopathology. arXiv preprint
+arXiv:2306.11207 (2023).
+[73] Lu, M. Y. et al. Towards a visual-language foundation
+model for computational pathology. arXiv preprint
+arXiv:2307.12914 (2023).
+[74] Hendrycks, D. & Gimpel, K.
+Gaussian error lin-
+ear units (gelus). arXiv preprint arXiv:1606.08415
+(2016).
+14
+
+===== PAGE 15 =====
+A Appendix
+A.1 Early foundation models in computational pathology
+Several computational pathology models have been released in the past couple of years. Wang et al. [33] introduced
+the first such model leveraging data from TCGA [38] and Pathology AI Platform (PAIP) [69] data and a modified
+MoCoV3 [70] algorithm to train a 28M parameter SwinTransformer model. Since then, several models using TCGA and
+different model architectures and training procedures have been released: Phikon [35] a ViT-B 86M parameter model
+using iBOT [21], Remedis [36] a ResNet-152 with 232M parameters and Ciga et al. [34] ResNets with 11-45M parameters
+using SIMCLR [20], and Lunit [37] a ViT-S 22M parameter model using DINO [23]. UNI [40] and RudolphV [41] both
+leverage proprietary datasets of approximately 100k WSIs to train a ViT-L 307M parameter model using DINOv2 [31].
+Campanella et al. [39] also use a proprietary dataset of 400k WSIs, although they train a smaller ViT-S with 22M
+parameters using DINO [23].
+All of the aforementioned models are summarized in Tab. A1.
+Model
+Data source
+Data size
+Model architecture
+Model size
+Objective function
+WSI
+Tiles
+Virchow (This work)
+MSKCC
+1.5M
+2B
+ViT-H
+632M
+DINOv2
+UNI [40]
+Mass-100K
+100K
+100M
+ViT-L
+307M
+DINOv2
+RudolfV [41]
+TCGA + Properitary
+103K
+750M
+ViT-L
+307M
+DINOv2
+Campanella et al. [39]
+Mount Sinai
+400K
+3B
+ViT-S
+22M
+DINO
+Lunit [37]
+TCGA + TULIP
+37K
+33M
+ViT-S
+22M
+DINO
+Phikon [35]
+TCGA
+6K
+43M
+ViT-B
+86M
+iBOT
+Remedis [36]
+TCGA
+29K
+50M
+ResNet-152
+232M
+SIMCLR
+Ciga et al. [34]
+TCGA + CPTAC ++
+25K
+4.2M
+ResNet
+11-45M
+SIMCLR
+Ctranspath [33]
+TCGA + PAIP
+32K
+15M
+SwinTransformer
+28M
+MoCoV3
+HIPT [53]
+TCGA
+11K
+104M
+ViT-HIPT
+10M
+DINO
+LongViT [71]
+TCGA
+10K
+1M
+LongNet
+22M
+DINO
+PLIP [50]
+OpenPath
+NA
+200K
+ViT-B*
+86M
+CLIP
+QUILTNet [72]
+Quilt-1M
+NA
+1M
+ViT-B*
+86M
+CLIP
+CONCH [73]
+PMC-Path + EDU
+NA
+1.2M
+ViT-B*
+86M
+CLIP
+Table A1: Summary of proposed foundation models in computational pathology highlighting the size of
+the training data, size of the model architecture, and training objective. The last three entries in the table
+combine vision and language data and train only using tiles. The model architecture in these cases refers
+only to the tile embedding as opposed to the entire model size.
+A.2 Multi-tissue PanMSK dataset
+Exhaustive annotations (i.e. a complete segmentation of cancer vs non-cancer regions across the entire WSI) were collected
+for 399 prostate slides, 187 breast slides, 115 bladder slides, 64 breast lymph node slides, and 55 colon slides by a different
+pathologist for each tissue group. For the other tissue groups (see Fig. 1d), a pathologist highlighted one or more cancer
+regions on each slide non-exhaustively. The fully-annotated 64 breast lymph node slides were combined with 48 lymph
+node slides with highlighted cancer regions, originating from various locations. We sampled non-cancer tiles from slides
+labeled as benign. With the exception of the endometrial tissue group (for which we selected cancer regions in 11 slides),
+no tissue group had less than 50 slides partially or thoroughly annotated. We found that when randomly splitting the
+data into training, validation, and testing subsets, we need at least 30 slides per tissue group to minimize the chance that
+the training set is not a representative sample of the testing set; therefore, we preferred maximizing slide and patient
+diversity over maximizing how much of each slide is annotated.
+PanMSK was split into training, validation, and testing subsets at the slide level, ensuring that no two subsets share
+tiles from the same slide. The subsets were balanced to achieve an approximately 7:1:2 ratio of both slides and tiles, to
+equalize the ratio of tile diversity to tile quantity across all splits. The slides were divided into training, validation, and
+testing subsets by the tissue group and slide-level label (cancer/benign). In order to reduce tissue bias, the number of
+available cancer tiles for the tissue groups with the most cancer tiles was reduced to the median number of cancer tiles
+15
+
+===== PAGE 16 =====
+across all tissue groups. The optimal training/validation/testing split was then determined algorithmically by matching
+the distribution over tissue groups and over labels as closely as possible across all splits. This objective was optimized
+iteratively. In each iteration, slides were randomly shuffled between the splits and a permutation was picked greedily to
+maximize the objective. After balancing cancer tiles across the training, validation, and testing subsets and across tissue
+groups, benign tiles were sampled per tissue group to achieve a 1:1 ratio between cancer and benign tiles. See Fig. A1
+and Tab. A2 for more information on PanMSK splits. The exact tile-level data distribution is shown for the training
+(“train”), validation (“tune”), and testing (“test”) sets of the PanMSK dataset in Fig. A1. For each tissue group, sampling
+of benign and cancerous tiles is balanced. All three splits follow the same data distribution across tissue groups. Virchow
+performance, stratified by tissue, is shown in Tab. A3.
+Split
+Slides
+Cancer tiles
+Benign tiles
+Training
+2,797
+418,738
+417,466
+Validation
+402
+60,462
+60,296
+Testing
+800
+119,792
+119,417
+Table A2: Slide and tile counts in Pan-
+MSK. The tiles were split into train, valida-
+tion, and test subsets with no slide overlap
+between the subsets. They follow a 7:1:2
+split on both the slide- and tile-level.
+lung
+upper gi
+colon
+breast
+stomach
+ovary
+prostate
+lymph node
+pancreas
+liver
+adrenal gland
+skin
+bladder
+peritoneum
+brain
+bone
+endometrium
+0
+5000
+10000
+15000
+20000
+25000
+30000
+35000
+train
+cancer
+benign
+lung
+upper gi
+colon
+breast
+stomach
+ovary
+prostate
+lymph node
+pancreas
+liver
+adrenal gland
+skin
+bladder
+peritoneum
+brain
+bone
+endometrium
+0
+1000
+2000
+3000
+4000
+5000
+tune
+cancer
+benign
+lung
+upper gi
+colon
+breast
+stomach
+ovary
+prostate
+lymph node
+pancreas
+liver
+adrenal gland
+skin
+bladder
+peritoneum
+brain
+bone
+endometrium
+0
+2000
+4000
+6000
+8000
+10000
+test
+cancer
+benign
+Fig. A1: Distributions of cancer and benign tiles in the PanMSK dataset. The splits are balanced such that each tissue
+group approximately follows the same 7:1:2 (training:validation:testing) ratios in both tiles and slides counts.
+16
+
+===== PAGE 17 =====
+Tissue
+Accuracy
+F1 Score
+Adrenal gland
+0.941
+0.949
+Bladder
+0.981
+0.986
+Bone
+0.957
+0.973
+Brain
+0.928
+0.927
+Breast
+0.880
+0.885
+Colon
+0.922
+0.922
+Endometrium
+0.957
+0.989
+Liver
+0.971
+0.984
+Lung
+0.948
+0.950
+Lymph node
+0.928
+0.935
+Ovary
+0.878
+0.887
+Pancreas
+0.970
+0.973
+Peritoneum
+0.935
+0.943
+Prostate
+0.904
+0.902
+Skin
+0.971
+0.983
+Stomach
+0.824
+0.883
+Upper GI
+0.973
+0.974
+Overall
+0.975
+0.927
+Table A3: Per-tissue tile-level can-
+cer classification performance using
+Virchow. Overall performance is
+measured by combining all tiles
+across all tissues prior to metric com-
+putation.
+A.3 Model training method
+An overview of the self-supervised Dino v2 training method is shown in Fig. A2. Virchow used a ViT-H architecture,
+trained with Dino v2.
+17
+
+===== PAGE 18 =====
+Student
+Student
+Teacher
+A
+B
+ 2 random global crops
+and resize to 224
+N random local crops
+and resize to 98
+random augs
+ViT
+ViT
+cls token
+DINO head
+patch tokens
+iBOT head
+DINO head
+cls token
+ViT
+iBOT head
+DINO head
+patch tokens
+cls token
+A
+B
+A
+B
+cls token loss
+cls token loss
+softmax
+center + softmax
+softmax
+C
+D
+E
+F
+C
+D
+E
+F
+center + softmax
+softmax
+masked patch token loss
+masked
+masked
+random augs
+EMA
+Fig. A2: Schematic of DINOv2 training routine. From a single tile, 2 global crops and 8 local crops all with random
+augmentations are created. The global crops are randomly masked and fed to the student model while the unmasked
+versions are fed to the teacher model. The student tries to produce a global representation of the views (via the cls token)
+that matches the teacher’s representation of the opposite view. The student also tries to produce representations of the
+masked image tokens that match the teacher’s representations of the same tokens but unmasked. The local crops are only
+fed to the student which tries to produce a representation that matches the teacher’s representations of the global crops.
+The teacher is an EMA copy of the student.
+A.4 Pan-cancer aggregator architecture details
+The Agata aggregator learns to attend to tiles that contribute toward the label decision using cross-attention. The
+operation is defined using query Q, key K, and value matrix V : softmax
+ QKT /√dk
+
+V , where dk is the output dimension
+of the key matrix. In contrast to the typical cross attention mechanism where Q, K, V are projected from the inputs, Q is
+parameterized directly by the model to reduce GPU memory consumption. K and V are obtained with two consecutive
+Gaussian Error Linear Unit (GELU) [74] projection layers as: K = GELU(W T
+1 x + b1), V = GELU(W T
+2 K + b2),
+where x is the tile embedding, and Wn, bn are the weight and bias parameters for the projection layers. In our
+experiments, W1 produces 256-dimensional keys, W2 produces 512-dimensional values, and we omit scaling by √dk = 16.
+After the attention step, a sequence of linear layers with non-linear activation (ReLU) are used followed by a final linear
+layer with softmax activation.
+18
+
+===== PAGE 19 =====
+          Agata
+K
+Linear +
+Non-
+Linearity
+Input: B x S x
+V
+Linear +
+Non-
+Linearity
+MatMul
+Linear
+1 / √dk
+Agata Head
+.
+.
+.
+     Agata Head
+...
+Linear +
+Non-
+Linearity
+Linear +
+Non-
+Linearity
+Agata Head
+Label 1
+Label 2
+Label N
+.
+.
+.
+Fig. A3: Agata architecture used for specimen-level pan-cancer detection (Sec. 4.4) and biomarker detection tasks
+(Sec. 2.2)
+A.5 Tile-level benchmarks
+Additional evaluation metrics for each model on the tile-level benchmarks are detailed in Tab. A4. We report accuracy,
+balanced accuracy, and weighted F1 score. Balanced accuracy is calculated by averaging true positive rate (TPR)
+(TPR =
+TP
+TP+FN) and true negative rate (TNR) (TNR =
+TN
+TN+FP). Weighted F1 score is calculated by first calculating the
+F1 score (harmonic mean of precision and recall) for each class and then averaging the scores, weighted by the number
+of positive samples for each class. For balanced accuracy and weighted F1 score calculation, we use the probability
+threshold = 0.5 as the operating point.
+Dataset
+Metric
+NatImg
+PLIP
+CTransPath
+DINOp=8
+Phikon
+Virchow
+PanMSK
+Accuracy
+0.883
+0.862
+0.897
+0.903
+0.924
+0.950
+Balanced Accuracy
+0.883
+0.862
+0.897
+0.903
+0.924
+0.950
+Weighted F1
+0.883
+0.862
+0.897
+0.903
+0.923
+0.950
+CRC
+Accuracy
+0.952
+0.946
+0.962
+0.959
+0.958
+0.973
+Balanced Accuracy
+0.926
+0.918
+0.947
+0.945
+0.944
+0.962
+Weighted F1
+0.952
+0.944
+0.962
+0.959
+0.959
+0.973
+CRC (no norm)
+Accuracy
+0.927
+0.794
+0.840
+0.949
+0.883
+0.968
+Balanced Accuracy
+0.894
+0.742
+0.825
+0.919
+0.872
+0.960
+Weighted F1
+0.927
+0.806
+0.844
+0.949
+0.888
+0.968
+WILDS
+Accuracy
+0.934
+0.869
+0.947
+0.957
+0.971
+0.970
+Balanced Accuracy
+0.934
+0.869
+0.947
+0.957
+0.971
+0.970
+Weighted F1
+0.934
+0.867
+0.947
+0.957
+0.971
+0.970
+PCam
+Accuracy
+0.886
+0.874
+0.872
+0.918
+0.906
+0.933
+Balanced Accuracy
+0.886
+0.874
+0.872
+0.918
+0.906
+0.933
+Weighted F1
+0.886
+0.873
+0.872
+0.918
+0.905
+0.933
+MHIST
+Accuracy
+0.826
+0.801
+0.817
+0.771
+0.795
+0.834
+Balanced Accuracy
+0.821
+0.786
+0.801
+0.746
+0.782
+0.830
+Weighted F1
+0.827
+0.801
+0.816
+0.769
+0.796
+0.835
+Table A4: Downstream task linear probing evaluations. Refer to the text for details on the
+metrics.
+19
+
+===== PAGE 20 =====
+A.6 Acronyms
+AI
+artificial intelligence
+AUC
+area under (the receiver operating characteristic) curve
+CoNSeP
+colorectal nuclear segmentation and phenotypes
+CRC
+colorectal cancer
+dMMR
+deficient mismatch repair
+EGFR
+epidermal growth factor receptor
+EMA
+exponential moving average
+FGFR
+fibroblast growth factor receptor
+FN
+false negative
+FP
+false positive
+GELU
+Gaussian Error Linear Unit
+H&N
+head and neck
+H&E
+hematoxylin and eosin
+ID
+in-distribution
+IHC
+immunohistochemistry
+MAE
+masked autoencoder
+MIL
+multiple instance learning
+MMR
+mismatch repair
+mpp
+microns-per-pixel
+MSI-H
+high-frequency MSI
+MSI
+microsatellite instability
+MSK-IMPACT MSK-Integrated Mutation Profiling of Actionable Targets
+MSKCC
+Memorial Sloan Kettering Cancer Center
+NSCLC
+non-small cell lung cancer
+OOD
+out-of-distribution
+PAIP
+Pathology AI Platform
+PCam
+PatchCamelyon
+PCA
+principal component analysis
+20
+
+===== PAGE 21 =====
+PCR
+polymerase chain reaction
+ROC
+receiver operating characteristic
+SGD
+stochastic gradient descent
+TCGA
+The Cancer Genome Atlas
+TNR
+true negative rate
+TN
+true negative
+TPR
+true positive rate
+TP
+true positive
+ViT
+vision transformer
+WSI
+whole slide image
+21

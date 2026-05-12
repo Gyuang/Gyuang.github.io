@@ -1,0 +1,3905 @@
+
+===== PAGE 1 =====
+Generating crossmodal gene expression from cancer
+histopathology improves multimodal AI predictions
+Samiran Dey1, Christopher R.S. Banerji2,3, Partha Basuchowdhuri1, Sanjoy K. Saha4,
+Deepak Parashar2,5,6, and Tapabrata Chakraborti2,7,*
+1School of Mathematical & Computational Sciences, Indian Association for the Cultivation of Science, Kolkata, India
+2The Alan Turing Institute, London, UK
+3Comprehensive Cancer Center, King’s College London, London, UK
+4Department of Computer Science and Engineering, Jadavpur University, Kolkata, India
+5MRC Biostatistics Unit, University of Cambridge, Cambridge, UK
+6Department of Biostatistics, Bioinformatics and Biomathematics, Georgetown University, Washington DC, USA
+7UCL Cancer Institute, Dept of Medical Physics & Biomedical Engineering, University College London, London, UK
+*Correspondence to: Tapabrata Chakraborti (tchakraborty@turing.ac.uk; t.chakraborty@ucl.ac.uk)
+ABSTRACT
+Emerging research has highlighted that artificial intelligence-based multimodal fusion of digital pathology and transcriptomic
+features can improve cancer diagnosis (grading/subtyping) and prognosis (survival risk) prediction. However, such direct
+fusion is impractical in clinical settings, where histopathology remains the gold standard and transcriptomic tests are rarely
+requested in public healthcare. We experiment on two publicly available multimodal datasets, The Cancer Genomic Atlas and
+the Clinical Proteomic Tumor Analysis Consortium, spanning four independent cohorts: glioma-glioblastoma, renal, uterine,
+and breast, and observe significant performance gains in gradation and risk estimation (p-value < 0.05) when incorporating
+synthesized transcriptomic data with WSIs. Also, predictions using synthesized features were statistically close to those
+obtained with real transcriptomic data (p-value > 0.05), consistently across cohorts. Here we show that with our diffusion
+based crossmodal generative AI model, PathGen, gene expressions synthesized from digital histopathology jointly predict
+cancer grading and patient survival risk with high accuracy (state-of-the-art performance), certainty (through conformal
+coverage guarantee) and interpretability (through distributed co-attention maps). PathGen code is available on GitHub at
+https://github.com/Samiran-Dey/PathGen for open use.
+INTRODUCTION
+Histopathological assessment is the gold standard for cancer diagnosis and provides information essential for accurate staging
+to inform prognosis. However, aging populations, strained healthcare services and the increasing diagnostic and prognostic
+complexity of modern medicine are contributing to an unsustainable workload for practising histopathologists (1). Modern
+artificial intelligence (AI) algorithms, particularly deep learning models, can predict cancer grade and sub-types from digital
+hematoxylin and eosin (H&E) stained pathology slides, complementing and supporting pathology workflows and potentially
+reducing the high workload burden (2; 3; 4; 5; 6; 7). Very recently the emergence of pathology foundation models using large
+vision transformers (ViT) has greatly increased model flexibility, enabling support with a wide variety of downstream tasks and
+providing greater utility for pathologists (8; 9; 10).
+Classically, histopathology has relied on microscopic assessment of H&E-stained tissue sections, often complemented by
+targeted panels of immunohistochemical and other special stains, to confirm and refine diagnoses. As technology has advanced,
+1
+arXiv:2502.00568v4  [cs.CV]  13 Jan 2026
+
+===== PAGE 2 =====
+a broader range of molecular tests has become routine for assessing certain tumours. These include genetic analyses such as
+IDH mutation status, which is required to appropriately subtype gliomas according to the WHO (11) and EGFR mutation status
+which is essential to guide therapy decisions in non-small cell lung cancers (12). More recently, a range of transcriptomic tests
+have been developed, which show clear evidence for guiding treatment decisions in specific malignancies (13). Following
+extensive clinical evaluation, several of these tests have been granted regulatory approval for clinical use (14). However,
+guidelines, especially in public healthcare systems, strictly limit the application of these transcriptomic tests to a small minority
+of patients, largely due to their high financial cost and infrastructural requirements (15).
+Recently, AI models employing a multimodal fusion of digital pathology and transcriptomic features, trained on large public
+datasets, like The Cancer Genomic Atlas (TCGA), have led to significant improvements in the predictive accuracy of both
+grading and survival risk estimation, compared to unimodal models employing digital H&E slides alone (16; 17; 18). Though
+these powerful models have the potential to convey substantial health benefits, they are developed in a setting disjoint from the
+current reality of the clinic. Translation of these models into most healthcare systems is infeasible at present, as the required
+transcriptomic data is very seldom collected. Future translation requires rigorous, costly and widespread clinical evaluation to
+determine which patients would benefit from these models sufficiently to justify the cost of transcriptomic data.
+Crossmodal generative AI models can be trained to synthesize one unavailable data modality (transcriptomics) from
+routinely available modalities (digital pathology) (19; 20; 21). Coupled with a multimodal AI model, this could facilitate a
+cost-effective screening tool to estimate the added value of collecting transcriptomic data for diagnostic/prognostic assessment
+of each individual patient. Such an approach could support cost-efficient clinical evaluation, and sustainable translation of
+multimodal AI models to support pathology workflows.
+In this work, we introduce a diffusion based crossmodal generative model, PathGen (22), that synthesizes transcriptomic
+data from digital images of H&E-stained slides. We evaluate our model on two publicly available multimodal datasets: The
+Cancer Genomic Atlas (TCGA) (23) and the Clinical Proteomic Tumor Analysis Consortium (CPTAC) (24), using data from
+four independent cancer cohorts: glioma-glioblastoma, renal, uterine and breast. We find that the generated transcriptomic data
+are highly similar to the corresponding real transcriptomic data in a hold-out test set. We further demonstrate that the predictive
+performance of both diagnosis (cancer grading) and prognosis (survival risk) significantly improves when the synthesised
+transcriptomic data is combined with features learned from the corresponding digital pathology image, using a state-of-the-art
+ViT-based model through a co-attention mechanism. For practical utility, our model must be trusted by clinicians and attune to
+emerging regulation (25). We thus provide transparency via detailed attention based heatmaps for both grading and survival
+risk prediction, allowing pathologists to visually affirm the clinical relevance of the regions contributing most towards the AI
+decision. We provide uncertainty quantification, via conformal analysis (26), to allow pathologist users a measure of certainty
+in the added value of the synthesized transcriptomic data for each patient. Finally, to evaluate algorithmic fairness, we apply
+our conformal uncertainty quantification to assess model performance analysis across various patient demographics. Our work
+builds on preliminary studies in crossmodal prediction (8; 17; 18), to provide a road map for sustainable, safe and cost-effective
+translation of multimodal AI models supporting cancer diagnostics/prognostics, to the clinic.
+RESULTS
+Dataset and study design
+Our experiments use publicly available data from TCGA and CPTAC, specifically from four independent cancer cohorts -
+Glioblastoma Multiforme and Brain Lower Grade Glioma (TCGA-GBM, TCGA-LGG, CPTAC-GBM), Kidney Renal Clear
+Cell Carcinoma (TCGA-KIRC), Uterine Corpus Endometrial Carcinoma (TCGA-UCEC, CPTAC-UCEC), and Breast Invasive
+Carcinoma (TCGA-BRCA). For TCGA-GBMLGG, 912 whole slide images (WSIs) coming from 745 cases are used, of which
+183 cases belong to TCGA-GBM (27) and 562 cases belong to TCGA-LGG (28). We consider 485 WSIs from 462 cases for
+2/40
+
+===== PAGE 3 =====
+TCGA-KIRC (29), 294 WSIs from 267 cases for TCGA-UCEC (30), 1010 WSIs from 946 cases for TCGA-BRCA (31), 242
+WSIs from 62 cases for CPTAC-GBM (32), and 364 WSIs from 71 cases for CPTAC-UCEC (33) for our experiments. The
+slides have been split into training, validation, calibration, and test sets (Supplementary Table 1). The models trained using the
+TCGA data have been evaluated on the corresponding CPTAC cohorts, without any further training or finetuning. Cases with
+missing grade, survival data or transcriptomic data were excluded. The data distribution across various demographic groups
+like gender, age, censorship status, etc. varies for all cohorts (Supplementary Table 3).
+Transcriptomic features are selected to match those employed in the successful multimodal models (17; 18). As proposed
+previously (18), transcriptomic data for each patient is divided into 6 broad categories of genes - tumour suppressor genes,
+oncogenes, protein kinases, cell differentiation markers, transcription factors, and cytokines and growth factors. However, a
+gene may occur in multiple gene groups. The number of available gene expression levels for each gene group differs across
+cohorts but remains same for the TCGA and CPTAC datasets for the same cancer cohort (Supplementary Table 2). When
+discussing gene expression levels throughout this paper, we refer to transcript abundance, rather than protein levels.
+Our methodology synthesizes transcriptomic data from WSIs using our diffusion based generative model, PathGen.
+Synthesized transcriptomes are then used for automated cancer gradation and survival risk estimation to assess whether
+transcriptomic tests should be performed (Figure 1.c). Transcriptomic data (both real and synthesized) is used at two stages in
+the predictive model (MCAT GR) - to co-attend to the WSI patch embeddings and learn a combined feature map that is suitable
+to predict both grade and survival, and to predict the survival risk of a patient in a learnable ensemble method along with the
+co-attended feature maps. We perform extensive experiments using synthesized transcriptomic data to decide on this model
+setting (Supplementary Table 4). The model is trained end-to-end for performing both gradation and survival risk estimation
+together using the loss function L = λ ×Lsurvival +(1−λ)×Lgrade, where Lsurvival is the loss for survival risk estimation, Lgrade
+is the loss for gradation and λ is the loss coefficient to balance the emphasis between survival risk estimation and gradation.
+Experiments show that at λ = 0.3 the model performance is optimal with close and high scores for both gradation and survival
+risk estimation together across glioblastoma-glioma and renal cohorts (Supplementary Figure 1 and Supplementary Table 4).
+Thus, for all results reported in the paper, we use λ = 0.3. For uncertainty estimation using conformal prediction, we choose
+the error rate α = 0.1. Further details of model architecture, loss function and training methodology are provided in Methods.
+Similarity evaluation of synthesized and real transcriptomic data
+The transcriptomic data synthesized by our model, PathGen, is compared to the real patient transcriptomes to assess similarity.
+The Spearman correlation coefficient for all gene groups between real and synthesized transcriptomic features evaluates to 0.713
+for TCGA-GBMLGG, 0.717 for TCGA-KIRC, 0.436 for TCGA-UCEC, 0.642 for TCGA-BRCA, 0.662 for CPTAC-GBM, and
+0.669 for CPTAC-UCEC (Figure 2.a.i and Supplementary Table 5). Thus, showing highly significant correlation between real
+and synthesized transcriptomic data (Spearman correlation p-value < 0.05). The corresponding normalized mean absolute error
+(nMAE) over all gene groups evaluates to 0.141, 0.160, 0.173, 0.155, 0.167 and 0.178 for TCGA-GBMLGG, TCGA-KIRC,
+TCGA-UCEC, TCGA-BRCA, CPTAC-GBM and CPTAC-UCEC respectively (Figure 2.a.i and Supplementary Table 5).
+Though there exists a high correlation and low MAE between synthetic and real transcriptomic data, there are some variations
+in correlation across the gene sets and data cohorts (Figures 2.a.ii, 2.a.iii and Supplementary Table 5). Notably, synthesized
+and real oncogene expression levels are highly correlated for glioblastoma-glioma, renal and breast cohorts (Figure 2.a.iii and
+Supplementary Table 5). This is particularly beneficial for cancer grading or survival estimation because oncogenes when
+aberrantly active can serve as biomarkers that drive tumour progression, facilitating the prediction of cancer prognosis (34).
+Thus we conclude that the synthesized transcriptomic data are highly correlated with the real transcriptomic data and we gain
+confidence towards using the former in the predictive pipeline.
+3/40
+
+===== PAGE 4 =====
+Performance evaluation of synthesized transcriptomic data in multimodal prediction
+We next analyse whether PathGen synthesised transcriptomes significantly add value to automated gradation and survival risk
+estimation, over and above whole slide images (WSIs) alone. Evaluation metrics used for grade prediction and survival risk
+estimation are the Area Under Curve (AUC) and the concordance index (C Index) respectively. For survival risk estimation
+the C Index obtained using WSIs alone are 0.842, 0.671, 0.663, 0.603, 0.547, 0.518 for TCGA-GBMLGG, TCGA-KIRC,
+TCGA-UCEC, TCGA-BRCA, CPTAC-GBM and CPTAC-UCEC repectively (Figure 2.b.i and Supplementary Table 6). And
+for gradation, we obtain an AUC of 0.823 for TCGA-GBMLGG, 0.714 for TCGA-KIRC, 0.796 for TCGA-UCEC, 0.736 for
+CPTAC-GBM, and 0.508 for CPTAC-UCEC (Figure 2.b.ii and Supplementary Table 6). Since TCGA-BRCA does not report
+cancer grades in the clinical data, only survival risk estimation could be performed. The performance significantly improves
+when PathGen synthesized transcriptomics are used alongside WSIs (Wilcoxon rank-sum test p-value < 0.05), resulting in an
+AUC of 0.890 and C Index of 0.861 for TCGA-GBMLGG, AUC of 0.773 and C Index of 0.681 for TCGA-KIRC, AUC of
+0.821 and C Index of 0.673 for TCGA-UCEC, C Index of 0.720 for TCGA-BRCA, AUC of 0.865 and C Index of 0.565 for
+CPTAC-GBM, and AUC of 0.593 and C Index of 0.530 for CPTAC-UCEC (Figures 2.b.i, 2.b.ii and Supplementary Table 6). A
+significant improvement was also noted on evaluating jointly over survival and gradation for using synthesized transcriptomic
+data with WSIs for prediction (ANOSIM test p-value = 0.001, Supplementary Table 6), consistent over datasets and cohorts.
+Thus, in the absence of real transcriptomic data, adding synthesized transcriptomic data significantly improves diagnostic and
+prognostic predictions compared to using only WSI features.
+We further compare gradation and survival risk predictions using WSIs and PathGen synthesized transcriptomic data
+to predictions using WSIs and real transcriptomic data. Combining real transcriptomic data with WSIs yields an AUC of
+0.907 and C Index of 0.866 for TCGA-GBMLGG jointly, AUC of 0.778 and C Index of 0.697 for TCGA-KIRC, AUC of
+0.828 and C Index of 0.680 for TCGA-UCEC, C Index of 0.720 for TCGA-BRCA, AUC of 0.863 and C Index of 0.564 for
+CPTAC-GBM, and AUC of 0.593 and C Index of 0.533 for CPTAC-UCEC and the corresponding result using synthesized
+transcriptomic data is provided above (Figures 2.b.i, 2.b.ii and Supplementary Table 6). Remarkably, model performance on
+using real transcriptomic data is not significantly different to using PathGen synthesized transcriptomes (Wilcoxon rank-sum
+test p-value > 0.05 and ANOSIM test p-value > 0.05) for gradation and survival risk estimation, both separately and jointly, in
+all considered TCGA and CPTAC cohorts (Supplementary Table 6). Thus, the transcriptomic data synthesized by our model,
+PathGen, consistently performs comparably for gradation and survival risk estimation with no significant difference on average
+from real transcriptomic data.
+We also compare the performance of our methodology with the state-of-the-art models for using real transcriptomic data
+and WSI patches. For TCGA-GBMLGG, the C Index evaluated for GSCNN (35) is 0.781, DeepAttnMISL (36) is 0.734, MCAT
+(18) is 0.817, Pathomic fusion (17) is 0.826, whereas our methodology yields a C Index of 0.866 using real transcriptomic
+data and a C Index of 0.861 using synthesized transcriptomic data for survival risk estimation. PathGen-X (37) obtains a
+C-Index of 0.81 on the TCGA-GBM cohort; however, their inference stage is unimodal and only considers a section of patients
+(Grade IV). For gradation, Pathomic fusion (17) has an AUC of 0.906, whereas our methodology has an AUC of 0.907 on
+real transcriptomic data and an AUC of 0.890 on synthesized transcriptomic data. For TCGA-KIRC, the C Index evaluated
+for Pathomic fusion (17) is 0.720 whereas for our methodology is 0.697 on real transcriptomic data and 0.681 on synthesized
+transcriptomic data. However, Pathomic fusion uses ROIs annotated by expert pathologists for predicting grades, while we use
+transcriptomic features to co-attend to the WSI patch embeddings without requiring any expert intervention, thus reducing
+expert annotation overheads. For TCGA-UCEC, DeepSets(38), DeepAttnMISL(36), and MCAT(18) achieve a C Index of
+0.593, 0.586, and 0.622, respectively, whereas our methodology yields a C Index of 0.680 and 0.673 using real and synthesized
+transcriptomes, respectively, for survival risk estimation. On TCGA-BRCA, our methodology achieved a C-index of 0.720 for
+both rel and synthesized transcriptomic profiles, compared to 0.522, 0.577, and 0.580 for DeepSets(38), DeepAttnMISL(36),
+and MCAT(18), respectively. We note that the considered SOTA models, DeepSets, DeepAttnMISL, and MCAT, do not
+4/40
+
+===== PAGE 5 =====
+perform gradation, so a direct comparison on grade prediction was not possible. For similar reasons, we could only compare
+the performance of our model with Pathomic fusion for TCGA-GBMLGG gradation and TCGA-KIRC survival risk estimation.
+Since our model performs better or at least comparably with the state-of-the-art models using real transcriptomic data, and we
+observe that the predictive performance between using real or synthesized transcriptomic data is very close with no significant
+difference for the test set population (Wilcoxon rank-sum test p-value > 0.05, Supplementary Table 6), we may conclude that
+we achieve state-of-the-art performance using gene expression levels synthesized by our model, PathGen.
+Transparency evaluation for clinical interpretability
+To visualize intra-tumour heterogeneity, we use our trained model to predict grade and survival risk for individual WSI patches
+independently. The distributed prediction allows the identification of regions of varied grades within a WSI, highlighting the
+heterogeneity for clinical assistance (Figures 3.b, 4.b and Supplementary Figures 3.b, 4.b, 5.b). It is evident that higher grade
+regions are correlated to higher risks, as is expected (Figure 4.e). By observing distributed predictions at different magnification
+levels corresponding to a WSI, we find that using WSIs at higher resolution helps to obtain more precise predictions for tissue
+regions, as is expected (Supplementary Figure 2).
+Further, we consider the aggregate of the heterogeneous (distributed) predictions and compare it with the grade predicted by
+the model, considering all WSI patches as input (non-distributed prediction). For the TCGA cohorts, the distributed gradation
+performance is not significantly different from a one-time prediction with all WSI patches (Wilcoxon ranksum test p-value >
+0.05, Figure 5.a.i). Thus, we see from the results that there is indeed a distributed variation of grade when predicted locally
+for patches and mapped onto the WSIs as a heatmap, both within and across cohorts, which may provide an additional visual
+presentation of tumour heterogeneity to the clinician expert (pathologist) to choose whether or not to draw any further intuition
+from them.
+To add explainability, we next study how transcriptomic data co-attends to the corresponding WSI patched. We compare
+the co-attention maps obtained using real and synthesized gene expression levels using Spearman correlation coefficient and
+normalized mean absolute error (nMAE). A higher correlation with a high corresponding nMAE would denote that the range of
+co-attention values is large for the particular gene group but the co-attention map is still correlated. TCGA-GBMLGG obtains a
+correlation of 0.939 and nMAE of 0.043, TCGA-KIRC obtains a correlation of 0.851 and nMAE of 0.063, TCGA-UCEC obtains
+a correlation of 0.997 and nMAE of 0.022, TCGA-BRCA obtains a correlation of 0.992 and nMAE of 0.014, CPTAC-GBM
+obtains a correlation of 0.993 and nMAE of 0.013, and CPTAC-UCEC obtains a correlation of 0.998 and nMAE of 0.021
+over all gene groups (Figure 5.b.i). These significantly high correlation values (Spearman correlation p-value < 0.05) and low
+nMAEs between co-attention maps for real and synthesized transcriptomic data explains the reason for no significant difference
+between using the same for gradation and survival risk estimation across cohorts and datasets (Wilcoxon ranksum test p-value
+> 0.05, ANOSIM test p-value > 0.05, Supplementary Table 6). For all cohorts, co-attention maps attributing to oncogenes are
+most correlated with a low nMAE, followed by transcription factor genes and tumour suppressor genes (Figures 5.b.ii, 5.b.iii).
+Oncogenes usually drive cell division and survival, thus promoting cancer. Inactivation of tumour suppressor genes can lead to
+cancer by failing to regulate uncontrolled cell growth (39). So the general co-attention observations above are not unexpected,
+although a rigorous inference would need a detailed analysis of gene set functional significance, which is outside the scope of
+this work.
+We further study the contribution of synthesized transcriptomic features in co-attending to the WSI patch embeddings and
+observe that there are variances in the percentage contribution of individual gene groups in co-attention for all cohorts and
+datasets (Figures 5.c.i,5.c.ii, and Supplementary Table 8). For most cohorts, the transcription factor genes and oncogenes have
+the highest co-attention values with the WSI patches for both real and synthesized gene expression levels and hence contribute
+the most to the prediction (Figures 3.d, 4.d, and Supplementary Figures 3.d, 4.d, 5.d). Since activation of oncogenes is known
+to drive tumour proliferation (34), having these as one of the higher contributors to co-attention would be aligned with clinical
+5/40
+
+===== PAGE 6 =====
+expectations.
+We next visualise specific regions of the WSI and compare the distributed grades, distributed risk and the co-attention maps
+between synthesized transcriptomic features and the WSI patches (Figures 3.e, 4.e and Supplementary Figure 3.e, 4.e, 5.e).
+We observe that ground truth grade regions correspond to higher attention scores and other grade regions correspond to low
+attention values (Figures 3, 4, 5.a.ii).
+Uncertainty quantification for clinical reliability
+We observe that the uncertainty profile of using synthesized transcriptomic data matches that of using real transcriptomic
+data for both gradation and survival risk estimation, for different patient demographics and stratification across cohorts, by
+performing conformal prediction (CP) as described in Methods. For TCGA-GBMLGG, the marginal uncertainty (Munc ) for the
+overall data population evaluates to 0.407 and 0.413 for gradation, and 0.446 and 0.438 for survival risk estimation, on using
+real and synthesized transcriptomic data, respectively (Figure 2.c). For TCGA-UCEC, a Munc of 0.337 for gradation and 1.0 for
+survival is obtained, for both real and synthesized transcriptomic data (Figure 2.c). For TCGA-KIRC, gradation Munc increases
+from 0.292 to 0.334, and the survival Munc increases from 0.898 to 0.909 on using synthesized transcriptomic data over their
+real counterparts (Figure 2.c). However the changes in Munc are not significant, proving the similarity in the uncertainty profile
+between the use of real and synthesized transcriptmic data (Wilcoxon rank sum test p-value > 0.05, Supplementary Tables 9,
+10, 11, 12, 13).
+Furthermore, we observe that the uncertainty profile remains similar across different demographic groups for real and
+synthesised transcriptomic data, with no significant difference in uncertainty, by performing stratified conditional conformal
+prediction as described in Methods (Wilcoxon rank-sum test p-value > 0.05, Supplementary Tables 9, 10, 11, 12, 13).
+Additionally, stratifying by demographic categories helps achieve fairness in the distribution of coverage across the population
+by ensuring each group within the category independently obtains the desired coverage. We find variations in both conditional
+uncertainty (Cunc ) across demographic categories and marginal uncertainty (Munc ) across groups in a category, which is
+expected (Supplementary Tables 9, 10, 11, 12, 13). For instance, in comparison to the overall Munc of 0.413, when stratified by
+gender, Cunc decreases to 0.312 (real) and 0.323 (synthesized), and when stratified by time bin, it decreases to 0.335 (real) and
+0.331 (synthesized), for TCGA-GBMLGG (Supplementary Table 9).
+We also find that models trained on the TCGA datasets adapt and calibrate well over the corresponding CPTAC cohorts,
+not always with a drastic increase in uncertainty, which otherwise is expected. The model trained on TCGA-GBMLGG when
+calibrated and tested over CPTAC-GBM has a Munc of 0.465 for gradation and 0.206 for survival for both real and synthesized
+transcriptomic data (Figure 2.c). On calibrating and testing the model trained on TCGA-UCEC over CPTAC-UCEC, a gradation
+Munc of 0.821 for real, and 0.818 for synthesized transcriptomic data and a survival Munc of 1.0 for both real and synthesized
+transcriptomes is observed (Figure 2.c).
+It may be observed that for a few population groups across some cohorts, the obtained coverage does not always match the
+desired coverage because of fewer samples in the calibration set. These coverage slacks are expected and can be theoretically
+computed as a function of the cardinality of the calibration set (26). We find that all obtained coverages that are less than
+the desired coverage of 0.9 fall within the expected deviation for the corresponding calibration set size of the demographic
+group (Supplementary Tables 3, 14). For many such cases, using synthesized data has increased the coverage at the cost of an
+insignificant increase in uncertainty (Wilcoxon rank-sum test p-value > 0.05, Supplementary Tables 9, 10, 11, 12, 13). As risk
+estimation directly uses the transcriptomic data for prediction and not just for co-attention, such differences in obtained coverage
+are expected even for minimal differences in the gene expression levels between the synthesized and real transcriptomic features.
+Moreover, the uncertainty estimates are derived from conformal sets for gradation and risk bounds for survival estimation,
+which helps to understand the extent to which we may rely on the model predictions. Additionally, the gradation conformal sets
+provide a range of alternative grades to consider before making the final decision.
+6/40
+
+===== PAGE 7 =====
+Next, we investigate algorithmic fairness by assessing whether the performance in gradation and survival risk predictions
+shows demographic biases. We observe that the predicted risk is less for patients who are reported to be alive and more for
+deceased patients, which is as expected (Figures 6.a, 6.c, 6.d). Also, the uncertainty of survival risk estimation decreases with
+increasing risk (Figures 6.a, 6.b, 6.c), which is expected because the actual survival time of patients who are alive is beyond
+the reported survival time. Thus, the model estimated survival risk should correspond to a time beyond the reported survival
+time and have a higher uncertainty measure when compared in terms of reported survival time. It may also be observed that
+the model tends to correlate higher risks with the highest grade, for all data cohorts (Figure 6). In general, the uncertainty of
+survival risk estimation is always greater if the survival time reported for a living patient is less (Figure 6). Also, the uncertainty
+of prediction for alive patients is mostly high, except for gradation in TCGA-KIRC (Figure 6 and Supplementary Tables 9,
+10, 11, 12, 13). The uncertainty of grade and survival prediction is more for male patients than females except for gradation
+in TCGA-GBMLGG (Supplementary Tables 9, 10, 11). The uncertainty of risk estimation decreases with age for all TCGA
+cohorts (Supplementary Tables 9, 11, 12). Thus, these results provide an analysis from a health equity and predictive fairness
+point of view as to how the performance varies across patient demographics.
+DISCUSSION
+In this paper, we present PathGen, a crossmodal generative diffusion model for synthesizing transcriptomic features from WSIs
+of H&E stained slides. Our results are based on assessment of two publicly available cancer datasets - TCGA and CPTAC,
+using data from four cancer cohorts: glioma-glioblastoma, renal, uterine and breast. We demonstrated that PathGen synthesized
+transcriptomic features are highly correlated to true patient transcriptomes. By using a multimodal AI model to predict
+cancer grade and survival risk from WSIs and transcriptomic features, with state-of-the-art performance, we demonstrated
+that combining the features learnt from WSIs using a vision transformer based foundation model with the synthesized
+transcriptomic features from PathGen, significantly improved predictive accuracy compared to WSIs alone. Remarkably,
+we found that there was no significant difference in accuracy when real patient transcriptomic data were used instead of
+PathGen synthesized transcriptomic data in the multimodal model, demonstrating that PathGen captures the independent
+gradation/survival information in true patient gene expressions. To further check for generalizability, the models trained on the
+TCGA dataset were evaluated on the same CPTAC cohorts. We observed that our claims that synthesized transcriptomic data
+provides significant added value over WSI-only predictions, and that predictions based on real and synthesized transcriptomic
+data remain significantly close, generalizes well across independent datasets and cohorts.
+H&E stained slides of tumour tissue are essential for diagnostic and prognostic assessment of malignancy, and are collected
+routinely. However, transcriptomic tests, though they have the potential to inform prognosis and guide treatment selection
+(13; 14) are not routinely performed, especially in the public sector (15). This is due to a number of reasons, including
+economic cost, infrastructural requirements and incomplete knowledge about patient benefit. PathGen can synthesize realistic
+and informative patient transcriptomic features, from routine and inexpensive WSIs of H&E stained slides. Also, we note
+the average inference time for cross-modal synthesis of transcriptomic data from WSIs using PathGen is 21.15 seconds, and
+the average time for estimating survival and grade is 0.71 seconds, which varies over the magnification level and the size of
+the WSI, as expected. Thus, in the future, we envision that PathGen can be studied as a low cost screening tool, to guide the
+targeted collection of transcriptomic data modalities, by potentially selecting patients who would benefit from transcriptomic
+assessment for more accurate diagnosis/prognosis. This would of course need a dedicated follow up study which would include
+patient response to treatment when selected in this manner, that would entail a separate clinical validation project.
+Moreover, to be useful in the clinic, AI models must be trusted (40). Thus, to add explainability to the model predictions,
+we have undertaken measures with design choices guided by emerging regulatory requirements (e.g., EU AI Act Articles
+13–15) (25) and in consultation with a practising histopathologist based at University College Hospitals, London. Firstly, by
+7/40
+
+===== PAGE 8 =====
+employing co-attention tools for model transparency, we visualize the role of the gene groups and WSI patches in predicting
+survival and grades, and by mapping distributed gradation and survival risk estimates back onto the WSI images, we provide
+a window into intra-tumour heterogeneity. These facilitate additional visual presentations to the clinician experts to choose
+whether or not to draw any further intuition from them. Secondly, we have employed conformal prediction for assessment of
+model reliability, providing not simply point estimates for gradation and survival risk, but ranges that contain true values with a
+specified certainty. This analysis has also allowed us to assess model fairness by comparing model reliability across patient
+demographics such as age and gender. Importantly, we found that there was no significant difference in model reliability or
+fairness when using PathGen synthesized transcriptomic features compared to real patient transcriptomes. For reproducibility
+of research and ethos of open science, we have made the code fully available online through our GitHub repository (22).
+However, though the PatheGen synthesized transcriptomic features corresponding to the six considered gene groups
+(both synthesized and real) contain important diagnostic/prognostic information, they do not capture the full diversity of the
+transcriptome. There is likely a limit to how much of the full transcriptome can be synthesized from only knowledge of WSIs.
+Also, evaluating the clinically important but less abundant synthesized gene expressions would require substantial domain
+expertise. Hence, we do not claim that PathGen replaces the need for real transcriptomic data, but rather it provides a potential
+way of estimating the benefit of collecting the full data across the population. The increasing use of techniques such as spatial
+transcriptomics (41) will provide insight into this question, as well as WSI patch level resolution of transcriptomics, to guide
+development of synthesized transcriptomic data with a greater number of features in the near future.
+METHODS
+The paper aims to use synthesized transcriptomic data for the automated selection of whole slide image (WSI) features for
+risk estimation and gradation of cancer cases, and evaluate the value added by the use of synthesized transcriptomic data over
+WSI-only predictions and the difference in using real transcriptomic data instead (Figure 1). The WSIs are patchified and the
+corresponding patch embeddings are obtained using UNI (8). Our model, PathGen, generates transcriptomic features from the
+patch embeddings. Together, the patch embeddings and the gene embeddings obtained from the transcriptomic features are
+thus used by MCAT GR for gradation and risk estimation. In the following subsections, we discuss the steps of the proposed
+methodology in detail.
+Preprocessing multimodal data
+Histopathology data. The diagnostic WSIs for a patient are divided into 224 × 224 patches, as required for obtaining patch
+embeddings using the pre-trained foundation model, UNI. The magnification level of the WSI is randomly chosen from the
+available options to make the model magnification level agnostic. The patches having normalized mean intensity more than 0.8
+are excluded. It is observed that such patches consist mostly of the background region and hence, they do not contribute to the
+prediction. We do not use stain normalization in preprocessing the WSIs in line with recent works that find no significant effect
+of using stain normalization as a preprocessing step (42). The 224 × 224 patches are provided as input to UNI to obtain the
+patch embeddings of dimension 1 × 1024. UNI (8) is a pre-trained vision encoder for histopathology developed using private
+datasets, and thus is not based on the public datasets used in our experiments.
+Transcriptomic data. As proposed in MCAT (18), the corresponding transcriptomic data of the patient is divided into 6
+broad categories of genes - tumour suppressor genes, oncogenes, protein kinases, cell differentiation markers, transcription
+factors, and cytokines and growth factors. The gene expression levels are z-score normalized if not already done. Our model,
+PathGen, is trained to synthesize such transcriptomic data from the corresponding WSIs. The gene encoders are trained to
+obtain embeddings of dimension 1 × 1024 for the gene expression levels of each category.
+8/40
+
+===== PAGE 9 =====
+Synthesizing transcriptomic data from histopathology images
+Background of diffusion
+The process of diffusion is represented as a Markov chain where, in the forward process, noise is added in each step to degrade
+the the data for a predetermined timestep T (43). Diffusion models are trained to predict the noise introduced in each step from
+a noisy sample. In the reverse process, the noise is given as input to the diffusion model and denoising is performed for T
+timesteps to obtain the synthesized data (44).
+The forward process begins with a data sample x0 and gradually adds Gaussian noise at each timestep t (45) following the
+equation,
+q(xt|xt−1) = N (xt;
+p
+1−βtxt−1,βtI),
+(1)
+where βt is a predefined noise variance schedule. For any given timestep t, the sample xt is obtained directly from the initial
+data x0 as per the following equation,
+q(xt|x0) = N (xt;√¯αtx0,(1−¯αt)I),
+(2)
+where ¯αt = ∏t
+s=1(1−βs) (44). This simplifies to the equation,
+xt = √¯αtx0 +
+p
+1−¯αtε,
+(3)
+with ε ∼N (0,I).
+The reverse process aims to denoise the sample back to the ground truth data. A learnable model is used to predict the noise
+at each step to obtain the sample xt−1 from xt (45).
+pθ(xt−1|xt) = N (xt−1;µθ(xt,t),σθ(xt,t)),
+(4)
+where µθ and σθ are learned parameters and given the following equations,
+µθ(xt,t) :=
+1
+√αt
+
+xt −
+βt
+√1−¯αt
+εθ(xt,t)
+
+,
+(5)
+σθ(xt,t) := ˜β
+1
+2t ,
+t ∈{T,T −1,...,1}.
+(6)
+The model is trained to minimize the difference between the true noise ε and the predicted noise εθ using the simplified
+equation,
+Ldif f = Et,x0,ε
+
+∥ε −εθ(xt,t)∥2
+.
+(7)
+Architecture of PathGen
+The architecture of our model, PathGen (22), to generate transcriptomic features from whole slide images is illustrated in
+Figure 7.a with further details in Figures 7.c, 7.d, 7.e and 7.f. To obtain the transcriptomic features at a timestep t −1, xt−1,
+the transcriptomic features at timestep t and the WSI path embeddings are provided as input. The process is performed for T
+timesteps, where xT is noise and x0 is the synthesized transcriptomic data. The embedding of the gene expression levels in the
+transcriptomic data at xt is obtained using the gene encoder consisting of four linear layers with ELU activation as illustrated in
+Figure 7.d. The gene embedding and the corresponding patch embedding obtained using UNI (8) goes as input to the PathGen
+transformer, illustrated in Figure 7.c. The PathGen transformer comprises genomic-guided co-attention illustrated in Figure 7.e.,
+proposed in MCAT (18), and the transformer encoder layers (46). Genomic-guided co-attention is inspired by the self-attention
+9/40
+
+===== PAGE 10 =====
+introduced in the transformer (46). The gene embeddings attend to the WSI embeddings to produce co-attended embeddings,
+which comprise the most relevant combined features learned while training. Co-attention is performed thrice to ensure that the
+generated transcriptomic features have correspondence to the input WSI. Further, the transformer embeddings are decoded to
+gene expression levels using specific gene decoders for the different gene groups. The gene decoders comprise linear layers to
+ELU activation except the last, as illustrated in Figure 7.f.
+Training and inference
+Box 1 gives the training algorithm. The model is trained with the loss function in equation 7 for T = 1000 timesteps with a
+learning rate of 1×10−4. For training, a sample is considered at a random intermediate timestep t sampled uniformly. Box
+2 specifies the inference algorithm. The inference is performed for T = 1000 timesteps by initially providing random noise
+sampled from mean mean-zero, unit-variance Gaussian distribution as input using equation 4. All experiments were performed
+with an NVIDIA A100 GPU, including training and inference.
+Box 1 — PathGen training algorithm
+repeat
+x0 ∼q(x0)
+t ∼Uniform({1,...,T})
+ε ∼N (0,I)
+Take gradient descent step on ∇θ∥ε −εθ(√¯αtx0 +√1−¯αtε,t)∥2
+until converged
+Box 2 — PathGen training algorithm
+xT ∼N (0,I)
+for t = T,...,1 do
+z ∼N (0,I) if t > 1, else z = 0
+xt−1 =
+1
+√αt
+
+xt −1−αt
+√1−¯αt εθ(xt,t)
+
++σtz
+end for
+return x0
+Multimodal cancer gradation and survival risk estimation
+The PathGen synthesized transcriptomic data along with the corresponding WSIs, is used for gradation and risk estimation,
+using the predictive model MCAT GR.
+Architecture
+The architecture used for gradation and risk estimation using multi-modal histopathology and synthesized transcriptomic data is
+MCAT (18) with an additional pipeline for gradation. The modified MCAT architecture, MCAT GR, is illustrated in Figure 7.b.
+The co-attended features processed using the pathomic transformer of MCAT GR are used for gradation by passing through a
+separate global attention pooling. However, transcriptomic feature embeddings from the gene transformer are not used directly
+for gradation, as we experiment to see that not including the transcriptomic data for grade prediction performs better. The
+global attention pooling performed for risk estimation and gradation is separate to decrease the dependency between the grade
+and risk.
+10/40
+
+===== PAGE 11 =====
+Training details
+The loss used for training gradation is binary cross entropy loss (47) (Lgrade), and the loss used for training risk estimation is
+negative log-likelihood survival loss (18) (Lrisk). Thus, the total loss for MCAT GR is given by the equation,
+LMCATGR = λ ×Lgrade +(1−λ)×Lrisk
+(8)
+where λ is a hyperparameter to control the contribution of gradation and survival loss in the training. We use λ = 0.3 for our
+experiments. However, on unavailability of gradation annotations, models are trained for survival only using Lrisk (λ = 0). The
+learning rate used is 2×10−4. The models were trained using an NVIDIA A100 GPU.
+Box 3 - Algorithm of conformal prediction for gradation
+Input: Calibration samples {xi,yi}n
+i=1, error rate α
+▷yi is the true grade
+Step 1: Compute conformal scores:
+for each calibration sample i do
+scorei ←1−piyi
+▷where piyi is the predicted probability of the true class yi
+end for
+Step 2: Compute adjusted quantile:
+q ←⌈(n+1)·(1−α)⌉
+n
+ˆq ←quantile({scorei},q)
+Step 3: Form conformal sets:
+for each test sample do
+if pj ≥1−ˆq then
+Include class j in the conformal set
+▷where p j is the predicted probability of belonging to class j
+end if
+end for
+Uncertainty estimation using conformal prediction
+Conformal for gradation
+Conformal prediction is performed to estimate the reliability of model predicted grades and to provide clinicians with a
+conformal set of the most probable grade options. Marginal conformal prediction ensures that the coverage of prediction
+obtained for a population is more than 1−α, where α is a chosen error rate (26). The marginal coverage property for gradation
+is given by the equation,
+1−α ≤IP(Ytest ∈C(Xtest))
+(9)
+where C represents the conformal set consisting of probable prediction classes to gain the desired coverage of at least 1−α.
+While marginal calibration ensures desired coverage for the entire population, it fails to ensure the fairness of coverage stratified
+over demographic groups. For instance, given a desired coverage of 90%, female patients may have obtained 100% coverage
+while male patients may have obtained 80% coverage, still satisfying the marginal coverage property. Thus, we further ensure
+coverage stratified over groups for all demographic categories. The stratified conditional coverage property for gradation is
+given by the equation,
+1−α ≤IP(Ytest ∈C(Xtest) | Xtest ∈gi),
+∀gi ∈G
+(10)
+where G represents the demographic category (gender, age, etc.) and gi represents the groups (male, female, age < 40, age > 60,
+etc) in the category. Box 3 specifies the procedure for performing conformal prediction for gradation (26). The uncertainty for
+11/40
+
+===== PAGE 12 =====
+gradation is computed using the predicted conformal set by the equation,
+uncertainty = |C|
+N × ∆max
+N −1
+(11)
+where |C| represents the cardinality of the conformal set, N represents the number of grade classes, and ∆max stands for the
+maximum difference between the grades in the conformal set.
+Box 4 - Algorithm of conformal prediction for survival risk estimation
+Input: Calibration samples {xi,riski}n
+i=1, error rate α ▷riski is the risk corresponding to the ground truth time bin
+Step 1: Compute conformal scores:
+for each calibration sample i do
+scorei ←|riski −
+ˆ
+riski|
+▷where
+ˆ
+riski is the predicted risk
+end for
+Step 2: Compute adjusted quantile:
+q ←⌈(n+1)·(1−α)⌉
+n
+ˆq ←quantile({scorei},q)
+Step 3: Compute uncertainty bounds and form conformal sets:
+for each test sample do
+risklb ←
+ˆ
+risk −ˆq
+riskub ←
+ˆ
+risk + ˆq
+if risklb ≤tlb or tub ≤riskub then
+Include time bin t in the conformal set
+▷tlb and tub are the lower and upper bound risks for time bin t
+end if
+end for
+Conformal for survival risk estimation
+For survival risk estimation, conformal prediction is performed to estimate the upper and lower bounds for the estimated risk.
+The marginal coverage property for risk estimation ensures that the ground truth survival is covered within the predicted bounds
+by a probability of more than 1−α, where α is a chosen error rate, and is given by the equation,
+1−α ≤IP(Ytest ∈[risklb,riskub])
+(12)
+where risklb and riskub are the conformalized lower and upper bounds of the risk predicted from Xtest. For risk estimation, the
+survival time in months is divided into 4 time bins for a given population, considering the vital status. The time bins covered
+between the lower and upper bounds of the risk give the conformal set C. Similar to gradation, stratified conditional conformal
+prediction is performed to ensure fairness in coverage over different demographic groups. The stratified conditional coverage
+property for survival risk estimation is given by the equation,
+1−α ≤IP(Ytest ∈[risklb,riskub] | Xtest ∈gi),
+∀gi ∈G
+(13)
+where G represents the demographic category and gi represents the groups in the category. Box 4 mentions the detailed
+conformal procedure for survival risk estimation. The uncertainty for risk estimation is further computed as,
+uncertainty = |C|
+N × |riskub −risklb|
+|riskhigh −risklow|
+(14)
+where N=4, the number of time bins, riskhigh = is the highest possible risk, and risklow = is the lowest possible risk score.
+12/40
+
+===== PAGE 13 =====
+Both the uncertainty measures given in equation 11 and equation 14 are metrics to quantify uncertainty for gradation and
+survival risk estimation, respectively.
+Estimation of coverage slack
+However, though conformal properties (equations 9, 10, 12 and 13) ensure that the obtained coverage is at least 1−α, the
+coverage of conformal prediction conditionally on the calibration set is a random quantity (26). The deviation in coverage is
+a function of the cardinality of the calibration set (n), and the error rate (α), and follows the distribution: Beta(n+1−l, l ),
+where l = ⌊(n+1)α⌋(48). The expected deviation (ε) can be computed using the equation,
+ε(n,α) = max((1−α)−L, U −(1−α), 0)
+(15)
+where L and U are the lower and upper bounds for the 90% confidence-type interval around 1−α, for α = 0.1, and is given by,
+[L,U] = [F−1
+Beta(a,b)(0.05), F−1
+Beta(a,b)(0.95)]
+(16)
+Hence, conformalized coverage slack of α ± ε is inherent for finite set calibration. The expected deviations in coverage have
+been computed for different calibration set sizes, using equation 15, and presented in Supplementary Table 14, for α = 0.1.
+INCLUSION AND ETHICS
+The author team includes researchers from the UK and India, and contributions reflect international collaboration. Although the
+data sets analysed were publicly available, we acknowledge that patient cohorts may not fully represent global populations.
+DATA AVAILABILITY
+For all our experiments, we use data from two anonymised publicly available open-access datasets - The Cancer Genomic
+Atlas (TCGA) and the Clinical Proteomic Tumor Analysis Consortium (CPTAC). The TCGA data can be accessed at https://www.
+cancer.gov/tcga, and the CPTAC data can be accessed at https://gdc.cancer.gov/about-gdc/contributed-genomic-data-cancer-research/
+clinical-proteomic-tumor-analysis-consortium-cptac. We use the corresponding transcriptomic data downloaded from cBio-
+Portal (https://www.cbioportal.org) for all cohorts and datasets. The gene categories used are found at https://github.com/
+mahmoodlab/MCAT/blob/master/datasets_csv_sig/signatures.csv. No primary data was collected as part of this study. Source
+data are provided with this paper.
+CODE AVAILABILITY
+For the reproducibility of research and ethos of open science, we have made the code fully available online through our GitHub
+repository at https://github.com/Samiran-Dey/PathGen (22) under the CC-BY-NC-ND 4.0 license.
+REFERENCES
+1. Melissa Kelly, Ryan Soles, Edna Garcia, and Iman Kundu. Job stress, burnout, work-life balance, well-being, and job
+satisfaction among pathology residents and fellows. American Journal of Clinical Pathology, 153(4):449–469, February
+2020. ISSN 1943-7722. doi: 10.1093/ajcp/aqaa013. URL http://dx.doi.org/10.1093/ajcp/aqaa013.
+2. Heather D. Couture, Lindsay A. Williams, Joseph Geradts, Sarah J. Nyante, Ebonee N. Butler, J. S. Marron, Charles M.
+Perou, Melissa A. Troester, and Marc Niethammer. Image analysis with deep learning to predict breast cancer grade,
+er status, histologic subtype, and intrinsic subtype. npj Breast Cancer, 4(1), September 2018. ISSN 2374-4677. doi:
+10.1038/s41523-018-0079-1.
+13/40
+
+===== PAGE 14 =====
+3. Eirini Arvaniti, Kim S. Fricker, Michael Moret, Niels Rupp, Thomas Hermanns, Christian Fankhauser, Norbert Wey,
+Peter J. Wild, Jan H. R¨uschoff, and Manfred Claassen. Automated gleason grading of prostate cancer tissue microarrays
+via deep learning. Scientific Reports, 8(1), August 2018. ISSN 2045-2322. doi: 10.1038/s41598-018-30535-1.
+4. Naira Elazab, Wael Gab Allah, and Mohammed Elmogy. Computer-aided diagnosis system for grading brain tumor using
+histopathology images based on color and texture features. BMC Medical Imaging, 24(1), July 2024. ISSN 1471-2342.
+doi: 10.1186/s12880-024-01355-9.
+5. Farhad Ghazvinian Zanjani, Svitlana Zinger, and Peter H. N. de With. Cancer detection in histopathology whole-slide
+images using conditional random fields on deep embedded spaces. In Medical Imaging, 2018.
+6. Susovan Das, Akash Chatterjee, Samiran Dey, Shilpa Saha, and Samir Malakar. Breast Cancer Detection from Histology
+Images Using Deep Feature Selection, page 323–330. Springer Nature Singapore, June 2022. ISBN 9789811901058. doi:
+10.1007/978-981-19-0105-8 31.
+7. Dayong Wang, Aditya Khosla, Rishab Gargeya, Humayun Irshad, and Andrew H. Beck. Deep learning for identifying
+metastatic breast cancer, arXiv: 1606.05718, 2016.
+8. Richard J Chen, Tong Ding, Ming Y Lu, Drew FK Williamson, Guillaume Jaume, Bowen Chen, Andrew Zhang, Daniel
+Shao, Andrew H Song, Muhammad Shaban, et al. Towards a general-purpose foundation model for computational
+pathology. Nature Medicine, 2024.
+9. Ming Y. Lu, Bowen Chen, Andrew Zhang, Drew F. K. Williamson, Richard J. Chen, Tong Ding, Long Phi Le, Yung-Sung
+Chuang, and Faisal Mahmood. Visual language pretrained multiple instance zero-shot transfer for histopathology images.
+In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), pages 19764–19775,
+June 2023.
+10. Ming Y Lu, Bowen Chen, Drew FK Williamson, Richard J Chen, Ivy Liang, Tong Ding, Guillaume Jaume, Igor Odintsov,
+Long Phi Le, Georg Gerber, et al. A visual-language foundation model for computational pathology. Nature Medicine, 30:
+863–874, 2024.
+11. David.E. Reuss. Updates on the who diagnosis of idh-mutant glioma. Journal of Neuro-Oncology, 162(3):461–469,
+January 2023.
+ISSN 1573-7373.
+doi: 10.1007/s11060-023-04250-5.
+URL http://dx.doi.org/10.1007/
+s11060-023-04250-5.
+12. Zhehai Wang and Shu Fang. Egfr mutations as a prognostic and predictive marker in non-small-cell lung cancer. Drug
+Design, Development and Therapy, page 1595, September 2014. ISSN 1177-8881. doi: 10.2147/dddt.s69690. URL
+http://dx.doi.org/10.2147/DDDT.S69690.
+13. Joseph A. Sparano, Robert J. Gray, Della F. Makower, Kathleen I. Pritchard, Kathy S. Albain, Daniel F. Hayes, Charles E.
+Geyer, Elizabeth C. Dees, Matthew P. Goetz, John A. Olson, Tracy Lively, Sunil S. Badve, Thomas J. Saphner, Lynne I.
+Wagner, Timothy J. Whelan, Matthew J. Ellis, Soonmyung Paik, William C. Wood, Peter M. Ravdin, Maccon M. Keane,
+Henry L. Gomez Moreno, Pavan S. Reddy, Timothy F. Goggins, Ingrid A. Mayer, Adam M. Brufsky, Deborah L. Toppmeyer,
+Virginia G. Kaklamani, Jeffrey L. Berenberg, Jeffrey Abrams, and George W. Sledge. Adjuvant chemotherapy guided
+by a 21-gene expression assay in breast cancer. New England Journal of Medicine, 379(2):111–121, July 2018. ISSN
+1533-4406. doi: 10.1056/nejmoa1804710. URL http://dx.doi.org/10.1056/NEJMoa1804710.
+14/40
+
+===== PAGE 15 =====
+14. Maria Tsakiroglou, Anthony Evans, and Munir Pirmohamed. Leveraging transcriptomics for precision diagnosis: Lessons
+learned from cancer and sepsis. Frontiers in Genetics, 14, March 2023. ISSN 1664-8021. doi: 10.3389/fgene.2023.1100352.
+URL http://dx.doi.org/10.3389/fgene.2023.1100352.
+15. Sue Harnan, Paul Tappenden, Katy Cooper, John Stevens, Alice Bessey, Rachid Rafia, Sue Ward, Ruth Wong, Robert C
+Stein, and Janet Brown. Tumour profiling tests to guide adjuvant chemotherapy decisions in early breast cancer: a
+systematic review and economic analysis. Health Technology Assessment (Winchester, England), 23(30):1, 2019.
+16. Pooya Mobadersany, Safoora Yousefi, Mohamed Amgad, David A. Gutman, Jill S. Barnholtz-Sloan, Jos´e E. Vel´azquez Vega,
+Daniel J. Brat, and Lee A. D. Cooper. Predicting cancer outcomes from histology and genomics using convolutional
+networks. Proceedings of the National Academy of Sciences, 115(13), March 2018. ISSN 1091-6490. doi: 10.1073/pnas.
+1717139115.
+17. Richard J Chen, Ming Y Lu, Jingwen Wang, Drew FK Williamson, Scott J Rodig, Neal I Lindeman, and Faisal Mahmood.
+Pathomic fusion: An integrated framework for fusing histopathology and genomic features for cancer diagnosis and
+prognosis. IEEE Transactions on Medical Imaging, 2020.
+18. Richard J Chen, Ming Y Lu, Wei-Hung Weng, Tiffany Y Chen, Drew FK Williamson, Trevor Manz, Maha Shady, and Faisal
+Mahmood. Multimodal co-attention transformer for survival prediction in gigapixel whole slide images. In Proceedings of
+the IEEE/CVF International Conference on Computer Vision, pages 4015–4025, 2021.
+19. Philippe Weitz, Yinxi Wang, Kimmo Kartasalo, Lars Egevad, Johan Lindberg, Henrik Gr¨onberg, Martin Eklund, and
+Mattias Rantalainen. Transcriptome-wide prediction of prostate cancer gene expression from histopathology images using
+co-expression-based convolutional neural networks. Bioinformatics, 38(13):3462–3469, May 2022. ISSN 1367-4811. doi:
+10.1093/bioinformatics/btac343. URL http://dx.doi.org/10.1093/bioinformatics/btac343.
+20. Marija Pizurica, Yuanning Zheng, Francisco Carrillo-Perez, Humaira Noor, Wei Yao, Christian Wohlfart, Antoaneta
+Vladimirova, Kathleen Marchal, and Olivier Gevaert. Digital profiling of gene expression from histology images with
+linearized attention. Nature Communications, 15(1), November 2024. ISSN 2041-1723. doi: 10.1038/s41467-024-54182-5.
+URL http://dx.doi.org/10.1038/s41467-024-54182-5.
+21. Liviu Badea and Emil St˘anescu. Identifying transcriptomic correlates of histology using deep learning. PLOS ONE, 15
+(11):e0242858, November 2020. ISSN 1932-6203. doi: 10.1371/journal.pone.0242858. URL http://dx.doi.org/
+10.1371/journal.pone.0242858.
+22. Samiran Dey, Christopher Banerji, Partha Basuchowdhuri, Sanjoy Kumar Saha, Deepak Parashar, and Tapabrata
+Chakraborti. Samiran-dey/pathgen: Pathgen v1.0.0, 2025. URL https://zenodo.org/doi/10.5281/zenodo.
+17315073.
+23. The Cancer Genome Atlas Research Network. The cancer genome atlas pan-cancer analysis project. Nature Genetics, 45
+(10):1113–1120, 2013. doi: 10.1038/ng.2764. URL https://doi.org/10.1038/ng.2764.
+24. Nathan J. Edwards, Mauricio Oberti, Ratna R. Thangudu, Shuang Cai, Peter B. McGarvey, Shine Jacob, Subha Madhavan,
+and Karen A. Ketchum. The cptac data portal: A resource for cancer proteomics research. Journal of Proteome Research,
+14(6):2707–2713, May 2015. ISSN 1535-3907. doi: 10.1021/pr501254j. URL http://dx.doi.org/10.1021/
+pr501254j.
+15/40
+
+===== PAGE 16 =====
+25. European Commission. Proposal for a regulation of the european parliament and of the council laying down harmonized
+rules on artificial intelligence (artificial intelligence act). Official Journal of the European Union, 2021. URL https:
+//eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A52021PC0206. Accessed: 2024-12-
+10.
+26. Anastasios N. Angelopoulos and Stephen Bates. A gentle introduction to conformal prediction and distribution-free
+uncertainty quantification, arXiv: 2107.07511, 2021.
+27. The Cancer Genome Atlas Research Network. Comprehensive genomic characterization defines human glioblastoma
+genes and core pathways. Nature, 455:1061–1068, 2008. doi: 10.1038/nature07385. URL https://doi.org/10.
+1038/nature07385.
+28. The Cancer Genome Atlas Research Network. Comprehensive, integrative genomic analysis of diffuse lower-grade
+gliomas. New England Journal of Medicine, 372:2481–2498, 2015. doi: 10.1056/NEJMoa1402121. URL https:
+//doi.org/10.1056/NEJMoa1402121.
+29. The Cancer Genome Atlas Research Network. Comprehensive molecular characterization of clear cell renal cell carcinoma.
+Nature, 499:43–49, 2013. doi: 10.1038/nature12222. URL https://doi.org/10.1038/nature12222.
+30. BJ Erickson, D Mutch, L Lippmann, and R Jarosz. The cancer genome atlas uterine corpus endometrial carcinoma
+collection (tcga-ucec). The Cancer Imaging Archive, 2016.
+31. Wilma Lingle, Bradley J Erickson, Margarita L Zuley, Rose Jarosz, Ermelinda Bonaccio, Joe Filippini, Jose M Net, Len
+Levi, Elizabeth A Morris, Gloria G Figler, et al. The cancer genome atlas breast invasive carcinoma collection (tcga-brca).
+The Cancer Imaging Archive, 2016.
+32. National Cancer Institute Clinical Proteomic Tumor Analysis Consortium et al. The clinical proteomic tumor analysis
+consortium glioblastoma multiforme collection (cptac-gbm), The cancer imaging archive, 2018.
+33. National Cancer Institute Clinical Proteomic Tumor Analysis Consortium et al. The clinical proteomic tumor analysis
+consortium uterine corpus endometrial carcinoma collection (cptac-ucec), The cancer imaging archive, 2019. URL
+https://www.cancerimagingarchive.net/collection/cptac-ucec/.
+34. Jerry W. Shay. Role of oncogenes in cancer prognosis: a molecular approach. Cancer Research, 59(23 Suppl):5877s–5881s,
+1999.
+35. Pooya Mobadersany, Safoora Yousefi, Mohamed Amgad, David A. Gutman, Jill S. Barnholtz-Sloan, Jos´e E. Vel´azquez Vega,
+Daniel J. Brat, and Lee A. D. Cooper. Predicting cancer outcomes from histology and genomics using convolutional
+networks. Proceedings of the National Academy of Sciences, 115(13), March 2018. ISSN 1091-6490. doi: 10.1073/pnas.
+1717139115. URL http://dx.doi.org/10.1073/pnas.1717139115.
+36. Jiawen Yao, Xinliang Zhu, Jitendra Jonnagaddala, Nicholas Hawkins, and Junzhou Huang. Whole slide images based
+cancer survival prediction using attention guided deep multiple instance learning networks. Medical Image Analysis, 65:
+101789, October 2020. ISSN 1361-8415. doi: 10.1016/j.media.2020.101789. URL http://dx.doi.org/10.1016/
+j.media.2020.101789.
+37. Akhila Krishna, Nikhil Cherian Kurian, Abhijeet Patil, Amruta Parulekar, and Amit Sethi. Pathogen-x: A cross-modal
+genomic feature trans-align network for enhanced survival prediction from histopathology images, arXiv: 2411.00749,
+2024. URL https://arxiv.org/abs/2411.00749.
+16/40
+
+===== PAGE 17 =====
+38. Manzil Zaheer, Satwik Kottur, Siamak Ravanbhakhsh, Barnab´as P´oczos, Ruslan Salakhutdinov, and Alexander J Smola.
+Deep sets. NIPS’17, page 3394–3404, Red Hook, NY, USA, 2017. Curran Associates Inc. ISBN 9781510860964.
+39. Douglas Hanahan and Robert A. Weinberg. The hallmarks of cancer. Cell, 100(1):57–70, 2000.
+40. Christopher R. S. Banerji, Tapabrata Chakraborti, Chris Harbron, and Ben D. MacArthur. Clinical ai tools must convey
+predictive uncertainty for each individual patient. Nature Medicine, 29(12):2996–2998, October 2023. ISSN 1546-170X.
+doi: 10.1038/s41591-023-02562-7. URL http://dx.doi.org/10.1038/s41591-023-02562-7.
+41. Cameron G. Williams, Hyun Jae Lee, Takahiro Asatsuma, Roser Vento-Tormo, and Ashraful Haque. An introduction
+to spatial transcriptomics for biomedical research.
+Genome Medicine, 14(1), June 2022.
+ISSN 1756-994X.
+doi:
+10.1186/s13073-022-01075-1. URL http://dx.doi.org/10.1186/s13073-022-01075-1.
+42. Wingates Voon, Yan Chai Hum, Yee Kai Tee, Wun-She Yap, Humaira Nisar, Hamam Mokayed, Neha Gupta, and Khin Wee
+Lai. Evaluating the effectiveness of stain normalization techniques in automated grading of invasive ductal carcinoma
+histopathological images. Scientific Reports, 13(1), November 2023. ISSN 2045-2322. doi: 10.1038/s41598-023-46619-6.
+URL http://dx.doi.org/10.1038/s41598-023-46619-6.
+43. Jascha Sohl-Dickstein, Eric A Weiss, Niru Maheswaranathan, and Surya Ganguli. Deep unsupervised learning using
+nonequilibrium thermodynamics. International Conference on Machine Learning (ICML), 2015.
+44. Jonathan Ho, Ajay Jain, and Pieter Abbeel. Denoising diffusion probabilistic models. Advances in Neural Information
+Processing Systems, 33:6840–6851, 2020.
+45. Yang Song, Jascha Sohl-Dickstein, Diederik P Kingma, Abhishek Kumar, Stefano Ermon, and Ben Poole. Score-based
+generative modeling through stochastic differential equations. International Conference on Learning Representations
+(ICLR), 2020.
+46. Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Łukasz Kaiser, and Illia
+Polosukhin. Attention is all you need. In Proceedings of the 31st International Conference on Neural Information
+Processing Systems, NIPS’17, page 6000–6010. Curran Associates Inc., 2017. ISBN 9781510860964.
+47. Anqi Mao, Mehryar Mohri, and Yutao Zhong. Cross-entropy loss functions: theoretical analysis and applications. In
+Proceedings of the 40th International Conference on Machine Learning, ICML’23. JMLR.org, 2023.
+48. Vladimir Vovk. Conditional validity of inductive conformal predictors. In Steven C. H. Hoi and Wray Buntine, editors,
+Proceedings of the Asian Conference on Machine Learning, volume 25 of Proceedings of Machine Learning Research, pages
+475–490, Singapore Management University, Singapore, 04–06 Nov 2012. PMLR. URL https://proceedings.
+mlr.press/v25/vovk12.html.
+ACKNOWLEDGEMENTS
+S Dey was supported by the IIT KGP AI4ICPS Chanakya Fellowship. P Basuchowdhuri is supported by the Indo-Swedish
+DBT-Vinnova project, BT/PR41025/Swdn/135/9/2020. CRSB was supported by the CRUK City of London Centre Award
+[CTRQQR-2021/100004]. T Chakraborti is supported by the Turing-Roche Strategic Partnership. We are grateful to Prof
+Benjamin MacArthur from the Alan Turing Institute and Mr. Chris Harbron from Roche Pharmaceuticals for their insightful
+comments and constructive feedback throughout this project.
+17/40
+
+===== PAGE 18 =====
+AUTHOR CONTRIBUTIONS
+S. Dey has contributed to conceptualization, methodology development, experimental studies, and writing. P. Basuchowdhuri,
+S.K. Saha, D. Parashar contributed to overall feedback, knowledge sharing and writing/editing of the manuscript. T. Chakraborti
+has contributed to conceptualization, problem setting, overall research direction, project supervision and writing/editing the
+manuscript. C.R.S. Baernji has provided clinical expertise and feedback, and contributed to writing/editing the manuscript.
+COMPETING INTERESTS
+The authors declare no competing interests.
+FIGURES
+Figure 1. Methodology overview. Pipeline for the proposed methodology. Our diffusion-based crossmodal generative model,
+PathGen, synthesizes transcriptomic features from whole slide image patch embeddings obtained using a state-of-the-art
+foundation model from the whole slide images. Multimodal prediction is performed for both diagnosis (cancer grading) and
+prognosis (survival risk) using the synthesized transcriptomic data and histopathology images to predict the added value of
+transcriptomic data, for each patient. Uncertainty quantification provides a patient-level estimate of model reliability and
+provides clinicians with survival risk bounds and tumour grade prediction sets which are guaranteed to contain the ground truth
+with a specified probability. Distributed predictions also provide a window to understand the intra-tumour heterogeneity.
+18/40
+
+===== PAGE 19 =====
+Figure 2. Evaluation of synthesized transcriptomic data. (a) Comparison between real and synthesized gene expression
+levels over all genes and for different gene groups. (b) Plot of significant performance improvement on using synthesized
+transcriptomic data over using WSIs alone (marked as without), and closeness of using synthesized and real transcriptomic data
+for survival risk estimation and gradation. (c) Plot for comparison of uncertainty and obtained coverage for survival risk and
+grade predictions using real and synthesized transcriptomic data. Source data are provided as a Source Data file.
+19/40
+
+===== PAGE 20 =====
+Figure 3. Explainability maps for a male patient of age 58, ground truth grade III, survival time 10.71 months, and
+survival status alive from the TCGA-LGG cohort. (a) whole slide image (WSI) (b) intra-tumour gradation heterogeneity (c)
+intra-tumour survival heterogeneity (d) co-attention maps for real and synthesized transcriptomic data and WSI patches for
+different gene groups (e) comparative study of intra-tumour heterogeneity and corresponding co-attention maps obtained for
+prediction using synthesized transcriptomic data for chosen regions marked with different coloured rectangles.
+20/40
+
+===== PAGE 21 =====
+Figure 4. Explainability maps for a male patient of age 40, ground truth grade IV, survival time 33.99 months, and
+survival status deceased from the TCGA-KIRC cohort. (a) whole slide image (WSI) (b) intra-tumour gradation
+heterogeneity (c) intra-tumour survival heterogeneity (d) co-attention maps for real and synthesized transcriptomic data and
+WSI patches for different gene groups (e) comparative study of intra-tumour heterogeneity and corresponding co-attention maps
+obtained for prediction using synthesized transcriptomic data for chosen regions marked with different coloured rectangles.
+21/40
+
+===== PAGE 22 =====
+Figure 5. Explainability analysis. (a) (i) Plot for comparison between distributed and non-distributed WSI predictions for
+gradation using both real and synthesized transcriptomic data. (ii) Plot showing normalized average co-attention value for the
+true grade is higher than that of false grades. (b) Comparison between co-attention maps obtained using real and synthesized
+transcriptomic data over all genes and for different gene groups. (c) Plot illustrating the percentage contribution of the gene
+groups in co-attention for different TCGA and CPTAC data cohorts. Source data are provided as a Source Data file.
+22/40
+
+===== PAGE 23 =====
+Figure 6. Illustrative result for evaluating fairness in model predictions across demographic categories and data
+cohorts. The cases have been arranged in ascending order of predicted patient risk. The estimated uncertainty in survival risk
+and grade prediction is also shown. Source data are provided as a Source Data file.
+23/40
+
+===== PAGE 24 =====
+Figure 7. Model Architecture. (a) Architecture of our diffusion model, PathGen, used for synthesizing gene expression
+levels from histopathology images. (b) Architecture of the modified MCAT model for gradation and risk estimation,
+MCAT GR. (c) Detailed architecture of PathGen transformer. (d) Architecture of gene encoder that converts gene expression
+level to gene embeddings. (e) Representation of genomic-guided co-attention function. (f) Architecture of gene decoder that
+converts gene embeddings back to gene expression levels.
+24/40
+
+===== PAGE 25 =====
+Generating crossmodal gene expression from cancer histopathology improves multimodal
+AI predictions
+SUPPLEMENTARY MATERIAL
+Supplementary Table 1: Details of data splits across datasets (TCGA, CPTAC) and cancer cohorts used in the experiments.
+The cohorts include glioblastoma-glioma (TCGA-GBMLGG, CPTAC-GBM), renal (TCGA-KIRC), uterine (TCGA-UCEC,
+CPTAC-UCEC) and breast (TCGA-BRCA). Data from the CPTAC cohorts were excluded from training. Models trained on the
+TCGA cohorts were evaluated on the corresponding CPTAC datasets.
+Datasets
+Cases
+Slides
+Training
+Validation
+Calibration
+Testing
+Training
+Validation
+Calibration
+Testing
+TCGA-GBMLGG
+532
+56
+75
+82
+653
+69
+86
+104
+TCGA-KIRC
+337
+34
+45
+46
+344
+42
+48
+51
+TCGA-UCEC
+191
+19
+30
+27
+210
+23
+31
+30
+TCGA-BRCA
+676
+78
+97
+95
+729
+80
+102
+99
+CPTAC-GBM
+-
+-
+32
+30
+-
+-
+151
+91
+CPTAC-UCEC
+-
+-
+38
+33
+-
+-
+194
+170
+Supplementary Table 2: Table for number of genes in each gene group in the transcriptomic data. Same number of genes
+have been considered in each gene groups for same cohorts from different datasets. We note that there is repetition of genes
+across gene groups. The last row shows the additive result of the number of genes across gene groups including repetitions, and
+not the total number of genes considered for prediction.
+Gene type
+TCGA-GBMLGG
+TCGA-KIRC
+TCGA-UCEC
+TCGA-BRCA
+CPTAC-GBM
+CPTAC-UCEC
+Tumor Suppressor Genes
+84
+145
+152
+227
+84
+152
+Oncogenes
+314
+522
+554
+959
+314
+554
+Protein Kinases
+498
+669
+700
+934
+498
+700
+Cell Differentiation Markers
+424
+681
+693
+843
+424
+693
+Transcription Factors
+1396
+2366
+2489
+3712
+1396
+2489
+Cytokines and Growth Factors
+428
+990
+965
+1142
+428
+965
+All gene groups
+3144
+5373
+5553
+7817
+3144
+5553
+25/40
+
+===== PAGE 26 =====
+Supplementary Table 3: Demographic details of the data used for calibration and testing for all the datasets and cohorts.
+Ground truth grades are absent for TCGA-BRCA and CPTAC-GBM datasets. Also, patient age is missing in the clinical data
+for the CPTAC cohorts. ncal denotes the number of samples in the calibration set and ntest denotes the number of samples in
+the test set.
+Category
+Group
+TCGA - GBMLGG
+TCGA - KIRC
+TCGA - UCEC
+TCGA - BRCA
+CPTAC - GBM
+CPTAC - UCEC
+ncal
+ntest
+ncal
+ntest
+ncal
+ntest
+ncal
+ntest
+ncal
+ntest
+ncal
+ntest
+overall
+-
+86
+104
+144
+153
+93
+90
+306
+297
+453
+273
+582
+510
+gender
+male
+55
+66
+102
+99
+-
+-
+282
+120
+282
+120
+-
+-
+female
+31
+38
+42
+54
+93
+90
+171
+153
+171
+153
+582
+510
+age
+<40
+33
+43
+6
+3
+-
+-
+30
+9
+-
+-
+-
+-
+40 to 60
+28
+37
+51
+84
+42
+39
+162
+144
+-
+-
+-
+-
+>60
+25
+24
+87
+66
+51
+51
+114
+144
+-
+-
+-
+-
+magnification
+level 1
+27
+29
+48
+51
+31
+30
+102
+99
+151
+91
+194
+170
+level 2
+27
+38
+48
+51
+31
+30
+102
+99
+151
+91
+194
+170
+level 3
+32
+37
+48
+51
+31
+30
+102
+99
+151
+91
+194
+170
+censorship
+alive
+48
+67
+75
+102
+81
+78
+279
+279
+165
+69
+555
+447
+dead
+38
+37
+69
+51
+12
+12
+27
+18
+288
+204
+27
+63
+grade
+grade I
+-
+-
+3
+3
+30
+24
+-
+-
+-
+-
+225
+99
+grade II
+34
+39
+57
+63
+21
+24
+-
+-
+-
+-
+207
+270
+grade III
+28
+36
+60
+63
+42
+42
+-
+-
+-
+-
+150
+141
+grade IV
+24
+29
+24
+24
+-
+-
+-
+-
+453
+273
+-
+-
+time bin
+bin 1
+80
+82
+72
+72
+66
+63
+255
+249
+453
+273
+474
+423
+bin 2
+4
+13
+39
+60
+27
+27
+45
+45
+-
+-
+108
+87
+bin 3
+2
+9
+21
+18
+-
+-
+3
+3
+-
+-
+-
+-
+bin 4
+-
+-
+12
+3
+-
+-
+-
+-
+-
+-
+-
+-
+Supplementary Figure 8: Ablation for λ. Plot for AUC and C Index across λ for (a) TCGA-GBMLGG, (b) TCGA-KIRC.
+λ = 0 and λ = 1 correspond to the extreme cases of equation L = λ ×Lsurvival +(1−λ)×Lgrade where the model is trained
+only using gradation loss and only using survival loss respectively. Using only gradation loss leads to poor performance of risk
+estimation when λ = 0, and using only risk estimation loss leads to poor gradation performance. Learning both grade and
+survival risk together helps the model correlate between the two and learn better. This is expected as one of the losses
+essentially becomes unused, so we decide to ignore the extreme cases of λ = 0 and λ = 1. Also, we observe that for λ = 0.3
+the model reaches an optimal performance where both AUC and C Index scores are close and high together for both cohorts.
+26/40
+
+===== PAGE 27 =====
+Supplementary Table 4: Table of results for evaluation of the use of synthesized transcriptomic data for grade and survival
+prediction in four different settings- 1) We do not use transcriptomic data at all and attend to the WSI patches randomly; 2) We
+use the gene expression levels only to co-attend to the WSI patch embeddings; 3) We use the transcriptomic embeddings
+collectively with co-attended WSI features for survival risk estimation only; 4) We use transcriptomic features for co-attending
+to WSI patches, and then use the transcriptomic embeddings along with the co-attended features for performing both survival
+risk estimation and gradation. Setting 3 gives the best mean AUC and C Index for gradation and survival risk estimation across
+both data cohorts. Further, ANOSIM test for combined risk estimation and gradation between the two cases suggested that the
+difference in performance between all the cases is significant (p-value < 0.05). Thus, the architecture of our model is aligned to
+setting 3. ↑indicates the larger the better. Best mean scores are marked in bold.
+Setting 1
+Setting 2
+Setting 3
+Setting 4
+random (not used)
+only co-attention
+co-attention, risk
+co-attention, risk, grade
+Risk
+Grade
+Risk
+Grade
+Risk
+Grade
+Risk
+Grade
+λ
+C Index ↑
+AUC ↑
+C Index ↑
+AUC ↑
+C Index ↑
+AUC ↑
+C Index ↑
+AUC ↑
+TCGA - GBMLGG
+0.1
+0.835
+0.829
+0.843
+0.878
+0.863
+0.884
+0.848
+0.868
+0.2
+0.832
+0.863
+0.872
+0.869
+0.852
+0.895
+0.864
+0.809
+0.3
+0.842
+0.823
+0.849
+0.886
+0.861
+0.890
+0.859
+0.849
+0.4
+0.844
+0.828
+0.857
+0.885
+0.864
+0.886
+0.858
+0.829
+0.5
+0.856
+0.847
+0.861
+0.890
+0.846
+0.864
+0.830
+0.844
+0.6
+0.847
+0.873
+0.865
+0.877
+0.847
+0.883
+0.820
+0.733
+0.7
+0.861
+0.836
+0.865
+0.867
+0.855
+0.888
+0.879
+0.843
+0.8
+0.862
+0.745
+0.857
+0.856
+0.836
+0.811
+0.808
+0.731
+0.9
+0.850
+0.810
+0.852
+0.801
+0.845
+0.809
+0.801
+0.724
+mean
+0.843
+0.820
+0.848
+0.839
+0.854
+0.847
+0.825
+0.796
+TCGA - KIRC
+0.1
+0.626
+0.729
+0.666
+0.713
+0.703
+0.773
+0.576
+0.741
+0.2
+0.709
+0.713
+0.658
+0.768
+0.650
+0.778
+0.516
+0.735
+0.3
+0.671
+0.714
+0.688
+0.763
+0.681
+0.773
+0.548
+0.746
+0.4
+0.701
+0.712
+0.701
+0.770
+0.675
+0.772
+0.513
+0.740
+0.5
+0.662
+0.770
+0.605
+0.766
+0.658
+0.769
+0.509
+0.747
+0.6
+0.672
+0.763
+0.654
+0.767
+0.667
+0.763
+0.516
+0.743
+0.7
+0.677
+0.739
+0.673
+0.768
+0.643
+0.760
+0.512
+0.750
+0.8
+0.708
+0.763
+0.650
+0.774
+0.613
+0.765
+0.551
+0.753
+0.9
+0.607
+0.754
+0.592
+0.760
+0.575
+0.757
+0.573
+0.742
+mean
+0.617
+0.742
+0.629
+0.737
+0.639
+0.765
+0.575
+0.742
+27/40
+
+===== PAGE 28 =====
+Supplementary Table 5: Table of results for comparison of synthesized and real transcriptomic features. Normalized MAE
+results are denoted with nMAE. The correlation coefficient is calculated using Spearman correlation, and all corresponding
+correlation p-values are found to be < 0.05, denoting significant correlation. ↑indicates the larger the better, and ↓indicates the
+smaller the better. A higher correlation with a high corresponding MAE would denote that the range of gene expression levels
+is large for the particular group.
+Gene type
+TCGA-GBMLGG
+TCGA-KIRC
+TCGA-UCEC
+nMAE
+Correlation
+nMAE
+Correlation
+nMAE
+Correlation
+Tumor Suppressor Genes
+0.184
+0.472
+0.166
+0.629
+0.177
+0.372
+Oncogenes
+0.160
+0.770
+0.136
+0.817
+0.182
+0.397
+Protein Kinases
+0.148
+0.749
+0.183
+0.785
+0.183
+0.306
+Cell Differentiation Markers
+0.137
+0.724
+0.130
+0.777
+0.194
+0.339
+Transcription Factors
+0.143
+0.615
+0.197
+0.666
+0.139
+0.623
+Cytokines and Growth Factors
+0.107
+0.771
+0.091
+0.610
+0.236
+0.270
+All gene groups
+0.141
+0.713
+0.160
+0.717
+0.173
+0.436
+Gene type
+TCGA-BRCA
+CPTAC-GBM
+CPTAC-UCEC
+nMAE
+Correlation
+nMAE
+Correlation
+nMAE
+Correlation
+Tumor Suppressor Genes
+0.194
+0.568
+0.259
+0.445
+0.228
+0.540
+Oncogenes
+0.136
+0.705
+0.043
+0.874
+0.197
+0.582
+Protein Kinases
+0.131
+0.766
+0.036
+0.923
+0.209
+0.516
+Cell Differentiation Markers
+0.166
+0.617
+0.036
+0.941
+0.206
+0.541
+Transcription Factors
+0.167
+0.629
+0.316
+0.490
+0.146
+0.827
+Cytokines and Growth Factors
+0.136
+0.628
+0.035
+0.965
+0.197
+0.493
+All gene groups
+0.155
+0.642
+0.167
+0.662
+0.178
+0.669
+28/40
+
+===== PAGE 29 =====
+Supplementary Table 6: Table of results for comparing predictive performance on using only WSIs (without transcriptomic
+data), using synthesized transcriptomic data and WSIs, and using real transcriptomic data and WSIs. The separate p-values for
+gradation and risk estimation are computed by performing two-sided Wilcoxon rank-sum test, whereas the p-values over
+gradation and risk estimation together are computed using two-sided ANOSIM test. ANOSIM test p-values = 0.01, for
+comparison between without vs. synthesized, for TCGA-GBMLGG, TCGA-KIRC, TCGA-UCEC, CPTAC-GBM, and
+CPTAC-UCEC. However, for real vs. synthesized, ANOSIM test p-values evaluate to 0.929 for TCGA-GBMLGG, 0.327 for
+TCGA-KIRC, 1.000 for TCGA-UCEC, 0.993 for CPTAC-GBM and 1.000 for CPTAC-UCEC. ↑indicates the larger the better,
+and ↓indicates the smaller the better.
+Gradation
+AUC↑
+Wilcoxon test p-value
+Datasets
+without
+synthesized
+real
+without vs. synthesized ↓
+real vs. synthesized ↑
+TCGA-GBMLGG
+0.823
+0.890
+0.907
+4.23E-02
+9.95E-01
+TCGA-KIRC
+0.714
+0.773
+0.778
+2.21E-04
+8.50E-01
+TCGA-UCEC
+0.796
+0.821
+0.828
+1.28E-02
+9.41E-01
+CPTAC-GBM
+0.736
+0.865
+0.863
+8.40E-03
+9.85E-01
+CPTAC-UCEC
+0.508
+0.593
+0.593
+7.76E-42
+1.00E+00
+Risk Estimation
+C Index ↑
+Wilcoxon test p-value
+Datasets
+without
+synthesized
+real
+without vs. synthesized ↓
+real vs. synthesized ↑
+TCGA-GBMLGG
+0.842
+0.861
+0.866
+8.20E-07
+6.04E-01
+TCGA-KIRC
+0.671
+0.681
+0.697
+1.23E-11
+3.00E-01
+TCGA-UCEC
+0.663
+0.673
+0.680
+4.81E-31
+8.87E-01
+TCGA-BRCA
+0.603
+0.720
+0.720
+2.35E-03
+9.30E-01
+CPTAC-GBM
+0.547
+0.565
+0.564
+3.90E-33
+8.15E-01
+CPTAC-UCEC
+0.518
+0.530
+0.533
+2.26E-164
+9.32E-01
+Supplementary Table 7: Table for results for gradation and survival risk estimation using real and synthesized
+transcriptomic data, separately for the TCGA-GBMLGG cohorts. The p-values are computed using two-sided Wilcoxon
+rank-sum test.
+TCGA-GBMLGG
+Gradation (AUC↑)
+Risk Estimation (C Index ↑)
+cohorts
+real
+synthesized
+Wilcoxon p-value
+real
+synthesized
+Wilcoxon p-value
+TCGA-LGG
+0.835
+0.81
+0.775
+0.707
+0.675
+0.472
+TCGA-GBM
+0.995
+0.993
+0.822
+0.509
+0.539
+0.489
+29/40
+
+===== PAGE 30 =====
+Supplementary Table 8: Table for ablation study on percentage contribution of the different gene groups in co-attention
+with WSI features for different cohorts.
+Gene type
+Percentage Contribution (in %)
+TCGA-GBMLGG
+TCGA-KIRC
+TCGA-UCEC
+TCGA-BRCA
+CPTAC-GBM
+CPTAC-UCEC
+Tumor Suppressor Genes
+12.51
+6.05
+5.25
+11.56
+12.15
+4.74
+Oncogenes
+18.02
+15.59
+4.33
+12.90
+13.16
+6.35
+Protein Kinases
+10.40
+11.86
+38.41
+21.12
+15.30
+29.09
+Cell Differentiation Markers
+10.00
+8.10
+10.82
+18.14
+23.55
+18.00
+Transcription Factors
+42.21
+48.80
+17.74
+23.49
+29.06
+25.89
+Cytokines and Growth Factors
+6.85
+9.61
+23.44
+12.80
+6.77
+15.93
+30/40
+
+===== PAGE 31 =====
+Supplementary Figure 9: Predicted intra-tumour heterogeneity at different magnification levels (a) A whole slide
+image (WSI) of ground truth grade II, survival time 62.62 months and alive survival status belonging to a male patient of 47
+years. (b) A WSI of ground truth grade IV, survival time 54.61 months and dead survival status belonging to a 55 years old
+female patient. The WSIs belong to TCGA-KIRC. It is observed that for higher resolution images, the distributed predictions
+are more accurate.
+31/40
+
+===== PAGE 32 =====
+Supplementary Figure 10: Explainability maps for a male patient of age 62, ground truth grade IV, survival time
+10.28 months, and survival status deceased from the TCGA-GBM cohort. (a) whole slide image (WSI) (b) intra-tumour
+gradation heterogeneity (c) intra-tumour survival heterogeneity (d) co-attention maps for real and synthesized transcriptomic
+data and WSI patches for different gene groups (e) comparative study of intra-tumour heterogeneity and corresponding
+co-attention maps obtained for prediction using synthesized transcriptomes for chosen regions marked with different coloured
+rectangles.
+32/40
+
+===== PAGE 33 =====
+Supplementary Figure 11: Explainability maps for a female patient of age 50, ground truth grade II, survival time
+22.78 months, and survival status alive from the TCGA-KIRC cohort. (a) whole slide image (WSI) (b) intra-tumour
+gradation heterogeneity (c) intra-tumour survival heterogeneity (d) co-attention maps for real and synthesized transcriptomic
+data and WSI patches for different gene groups (e) comparative study of intra-tumour heterogeneity and corresponding
+co-attention maps obtained for prediction using synthesized transcriptomes for chosen regions marked with different coloured
+rectangles.
+33/40
+
+===== PAGE 34 =====
+Supplementary Figure 12: Explainability maps for a female patient of ground truth grade III, survival time 58.08
+months, and survival status alive from the CPTAC-UCEC cohort. (a) whole slide image (WSI) (b) intra-tumour gradation
+heterogeneity (c) intra-tumour survival heterogeneity (d) co-attention maps for real and synthesized transcriptomic data and
+WSI patches for different gene groups (e) comparative study of intra-tumour heterogeneity and corresponding co-attention
+maps obtained for prediction using synthesized transcriptomes for chosen regions marked with different coloured rectangles.
+34/40
+
+===== PAGE 35 =====
+Supplementary Table 9: Table of uncertainty and fairness evaluation for TCGA-GBMLGG dataset. The p-values are
+computed using two-sided Wilcoxon rank-sum test to compare the grades and survival risks predicted using real and
+synthesized transcriptomic data, in addition to WSIs. Munc , Mcov , Cunc and Ccov refer to marginal uncertainty, marginal
+coverage, conditional uncertainty and conditional coverage, respectively. ↑indicates the larger the better, and ↓indicates the
+smaller the better. Equivalent or close (±0.01) performance using real and synthesized data is marked in bold.
+Category
+Group
+Gradation
+Real
+Synthesized
+p-value ↑
+AUC↑
+Munc ↓
+Mcov ↑
+Cunc ↓
+Ccov ↑
+AUC↑
+Munc ↓
+Mcov ↑
+Cunc ↓
+Ccov ↑
+grade
+Munc
+Cunc
+overall
+-
+0.907
+0.407
+0.981
+-
+-
+0.890
+0.413
+0.981
+-
+-
+0.995
+0.935
+-
+gender
+male
+0.915
+0.439
+0.985
+0.312
+0.953
+0.896
+0.444
+0.985
+0.323
+0.953
+0.975
+0.920
+0.921
+female
+0.896
+0.184
+0.921
+0.886
+0.202
+0.921
+1.000
+0.921
+age
+<40
+0.883
+1.000
+1.000
+0.727
+0.986
+0.849
+1.000
+1.000
+0.720
+0.986
+0.736
+1.000
+0.977
+40 - 60
+0.928
+0.459
+1.000
+0.921
+0.450
+1.000
+0.804
+0.996
+>60
+0.909
+0.722
+0.958
+0.906
+0.708
+0.958
+1.000
+0.934
+magni-
+level1
+0.902
+0.195
+0.966
+0.617
+0.989
+0.885
+0.172
+0.931
+0.609
+0.977
+1.000
+0.652
+0.884
+fication
+level2
+0.952
+0.754
+1.000
+0.936
+0.754
+1.000
+0.811
+1.000
+level3
+0.852
+0.901
+1.000
+0.836
+0.901
+1.000
+0.795
+1.000
+vital
+alive
+0.865
+0.990
+1.000
+0.612
+0.986
+0.832
+1.000
+1.000
+0.617
+0.986
+0.894
+0.881
+0.941
+status
+dead
+0.951
+0.234
+0.973
+0.951
+0.234
+0.973
+0.867
+1.000
+grade
+grade II
+0.914
+0.547
+0.974
+0.527
+0.980
+0.891
+0.598
+0.974
+0.544
+0.980
+0.704
+0.569
+0.856
+grade III
+0.755
+1.000
+1.000
+0.728
+1.000
+1.000
+0.866
+1.000
+grade IV
+0.995
+0.034
+0.966
+0.993
+0.034
+0.966
+0.822
+1.000
+time bin
+bin 1
+0.898
+0.431
+0.976
+0.335
+0.992
+0.882
+0.407
+0.963
+0.331
+0.988
+0.984
+0.790
+0.766
+bin 2
+0.786
+0.538
+1.000
+0.784
+0.513
+1.000
+1.000
+0.817
+bin 3
+1.000
+0.037
+1.000
+1.000
+0.074
+1.000
+1.000
+0.691
+Category
+Group
+Risk Estimation
+Real
+Synthesized
+p-value ↑
+C Index↑
+Munc ↓
+Mcov ↑
+Cunc ↓
+Ccov ↑
+C Index↑
+Munc ↓
+Mcov ↑
+Cunc ↓
+Ccov ↑
+grade
+Munc
+Cunc
+overall
+-
+0.866
+0.446
+0.933
+-
+-
+0.861
+0.438
+0.923
+-
+-
+0.604
+0.652
+-
+gender
+male
+0.808
+0.375
+0.985
+0.514
+0.953
+0.813
+0.376
+0.985
+0.507
+0.953
+0.956
+0.956
+0.678
+female
+0.795
+0.653
+0.921
+0.795
+0.639
+0.921
+0.350
+0.400
+age
+<40
+0.524
+0.767
+0.977
+0.541
+0.983
+0.540
+0.727
+1.000
+0.535
+0.991
+0.119
+0.135
+0.546
+40 - 60
+0.848
+0.480
+0.973
+0.845
+0.492
+0.973
+0.775
+0.770
+>60
+0.738
+0.377
+1.000
+0.742
+0.387
+1.000
+0.741
+0.734
+magni-
+level1
+0.855
+0.735
+0.966
+0.586
+0.971
+0.840
+0.725
+1.000
+0.576
+0.982
+0.646
+0.810
+0.787
+fication
+level2
+0.862
+0.484
+0.974
+0.856
+0.486
+0.974
+0.950
+0.975
+level3
+0.873
+0.540
+0.973
+0.858
+0.517
+0.973
+0.578
+0.578
+vital
+alive
+-
+0.368
+0.851
+0.336
+0.912
+-
+0.359
+0.851
+0.337
+0.925
+0.237
+0.441
+0.502
+status
+dead
+0.614
+0.304
+0.973
+0.633
+0.314
+1.000
+0.563
+0.563
+grade
+grade II
+0.823
+0.582
+0.872
+0.431
+0.937
+0.823
+0.544
+0.824
+0.420
+0.920
+0.058
+0.054
+0.471
+grade III
+0.590
+0.655
+0.972
+0.526
+0.659
+0.972
+0.901
+0.866
+grade IV
+0.509
+0.056
+0.966
+0.539
+0.059
+0.966
+0.489
+0.494
+time bin
+bin 1
+0.827
+0.252
+0.951
+0.684
+0.958
+0.822
+0.259
+0.939
+0.675
+0.954
+0.942
+0.893
+0.465
+bin 2
+-
+0.804
+0.923
+-
+0.782
+0.923
+0.209
+0.270
+bin 3
+-
+0.996
+1.000
+-
+0.984
+1.000
+0.200
+0.233
+35/40
+
+===== PAGE 36 =====
+Supplementary Table 10: Table of uncertainty and fairness evaluation for CPTAC-GBM dataset. p-values are computed
+using the two-sided Wilcoxon rank-sum test to compare the grades and survival risks predicted using real and synthesized
+transcriptomic data, in addition to WSIs. Munc , Mcov , Cunc and Ccov refer to marginal uncertainty, marginal coverage,
+conditional uncertainty and conditional coverage, respectively. ↑indicates the larger the better, and ↓indicates the smaller the
+better. Equivalent or close (±0.01) performance using real and synthesized data is marked in bold.
+Category
+Group
+Gradation
+Real
+Synthesized
+p-value ↑
+AUC ↑
+Munc ↓
+Mcov ↑
+Cunc ↓
+Ccov ↑
+AUC ↑
+Munc ↓
+Mcov ↑
+Cunc ↓
+Ccov ↑
+grade
+Munc
+Cunc
+overall
+-
+0.863
+0.465
+0.932
+-
+0.865
+0.465
+0.936
+-
+-
+0.985
+0.991
+-
+gender
+male
+0.847
+0.514
+0.972
+0.495
+0.962
+0.847
+0.515
+0.975
+0.494
+0.964
+0.975
+0.968
+0.961
+female
+0.894
+0.476
+0.953
+0.898
+0.472
+0.953
+0.935
+0.955
+magni-
+level1
+0.861
+0.430
+0.940
+0.478
+0.949
+0.864
+0.435
+0.947
+0.483
+0.956
+0.918
+0.958
+0.938
+fication
+level2
+0.865
+0.506
+0.954
+0.867
+0.510
+0.960
+0.931
+0.949
+level3
+0.869
+0.497
+0.954
+0.870
+0.503
+0.960
+1.000
+0.905
+vital
+alive
+0.835
+0.463
+0.903
+0.478
+0.932
+0.833
+0.465
+0.903
+0.482
+0.938
+0.970
+1.000
+0.947
+status
+dead
+0.880
+0.493
+0.962
+0.883
+0.499
+0.972
+0.952
+0.894
+grade
+grade IV
+0.863
+0.465
+0.932
+-
+-
+0.865
+0.465
+0.936
+-
+-
+0.985
+0.991
+-
+time bin
+bin 1
+0.863
+0.465
+0.932
+-
+-
+0.865
+0.465
+0.936
+-
+-
+0.985
+0.991
+-
+Category
+Group
+Risk Estimation
+Real
+Synthesized
+p-value ↑
+C Index ↑
+Munc ↓
+Mcov ↑
+Cunc ↓
+Ccov ↑
+C Index ↑
+Munc ↓
+Mcov ↑
+Cunc ↓
+Ccov ↑
+risk
+Munc
+Cunc
+overall
+-
+0.564
+0.206
+0.971
+-
+-
+0.565
+0.206
+0.971
+-
+-
+0.815
+0.811
+-
+gender
+male
+0.653
+0.223
+0.972
+0.205
+0.971
+0.651
+0.222
+0.975
+0.204
+0.973
+0.809
+0.811
+0.870
+female
+0.430
+0.186
+0.971
+0.432
+0.185
+0.971
+0.931
+0.929
+magni-
+level1
+0.544
+0.208
+0.980
+0.208
+0.971
+0.543
+0.207
+0.987
+0.208
+0.976
+0.718
+0.719
+0.852
+fication
+level2
+0.574
+0.209
+0.967
+0.578
+0.209
+0.974
+0.931
+0.937
+level3
+0.570
+0.208
+0.967
+0.572
+0.209
+0.967
+0.900
+0.899
+vital
+alive
+-
+0.183
+0.970
+0.195
+0.964
+-
+0.184
+0.982
+0.195
+0.974
+0.821
+0.834
+0.853
+status
+dead
+0.582
+0.207
+0.958
+0.581
+0.206
+0.965
+0.870
+0.873
+grade
+grade IV
+0.564
+0.206
+0.971
+-
+-
+0.565
+0.206
+0.971
+-
+-
+0.815
+0.811
+-
+time bin
+bin 1
+0.564
+0.206
+0.971
+-
+-
+0.565
+0.206
+0.971
+-
+-
+0.815
+0.811
+-
+36/40
+
+===== PAGE 37 =====
+Supplementary Table 11: Table of uncertainty and fairness evaluation for TCGA-KIRC dataset. p-values are computed
+using the two-sided Wilcoxon rank-sum test to compare the grades and survival risks predicted using real and synthesized
+transcriptomic data, in addition to WSIs. Munc , Mcov , Cunc and Ccov refer to marginal uncertainty, marginal coverage,
+conditional uncertainty and conditional coverage, respectively. ↑indicates the larger the better, and ↓indicates the smaller the
+better. Equivalent or close (±0.01) performance using real and synthesized data is marked in bold.
+Category
+Group
+Gradation
+Real
+Synthesized
+p-value ↑
+AUC ↑
+Munc ↓
+Mcov ↑
+Cunc ↓
+Ccov ↑
+AUC ↑
+Munc ↓
+Mcov ↑
+Cunc ↓
+Ccov ↑
+grade
+Munc
+Cunc
+overall
+-
+0.778
+0.292
+0.922
+-
+-
+0.773
+0.334
+0.948
+-
+-
+0.850
+0.068
+-
+gender
+male
+0.726
+0.303
+0.909
+0.290
+0.936
+0.721
+0.337
+0.929
+0.337
+0.955
+0.905
+0.246
+0.184
+female
+0.864
+0.278
+0.963
+0.864
+0.336
+0.981
+0.878
+0.123
+age
+<40
+0.863
+0.056
+1.000
+0.248
+0.952
+0.852
+0.111
+1.000
+0.273
+0.953
+0.513
+0.513
+0.643
+40 - 60
+0.780
+0.393
+0.976
+0.778
+0.389
+0.964
+1.000
+0.894
+>60
+0.770
+0.295
+0.879
+0.761
+0.318
+0.894
+0.886
+0.521
+magni-
+level1
+0.784
+0.369
+0.980
+0.341
+0.961
+0.780
+0.337
+0.961
+0.358
+0.961
+1.000
+0.393
+0.338
+fication
+level2
+0.780
+0.317
+0.961
+0.774
+0.376
+0.980
+0.867
+0.125
+level3
+0.771
+0.337
+0.941
+0.769
+0.363
+0.941
+0.867
+0.495
+vital
+alive
+0.826
+0.239
+0.931
+0.320
+0.926
+0.822
+0.288
+0.951
+0.358
+0.946
+0.905
+0.076
+0.286
+status
+dead
+0.661
+0.402
+0.922
+0.656
+0.428
+0.941
+0.880
+0.495
+grade
+grade I
+0.222
+0.500
+0.667
+0.356
+0.859
+0.111
+0.500
+0.333
+0.349
+0.779
+1.000
+1.000
+0.625
+grade II
+0.987
+0.016
+0.905
+0.978
+0.000
+0.873
+0.880
+0.878
+grade III
+0.647
+0.283
+0.905
+0.658
+0.333
+0.952
+0.645
+0.164
+grade IV
+0.504
+0.625
+0.958
+0.499
+0.563
+0.958
+0.711
+0.458
+time bin
+bin 1
+0.718
+0.366
+0.944
+0.247
+0.874
+0.713
+0.384
+0.944
+0.279
+0.961
+0.889
+0.565
+0.552
+bin 2
+0.837
+0.214
+0.883
+0.828
+0.233
+0.900
+0.885
+0.560
+bin 3
+0.848
+0.296
+1.000
+0.835
+0.333
+1.000
+1.000
+0.569
+bin 4
+0.667
+0.111
+0.667
+0.667
+0.167
+1.000
+1.000
+0.513
+Category
+Group
+Risk Estimation
+Real
+Synthesized
+p-value ↑
+C Index ↑
+Munc ↓
+Mcov ↑
+Cunc ↓
+Ccov ↑
+C Index ↑
+Munc ↓
+Mcov ↑
+Cunc ↓
+Ccov ↑
+risk
+Munc
+Cunc
+overall
+-
+0.697
+0.898
+0.882
+-
+-
+0.681
+0.909
+0.928
+-
+-
+0.300
+0.307
+-
+gender
+male
+0.705
+0.909
+0.909
+0.882
+0.834
+0.652
+0.921
+0.960
+0.893
+0.878
+0.669
+0.654
+0.483
+female
+0.710
+0.855
+0.759
+0.771
+0.865
+0.796
+0.219
+0.311
+age
+<40
+-
+0.955
+1.000
+0.919
+0.934
+-
+0.942
+1.000
+0.923
+0.971
+0.275
+0.275
+0.440
+40 - 60
+0.612
+0.936
+0.893
+0.591
+0.935
+0.929
+0.266
+0.265
+>60
+0.672
+0.864
+0.909
+0.681
+0.891
+0.985
+0.781
+0.781
+magni-
+level1
+0.706
+0.932
+0.961
+0.903
+0.908
+0.676
+0.947
+1.000
+0.915
+0.948
+0.563
+0.588
+0.452
+fication
+level2
+0.734
+0.899
+0.902
+0.702
+0.908
+0.961
+0.248
+0.277
+level3
+0.694
+0.878
+0.863
+0.676
+0.890
+0.882
+0.408
+0.493
+vital
+alive
+-
+0.934
+0.912
+0.889
+0.907
+-
+0.934
+0.941
+0.904
+0.961
+0.083
+0.089
+0.343
+status
+dead
+0.487
+0.845
+0.902
+0.499
+0.874
+0.980
+0.595
+0.597
+grade
+grade I
+-
+0.976
+0.667
+0.927
+0.847
+-
+0.969
+1.000
+0.939
+0.948
+0.275
+0.513
+0.358
+grade II
+0.835
+0.926
+0.905
+0.841
+0.919
+0.937
+0.139
+0.149
+grade III
+0.612
+0.906
+0.857
+0.573
+0.904
+0.857
+0.550
+0.659
+grade IV
+0.481
+0.901
+0.958
+0.439
+0.964
+1.000
+0.143
+0.112
+time bin
+bin 1
+0.690
+0.922
+0.861
+0.738
+0.961
+0.714
+0.938
+0.944
+0.746
+0.982
+0.441
+0.474
+0.744
+bin 2
+0.842
+0.864
+0.983
+0.836
+0.881
+0.983
+0.557
+0.502
+bin 3
+-
+0.389
+1.000
+-
+0.389
+1.000
+0.411
+1.000
+bin 4
+-
+0.775
+1.000
+-
+0.775
+1.000
+0.275
+1.000
+37/40
+
+===== PAGE 38 =====
+Supplementary Table 12: Table of uncertainty and fairness evaluation for TCGA-UCEC dataset. p-values are computed
+using the two-sided Wilcoxon rank-sum test to compare the grades and survival risks predicted using real and synthesized
+transcriptomic data, in addition to WSIs. Munc , Mcov , Cunc and Ccov refer to marginal uncertainty, marginal coverage,
+conditional uncertainty and conditional coverage, respectively. ↑indicates the larger the better, and ↓indicates the smaller the
+better. Equivalent or close (±0.01) performance using real and synthesized data is marked in bold.
+Category
+Group
+Gradation
+Real
+Synthesized
+p-value ↑
+AUC ↑
+Munc ↓
+Mcov ↑
+Cunc ↓
+Ccov ↑
+AUC ↑
+Munc ↓
+Mcov ↑
+Cunc ↓
+Ccov ↑
+grade
+Munc
+Cunc
+overall
+-
+0.828
+0.337
+0.854
+-
+-
+0.821
+0.337
+0.854
+-
+-
+0.941
+1.000
+-
+age
+40 - 60
+0.739
+0.744
+0.949
+0.489
+0.916
+0.739
+0.744
+0.949
+0.489
+0.916
+1.000
+1.000
+1.000
+>60
+0.885
+0.235
+0.882
+0.874
+0.235
+0.882
+0.912
+1.000
+magni-
+level1
+0.881
+0.567
+0.933
+0.519
+0.915
+0.870
+0.544
+0.933
+0.511
+0.915
+0.912
+0.877
+0.959
+fication
+level2
+0.810
+0.278
+0.812
+0.810
+0.278
+0.812
+1.000
+1.000
+level3
+0.775
+0.711
+1.000
+0.775
+0.711
+1.000
+1.000
+1.000
+vital
+alive
+0.811
+0.350
+0.866
+0.300
+0.850
+0.803
+0.350
+0.866
+0.300
+0.850
+0.941
+1.000
+1.000
+status
+dead
+0.917
+0.250
+0.833
+0.917
+0.250
+0.833
+1.000
+1.000
+grade
+grade I
+0.971
+1.000
+1.000
+0.651
+0.984
+0.971
+1.000
+1.000
+0.651
+0.984
+1.000
+1.000
+1.000
+grade II
+0.805
+0.556
+1.000
+0.768
+0.556
+1.000
+0.893
+1.000
+grade III
+0.823
+0.397
+0.952
+0.823
+0.397
+0.952
+1.000
+1.000
+time bin
+bin1
+0.761
+0.661
+0.968
+0.470
+0.984
+0.752
+0.651
+0.968
+0.464
+0.984
+0.932
+0.901
+0.950
+bin2
+0.955
+0.278
+1.000
+0.955
+0.278
+1.000
+1.000
+1.000
+Category
+Group
+Risk Estimation
+Real
+Synthesized
+p-value ↑
+C Index ↑
+Munc ↓
+Mcov ↑
+Cunc ↓
+Ccov ↑
+C Index ↑
+Munc ↓
+Mcov ↑
+Cunc ↓
+Ccov ↑
+risk
+Munc
+Cunc
+overall
+-
+0.680
+1.000
+0.933
+-
+-
+0.673
+1.000
+0.933
+-
+-
+0.887
+0.992
+-
+age
+40 - 60
+-
+1.000
+0.897
+1.000
+0.863
+-
+1.000
+0.897
+1.000
+0.863
+0.912
+0.980
+0.986
+>60
+0.606
+0.999
+0.829
+0.592
+0.999
+0.829
+0.823
+0.992
+magni-
+level1
+0.720
+1.000
+0.900
+1.000
+0.922
+0.680
+1.000
+0.900
+1.000
+0.922
+0.767
+0.971
+0.982
+fication
+level2
+0.707
+1.000
+0.933
+0.707
+1.000
+0.933
+0.900
+0.982
+level3
+0.547
+1.000
+0.933
+0.547
+1.000
+0.933
+0.918
+0.994
+vital
+alive
+-
+1.000
+0.936
+0.998
+0.968
+-
+1.000
+0.936
+0.998
+0.968
+0.897
+0.992
+0.961
+status
+dead
+0.204
+0.996
+1.000
+0.204
+0.996
+1.000
+0.729
+0.931
+grade
+grade I
+-
+1.000
+0.958
+1.000
+0.962
+-
+1.000
+0.958
+1.000
+0.962
+0.926
+0.992
+0.991
+grade II
+0.778
+1.000
+1.000
+0.746
+1.000
+1.000
+0.805
+1.000
+grade III
+0.503
+1.000
+0.929
+0.509
+1.000
+0.929
+0.936
+0.982
+time bin
+bin1
+0.714
+1.000
+0.921
+0.996
+0.960
+0.700
+1.000
+0.921
+0.996
+0.960
+0.880
+0.990
+0.970
+bin2
+-
+0.992
+1.000
+-
+0.992
+1.000
+0.902
+0.951
+38/40
+
+===== PAGE 39 =====
+Supplementary Table 13: Table of uncertainty and fairness evaluation for CPTAC-UCEC dataset. p-values are computed
+using the two-sided Wilcoxon rank-sum test to compare the grades and survival risks predicted using real and synthesized
+transcriptomic data, in addition to WSIs. Munc , Mcov , Cunc and Ccov refer to marginal uncertainty, marginal coverage,
+conditional uncertainty and conditional coverage, respectively. ↑indicates the larger the better, and ↓indicates the smaller the
+better. Equivalent or close (±0.01) performance using real and synthesized data is marked in bold.
+Category
+Group
+Gradation
+Real
+Synthesized
+p-value ↑
+AUC ↑
+Munc ↓
+Mcov ↑
+Cunc ↓
+Ccov ↑
+AUC ↑
+Munc ↓
+Mcov ↑
+Cunc ↓
+Ccov ↑
+grade
+Munc
+Cunc
+overall
+-
+0.593
+0.821
+0.984
+-
+-
+0.593
+0.818
+0.980
+-
+-
+1.000
+0.914
+-
+magni-
+level1
+0.595
+0.761
+0.988
+0.805
+0.976
+0.595
+0.761
+0.988
+0.805
+0.976
+1.000
+1.000
+1.000
+fication
+level2
+0.601
+0.824
+0.971
+0.600
+0.824
+0.971
+1.000
+1.000
+level3
+0.593
+0.831
+0.971
+0.592
+0.831
+0.971
+1.000
+1.000
+vital
+alive
+0.575
+0.826
+0.982
+0.717
+0.959
+0.575
+0.823
+0.978
+0.715
+0.957
+1.000
+0.908
+0.954
+status
+dead
+0.728
+0.608
+0.937
+0.728
+0.608
+0.937
+1.000
+1.000
+grade
+grade I
+0.469
+0.973
+0.960
+0.644
+0.928
+0.465
+0.973
+0.960
+0.643
+0.926
+0.939
+1.000
+0.929
+grade II
+0.454
+0.746
+0.956
+0.454
+0.751
+0.956
+0.952
+0.887
+grade III
+0.887
+0.213
+0.870
+0.889
+0.206
+0.863
+1.000
+0.899
+time bin
+bin1
+0.496
+0.812
+0.983
+0.841
+0.986
+0.503
+0.809
+0.979
+0.840
+0.984
+1.000
+0.905
+0.953
+bin2
+0.608
+0.870
+0.989
+0.608
+0.870
+0.989
+1.000
+1.000
+Category
+Group
+Risk Estimation
+Real
+Synthesized
+p-value ↑
+C Index ↑
+Munc ↓
+Mcov ↑
+Cunc ↓
+Ccov ↑
+C Index ↑
+Munc ↓
+Mcov ↑
+Cunc ↓
+Ccov ↑
+risk
+Munc
+Cunc
+overall
+-
+0.533
+1.000
+0.908
+-
+-
+0.530
+1.000
+0.908
+-
+-
+0.932
+0.918
+-
+magni-
+level1
+0.393
+0.999
+0.912
+0.999
+0.920
+0.387
+0.999
+0.912
+0.999
+0.920
+0.891
+0.997
+0.950
+fication
+level2
+0.594
+1.000
+0.941
+0.592
+1.000
+0.941
+0.975
+0.925
+level3
+0.586
+1.000
+0.906
+0.583
+1.000
+0.906
+0.980
+0.927
+vital
+alive
+-
+1.000
+0.899
+0.582
+0.934
+-
+1.000
+0.895
+0.583
+0.932
+0.926
+0.993
+0.695
+status
+dead
+0.509
+0.165
+0.968
+0.510
+0.166
+0.968
+0.996
+0.397
+grade
+grade I
+0.471
+1.000
+0.949
+0.999
+0.921
+0.448
+1.000
+0.960
+0.999
+0.924
+0.871
+0.733
+0.909
+grade II
+0.507
+1.000
+0.933
+0.507
+1.000
+0.933
+0.994
+0.996
+grade III
+0.445
+0.996
+0.879
+0.444
+0.996
+0.879
+0.930
+0.999
+time bin
+bin1
+0.527
+1.000
+0.915
+0.895
+0.957
+0.527
+1.000
+0.915
+0.895
+0.952
+0.988
+0.999
+0.950
+bin2
+-
+0.791
+1.000
+-
+0.790
+0.989
+0.901
+0.901
+39/40
+
+===== PAGE 40 =====
+Supplementary Table 14: Table of expected deviation from the desired coverage for a given number of samples in the
+calibration set and conformal error rate α = 0.1. ncal denotes the calibration set size, and ε denotes the deviation. The less the
+calibration set size, the greater the expected deviation.
+ncal
+ε
+ncal
+ε
+ncal
+ε
+ncal
+ε
+ncal
+ε
+ncal
+ε
+9
+0.183
+33
+0.079
+67
+0.060
+104
+0.047
+194
+0.035
+373
+0.025
+12
+0.121
+34
+0.076
+69
+0.064
+111
+0.048
+201
+0.036
+375
+0.026
+13
+0.106
+36
+0.077
+72
+0.058
+120
+0.047
+204
+0.034
+399
+0.026
+18
+0.097
+37
+0.078
+75
+0.055
+126
+0.044
+207
+0.035
+447
+0.024
+21
+0.107
+38
+0.078
+78
+0.057
+132
+0.043
+225
+0.033
+453
+0.023
+24
+0.085
+39
+0.087
+80
+0.058
+138
+0.043
+228
+0.034
+501
+0.022
+25
+0.086
+42
+0.074
+81
+0.056
+141
+0.043
+231
+0.033
+510
+0.022
+27
+0.087
+43
+0.071
+82
+0.054
+144
+0.040
+252
+0.031
+531
+0.022
+28
+0.087
+48
+0.071
+84
+0.052
+150
+0.042
+270
+0.031
+550
+0.022
+29
+0.102
+51
+0.071
+86
+0.053
+151
+0.041
+273
+0.030
+555
+0.021
+30
+0.095
+54
+0.063
+87
+0.053
+153
+0.039
+279
+0.031
+582
+0.021
+31
+0.089
+55
+0.063
+90
+0.055
+165
+0.038
+282
+0.030
+693
+0.019
+32
+0.084
+57
+0.065
+91
+0.053
+170
+0.039
+288
+0.030
+700
+0.019
+33
+0.079
+60
+0.067
+93
+0.050
+171
+0.039
+300
+0.029
+780
+0.018
+34
+0.076
+63
+0.060
+99
+0.053
+177
+0.038
+309
+0.029
+918
+0.017
+32
+0.084
+66
+0.060
+102
+0.049
+192
+0.036
+339
+0.028
+1119
+0.015
+40/40
