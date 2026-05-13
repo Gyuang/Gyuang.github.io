@@ -3,6 +3,10 @@ title: "BioMaze: Benchmarking and Enhancing Large Language Models for Biological
 excerpt: "5.1K KEGG-pathway questions across 12 reasoning settings; PathSeeker agent wins on perturbed/intervened cells where prior graph-augmented LLMs collapse."
 categories:
   - Paper
+  - Dataset
+  - BioInformatics
+  - LLM
+permalink: /paper/biomaze-llm-biological-pathway-reasoning-benchmark/
 tags:
   - BioMaze
   - PathSeeker

@@ -3,6 +3,8 @@ title: "Molecularly informed analysis of histopathology images using natural lan
 excerpt: "SpotWhisperer chains DeepSpot and CellWhisperer to query H&E patches by free text, reaching weighted AUROC 0.717 on a lung-cancer Visium benchmark vs PLIP 0.554 / CONCH 0.478."
 categories:
   - Paper
+  - Spatial-Transcriptomics
+permalink: /paper/spotwhisperer-molecularly-informed-histopathology-natural-language/
 tags:
   - SpotWhisperer
   - DeepSpot

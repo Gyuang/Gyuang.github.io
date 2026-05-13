@@ -3,6 +3,8 @@ title: "Integrating Pathology Foundation Models and Spatial Transcriptomics for 
 excerpt: "A 7-layer MLP on CONCH+UNI embeddings matches Hist2Cell on per-spot cellular decomposition while collapsing GPU memory from 44,951 MB to 570 MB and STNet leave-one-out training from 383m 24s to 6m 5s."
 categories:
   - Paper
+  - Spatial-Transcriptomics
+permalink: /paper/fm-st-cellular-decomposition-mlp/
 tags:
   - Pathology-Foundation-Models
   - CONCH

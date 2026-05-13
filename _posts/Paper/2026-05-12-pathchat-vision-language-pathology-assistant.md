@@ -3,6 +3,8 @@ title: "A Foundational Multimodal Vision Language AI Assistant for Human Patholo
 excerpt: "PathChat stacks CONCH-Large on Llama 2 13B with a 128-token Perceiver pooler and 257k pathology instructions; headline 87.0% accuracy is on the 23-case PathQABench-Public MCQ subset with clinical context, not the full 48-case benchmark."
 categories:
   - Paper
+  - Pathology
+permalink: /paper/pathchat-vision-language-pathology-assistant/
 tags:
   - PathChat
   - CONCH-Large

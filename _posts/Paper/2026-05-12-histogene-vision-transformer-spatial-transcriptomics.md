@@ -3,6 +3,8 @@ title: "HisToGene: Leveraging Information in Spatial Transcriptomics to Predict 
 excerpt: "A whole-section Vision Transformer with one-hot coordinate embeddings predicts 785-gene expression from H&E patches and beats ST-Net's per-section median Pearson r in all 32 HER2+ breast cancer sections at ~2.5x lower compute — but every absolute number is modest and the headline super-resolution claim leans on N=6 sections with patient leakage."
 categories:
   - Paper
+  - Spatial-Transcriptomics
+permalink: /paper/histogene-vision-transformer-spatial-transcriptomics/
 tags:
   - HisToGene
   - Vision-Transformer

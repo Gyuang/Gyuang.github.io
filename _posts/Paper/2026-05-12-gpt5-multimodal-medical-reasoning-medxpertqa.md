@@ -3,6 +3,8 @@ title: "Capabilities of GPT-5 on Multimodal Medical Reasoning"
 excerpt: "A zero-shot CoT API evaluation puts GPT-5 at 69.99% / 74.37% on MedXpertQA MM Reasoning/Understanding — +29.26 / +26.18 over GPT-4o — but the multimodal headline rides on a single benchmark and a re-quoted pre-licensed-trainee baseline."
 categories:
   - Paper
+  - LLM
+permalink: /paper/gpt5-multimodal-medical-reasoning-medxpertqa/
 tags:
   - GPT-5
   - MedXpertQA

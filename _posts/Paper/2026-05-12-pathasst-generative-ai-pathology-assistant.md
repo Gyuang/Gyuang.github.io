@@ -3,6 +3,8 @@ title: "PathAsst: A Generative Foundation AI Assistant Towards Artificial Genera
 excerpt: "PathCLIP triples-to-tenfolds PLIP/OpenAI CLIP on pathology retrieval (PubMed R@10 33.2 vs. 3.0), but PathAsst's MLLM half is evaluated on a single benchmark (PathVQA) and its 38.4 open-ended F1 still trails a CLIP-ViT+GPT2 baseline (40.0)."
 categories:
   - Paper
+  - Pathology
+permalink: /paper/pathasst-generative-ai-pathology-assistant/
 tags:
   - PathAsst
   - PathCLIP

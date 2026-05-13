@@ -3,6 +3,8 @@ title: "Sparse Autoencoders Reveal Organized Biological Knowledge but Minimal Re
 excerpt: "TopK SAEs on every layer of Geneformer V2-316M and scGPT recover 82,525 + 24,527 features with 99.8% superposition, 29-59% ontology coverage, and median 2.36x causal specificity — yet only 6.2% (K562) -> 10.4% (multi-tissue) of TRRUST TFs get target-specific responses, isolating the model as the bottleneck."
 categories:
   - Paper
+  - BioInformatics
+permalink: /paper/sparse-autoencoders-scgpt-geneformer-atlas/
 tags:
   - Sparse-Autoencoders
   - Mechanistic-Interpretability

@@ -3,6 +3,8 @@ title: "H&Enium: Applying Foundation Models to Computational Pathology and Spati
 excerpt: "Single-cell H&E↔Xenium contrastive alignment with frozen UNI2 + CellPLM and two MLPs improves gene-expression PCC by +10–11% across three slides."
 categories:
   - Paper
+  - Spatial-Transcriptomics
+permalink: /paper/h-and-enium-single-cell-contrastive-alignment-xenium/
 tags:
   - H&Enium
   - Contrastive Alignment

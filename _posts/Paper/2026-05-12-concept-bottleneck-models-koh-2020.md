@@ -3,6 +3,8 @@ title: "Concept Bottleneck Models"
 excerpt: "Modern CNNs routed through a human-concept layer match end-to-end accuracy on OAI (RMSE 0.418 vs 0.441) and enable test-time interventions that cut OAI RMSE from >0.4 to ~0.3 after correcting just 2 of 10 concepts."
 categories:
   - Paper
+  - LLM
+permalink: /paper/concept-bottleneck-models-koh-2020/
 tags:
   - CBM
   - Interpretability

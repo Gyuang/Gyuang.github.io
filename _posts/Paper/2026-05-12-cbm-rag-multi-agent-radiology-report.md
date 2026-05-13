@@ -3,6 +3,9 @@ title: "CBM-RAG: Demonstrating Enhanced Interpretability in Radiology Report Gen
 excerpt: "A 3-page EICS Companion '25 demo that bolts a CheXagent + Mistral concept bottleneck onto a five-agent CrewAI/LlamaIndex RAG stack for chest X-ray reporting — no quantitative evaluation in the PDF."
 categories:
   - Paper
+  - Pathology
+  - LLM
+permalink: /paper/cbm-rag-multi-agent-radiology-report/
 tags:
   - CBM-RAG
   - Concept-Bottleneck-Model

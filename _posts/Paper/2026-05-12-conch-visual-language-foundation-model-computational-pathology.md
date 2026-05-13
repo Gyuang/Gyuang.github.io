@@ -3,6 +3,8 @@ title: "Towards a Visual-Language Foundation Model for Computational Pathology (
 excerpt: "A CoCa-style pathology VLM trained on 1.17M curated image-caption pairs delivers zero-shot NSCLC subtyping balanced accuracy 0.900 and matches CTransPath on supervised SICAP quad-kappa (0.846 vs 0.835)."
 categories:
   - Paper
+  - Pathology
+permalink: /paper/conch-visual-language-foundation-model-computational-pathology/
 tags:
   - CONCH
   - CoCa

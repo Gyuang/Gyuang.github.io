@@ -3,6 +3,8 @@ title: "BioMARL: Biological Pathway Guided Gene Selection Through Collaborative 
 excerpt: "A two-stage KEGG-prior + multi-agent DQN gene selector wins 5/6 TCGA tasks at k=100 (BRCA-ER AUC 0.9706, LUAD AUC 0.8327) — but ablates only Phase 2 and ships an unflagged regression on OV."
 categories:
   - Paper
+  - BioInformatics
+permalink: /paper/biomarl-pathway-guided-gene-selection/
 tags:
   - BioMARL
   - Multi-Agent Reinforcement Learning

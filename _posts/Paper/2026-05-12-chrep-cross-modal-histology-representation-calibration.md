@@ -3,6 +3,8 @@ title: "CHRep: Cross-modal Histology Representation and Post-hoc Calibration for
 excerpt: "Two-phase histology-to-ST pipeline that decouples representation learning from deployment-time bias correction, lifting PCC(ACG) on Alex+10x from 0.1949 to 0.2718 (+39.5%) over mclSTExp under strict LOSO."
 categories:
   - Paper
+  - Spatial-Transcriptomics
+permalink: /paper/chrep-cross-modal-histology-representation-calibration/
 tags:
   - CHRep
   - Spatial-Transcriptomics

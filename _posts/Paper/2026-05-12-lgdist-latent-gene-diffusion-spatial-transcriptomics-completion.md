@@ -3,6 +3,8 @@ title: "LGDiST: Latent Gene Diffusion for Spatial Transcriptomics Completion"
 excerpt: "A reference-free latent DiT over Visium neighborhoods reports an 18% average MSE drop over SpaCKLE on 26 SpaRED datasets, plus up to 10% MSE / 188% PCC gains on six downstream histology-to-expression models — but the headline number lives entirely inside one boxplot and the largest PCC claim has no absolute baseline."
 categories:
   - Paper
+  - Spatial-Transcriptomics
+permalink: /paper/lgdist-latent-gene-diffusion-spatial-transcriptomics-completion/
 tags:
   - LGDiST
   - Latent-Diffusion

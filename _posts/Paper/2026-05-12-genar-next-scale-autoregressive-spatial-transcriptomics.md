@@ -3,6 +3,8 @@ title: "GenAR: Next-Scale Autoregressive Generation for Spatial Gene Expression 
 excerpt: "Next-scale AR over k-means gene groups sweeps four HEST-1k slides, peaking at PRAD PCC-200 0.512 vs STEM 0.403 (+27.0%) — on single-slide holdouts with no CV."
 categories:
   - Paper
+  - Spatial-Transcriptomics
+permalink: /paper/genar-next-scale-autoregressive-spatial-transcriptomics/
 tags:
   - GenAR
   - Spatial-Transcriptomics

@@ -3,6 +3,8 @@ title: "From Spots to Pixels: Dense Spatial Gene Expression Prediction from Hist
 excerpt: "PixNet reframes ST prediction as dense per-pixel regression, hitting PCC@M 0.325 on breast Visium HD vs. SGN's 0.226 (+43.8%) and being the only method that survives 100 µm → 2 µm scale shift (PCC 0.198 vs. iStar 0.126)."
 categories:
   - Paper
+  - Spatial-Transcriptomics
+permalink: /paper/pixnet-dense-per-pixel-spatial-transcriptomics/
 tags:
   - PixNet
   - Spatial-Transcriptomics

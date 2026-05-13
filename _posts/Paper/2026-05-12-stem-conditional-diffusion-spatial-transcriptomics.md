@@ -3,6 +3,8 @@ title: "Stem: Diffusion Generative Modeling for Spatially Resolved Gene Expressi
 excerpt: "First conditional-diffusion formulation of H&E→ST as p(X|V), with a DiT denoiser modulated by pooled CONCH+UNI embeddings; on HER2ST B1 it drives RVD from 0.6025 (BLEEP) down to 0.0693 while matching or beating PCC on the authors' four datasets."
 categories:
   - Paper
+  - Spatial-Transcriptomics
+permalink: /paper/stem-conditional-diffusion-spatial-transcriptomics/
 tags:
   - Stem
   - Diffusion-Model

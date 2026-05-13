@@ -3,6 +3,8 @@ title: "Med-Flamingo: a Multimodal Medical Few-shot Learner"
 excerpt: "Continued pretraining of OpenFlamingo-9B on a 0.8M-image medical textbook corpus delivers a +20% clinician-rated VQA-RAD bump on a custom split, while exposing 194 PathVQA test leaks and losing to the OpenFlamingo zero-shot baseline on pathology."
 categories:
   - Paper
+  - LLM
+permalink: /paper/med-flamingo-multimodal-few-shot-medical-learner/
 tags:
   - Med-Flamingo
   - Multimodal

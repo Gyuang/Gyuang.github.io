@@ -3,6 +3,8 @@ title: "BLEEP: Spatially Resolved Gene Expression Prediction from H&E Histology 
 excerpt: "A CLIP-style joint embedding of H&E patches and Visium spots lifts Pearson r on held-out liver to 0.217 (MG) / 0.175 (HEG) / 0.173 (HVG), beating ST-Net and HisToGene by 39-120% — but every number comes from one tissue and one donor cohort."
 categories:
   - Paper
+  - Spatial-Transcriptomics
+permalink: /paper/bleep-bi-modal-contrastive-learning-spatial-transcriptomics/
 tags:
   - BLEEP
   - Contrastive-Learning

@@ -3,6 +3,8 @@ title: "Label-Free Concept Bottleneck Models"
 excerpt: "LF-CBM is the first CBM scaled to ImageNet, reaching 71.95% top-1 with a sparse interpretable final layer versus 74.35% for a sparse-standard ResNet-50 and 76.13% for the dense baseline."
 categories:
   - Paper
+  - LLM
+permalink: /paper/label-free-concept-bottleneck-models/
 tags:
   - LF-CBM
   - Concept-Bottleneck-Model

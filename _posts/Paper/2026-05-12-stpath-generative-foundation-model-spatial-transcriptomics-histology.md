@@ -3,6 +3,8 @@ title: "STPath: A Generative Foundation Model for Integrating Spatial Transcript
 excerpt: "A geometry-aware Transformer pretrained by masked gene-expression regression on 983 WSIs reaches PCC 0.266 on HEST-Bench (+6.9% over UNI, +34.4% over TRIPLEX), with in-context prompting adding +0.257 absolute PCC on CCRCC at 5% prompted spots."
 categories:
   - Paper
+  - Spatial-Transcriptomics
+permalink: /paper/stpath-generative-foundation-model-spatial-transcriptomics-histology/
 tags:
   - STPath
   - Spatial-Transcriptomics

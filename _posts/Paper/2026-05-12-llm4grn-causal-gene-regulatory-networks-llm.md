@@ -3,6 +3,9 @@ title: "LLM4GRN: Discovering Causal Gene Regulatory Networks with LLMs – Evalu
 excerpt: "Prompting GPT-4 / Llama-3.1-70B for TF candidates and feeding them into GRNBoost2 + GRouNdGAN yields the lowest Cosine/Euclidean/MMD on PBMC-ALL — but the 'causal' framing is unsupported and the Llama win is an artifact of TF count."
 categories:
   - Paper
+  - BioInformatics
+  - LLM
+permalink: /paper/llm4grn-causal-gene-regulatory-networks-llm/
 tags:
   - LLM4GRN
   - Gene Regulatory Networks

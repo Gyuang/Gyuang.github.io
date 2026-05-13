@@ -3,6 +3,8 @@ title: "Bayesian Concept Bottleneck Models with LLM Priors"
 excerpt: "Split-sample Metropolis-within-Gibbs with an LLM proposal kernel reaches accuracy 0.680 / AUC 0.874 on CUB family-level, narrowly above ResNet50 (0.664 / 0.853) but with overlapping CIs."
 categories:
   - Paper
+  - LLM
+permalink: /paper/bayesian-concept-bottleneck-models-llm-priors/
 tags:
   - BC-LLM
   - Concept Bottleneck Models

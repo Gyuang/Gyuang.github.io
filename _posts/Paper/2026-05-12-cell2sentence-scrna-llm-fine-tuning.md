@@ -3,6 +3,9 @@ title: "Cell2Sentence: Teaching Large Language Models the Language of Biology"
 excerpt: "Fine-tuning GPT-2/Pythia on rank-ordered gene-symbol 'cell sentences' beats scGPT/scVI/scGen/scDiffusion on conditional cell generation (k-NN@10 0.2746, GW 54.30 on immune tissue) — but the load-bearing claim is NL pretraining, not rank encoding: NL+C2S doubles cell-type prediction accuracy (29.33 → 69.95) over C2S-only at the same parameter count."
 categories:
   - Paper
+  - BioInformatics
+  - LLM
+permalink: /paper/cell2sentence-scrna-llm-fine-tuning/
 tags:
   - Cell2Sentence
   - C2S

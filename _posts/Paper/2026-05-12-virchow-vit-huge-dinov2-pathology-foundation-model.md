@@ -3,6 +3,8 @@ title: "Virchow: A Million-Slide Digital Pathology Foundation Model"
 excerpt: "ViT-H/14 (632M) trained with DINOv2 on 1.49M MSKCC H&E WSIs reaches 0.949 pan-cancer specimen-level AUC across 17 tissues and drops only -0.005 weighted F1 on unnormalized CRC vs CTransPath's -0.118."
 categories:
   - Paper
+  - Pathology
+permalink: /paper/virchow-vit-huge-dinov2-pathology-foundation-model/
 tags:
   - Virchow
   - DINOv2

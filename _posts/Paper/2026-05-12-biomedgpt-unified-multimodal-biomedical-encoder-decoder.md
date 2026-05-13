@@ -3,6 +3,8 @@ title: "BiomedGPT: A Generalist Vision-Language Foundation Model for Diverse Bio
 excerpt: "An open-source 182M-parameter seq2seq generalist that claims SOTA on 16 of 25 biomedical benchmarks and a 22.5 pp VQA-RAD weighted-F1 lead over Med-PaLM M (12B)."
 categories:
   - Paper
+  - LLM
+permalink: /paper/biomedgpt-unified-multimodal-biomedical-encoder-decoder/
 tags:
   - BiomedGPT
   - Vision-Language

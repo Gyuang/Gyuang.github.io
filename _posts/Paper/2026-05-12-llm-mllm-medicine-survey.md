@@ -3,6 +3,9 @@ title: "A Comprehensive Survey of Large Language Models and Multimodal Large Lan
 excerpt: "A 32-page taxonomy that decomposes medical MLLMs along vision encoder x LLM backbone x four-family modality alignment, catalogs ~30 medical LLMs and ~25 medical MLLMs with their datasets and fine-tuning recipes, but quotes headline numbers (Med-PaLM 2 86.5 MedQA, GPT-4V 90.7% USMLE-image) without methodological critique and misses the late-2024 reasoning/agentic wave."
 categories:
   - Paper
+  - Dataset
+  - LLM
+permalink: /paper/llm-mllm-medicine-survey/
 tags:
   - Survey
   - Medical-LLM

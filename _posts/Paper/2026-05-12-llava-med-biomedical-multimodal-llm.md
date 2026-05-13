@@ -3,6 +3,8 @@ title: "LLaVA-Med: Training a Large Language-and-Vision Assistant for Biomedicin
 excerpt: "A two-stage curriculum on PubMed figure-caption pairs and GPT-4-distilled instruction data yields closed-set VQA SoTA (84.19 VQA-RAD, 91.21 PathVQA) and a heavily self-referential 50.2% chat score against GPT-4 — trained in under 15 hours on 8x A100."
 categories:
   - Paper
+  - LLM
+permalink: /paper/llava-med-biomedical-multimodal-llm/
 tags:
   - LLaVA-Med
   - Visual-Instruction-Tuning

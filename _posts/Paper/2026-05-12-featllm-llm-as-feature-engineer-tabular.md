@@ -3,6 +3,8 @@ title: "FeatLLM: Large Language Models Can Automatically Engineer Features for F
 excerpt: "An LLM emits per-class rules once at training time; a tiny non-negative linear model scores them at inference, lifting average AUC from 70.26 to 77.86 at 4-shot across 11 tabular benchmarks."
 categories:
   - Paper
+  - LLM
+permalink: /paper/featllm-llm-as-feature-engineer-tabular/
 tags:
   - FeatLLM
   - Tabular Learning

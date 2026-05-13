@@ -3,6 +3,9 @@ title: "BioReason: Incentivizing Multimodal Biological Reasoning within a DNA-LL
 excerpt: "A frozen DNA foundation model (Evo2-1B) is linearly projected into Qwen3-4B's token stream and trained with SFT + Dr.GRPO to produce step-by-step variant-to-disease reasoning, lifting KEGG pathway accuracy from 86% (DNA-only) to 98%."
 categories:
   - Paper
+  - BioInformatics
+  - LLM
+permalink: /paper/bioreason-dna-foundation-llm-pathway-reasoning/
 tags:
   - BioReason
   - DNA-Foundation-Model

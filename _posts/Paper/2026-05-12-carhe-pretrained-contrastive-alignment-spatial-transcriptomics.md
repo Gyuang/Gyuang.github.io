@@ -3,6 +3,8 @@ title: "CarHE: Predicting Spatial Transcriptomics from H&E Image by Pretrained C
 excerpt: "Contrastive alignment of HIPT image features to scGPT cell-cluster embeddings plus Grad-CAM refinement, yielding lung-cancer DFS AUC = 0.734."
 categories:
   - Paper
+  - Spatial-Transcriptomics
+permalink: /paper/carhe-pretrained-contrastive-alignment-spatial-transcriptomics/
 tags:
   - CarHE
   - Spatial-Transcriptomics

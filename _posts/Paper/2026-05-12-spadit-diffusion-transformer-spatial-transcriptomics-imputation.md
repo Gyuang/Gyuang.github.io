@@ -3,6 +3,8 @@ title: "SpaDiT: Diffusion Transformer for Spatial Gene Expression Prediction usi
 excerpt: "Per-gene conditional DiT with Flash-Attention scRNA-seq prior: best mean PCC on 9 of 10 paired ST benchmarks, e.g. MC 0.812 vs SpatialScope 0.776."
 categories:
   - Paper
+  - Spatial-Transcriptomics
+permalink: /paper/spadit-diffusion-transformer-spatial-transcriptomics-imputation/
 tags:
   - SpaDiT
   - Diffusion Transformer

@@ -3,6 +3,9 @@ title: "Towards Multi-Label Concept Bottleneck Models in Medical Imaging: An Exp
 excerpt: "First systematic study of label-free CBMs on multi-label chest X-rays — RAD-DINO + BiomedCLIP reaches micro-AUC 0.8823 / macro-F1 0.4076, exposing AUC as misleading for rare pathologies."
 categories:
   - Paper
+  - Pathology
+  - LLM
+permalink: /paper/multi-label-cbm-medical-chest-xray/
 tags:
   - CBM
   - Concept Bottleneck Models

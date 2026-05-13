@@ -3,6 +3,9 @@ title: "Concept Complement Bottleneck Model for Interpretable Medical Image Diag
 excerpt: "Per-concept adapters plus a small learnable unknown-concept branch push CBM to 93.96 AUC / 88.15 ACC on Derm7pt and lift Skincon concept AUC from 62.14 to 82.14."
 categories:
   - Paper
+  - Pathology
+  - LLM
+permalink: /paper/concept-complement-bottleneck-medical-diagnosis/
 tags:
   - CCBM
   - Concept Bottleneck Models

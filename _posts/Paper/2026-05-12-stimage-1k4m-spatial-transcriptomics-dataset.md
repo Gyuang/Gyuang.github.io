@@ -3,6 +3,9 @@ title: "STimage-1K4M: A Histopathology Image-Gene Expression Dataset for Spatial
 excerpt: "1,149 ST slides and 4,293,195 sub-tile / gene-expression pairs across 10 species and 50 tissues — the broadest paired ST+H&E catalog to date, with caveats."
 categories:
   - Paper
+  - Dataset
+  - Spatial-Transcriptomics
+permalink: /paper/stimage-1k4m-spatial-transcriptomics-dataset/
 tags:
   - STimage-1K4M
   - Spatial Transcriptomics

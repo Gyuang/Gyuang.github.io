@@ -3,6 +3,8 @@ title: "Improving Concept Alignment in Vision-Language Concept Bottleneck Models
 excerpt: "CLIP-based VL-CBMs hit 75.84/95.63/90.14% class accuracy on CUB/RIVAL/AwA2 with only 24.43/58.85/49.02% concept accuracy; a learnable concept-projection layer plus a Contrastive Semi-Supervised loss lifts concept accuracy by +39.10/+18.63/+32.11 pp using just 9/8/10 labels per class."
 categories:
   - Paper
+  - LLM
+permalink: /paper/vl-cbm-alignment-concept-faithfulness/
 tags:
   - VL-CBM
   - CSS

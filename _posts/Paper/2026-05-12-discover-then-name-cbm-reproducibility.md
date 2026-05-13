@@ -3,6 +3,8 @@ title: "Revisiting Discover-then-Name Concept Bottleneck Models: A Reproducibili
 excerpt: "Reproducing DN-CBM (ECCV 2024) shows two of three original claims hold; an activation-weighted cosine-alignment penalty lifts mean concept-name alignment from 0.146 to 0.540 at 1-4pp accuracy cost, validated by a 203-person Wilcoxon study."
 categories:
   - Paper
+  - LLM
+permalink: /paper/discover-then-name-cbm-reproducibility/
 tags:
   - DN-CBM
   - Reproducibility

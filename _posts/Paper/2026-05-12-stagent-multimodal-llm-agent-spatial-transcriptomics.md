@@ -3,6 +3,10 @@ title: "STAgent: Spatial transcriptomics AI agent charts hPSC-pancreas maturatio
 excerpt: "Claude-3.7-Sonnet + GPT-4o orchestrated via LangGraph drives an end-to-end ST workflow on a 60K-cell STARmap dataset of hPSC-pancreas grafts — but the agent's contribution is demonstrated, not benchmarked."
 categories:
   - Paper
+  - BioInformatics
+  - Spatial-Transcriptomics
+  - LLM
+permalink: /paper/stagent-multimodal-llm-agent-spatial-transcriptomics/
 tags:
   - STAgent
   - LLM-Agent

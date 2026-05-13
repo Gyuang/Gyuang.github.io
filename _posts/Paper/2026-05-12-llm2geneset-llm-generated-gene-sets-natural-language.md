@@ -3,6 +3,9 @@ title: "Enhancing Gene Set Overrepresentation Analysis with Large Language Model
 excerpt: "GPT-4o-generated gene sets show 66-94% Bonferroni-significant overlap with KEGG, Reactome, and WikiPathways curated sets across 2,939 benchmark pathways — but no random-gene baseline and no MSigDB Hallmark/C2 test means this measures recall of training data, not discovery."
 categories:
   - Paper
+  - BioInformatics
+  - LLM
+permalink: /paper/llm2geneset-llm-generated-gene-sets-natural-language/
 tags:
   - llm2geneset
   - GPT-4o

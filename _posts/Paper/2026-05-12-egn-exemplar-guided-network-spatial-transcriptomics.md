@@ -3,6 +3,8 @@ title: "EGN: Exemplar Guided Deep Neural Network for Spatial Transcriptomics Ana
 excerpt: "A WACV 2023 ViT-based per-window gene predictor that retrieves K=9 cross-patient exemplars via an unsupervised StyleGAN-style global view and injects their expression vectors into ViT patch tokens through an Exemplar Bridging block, lifting STNet PCC@F from 0.111 (CycleMLP) to 0.151 — though without variance bars, on only 23 STNet patients and 5 10xProteomic slides, with CycleMLP still winning MSE on 10xProteomic."
 categories:
   - Paper
+  - Spatial-Transcriptomics
+permalink: /paper/egn-exemplar-guided-network-spatial-transcriptomics/
 tags:
   - EGN
   - Spatial-Transcriptomics

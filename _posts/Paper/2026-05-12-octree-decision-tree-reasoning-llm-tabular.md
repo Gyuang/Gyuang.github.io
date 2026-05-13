@@ -3,6 +3,8 @@ title: "OCTree: Optimized Feature Generation for Tabular Data via LLMs with Deci
 excerpt: "An LLM-as-optimizer loop that feeds CART decision-tree reasoning back as natural-language if-else feedback, cutting XGBoost relative error by ~5.0% across 19 anonymized Grinsztajn datasets."
 categories:
   - Paper
+  - LLM
+permalink: /paper/octree-decision-tree-reasoning-llm-tabular/
 tags:
   - OCTree
   - Tabular Learning

@@ -3,6 +3,9 @@ title: "SynthPert: Enhancing Biological Reasoning in LLMs via Synthetic Reasonin
 excerpt: "Distilling critic-filtered synthetic chain-of-thought from o4-mini into an 8B LLM yields 0.78 AUROC on PerturbQA DE prediction, +0.10–0.21 over SUMMER across four cell lines."
 categories:
   - Paper
+  - BioInformatics
+  - LLM
+permalink: /paper/synthpert-synthetic-cot-cellular-perturbation/
 tags:
   - SynthPert
   - Synthetic Chain-of-Thought

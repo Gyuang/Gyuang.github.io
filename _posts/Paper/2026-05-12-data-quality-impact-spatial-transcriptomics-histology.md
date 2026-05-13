@@ -3,6 +3,8 @@ title: "Impact of Data Quality on Deep Learning Prediction of Spatial Transcript
 excerpt: "A controlled cross-swap study shows training-label quality, not architecture, drives ST-from-H&E performance: Xenium-trained PCC 0.715 vs. Visium-trained 0.519 (~38% relative), and KNN/MAGIC/SCVI imputation boosts held-out PCC but degrades generalization on a serial replicate."
 categories:
   - Paper
+  - Spatial-Transcriptomics
+permalink: /paper/data-quality-impact-spatial-transcriptomics-histology/
 tags:
   - Spatial-Transcriptomics
   - Computational-Pathology

@@ -3,6 +3,8 @@ title: "Probabilistic Concept Bottleneck Models"
 excerpt: "Per-concept Gaussian embeddings with paired +/- anchors deliver calibrated concept uncertainty on CUB/AwA2 while leaving classification accuracy tied with deterministic CBM (CUB 0.680 vs 0.670; AwA2 0.880 vs 0.877)."
 categories:
   - Paper
+  - LLM
+permalink: /paper/probabilistic-cbm-kim-2023/
 tags:
   - ProbCBM
   - CBM

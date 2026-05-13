@@ -3,6 +3,9 @@ title: "HEST-1k: A Dataset for Spatial Transcriptomics and Histology Image Analy
 excerpt: "1,229 paired ST+WSI samples across 153 cohorts, plus a 9-task gene-expression benchmark where H-Optimus-0 edges UNIv1.5 by just 0.0056 Pearson (well inside per-fold sigma)."
 categories:
   - Paper
+  - Dataset
+  - Spatial-Transcriptomics
+permalink: /paper/hest-1k-spatial-transcriptomics-histology-benchmark/
 tags:
   - HEST-1k
   - Spatial-Transcriptomics

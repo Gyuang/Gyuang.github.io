@@ -3,6 +3,8 @@ title: "LLM-FE: Automated Feature Engineering for Tabular Data with LLMs as Evol
 excerpt: "A FunSearch-style island-evolutionary loop turns the LLM into an implicit crossover operator over Python feature-transformation programs, lifting XGBoost classification mean rank to 1.42 across 19 datasets and 1.10 across 10 regression datasets."
 categories:
   - Paper
+  - LLM
+permalink: /paper/llm-fe-evolutionary-search-tabular-feature-engineering/
 tags:
   - LLM-FE
   - Tabular Learning

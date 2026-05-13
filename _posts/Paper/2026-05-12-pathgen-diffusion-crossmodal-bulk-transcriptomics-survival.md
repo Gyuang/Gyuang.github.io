@@ -3,6 +3,8 @@ title: "PathGen: Generating Crossmodal Gene Expression from Cancer Histopatholog
 excerpt: "A DDPM that synthesises 6-group bulk transcriptomic embeddings from WSI patches lifts TCGA-GBMLGG survival C-Index from 0.842 to 0.861 and grade AUC from 0.823 to 0.890 over WSI-only — significant by Wilcoxon, still trailing WSI+real (0.866 / 0.907) on every cohort."
 categories:
   - Paper
+  - Spatial-Transcriptomics
+permalink: /paper/pathgen-diffusion-crossmodal-bulk-transcriptomics-survival/
 tags:
   - PathGen
   - Diffusion-Models

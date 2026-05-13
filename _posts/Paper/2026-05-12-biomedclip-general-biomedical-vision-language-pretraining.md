@@ -3,6 +3,8 @@ title: "BiomedCLIP: A Multimodal Biomedical Foundation Model Pretrained from Fif
 excerpt: "Scraping PubMed Central into 15.28M figure-caption pairs (PMC-15M) and retraining CLIP with PubMedBERT lifts biomedical text-to-image R@1 from 1.00% to 69.60%."
 categories:
   - Paper
+  - Pathology
+permalink: /paper/biomedclip-general-biomedical-vision-language-pretraining/
 tags:
   - BiomedCLIP
   - PMC-15M

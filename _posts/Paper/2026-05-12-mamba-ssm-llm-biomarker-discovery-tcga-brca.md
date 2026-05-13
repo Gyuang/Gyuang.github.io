@@ -3,6 +3,9 @@ title: "Mamba-SSM with LLM Reasoning for Feature Selection: Faithfulness-Aware B
 excerpt: "An LLM-filtered 17-gene panel reaches AUC 0.927 on TCGA-BRCA, beating a 5,000-gene variance baseline (0.903) with 294x fewer features — while recalling only 37.5% of validated BRCA biomarkers."
 categories:
   - Paper
+  - Pathology
+  - LLM
+permalink: /paper/mamba-ssm-llm-biomarker-discovery-tcga-brca/
 tags:
   - Mamba-SSM
   - Feature Selection

@@ -3,6 +3,8 @@ title: "HistoPrism: Unlocking Functional Pathway Analysis from Pan-Cancer Histol
 excerpt: "A compact cross-attention transformer regresses 38,982 genes directly from H&E and beats STPath on 86.0% of Hallmark and 74.7% of GO pathways, with full-transcriptome clustering AMI 0.623 vs 0.395 — but the headline HVG-SOTA framing only holds on micro-PCC."
 categories:
   - Paper
+  - Spatial-Transcriptomics
+permalink: /paper/histoprism-pathway-aware-spatial-transcriptomics/
 tags:
   - HistoPrism
   - Spatial-Transcriptomics

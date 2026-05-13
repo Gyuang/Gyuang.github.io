@@ -3,6 +3,8 @@ title: "SpaFoundation: a visual foundation model for spatial transcriptomics"
 excerpt: "ViT-B/16 iBOT-pretrained on 1.84M HEST-1K patches hits PCC 0.84 for ERBB2 on a single Visium HD slide — strong number, thin evidence."
 categories:
   - Paper
+  - Spatial-Transcriptomics
+permalink: /paper/spafoundation-vision-foundation-model-spatial-transcriptomics/
 tags:
   - SpaFoundation
   - Spatial-Transcriptomics

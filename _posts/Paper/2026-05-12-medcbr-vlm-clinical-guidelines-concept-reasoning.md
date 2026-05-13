@@ -3,6 +3,9 @@ title: "Vision-Language Models Encode Clinical Guidelines for Concept-Based Medi
 excerpt: "MedCBR pairs a guideline-conditioned CLIP fine-tune with a frozen Qwen3-8B reasoner to hit 94.2% AUROC on BUS-BRA and 84.0% on CBIS-DDSM, with 86.1% accuracy on CUB-200."
 categories:
   - Paper
+  - Pathology
+  - LLM
+permalink: /paper/medcbr-vlm-clinical-guidelines-concept-reasoning/
 tags:
   - MedCBR
   - Concept Bottleneck Models

@@ -3,6 +3,8 @@ title: "A visual-omics foundation model to bridge histopathology with spatial tr
 excerpt: "OmiCLIP trains a CLIP-style dual encoder on 2.2M Visium image-transcriptome pairs by treating ranked gene symbols as a 'gene sentence', and powers the Loki platform across alignment, annotation, decomposition, retrieval, and ST expression prediction."
 categories:
   - Paper
+  - Spatial-Transcriptomics
+permalink: /paper/omiclip-loki-visual-omics-foundation-model-spatial-transcriptomics/
 tags:
   - OmiCLIP
   - Loki

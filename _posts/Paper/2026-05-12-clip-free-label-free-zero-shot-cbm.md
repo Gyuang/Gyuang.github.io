@@ -3,6 +3,8 @@ title: "CLIP-Free, Label-Free, Zero-Shot Concept Bottleneck Models"
 excerpt: "ZS-CBM converts any frozen classifier into a concept bottleneck by training only a small MLP and inserting a closed-form gram-matrix factor, reaching 86.4% ImageNet top-1 on ConvNeXtV2 versus 79.5% for the best CLIP-based supervised CBM."
 categories:
   - Paper
+  - LLM
+permalink: /paper/clip-free-label-free-zero-shot-cbm/
 tags:
   - ZS-CBM
   - TextUnlock
