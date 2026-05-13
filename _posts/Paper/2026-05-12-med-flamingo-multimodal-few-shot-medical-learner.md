@@ -68,7 +68,7 @@ Training ran on 8× A100 80GB with DeepSpeed ZeRO Stage 2, 8-bit AdamW, and memo
 
 Inference uses 6 in-context shots for VQA-RAD and PathVQA and 4 shots for Visual USMLE (longer prompts force context truncation). A `<image> Question: ... Rationale: ... Answer: ...` variant teaches the model — at prompt time, no fine-tuning — to emit a chain-of-thought-style rationale before the answer.
 
-![Rationale prompting example](/assets/images/paper/med-flamingo/fig_p008_01.png)
+![Rationale prompting example](/assets/images/paper/med-flamingo/page_008.png)
 *Figure 3: With `Question / Rationale / Answer` exemplars, Med-Flamingo emits a visually grounded rationale ("aorta visible as a circular shape ventral of the spine ... calcification of the aortic wall") before its final answer — the most distinctive qualitative result in the paper, though the authors note rationales are unreliable when the final answer is wrong.*
 
 ![Streamlit clinician evaluation app](/assets/images/paper/med-flamingo/page_007.png)
@@ -93,10 +93,10 @@ Three observations the paper does not foreground:
 - **Visual USMLE clinical score moves opposite to BERT-similarity.** Few-shot Med-Flamingo wins clinical evaluation (4.33) but loses BERT-sim (0.431 vs. 0.473) — the GPT-4-summarised few-shot prompts produce terser answers that diverge lexically from wordy ground truth.
 - **No ablations isolate MTB vs. PMC-OA.** Despite MTB being the headline data contribution, there is no MTB-only or PMC-OA-only Med-Flamingo. Number of shots, $\lambda$, and inter-rater agreement are likewise not reported.
 
-![Visual USMLE qualitative example](/assets/images/paper/med-flamingo/fig_p010_02.png)
+![Visual USMLE qualitative example](/assets/images/paper/med-flamingo/page_010.png)
 *Figure 5: Visual USMLE case — Med-Flamingo correctly identifies smoking as the strongest risk factor for bladder cancer, while the OpenFlamingo baseline misdiagnoses as metastatic prostate cancer.*
 
-![MTB image cluster annotation](/assets/images/paper/med-flamingo/fig_p014_01.png)
+![MTB image cluster annotation](/assets/images/paper/med-flamingo/page_014.png)
 *Figure 6: Distribution of 100 manually annotated image clusters in MTB — anatomical illustrations, dermatology, surgical illustrations, X-ray, and MRI dominate the actual image-type composition.*
 
 ## Limitations

@@ -45,7 +45,7 @@ SpaFoundation's design choice is to keep pretraining **vision-only** — the pai
 
 ## Method & Architecture
 
-![SpaFoundation overview: iBOT pretraining on HEST-1K-3 and HEG/HVG prediction on cSCC](/assets/images/paper/spafoundation/fig_p014_01.png)
+![SpaFoundation overview: iBOT pretraining on HEST-1K-3 and HEG/HVG prediction on cSCC](/assets/images/paper/spafoundation/page_014.png)
 *Figure 1: SpaFoundation overview — iBOT teacher–student pretraining on HEST-1K-3 (1,113 WSIs, 26 organs), the four downstream tasks, and qualitative + boxplot results for HEG/HVG gene-expression prediction on cSCC.*
 
 **Backbone.** ViT-B/16 (~80M params, patch size 16, input 224×224) is used as both student and teacher inside the iBOT framework.
@@ -74,7 +74,7 @@ where $m_j \in \{0, 1\}$ is the per-patch mask indicator.
 
 ## Experimental Results
 
-![Three downstream tasks: high-resolution Visium HD inference, HBCIS tumor detection, HER2+ zero-shot clustering](/assets/images/paper/spafoundation/fig_p016_01.png)
+![Three downstream tasks: high-resolution Visium HD inference, HBCIS tumor detection, HER2+ zero-shot clustering](/assets/images/paper/spafoundation/page_016.png)
 *Figure 2: Three downstream tasks — (a–d) high-resolution ERBB2 inference on Visium HD breast cancer with PCC 0.84 vs ST-Net 0.65; (e–h) tumor detection on HBCIS with AUC 0.94; (i–l) zero-shot spatial clustering on HER2+ samples H1 and C1 with best ARI/NMI across 8 annotated sections.*
 
 | Task | Dataset | Metric | **SpaFoundation** | Best baseline | Δ |

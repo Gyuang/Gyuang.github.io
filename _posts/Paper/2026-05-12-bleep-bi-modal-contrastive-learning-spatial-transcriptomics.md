@@ -61,7 +61,7 @@ BLEEP attacks these by switching the output primitive: instead of decoding a gen
 
 ## Method & Architecture
 
-![BLEEP pipeline: contrastive joint embedding and query-reference imputation](/assets/images/paper/bleep/fig_p004_01.png)
+![BLEEP pipeline: contrastive joint embedding and query-reference imputation](/assets/images/paper/bleep/page_004.png)
 *Figure 1: BLEEP pipeline — (a) contrastive joint embedding from paired H&E patches and Visium expression, (b) query patches projected and k-NN retrieved in the joint space, (c) imputation as a weighted average of retrieved reference expression profiles.*
 
 ### 1. Inputs and pairing
@@ -143,26 +143,26 @@ Findings:
 
 ### Variance preservation
 
-![Predicted per-gene mean and variance vs. ranked gene index](/assets/images/paper/bleep/fig_p007_01.png)
+![Predicted per-gene mean and variance vs. ranked gene index](/assets/images/paper/bleep/page_007.png)
 *Figure 2: Per-gene predicted mean (upper) and per-gene predicted variance (lower) vs. ranked gene index. BLEEP roughly tracks the reference variance curve while HisToGene and ST-Net collapse to near-flat variance — i.e., the regression baselines learn mean as a shortcut.*
 
 This is the conceptually distinctive evidence in the paper. Per-gene predicted variance is not something a supervised regressor optimizes for, but it is exactly the property a retrieval-based predictor inherits for free from its reference distribution.
 
 ### Spatial fidelity
 
-![CYP3A4 predicted vs. original spatial maps](/assets/images/paper/bleep/fig_p007_02.png)
+![CYP3A4 predicted vs. original spatial maps](/assets/images/paper/bleep/page_007.png)
 *Figure 3: CYP3A4 (pericentral marker) predicted vs. original — variable-scale (top) and fixed-scale (bottom) color maps overlaid on the held-out slice. BLEEP visibly recovers pericentral zonation; the regression baselines do not.*
 
 ### Gene-gene correlation structure
 
-![Gene-gene correlation heatmaps for original vs. each method](/assets/images/paper/bleep/fig_p008_01.png)
+![Gene-gene correlation heatmaps for original vs. each method](/assets/images/paper/bleep/page_008.png)
 *Figure 4: Gene-gene correlation heatmaps for original vs. BLEEP / HisToGene / ST-Net predictions. BLEEP qualitatively recapitulates and sharpens the block structure — the authors interpret this as denoising; an alternate read is over-smoothing toward the reference structure.*
 
 No quantitative GGC similarity metric (e.g., Frobenius distance to the original) is reported, so the denoising-vs-over-smoothing dispute is unresolved.
 
 ### Artifact robustness
 
-![Leiden cluster overlays for low-quality Visium regions](/assets/images/paper/bleep/fig_p009_01.png)
+![Leiden cluster overlays for low-quality Visium regions](/assets/images/paper/bleep/page_009.png)
 *Figure 5: Leiden clusters overlaid on H&E for original vs. each method. Image-based prediction reconstructs expression over low-quality (red) Visium regions for all methods — this is a property of the image-only task, not of BLEEP specifically.*
 
 ## Limitations

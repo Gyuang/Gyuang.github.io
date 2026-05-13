@@ -52,7 +52,7 @@ LLM-driven chest X-ray report generators reduce radiologist workload but compoun
 
 ## Method & Architecture
 
-![CBM-RAG end-to-end workflow](/assets/images/paper/cbm-rag/fig_p002_01.png)
+![CBM-RAG end-to-end workflow](/assets/images/paper/cbm-rag/page_002.png)
 *Figure 1: CBM-RAG end-to-end workflow. Top: a CheXagent VLM + Mistral-embedded concept set produces a similarity vector that drives the three-class disease classifier and per-concept heatmaps. Bottom: per-disease ReAct agents + a Radiologist Agent + a Report Writer Agent + a Chat Agent ground the report in an NIH vector store plus user-uploaded media (PDF/PPT/text/audio/video, with audio/video transcribed by Whisper).*
 
 **A. Concept Bottleneck for CXR classification**

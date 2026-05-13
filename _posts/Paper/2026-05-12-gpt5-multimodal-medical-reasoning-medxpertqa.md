@@ -48,7 +48,7 @@ Prior medical-LLM evaluations have been mostly text-only, used heterogeneous pro
 
 ## Method & Architecture
 
-![GPT-5 zero-shot CoT prompt template on a MedXpertQA multimodal case](/assets/images/paper/gpt5-medical-reasoning/fig_p005_01.png)
+![GPT-5 zero-shot CoT prompt template on a MedXpertQA multimodal case](/assets/images/paper/gpt5-medical-reasoning/page_005.png)
 
 *Figure 1: the zero-shot CoT prompt template used for every multimodal item — system message, user turn with text + image_url block, free-form rationale, then a convergence cue that forces a single-letter final answer.*
 

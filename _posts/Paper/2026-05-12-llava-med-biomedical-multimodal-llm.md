@@ -80,19 +80,19 @@ Train with autoregressive next-token loss on the assistant span only. **Only the
 
 Filter PMC-15M to single-plot figures, sample 60K image-text pairs balanced across the five modalities above. For each, prompt **language-only GPT-4** with the caption plus in-line citance sentences (the "60K-IM" variant) and few-shot examples. The system prompt instructs GPT-4 to **write as if it can see the image** and to avoid quoting caption-specific numbers. Output is 2-3+ turns of user/assistant dialogue. Three data variants are produced for ablation: 10K (no citance), 60K (no citance), and 60K-IM (with in-line citances — the best).
 
-![Five-modality Stage-2 sampling pool: CXR](/assets/images/paper/llava-med/fig_p005_01.png)
+![Five-modality Stage-2 sampling pool: CXR](/assets/images/paper/llava-med/page_005.png)
 *Figure 2a: Example chest X-ray from the Stage-2 balanced modality pool.*
 
-![Five-modality Stage-2 sampling pool: MRI](/assets/images/paper/llava-med/fig_p005_02.png)
+![Five-modality Stage-2 sampling pool: MRI](/assets/images/paper/llava-med/page_005.png)
 *Figure 2b: Example MRI (ischiofemoral region) from the Stage-2 pool.*
 
-![Five-modality Stage-2 sampling pool: histopathology](/assets/images/paper/llava-med/fig_p005_03.png)
+![Five-modality Stage-2 sampling pool: histopathology](/assets/images/paper/llava-med/page_005.png)
 *Figure 2c: Example histopathology slide from the Stage-2 pool.*
 
-![Five-modality Stage-2 sampling pool: gross pathology](/assets/images/paper/llava-med/fig_p005_04.png)
+![Five-modality Stage-2 sampling pool: gross pathology](/assets/images/paper/llava-med/page_005.png)
 *Figure 2d: Example gross-pathology specimen from the Stage-2 pool.*
 
-![Five-modality Stage-2 sampling pool: abdominal CT](/assets/images/paper/llava-med/fig_p005_05.png)
+![Five-modality Stage-2 sampling pool: abdominal CT](/assets/images/paper/llava-med/page_005.png)
 *Figure 2e: Example abdominal CT from the Stage-2 pool. Together (2a-2e) correspond to the five modalities the 60K dialogues are stratified across.*
 
 ### 4. Stage 2 training
@@ -105,7 +105,7 @@ Continue training on each of VQA-RAD / SLAKE / PathVQA for 1, 3, 9, 15, or 18 ep
 
 ### 6. Self-instruct figure example
 
-![A multi-turn GPT-4-distilled instruction sample](/assets/images/paper/llava-med/fig_p004_01.png)
+![A multi-turn GPT-4-distilled instruction sample](/assets/images/paper/llava-med/page_004.png)
 *Figure 3: A representative GPT-4-generated multi-turn instruction-following sample built from a single PubMed CT figure plus caption plus in-line citances. GPT-4 never sees the image — it writes as if it can.*
 
 ## Experimental Results
@@ -150,13 +150,13 @@ The 50.2 number is the abstract's headline. It is also — to repeat — GPT-4 v
 
 ### Qualitative
 
-![Hospital-day-2 post-intubation chest X-ray used in Table 2 chat comparison](/assets/images/paper/llava-med/fig_p007_01.png)
+![Hospital-day-2 post-intubation chest X-ray used in Table 2 chat comparison](/assets/images/paper/llava-med/page_007.png)
 *Figure 4: Chest X-ray from the Table 2 chat comparison between LLaVA, LLaVA-Med, and language-only GPT-4. LLaVA-Med produces a clinically plausible description; LLaVA hallucinates wires. Note LLaVA-Med over-lists tubes ("ETT, central venous catheters, and/or pulmonary artery catheters") relative to the GPT-4 reference — likely caption-leakage-style supervised hallucination.*
 
-![Abdominal CT for zero-shot Chinese question answering on SLAKE](/assets/images/paper/llava-med/fig_p010_01.png)
+![Abdominal CT for zero-shot Chinese question answering on SLAKE](/assets/images/paper/llava-med/page_010.png)
 *Figure 5: Abdominal CT used in Table 6 to demonstrate zero-shot Chinese-question answering on SLAKE. The Chinese capability is attributed to LLaMA/Vicuna pretraining, not to any biomedical Chinese supervision in LLaVA-Med.*
 
-![Coronal abdominal-pelvic CT used in Table 9 appendix](/assets/images/paper/llava-med/fig_p017_01.png)
+![Coronal abdominal-pelvic CT used in Table 9 appendix](/assets/images/paper/llava-med/page_017.png)
 *Figure 6: Coronal abdominal-pelvic CT used in Table 9 (appendix) for the "pelvic mass" chat comparison between LLaVA and LLaVA-Med.*
 
 ## Limitations

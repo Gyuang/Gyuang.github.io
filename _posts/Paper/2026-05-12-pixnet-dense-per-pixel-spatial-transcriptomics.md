@@ -143,13 +143,13 @@ This is the table that justifies the dense-prediction reformulation. Every spot-
 - **Foundation encoder (Figure 4).** UNI2-h beats ResNet18, CLIP, Virchow2, H-Optimus-0, and UNI — but the comparison is reported only as a bar chart; exact deltas are not in the text.
 - **Training spot size (Table 6, breast Visium HD).** 16 µm only: 0.244; 8 µm only: 0.288; 2 µm only: 0.299; 16+8 µm: 0.303; all three: **0.325**. Multi-scale matters, and 2 µm-only is already near the ceiling.
 
-![Foundation encoder ablation — MSE](/assets/images/paper/spatially-dense-ge/fig_p008_01.png)
+![Foundation encoder ablation — MSE](/assets/images/paper/spatially-dense-ge/page_008.png)
 *Figure 4a: MSE across foundation encoders on breast Visium HD.*
 
-![Foundation encoder ablation — MAE](/assets/images/paper/spatially-dense-ge/fig_p008_02.png)
+![Foundation encoder ablation — MAE](/assets/images/paper/spatially-dense-ge/page_008.png)
 *Figure 4b: MAE across foundation encoders.*
 
-![Foundation encoder ablation — PCC@M](/assets/images/paper/spatially-dense-ge/fig_p008_03.png)
+![Foundation encoder ablation — PCC@M](/assets/images/paper/spatially-dense-ge/page_008.png)
 *Figure 4c: PCC@M across foundation encoders — UNI2-h is best across all three metrics.*
 
 ## Limitations

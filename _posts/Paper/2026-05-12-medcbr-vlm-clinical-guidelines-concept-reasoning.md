@@ -59,7 +59,7 @@ Three pieces, each modest on its own but tightly coupled:
 
 ## Method & Architecture
 
-![MedCBR three-stage pipeline](/assets/images/paper/vl-concept-reasoning-clinical/fig_p003_01.png)
+![MedCBR three-stage pipeline](/assets/images/paper/vl-concept-reasoning-clinical/page_003.png)
 *Figure 1: MedCBR's three stages. (a) LVLM rewrites concept labels into guideline-conformant reports; (b) CLIP is fine-tuned with InfoNCE + diagnosis head + per-concept MLP heads; (c) a frozen Qwen3-8B consumes $(\hat y, \hat c, G)$ and produces BI-RADS-anchored explanations.*
 
 Formally, the dataset is $D = \{(x, c, y)\}$ with image $x$, binary concept vector $c \in \{0,1\}^{N_c}$, label $y \in \{\text{benign}, \text{malignant}\}$. Classical CBM predicts $\hat y = q(g(f(x)))$. MedCBR replaces this with
@@ -113,16 +113,16 @@ Two patterns stand out. (i) MedCBR has by far the **tightest std** of any row in
 
 **Qualitative reasoning examples.**
 
-![Ultrasound BI-RADS 5 reasoning](/assets/images/paper/vl-concept-reasoning-clinical/fig_p007_01.png)
+![Ultrasound BI-RADS 5 reasoning](/assets/images/paper/vl-concept-reasoning-clinical/page_007.png)
 *Figure 2: BUS-BRA case — MedCBR weighs posterior shadowing, indistinct margins, and microlobulated margins against a benign regular shape and outputs BI-RADS 5 with a next-step recommendation.*
 
-![Mammography BI-RADS 5 reasoning](/assets/images/paper/vl-concept-reasoning-clinical/fig_p007_02.png)
+![Mammography BI-RADS 5 reasoning](/assets/images/paper/vl-concept-reasoning-clinical/page_007.png)
 *Figure 3: CBIS-DDSM case — pleomorphic calcifications + segmental distribution + high density are aggregated into a "classic malignant constellation" with BI-RADS 5.*
 
-![Conflict resolution toward BI-RADS 3](/assets/images/paper/vl-concept-reasoning-clinical/fig_p007_03.png)
+![Conflict resolution toward BI-RADS 3](/assets/images/paper/vl-concept-reasoning-clinical/page_007.png)
 *Figure 4: Conflict-resolution case — microlobulated margins are reconciled against benign cues (posterior enhancement, circumscribed margins) toward BI-RADS 3, matching ground-truth fibroadenoma.*
 
-![CUB-200 reasoner contradicting concept predictor](/assets/images/paper/vl-concept-reasoning-clinical/fig_p008_01.png)
+![CUB-200 reasoner contradicting concept predictor](/assets/images/paper/vl-concept-reasoning-clinical/page_008.png)
 *Figure 5: CUB-200 — the reasoner contradicts a concept prediction ("underparts color red") when it conflicts with the Sibley field-guide entry for Blue Jay. This is the paper's strongest qualitative argument for guideline-grounded override, but it is a single anecdote.*
 
 ## Limitations

@@ -56,7 +56,7 @@ Worse, the field's de facto evaluation is Pearson correlation on a **top-N HVG s
 
 ## Method & Architecture
 
-![HistoPrism architecture combining patch PFM features with a one-hot cancer-type embedding via cross-attention, a 2-layer transformer encoder, and an MLP gene-expression head](/assets/images/paper/histoprism/fig_p003_01.png)
+![HistoPrism architecture combining patch PFM features with a one-hot cancer-type embedding via cross-attention, a 2-layer transformer encoder, and an MLP gene-expression head](/assets/images/paper/histoprism/page_003.png)
 *Figure 1: HistoPrism architecture — PFM patch features are fused with a one-hot cancer-type embedding via cross-attention, aggregated by a 2-layer transformer encoder, and decoded to 38,982-d per-patch gene expression by an MLP head.*
 
 ### Inputs
@@ -118,10 +118,10 @@ Training uses AdamW, lr $5\times 10^{-4}$, weight decay 0.01, grad-clip 1.0, up 
 
 ### Pathway-level coherence (GPC)
 
-![Hallmark and GO pathway-level coherence scatter plots showing HistoPrism beating STPath on most pathways](/assets/images/paper/histoprism/fig_p007_01.png)
+![Hallmark and GO pathway-level coherence scatter plots showing HistoPrism beating STPath on most pathways](/assets/images/paper/histoprism/page_007.png)
 *Figure 2: Hallmark pathway-level coherence — HistoPrism beats STPath on **43/50 (86.0%)** Hallmark pathways. Points above the y=x line favor HistoPrism, colored by normalized variance level; wins concentrate in the low-variance regime.*
 
-![Gene Ontology pathway-level coherence scatter plot for HistoPrism vs STPath](/assets/images/paper/histoprism/fig_p007_02.png)
+![Gene Ontology pathway-level coherence scatter plot for HistoPrism vs STPath](/assets/images/paper/histoprism/page_007.png)
 *Figure 3: Gene Ontology pathway-level coherence — HistoPrism wins on **65/87 (74.7%)** of size- and Jaccard-filtered GO pathways, again with the largest gaps at lower variance levels.*
 
 - **Hallmark (50 pathways):** HistoPrism > STPath on 86.0% (43/50).
@@ -130,17 +130,17 @@ Training uses AdamW, lr $5\times 10^{-4}$, weight decay 0.01, grad-clip 1.0, up 
 
 ### Efficiency
 
-![Runtime, peak GPU memory, and FLOPs versus patch count for HistoPrism vs STPath](/assets/images/paper/histoprism/fig_p008_01.png)
+![Runtime, peak GPU memory, and FLOPs versus patch count for HistoPrism vs STPath](/assets/images/paper/histoprism/page_008.png)
 *Figure 4: Efficiency on a single A100 (100-run average). HistoPrism scales linearly in runtime, peak GPU memory, and FLOPs with patch count, while STPath grows exponentially.*
 
 At roughly 20k patches per slide, HistoPrism runs in the low-hundreds of milliseconds with ≤5 GB and ≤300 GFLOPs, versus STPath at ~5 s, ~65 GB, and ~2.7 TFLOPs. The exponential STPath curve partly reflects its full-attention design over long contexts, so the gap is informative but not perfectly apples-to-apples if STPath's default chunking differs.
 
 ### PFM-swap ablation
 
-![Hallmark pathway-level coherence for HistoPrism with GigaPath backbone vs STPath](/assets/images/paper/histoprism/fig_p009_01.png)
+![Hallmark pathway-level coherence for HistoPrism with GigaPath backbone vs STPath](/assets/images/paper/histoprism/page_009.png)
 *Figure 5: PFM-swap on Hallmark — HistoPrism with the GigaPath backbone still beats STPath on **42/50 (84.0%)** pathways, indicating the gains come from the architecture, not the feature extractor.*
 
-![Gene Ontology pathway-level coherence for HistoPrism with GigaPath backbone vs STPath](/assets/images/paper/histoprism/fig_p009_02.png)
+![Gene Ontology pathway-level coherence for HistoPrism with GigaPath backbone vs STPath](/assets/images/paper/histoprism/page_009.png)
 *Figure 6: PFM-swap on GO — HistoPrism+GigaPath wins on **70/87 (80.5%)** of GO pathways. Pathway-level gains transfer across PFMs.*
 
 ### Ablations (Table 3, Table 4)

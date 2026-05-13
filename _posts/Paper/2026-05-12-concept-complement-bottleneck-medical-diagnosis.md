@@ -54,7 +54,7 @@ Two structural changes to CBM:
 
 ## Method & Architecture
 
-![CCBM framework](/assets/images/paper/concept-complement-bottleneck/fig_p008_01.png)
+![CCBM framework](/assets/images/paper/concept-complement-bottleneck/page_008.png)
 *Figure 1: CCBM framework. Per-concept adapters $C_i$ produce concept-specific queries that attend over frozen ClinicalBERT text embeddings (known) and learnable embeddings (unknown); separate aggregator FCLs $f_i$ yield concept scores, which feed a single-layer decision head.*
 
 The full pipeline:
@@ -96,13 +96,13 @@ The full pipeline:
 
 The most striking deltas are on **Skincon concept detection** (82.14 vs 62.14 AUC — a 20-point jump that mechanistically traces to per-concept adapters preventing the shared encoder from collapsing rare concepts) and **LIDC-IDRI concept regression** (RMSE 0.189 vs 0.298). On diagnosis CCBM beats every explainable baseline on all four datasets and beats the same-backbone black-box on three of four — the LIDC margin over ResNet50 (0.30% AUC) is within one std and should be read as "tied," not "exceeds."
 
-![Per-concept AUC on Derm7pt](/assets/images/paper/concept-complement-bottleneck/fig_p017_01.png)
+![Per-concept AUC on Derm7pt](/assets/images/paper/concept-complement-bottleneck/page_017.png)
 *Figure 2(a): Per-concept AUC on Derm7pt. CCBM matches or beats CBM/AEC on all 7 clinical concepts with smaller variance.*
 
-![Per-concept AUC on BrEaST](/assets/images/paper/concept-complement-bottleneck/fig_p017_02.png)
+![Per-concept AUC on BrEaST](/assets/images/paper/concept-complement-bottleneck/page_017.png)
 *Figure 2(b): Per-concept AUC on BrEaST. CBM collapses on BrH / PF / CAL while CCBM stays balanced — the source of the per-concept fairness claim.*
 
-![Per-concept AUC on Skincon](/assets/images/paper/concept-complement-bottleneck/fig_p017_03.png)
+![Per-concept AUC on Skincon](/assets/images/paper/concept-complement-bottleneck/page_017.png)
 *Figure 2(c): Per-concept AUC on Skincon (22 concepts). The +20-point AUC gain in Table 2 comes from this flatter per-concept profile.*
 
 **Ablations and additional findings.**
@@ -111,20 +111,20 @@ The most striking deltas are on **Skincon concept detection** (82.14 vs 62.14 AU
 - **$L_{sim}$ ablation (Table 4).** Removing the dissimilarity loss slightly **improves** concept detection but consistently hurts diagnosis. The direction is what the authors claim, but Table 4 reports means only — without std, the case for $L_{sim}$ is weaker than the narrative suggests.
 - **Intervention faithfulness (Fig. 3).** Zeroing high-scoring concepts crashes diagnosis AUC toward 50%, evidence the decision actually depends on the bottleneck.
 
-![Intervention on Derm7pt](/assets/images/paper/concept-complement-bottleneck/fig_p018_01.png)
+![Intervention on Derm7pt](/assets/images/paper/concept-complement-bottleneck/page_018.png)
 *Figure 3(a): Inference-time intervention on Derm7pt — as more high-scoring concepts are zeroed, diagnosis AUC falls toward chance.*
 
-![Intervention on Skincon](/assets/images/paper/concept-complement-bottleneck/fig_p018_02.png)
+![Intervention on Skincon](/assets/images/paper/concept-complement-bottleneck/page_018.png)
 *Figure 3(b): Intervention on Skincon — same trend, with the larger concept set producing a smoother decay.*
 
 - **Label efficiency (Fig. 4).** Down to 30% of training labels, CCBM degrades by only 5–10% AUC; the sharp drop happens at 10%. BrEaST is the exception, dominated by its tiny size.
 
-![Label efficiency on Derm7pt](/assets/images/paper/concept-complement-bottleneck/fig_p019_01.png)
+![Label efficiency on Derm7pt](/assets/images/paper/concept-complement-bottleneck/page_019.png)
 *Figure 4(a): Label-efficiency on Derm7pt — CCBM holds within ~5% AUC down to 30% of training data.*
 
 - **Qualitative explanations (Fig. 5).** Two case studies show the unknown-concept branch flipping a misdiagnosis: without it (`n_u=0`) the model errs; with `n_u=c` the learned C1/C2 concepts intervene and the concept scores stay closer to ground truth. Honest read: two examples, no user study, no plausibility metric.
 
-![Qualitative explanations](/assets/images/paper/concept-complement-bottleneck/fig_p020_01.png)
+![Qualitative explanations](/assets/images/paper/concept-complement-bottleneck/page_020.png)
 *Figure 5: Visual + textual explanations on Derm7pt and LIDC-IDRI. The learned unknown concepts (blue text) intervene on cases that `n_u=0` misdiagnoses; concept scores in brackets stay closer to ground truth.*
 
 ## Limitations

@@ -58,7 +58,7 @@ Crucially, the supervision target is *not* an orthogonal cellular readout — it
 
 ## Method & Architecture
 
-![FM + MLP pipeline overview: H&E patches at Visium spots are encoded by frozen CONCH and UNI, concatenated, and regressed by a 7-layer MLP to cell-type abundances; cell2location with an HBCA scRNA-seq reference provides the supervision target.](/assets/images/paper/fm-st-cellular-decomp/fig_p003_01.png)
+![FM + MLP pipeline overview: H&E patches at Visium spots are encoded by frozen CONCH and UNI, concatenated, and regressed by a 7-layer MLP to cell-type abundances; cell2location with an HBCA scRNA-seq reference provides the supervision target.](/assets/images/paper/fm-st-cellular-decomp/page_003.png)
 *Figure 1: Overview — H&E patches at ST spots are encoded by pre-trained pathology FMs (CONCH, UNI), concatenated, and regressed to cell-type abundances; cell2location provides the supervision target.*
 
 The pipeline is intentionally short:
@@ -94,25 +94,25 @@ The pipeline is intentionally short:
 | Compute (her2st LOO) | **CONCH+UNI MLP** | **GPU / time** | **570 MB / 9m 13s** |
 | Compute (her2st LOO) | Hist2Cell | GPU / time | 44,951 MB / 171m 39s |
 
-![Per-patient CC and L1 on her2st leave-one-out; CONCH+UNI MLP outperforms single-FM heads and Hist2Cell in most folds.](/assets/images/paper/fm-st-cellular-decomp/fig_p003_02.png)
+![Per-patient CC and L1 on her2st leave-one-out; CONCH+UNI MLP outperforms single-FM heads and Hist2Cell in most folds.](/assets/images/paper/fm-st-cellular-decomp/page_003.png)
 *Figure 2: her2st leave-one-out — per-patient CC (left) and L1 (right); CONCH+UNI MLP leads in most folds, with patient D as the notable exception.*
 
-![Per-patient CC and L1 across 23 STNet patients (leave-one-out); CONCH+UNI MLP consistently leads except on samples 23288 and 23377.](/assets/images/paper/fm-st-cellular-decomp/fig_p004_01.png)
+![Per-patient CC and L1 across 23 STNet patients (leave-one-out); CONCH+UNI MLP consistently leads except on samples 23288 and 23377.](/assets/images/paper/fm-st-cellular-decomp/page_004.png)
 *Figure 3: STNet leave-one-out — CC (top) and L1 (bottom) across 23 patients; CONCH+UNI MLP leads with two exceptions (23288, 23377).*
 
 ### Ablation: which FMs to combine
 
-![Ablation on her2st combining CONCH, UNI, and UNI2 in single, two-, and three-FM configurations; UNI2 alone or CONCH+UNI is consistently best.](/assets/images/paper/fm-st-cellular-decomp/fig_p005_01.png)
+![Ablation on her2st combining CONCH, UNI, and UNI2 in single, two-, and three-FM configurations; UNI2 alone or CONCH+UNI is consistently best.](/assets/images/paper/fm-st-cellular-decomp/page_005.png)
 *Figure 4: her2st ablation — adding UNI2 to CONCH+UNI does not consistently help; FM selection matters more than embedding dimensionality.*
 
 The ablation evaluates three single-FM configurations (CONCH, UNI, UNI2), three two-FM concatenations, and the three-FM stack. The reported pattern is that **UNI2 alone or CONCH+UNI** wins on most folds, while CONCH+UNI+UNI2 does *not* consistently improve. The takeaway is that **complementarity of FMs** (vision-language CONCH plus vision-only UNI) carries more signal than raw dimensionality — UNI2 (1536-D, ViT-h/14 on 200M H&E tiles) alone does not strictly dominate CONCH+UNI (also 1536-D). UNI alone beats CONCH alone, plausibly because UNI is pathology-specific while CONCH is trained more broadly via vision-language pairs.
 
 ### Qualitative colocalization
 
-![Predicted vs. ground-truth cell-type spatial distributions on her2st slide B1 (a) and bivariate Moran's R clustermaps (b); CONCH+UNI MLP reduces false-positive spots vs. Hist2Cell.](/assets/images/paper/fm-st-cellular-decomp/fig_p007_01.png)
+![Predicted vs. ground-truth cell-type spatial distributions on her2st slide B1 (a) and bivariate Moran's R clustermaps (b); CONCH+UNI MLP reduces false-positive spots vs. Hist2Cell.](/assets/images/paper/fm-st-cellular-decomp/page_007.png)
 *Figure A1: (a) cell-type spatial maps for her2st slide B1; (b) bivariate Moran's R colocalization clustermaps. The authors report an average CC improvement of 0.1 across four representative cell types of slide B1, with the largest gains on cell types with less distinct morphology.*
 
-![STNet ablation mirror of Figure 4: per-patient CC/L1 across CONCH, UNI, UNI2 and their combinations.](/assets/images/paper/fm-st-cellular-decomp/fig_p007_02.png)
+![STNet ablation mirror of Figure 4: per-patient CC/L1 across CONCH, UNI, UNI2 and their combinations.](/assets/images/paper/fm-st-cellular-decomp/page_007.png)
 *Figure A2: STNet ablation — same conclusion as her2st; CONCH+UNI and UNI2 alone are the consistently strong configurations.*
 
 ## Limitations

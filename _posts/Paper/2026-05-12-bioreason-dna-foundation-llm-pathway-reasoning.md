@@ -59,7 +59,7 @@ Genomic foundation models (Evo2, Nucleotide Transformer, HyenaDNA, DNABERT-2) co
 
 ## Method & Architecture
 
-![BioReason architecture diagram](/assets/images/paper/bioreason/fig_p004_01.png)
+![BioReason architecture diagram](/assets/images/paper/bioreason/page_004.png)
 *Figure 1: BioReason architecture. A frozen DNA foundation model (Evo2-1B or NT-500M) encodes paired reference/variant sequences; a single learnable linear projector maps the per-token embeddings into Qwen3's input space between `<dna_start>` and `<dna_end>` tokens; the LLM emits a `<think>` chain-of-thought followed by the disease prediction. Only the projector and LLM LoRA adapters are trained.*
 
 ### 1. Inputs
@@ -102,7 +102,7 @@ Temperature 0, vLLM serving, deterministic single-run evaluation.
 
 ## Dataset
 
-![KEGG dataset construction](/assets/images/paper/bioreason/fig_p006_01.png)
+![KEGG dataset construction](/assets/images/paper/bioreason/page_006.png)
 *Figure 2: KEGG Biological Reasoning dataset construction. (A) Example variant network with disease label, (B) QA pair with Claude-3.7-generated multi-step reasoning trace — note the prompt explicitly names every gene and encodes pathway topology, (C) curation pipeline across the three tasks, (D) train/test sizes, (E) disease-category distribution dominated by neurological classes.*
 
 | Dataset | Size | Splits | Source / Construction |
@@ -154,12 +154,12 @@ Enformer 17.18 → Enformer + Qwen3-4B 33.70 Macro F1 on DNase-seq. The roughly 
 
 ### Qualitative case study
 
-![PFN1 to ALS reasoning case study](/assets/images/paper/bioreason/fig_p009_01.png)
+![PFN1 to ALS reasoning case study](/assets/images/paper/bioreason/page_009.png)
 *Figure 3: PFN1 C>G variant on chromosome 17. Ground truth (middle) is a Claude-3.7-derived 10-step trace; BioReason's output (right) reproduces the actin-cytoskeleton → axonal-transport → motor-neuron-degeneration mechanism and predicts ALS.*
 
 ### Training dynamics
 
-![GRPO reward curves](/assets/images/paper/bioreason/fig_p019_01.png)
+![GRPO reward curves](/assets/images/paper/bioreason/page_019.png)
 *Figure 4: GRPO reward curves across three BioReason configurations. The 4B-backbone models converge near the theoretical max reward 2.5 by step ~400; the 1.7B model needs ~800 steps and shows higher variance. NT and Evo2 curves track each other at large LLM scale, indicating the encoder choice barely matters once the LLM is big enough.*
 
 A telling asymmetry: on Qwen3-1B + NT, GRPO *raises* accuracy (89.31 → 91.72) but *drops* macro-F1 (81.46 → 75.06) — a textbook reward-hacking signature where the policy collapses toward majority classes. Only the 4B backbone gets monotone gains across all metrics.

@@ -56,7 +56,7 @@ The chain proposes concept replacements with an LLM (the prior) but only accepts
 
 ## Method & Architecture
 
-![BC-LLM pipeline](/assets/images/paper/bayesian-cbm-llm-priors/fig_p003_01.png)
+![BC-LLM pipeline](/assets/images/paper/bayesian-cbm-llm-priors/page_003.png)
 *Figure 1: BC-LLM iteratively replaces one concept at a time — extract keyphrases, fit a residual keyphrase model, ask the LLM for candidates conditioned on a data subset $S$, annotate, and accept via a split-sample Metropolis step on $S^c$.*
 
 The chain runs Metropolis-within-Gibbs over $\vec c$:
@@ -93,20 +93,20 @@ BC-LLM is best on Acc, AUC, and Brier — but **ResNet50 has the highest OOD ent
 
 ### MIMIC-IV simulated SDOH
 
-![MIMIC scaling curves](/assets/images/paper/bayesian-cbm-llm-priors/fig_p008_03.png)
+![MIMIC scaling curves](/assets/images/paper/bayesian-cbm-llm-priors/page_008.png)
 *Figure 2: MIMIC simulation — BC-LLM matches the oracle CBM (which uses the true concepts) in AUC and Brier by ~400 observations and dominates concept Recall and Precision at all sizes.*
 
-![MIMIC dendrogram](/assets/images/paper/bayesian-cbm-llm-priors/fig_p008_04.png)
+![MIMIC dendrogram](/assets/images/paper/bayesian-cbm-llm-priors/page_008.png)
 *Figure 3: At $n=100$ the posterior puts mass on generic concepts (e.g. "rehabilitation"); at $n=800$ it concentrates around the five true SDOH concepts (smoking, alcohol, drugs, retired, unemployed).*
 
 Concept recall reaches ~0.75 at 800 obs versus ~0.5 for LLM+CBM and <0.2 for Boosting. Caveat: $Y$ is generated from a hand-specified LR over five SDOH concepts — a best-case setting for an LR-based CBM, not a real clinical label.
 
 ### ZSFG heart-failure readmission (real EHR)
 
-![ZSFG concept dendrogram](/assets/images/paper/bayesian-cbm-llm-priors/fig_p010_01.png)
+![ZSFG concept dendrogram](/assets/images/paper/bayesian-cbm-llm-priors/page_010.png)
 *Figure 4: ZSFG heart-failure readmission concepts learned by BC-LLM; highlighted concepts received clinician relevance ratings ≥2.5 and pointed to actionable interventions like outpatient follow-up scheduling.*
 
-![Clinician relevance ratings](/assets/images/paper/bayesian-cbm-llm-priors/fig_p010_02.png)
+![Clinician relevance ratings](/assets/images/paper/bayesian-cbm-llm-priors/page_010.png)
 *Figure 5: Four clinicians rated BC-LLM concepts at 2.5/3 for clinical relevance versus ≤2.1 for all comparator methods, on the heart-failure readmission task.*
 
 | Method | AUC (95% CI) | Brier (95% CI) |
@@ -120,10 +120,10 @@ Concept recall reaches ~0.75 at 800 obs versus ~0.5 for LLM+CBM and <0.2 for Boo
 
 ### Posterior contraction and qualitative OOD
 
-![Bunting posterior dendrograms](/assets/images/paper/bayesian-cbm-llm-priors/fig_p008_01.png)
+![Bunting posterior dendrograms](/assets/images/paper/bayesian-cbm-llm-priors/page_008.png)
 *Figure 6: Concept posterior contraction on Bunting birds — with 1/3 of the training data BC-LLM still posts vague concepts like "colorful plumage"; at 3/3 it concentrates on distinguishing features like "a red belly (0.94)" and "a white belly (0.94)".*
 
-![OOD concept extraction](/assets/images/paper/bayesian-cbm-llm-priors/fig_p008_02.png)
+![OOD concept extraction](/assets/images/paper/bayesian-cbm-llm-priors/page_008.png)
 *Figure 7: Qualitative OOD demonstration — a dog in rainbow wings forces the LLM concept extractor to output 0.5 for "vibrant feathers", surfacing a human-intervention signal. This is the only direct evidence the paper offers for its OOD uncertainty claim.*
 
 ### Appendix robustness

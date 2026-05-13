@@ -64,7 +64,7 @@ with $K = 6$ and scale dimensions $(1, 4, 8, 40, 100, 200)$. The model never see
 
 **2. Hierarchical gene clustering (load-bearing).** K-means on Z-score-normalized training expression first partitions the 200 genes into 4 major clusters, then subdivides each into groups of ~12 genes. This induces the gene ordering at the finest scale; intermediate scales are produced by `AdaptiveAvgPool1d(y, d_k)` over that ordering.
 
-![Hierarchical gene clustering](/assets/images/paper/genar/fig_p004_01.png)
+![Hierarchical gene clustering](/assets/images/paper/genar/page_004.png)
 *Figure 2: Circular dendrogram with heatmap visualization of the k-means gene clustering on Z-score-normalized expression profiles — this induces the autoregressive ordering at the finest scale.*
 
 **3. Causal Transformer decoder.** 12 stacked Transformer blocks. AdaLN-Zero (DiT-style) injects $\mathbf{H}$ into every block; gene-identity embeddings $\mathbf{E}_{\text{identity}} \in \mathbb{R}^{200 \times 768}$ produce per-gene scale/shift parameters via FiLM at the output head. At scale $k$, the input sequence is `[start_token, GeneEmbed(y^(<k)), GeneUpsampling(E_outputs, k)] + PosEmbed(k) + ScaleEmbed(k)`; a causal mask is applied; the last $d_k$ positions are sliced, FiLM-modulated, and decoded.
@@ -110,10 +110,10 @@ Margins over STEM (the most recent generative baseline) on PCC-200: **PRAD +27.0
 
 ### Qualitative
 
-![SSR4 spatial prediction on HER2ST SPA148](/assets/images/paper/genar/fig_p009_01.png)
+![SSR4 spatial prediction on HER2ST SPA148](/assets/images/paper/genar/page_009.png)
 *Figure 4: Predicted spatial expression of SSR4 on HER2ST SPA148. GenAR most closely tracks the high-expression yellow-green hotspots in the ground truth; BLEEP and M2OST oversmooth, STEM blurs high-expression boundaries.*
 
-![Additional gene qualitative comparison](/assets/images/paper/genar/fig_p025_01.png)
+![Additional gene qualitative comparison](/assets/images/paper/genar/page_025.png)
 *Figure 5: Appendix qualitative comparison on an additional gene; the coarse-to-fine factorization preserves sharper expression boundaries than the baselines.*
 
 ## Limitations

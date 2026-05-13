@@ -57,7 +57,7 @@ The contribution is **not algorithmic** — it is the empirical demonstration th
 
 ## Method & Architecture
 
-![Virchow training and inference pipeline: H&E WSI to 224x224 tiles to ViT-H DINOv2 to tile embeddings to Agata MIL aggregator to slide-level task head](/assets/images/paper/virchow/fig_p002_41.png)
+![Virchow training and inference pipeline: H&E WSI to 224x224 tiles to ViT-H DINOv2 to tile embeddings to Agata MIL aggregator to slide-level task head](/assets/images/paper/virchow/page_002.png)
 *Figure 1: Virchow pipeline — H&E WSI -> 224x224 foreground tiles -> ViT-H/14 trained with DINOv2 -> 2,560-D tile embedding (concat of CLS and mean patch tokens) -> Agata attention-MIL aggregator -> specimen-level prediction.*
 
 **Pretraining at a glance.**
@@ -68,7 +68,7 @@ The contribution is **not algorithmic** — it is the empirical demonstration th
 4. **Tile embedding.** `concat(CLS_token, mean(patch_tokens))` -> 2,560-D vector (1,280 + 1,280). Distinct from Phikon (CLS-only) and CTransPath (mean-only).
 5. **Slide adapter.** Agata attention-MIL aggregator over frozen tile embeddings, trained with cross-entropy for 25 epochs, AdamW lr=3e-4. Backprop is restricted to the slide with the highest cancer probability per specimen due to memory.
 
-![Dataset cohort overview: 119,629 patients to 1.49M H&E WSIs across 17 tissue types](/assets/images/paper/virchow/fig_p002_36.png)
+![Dataset cohort overview: 119,629 patients to 1.49M H&E WSIs across 17 tissue types](/assets/images/paper/virchow/page_002.png)
 *Figure 2: MSKCC pretraining cohort — 1,488,550 H&E WSIs from 119,629 patients / 208,815 cases / 392,268 specimens across 17 tissue groups (breast 24.9%, skin 18.4%, lymph node 16.6%, lung 6.1%, ...). 63% biopsy / 37% resection, scanned at 20x (0.5 mpp) on Leica scanners. Single-center, single-vendor.*
 
 ## Experimental Results
@@ -117,7 +117,7 @@ The LungEGFR gain (+0.046 vs CTransPath, +0.032 vs Phikon) is the most substanti
 
 ### Qualitative — semantic part discovery
 
-![CoNSeP PCA visualization: Virchow tile features approximately segment malignant epithelium, miscellaneous, and inflammatory cells](/assets/images/paper/virchow/fig_p006_01.png)
+![CoNSeP PCA visualization: Virchow tile features approximately segment malignant epithelium, miscellaneous, and inflammatory cells](/assets/images/paper/virchow/page_006.png)
 *Figure 6: Fig. 3d — PCA over Virchow tile features on CoNSeP. First PC isolates malignant epithelium; second PC isolates miscellaneous vs inflammatory cells. Qualitative only — no segmentation IoU/F1 is reported.*
 
 ## Limitations

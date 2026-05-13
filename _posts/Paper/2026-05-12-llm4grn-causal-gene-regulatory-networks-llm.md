@@ -94,13 +94,13 @@ The novel contribution is the **evaluation framework itself** — synthetic-data
 
 The hybrid **wins on 2/3 datasets**. On BoneMarrow the human-KB baseline ties or beats the LLM-augmented variant within noise — quietly contradicting the headline framing.
 
-![Marker dot plots: best-performing hybrid (KBLlama + GRNBoost2)](/assets/images/paper/llm4grn/fig_p010_01.png)
+![Marker dot plots: best-performing hybrid (KBLlama + GRNBoost2)](/assets/images/paper/llm4grn/page_010.png)
 *Figure 2a: Dot plot of top marker-gene expression per cell type for KBLlama + GRNBoost2 — the best-performing hybrid. Red = overexpression, dot size = fraction of cells expressing.*
 
-![Marker dot plots: KBGPT4 + GRNBoost2](/assets/images/paper/llm4grn/fig_p010_02.png)
+![Marker dot plots: KBGPT4 + GRNBoost2](/assets/images/paper/llm4grn/page_010.png)
 *Figure 2b: Same plot for KBGPT4 + GRNBoost2 — visibly noisier than the Llama hybrid, with multiple markers expressed across non-specific cell types.*
 
-![Marker dot plots: human-KB baseline](/assets/images/paper/llm4grn/fig_p010_03.png)
+![Marker dot plots: human-KB baseline](/assets/images/paper/llm4grn/page_010.png)
 *Figure 2c: KBH + GRNBoost2 (human-KB baseline) — noise concentrated in Naïve T and cytotoxic T compartments.*
 
 **Ablations that undercut the headline.**
@@ -109,13 +109,13 @@ The hybrid **wins on 2/3 datasets**. On BoneMarrow the human-KB baseline ties or
 - **GRN overlaps (Fig. 2 in paper).** GPT-4 self-overlap = 0.77; GRNBoost2 self-overlap = 0.75; GPT-4 vs. GRNBoost2 = **only 0.21**; GPT-4 vs. random = 0.13. The two "expert" methods disagree more with each other than either disagrees with itself.
 - **t-SNE (Fig. 5).** Random graphs produce "hallucinated" extra clusters absent from real data; LLM and GRNBoost2 graphs do not. This is the **only** place a causal-vs-correlational signal is even argued for.
 
-![Cell-type proportion distortion: KBGPT4 hybrid](/assets/images/paper/llm4grn/fig_p011_01.png)
+![Cell-type proportion distortion: KBGPT4 hybrid](/assets/images/paper/llm4grn/page_011.png)
 *Figure 3a: Cell-type proportions in KBGPT4 + GRNBoost2 synthetic PBMC. Real CD4+ Naïve T = 65.1%, here ~4.5% — every generated dataset distorts the real composition.*
 
-![Cell-type proportion distortion: KBLlama hybrid](/assets/images/paper/llm4grn/fig_p011_02.png)
+![Cell-type proportion distortion: KBLlama hybrid](/assets/images/paper/llm4grn/page_011.png)
 *Figure 3b: Cell-type proportions for KBLlama + GRNBoost2 — same distortion pattern (CD8+ Naïve Cytotoxic dominates at 34.1%). The failure is method-agnostic.*
 
-![t-SNE: random vs LLM vs GRNBoost2 synthetic data](/assets/images/paper/llm4grn/fig_p022_01.png)
+![t-SNE: random vs LLM vs GRNBoost2 synthetic data](/assets/images/paper/llm4grn/page_022.png)
 *Figure 4: t-SNE projections (real = red, synthetic = blue). Random-graph synthetic data produces "hallucinated" clusters (red circles); LLM- and GRNBoost2-graphs stay closer to the real distribution.*
 
 ## Limitations

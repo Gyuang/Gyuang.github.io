@@ -62,15 +62,15 @@ Net: C1-C3 and C5 deserve their ratings; C4, C6-C9 are good single-cohort eviden
 
 ## Method & Architecture
 
-![Data-quality benchmarking pipeline: paired Visium/Xenium serial sections, STalign co-registration, common 250x250 px patch grid, ResNet50+MLP head, and the ablation menu of sparsity / Poisson noise / blur / imputation](/assets/images/paper/data-quality-impact-st/fig_p004_01.png)
+![Data-quality benchmarking pipeline: paired Visium/Xenium serial sections, STalign co-registration, common 250x250 px patch grid, ResNet50+MLP head, and the ablation menu of sparsity / Poisson noise / blur / imputation](/assets/images/paper/data-quality-impact-st/page_004.png)
 *Figure 1: Data-quality benchmarking pipeline. Paired Visium and Xenium serial sections are co-registered with STalign, rasterized to a common 250x250 px patch grid, and used to train identical ResNet50+MLP models under controlled molecular (sparsity, Poisson noise, imputation) and image (Gaussian blur, resolution swap) ablations.*
 
 The base model is a pretrained ResNet50 with the final FC removed, feeding a 4-layer MLP (each layer = Linear + BN + ReLU + 20% Dropout) and a linear head that predicts log1p expression for all 306 shared breast cancer genes per patch. Patches are resized 250x250 -> 224x224, channel-normalized with ResNet50 stats, augmented with random H/V flips and 90-degree rotations. Loss = MSE; Adam lr=1e-3, weight_decay=1e-5; batch 64; 150 epochs; 75/10/15 split; 5 independent seeds on an RTX 6000 Ada. Robustness variants swap ResNet50 for UNI embeddings (same head) or use RedeHist with cell-level predictions summed back into 250x250 patches. STalign performs affine alignment with 8 landmarks followed by diffeomorphic metric mapping (a=2500, epV=1, niter=2000, sigmaA=0.11, sigmaB=0.10, sigmaM=0.15, sigmaP=50). Xenium single-cell coordinates are mapped to the WSI via 30-um rasterization plus a 4-landmark affine + DMM.
 
-![Molecular cross-swap on the Visium image: Xenium-trained PCC 0.605 vs. Visium-trained 0.519](/assets/images/paper/data-quality-impact-st/fig_p009_01.png)
+![Molecular cross-swap on the Visium image: Xenium-trained PCC 0.605 vs. Visium-trained 0.519](/assets/images/paper/data-quality-impact-st/page_009.png)
 *Figure 2 (Fig. 3A in paper): Even when the image is held fixed as the Visium WSI, Xenium molecular labels yield PCC 0.605 vs. 0.519 for Visium labels — isolating molecular quality from imaging.*
 
-![Image-only sweep and Grad-CAM across blur levels: Xenium-mol benefits from higher-resolution images while Visium-mol is insensitive; attention diffuses as blur kernel grows](/assets/images/paper/data-quality-impact-st/fig_p011_01.png)
+![Image-only sweep and Grad-CAM across blur levels: Xenium-mol benefits from higher-resolution images while Visium-mol is insensitive; attention diffuses as blur kernel grows](/assets/images/paper/data-quality-impact-st/page_011.png)
 *Figure 3 (Fig. 4 in paper): Image resolution matters only when molecular labels are clean. Xenium-mol benefits from the higher-resolution Xenium WSI (0.605 -> 0.715), while Visium-mol is insensitive (0.519 vs. 0.492). Grad-CAM heatmaps for CD4 and PDGFRA lose nuclear/cellular localization as the Gaussian blur kernel grows; note however that Supp. Fig. 12 shows the heatmaps are not cell-type-specific.*
 
 ## Experimental Results
@@ -102,10 +102,10 @@ Ablation highlights:
 - **Off-target check.** Removing 14 OPT-flagged genes does not change the trend (Supp. Fig. 10).
 - **Marker genes (Supp. Fig. 11).** Nearly all cell-type marker genes improve under Xenium training, strengthening biological relevance.
 
-![COAD cross-technology: Xenium 5K 0.568 > CosMx 6K 0.532 > VisiumHD 0.434; CosMx exhibits a unimodal distribution and the highest rMSE](/assets/images/paper/data-quality-impact-st/fig_p030_01.png)
+![COAD cross-technology: Xenium 5K 0.568 > CosMx 6K 0.532 > VisiumHD 0.434; CosMx exhibits a unimodal distribution and the highest rMSE](/assets/images/paper/data-quality-impact-st/page_030.png)
 *Figure 4 (Supp. Fig. 8): COAD generalization. Across three technologies on serial sections of one COAD block, Xenium 5K beats CosMx 6K and VisiumHD; CosMx 6K shows the highest rMSE (0.200).*
 
-![CosMx 6K stain quality and per-gene spatial maps for PDYN and MAP4 illustrate technology-specific trade-offs](/assets/images/paper/data-quality-impact-st/fig_p032_01.png)
+![CosMx 6K stain quality and per-gene spatial maps for PDYN and MAP4 illustrate technology-specific trade-offs](/assets/images/paper/data-quality-impact-st/page_032.png)
 *Figure 5 (Supp. Fig. 9): CosMx 6K H&E shows pale eosin and diffuse hematoxylin in epithelial regions. PDYN appears better predicted in CosMx while MAP4 is sparser — technology-specific gene-level trade-offs that probe sequences alone (unpublished for CosMx) cannot adjudicate.*
 
 ## Limitations

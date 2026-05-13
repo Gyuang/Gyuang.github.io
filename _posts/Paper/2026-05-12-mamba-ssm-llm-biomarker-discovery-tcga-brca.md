@@ -51,7 +51,7 @@ Two pieces, in this order:
 
 ## Method & Architecture
 
-![Neuro-symbolic Mamba + LLM feature-selection pipeline](/assets/images/paper/mamba-ssm-biomarker/fig_p002_01.png)
+![Neuro-symbolic Mamba + LLM feature-selection pipeline](/assets/images/paper/mamba-ssm-biomarker/page_002.png)
 *Figure 1: End-to-end neuro-symbolic pipeline. A Mamba SSM is trained on TCGA-BRCA RNA-seq; gradient saliency produces a 50-gene candidate pool, which DeepSeek-R1 structured CoT filters into the final 17-gene panel.*
 
 **Phase 1 — Mamba classifier.** `OfficialMambaClassifier`: `Linear(1, 128)` per-gene embedding (d_model=128), one Mamba block with `d_state=16, d_conv=4, expand=2`, `AdaptiveAvgPool1d(1)` over the gene-sequence dimension, then `Linear(128, 1) -> Sigmoid`. Training uses AdamW at `lr=1e-4` for 15 epochs, batch size 8, class-weighted BCE with $w_{\text{normal}} = N_{\text{tumour}}/N_{\text{normal}}$ to handle the 8.8:1 imbalance.
@@ -64,10 +64,10 @@ The top 50 genes by $s_j$ form $G_{50}$ (baseline B2).
 
 **Phase 3 — Structured CoT with DeepSeek-R1 (7B).** Local Ollama, temperature 0.3. The prompt provides the saliency scores, explicitly states "high saliency does not imply BRCA specificity," requires every candidate to be evaluated against five rejection criteria (R1–R5) and three keep criteria (K1–K3), and forbids rank-order selection. Output is the 17-gene panel (B3).
 
-![Saliency heatmap motivating the symbolic filter](/assets/images/paper/mamba-ssm-biomarker/fig_p008_01.png)
+![Saliency heatmap motivating the symbolic filter](/assets/images/paper/mamba-ssm-biomarker/page_008.png)
 *Figure 2: Raw gradient-saliency over the top-50 genes across TCGA-BRCA samples. The high cross-sample variance among non-oncogenic clusters is what motivates the symbolic filtering layer.*
 
-![Agentic chain-of-thought trace](/assets/images/paper/mamba-ssm-biomarker/fig_p009_01.png)
+![Agentic chain-of-thought trace](/assets/images/paper/mamba-ssm-biomarker/page_009.png)
 *Figure 3: Per-gene `<think>` blocks map Mamba saliency scores to biological rationale and reject/keep decisions, enabling the post-hoc faithfulness audit.*
 
 **Phase 4 — Faithfulness audit.** Each of the 50 input genes is labelled {validated / known non-BRCA / unknown} x {selected / not selected}, yielding selection-level precision, recall, and a missed-gene list.
@@ -84,7 +84,7 @@ The top 50 genes by $s_j$ form $G_{50}$ (baseline B2).
 | B2 Mamba saliency only (no LLM) | 50 | 0.7247 | 0.7813 | 0.832 |
 | **B3 Mamba + LLM structured CoT** | **17** | **0.8907** | **0.9033** | **0.927** |
 
-![Per-metric comparison across B1/B2/B3](/assets/images/paper/mamba-ssm-biomarker/fig_p007_01.png)
+![Per-metric comparison across B1/B2/B3](/assets/images/paper/mamba-ssm-biomarker/page_007.png)
 *Figure 4: Accuracy / F1 / AUC across B1 (5,000-gene variance), B2 (50-gene saliency), and B3 (17-gene LLM-filtered). B3 is the only condition that exceeds the variance baseline on every metric.*
 
 The relationship is non-monotonic in gene count: shrinking 5,000 -> 50 *hurts* AUC by 0.071, but shrinking further to a *reasoned* 17 *gains* 0.024 over B1. The improvement therefore cannot be attributed to dimensionality reduction per se — it depends on which 17 genes are kept.

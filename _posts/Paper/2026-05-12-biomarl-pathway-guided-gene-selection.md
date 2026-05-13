@@ -53,7 +53,7 @@ Three ideas the paper actually combines for the first time, in this order:
 
 ## Method & Architecture
 
-![BioMARL two-stage framework](/assets/images/paper/pathway-guided-marl/fig_p003_01.png)
+![BioMARL two-stage framework](/assets/images/paper/pathway-guided-marl/page_003.png)
 *Figure 1: BioMARL framework. (a) Pathway-guided statistical pre-filter using KEGG, three statistical scorers, and a validation-performance-weighted pathway bonus. (b) MARL refined selection — per-gene DQN with a GNN state on the correlation⊕Jaccard graph, centralized critic, shared synergy memory, and an ensemble-based Personal Performance Impact Estimator.*
 
 **Phase 1 — Pathway-guided pre-filtering.** Three importance vectors $S_i$ from $f_i \in \{\chi^2, \text{RF importance}, \text{SVM ranking}\}$. For each KEGG pathway $p_i$ with gene set $G_i$, train a classifier on $D[G_i]$ and record $S_p(p_i)$. Weights $w_i = S_p(f_i) / \sum_j S_p(f_j)$ define the meta-score $m_g = \sum_i w_i S_{i,g}$. Pathway bonus: $\hat{s}_g = m_g \cdot (1 + \beta \log(1 + \bar{S}_p(g)))$ with $\beta = 0.2$. Threshold $G_{pre} = \{g : \hat{s}_g > \mu + 2\sigma\}$.

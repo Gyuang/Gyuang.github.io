@@ -58,7 +58,7 @@ The point is to map *which axis matters* and *where label-free CBMs break* on re
 
 ## Method & Architecture
 
-![Label-free multi-label CBM pipeline](/assets/images/paper/multi-label-cbm-medical/fig_p005_01.png)
+![Label-free multi-label CBM pipeline](/assets/images/paper/multi-label-cbm-medical/page_005.png)
 *Figure 1: Label-free multi-label CBM pipeline — GPT-4 generates 56 radiology concepts, a frozen VLM aligns image features to concept embeddings, and only a small MLP is trained on top of the concept bottleneck.*
 
 The pipeline has four stages, all using **frozen** image and text encoders — only a small MLP is trained:
@@ -77,7 +77,7 @@ Training: Adam, lr = 1e-3, batch size 256, 100 epochs, dropout + weight decay + 
 
 ### Dataset
 
-![NIH ChestX-ray14 label distribution](/assets/images/paper/multi-label-cbm-medical/fig_p008_01.png)
+![NIH ChestX-ray14 label distribution](/assets/images/paper/multi-label-cbm-medical/page_008.png)
 *Figure 2: NIH ChestX-ray14 label distribution — Infiltration appears in 19,870 images vs. Hernia in just 227, an 87× imbalance that drives the rare-class failure modes throughout the paper.*
 
 **NIH ChestX-ray14** (Wang et al., 2017): 112,120 frontal radiographs from 30,805 patients, 14 thoracic pathologies labelled via NLP from radiology reports (noisy weak supervision). Official patient-wise split: 70% train / 10% val / 20% test. Single-institution, frontal-view only, no demographic balancing — and no external dataset (CheXpert / MIMIC-CXR / PadChest) is used for OOD validation.
@@ -99,32 +99,32 @@ RAD-DINO wins on 7/8 metrics; BiomedCLIP is consistently second-best. Even so, t
 
 ### The AUC-vs-F1 gap (the paper's key result)
 
-![Per-class metrics for the best CBM](/assets/images/paper/multi-label-cbm-medical/fig_p011_01.png)
+![Per-class metrics for the best CBM](/assets/images/paper/multi-label-cbm-medical/page_011.png)
 *Figure 3: Per-pathology AUC / Recall / F1 / Precision for the best CBM (RAD-DINO). AUC stays roughly flat (~0.7–0.93) across all 14 pathologies, but Precision/F1 collapse on Hernia and Pneumonia — Pneumonia macro-F1 ≈ 0.07, Hernia macro-F1 ≈ 0.04 with plain BCE.*
 
 This is the paper's central finding. **High per-class AUC is compatible with near-zero per-class F1** under multi-label imbalance — a well-known scoring artifact, but one that is almost universally ignored in CBM literature where AUC is the headline metric.
 
 ### Confusion matrices — majority vs. minority
 
-![Majority-class confusion matrices](/assets/images/paper/multi-label-cbm-medical/fig_p012_02.png)
+![Majority-class confusion matrices](/assets/images/paper/multi-label-cbm-medical/page_012.png)
 *Figure 4: Majority-class confusion matrices — Effusion (TPR 0.73) and Infiltration (TPR 0.75) are predicted reliably.*
 
-![Minority-class confusion matrices](/assets/images/paper/multi-label-cbm-medical/fig_p012_03.png)
+![Minority-class confusion matrices](/assets/images/paper/multi-label-cbm-medical/page_012.png)
 *Figure 5: Minority-class confusion matrices — 69% of Hernia cases and 76% of Pneumonia cases are missed (false negatives), despite per-class AUC > 0.87.*
 
 ### Loss-function ablation
 
-![Loss-function ablation](/assets/images/paper/multi-label-cbm-medical/fig_p011_02.png)
+![Loss-function ablation](/assets/images/paper/multi-label-cbm-medical/page_011.png)
 *Figure 6: Loss-function ablation across all 14 classes. AUC barely moves under WBCE / focal / two-way loss, but minority-class recall and F1 rise visibly — WBCE lifts Hernia recall from ~0.02 (BCE) to ~0.31, and two-way loss lifts Pneumonia recall from 0.10 to 0.24.*
 
 Embedding-type ablation (Table 2, BioViL / ResNet50 / BioViL-T × global/patch/combined): **global wins** on micro/macro AUC and F1; patch trades precision for recall; combined offers no consistent gain. Best in that sub-table: BioViL global (mi/ma AUC = 0.7883 / 0.6436); BioViL-T patch has the best macro-recall (0.435).
 
 ### Interpretability — concept contributions
 
-![Top concepts for Infiltration](/assets/images/paper/multi-label-cbm-medical/fig_p014_01.png)
+![Top concepts for Infiltration](/assets/images/paper/multi-label-cbm-medical/page_014.png)
 *Figure 7: Top positive concepts for Infiltration ("diffuse infiltrates", "hazy opacities", "interstitial edema", "interstitial markings", "alveolar infiltrate") are radiologically appropriate — concept attribution works on common classes.*
 
-![Top concepts for Hernia](/assets/images/paper/multi-label-cbm-medical/fig_p014_02.png)
+![Top concepts for Hernia](/assets/images/paper/multi-label-cbm-medical/page_014.png)
 *Figure 8: Top concepts for Hernia ("flattened diaphragms", "hyperinflated lungs", "bowel loops above diaphragm", "stomach bubble in chest") are clinically plausible, but the authors note that none of Hernia's GPT-generated concepts appear in the model's overall top-10 — concept reliability degrades with sample count.*
 
 ## Limitations

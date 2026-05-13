@@ -28,7 +28,7 @@ last_modified_at: 2026-05-12
 
 General LLMs and MLLMs (GPT-4, LLaMA, Flamingo, LLaVA) entered medicine in 2023-2024, but hospital adoption is blocked by (a) data scarcity and annotation cost, (b) compute cost for training and serving 7B-540B parameter models, (c) safety / ethics evaluation beyond benchmark accuracy, and (d) hallucination plus stale knowledge. Existing medical-LLM surveys either focus on text-only LLMs (He et al. 2023, Zhou et al. 2023) or stay at the application layer without technical depth. The authors position this survey to fill **both** gaps simultaneously: a technical recipe book *and* a clinical-application map, with medical MLLMs given equal treatment because medicine is inherently multimodal.
 
-![Medical LLM/MLLM construction and evaluation pipeline](/assets/images/paper/llm-mllm-medicine-survey/fig_p002_05.png)
+![Medical LLM/MLLM construction and evaluation pipeline](/assets/images/paper/llm-mllm-medicine-survey/page_002.png)
 *Figure 1: End-to-end construction and evaluation pipeline for medical LLMs and MLLMs - data sources feed CPT and IFT/SFT/RLHF, which then route through automatic, human, and AI-as-judge evaluation. This is the survey's organizing diagram.*
 
 ## Core Innovation
@@ -39,7 +39,7 @@ The survey's novelty is **organizational**, not methodological. Three structural
 - **Four-family modality-alignment taxonomy** for medical MLLMs (Section 3.2). This is the most useful contribution: rather than treating modality alignment as a single black box, the paper separates (i) **GATED XATTN-DENSE Layers** (Flamingo, Med-Flamingo), (ii) **Query-Based** (Q-Former in MedBLIP, XrayGLM, RadFM, CheXagent), (iii) **Projection-Based** (linear/MLP in LLaVA-Med, XrayGPT, Med-PaLM M, MAIRA-1/2, HuatuoGPT-Vision), and (iv) **Prompt Augmentation** (ChatCAD, ChatCAD+, OphGLM, Visual Med-Alpaca - expert-model outputs fed as text). This is the scaffolding readers will keep.
 - **Strict IFT vs. SFT distinction.** Many medical-LLM papers conflate the two; this survey insists IFT is for instruction-following / zero-shot transfer, SFT is for task-specific datasets. The distinction matters for evaluating training-cost claims and for understanding why some models generalize while others memorize a benchmark.
 
-![Five-stage paradigm shift](/assets/images/paper/llm-mllm-medicine-survey/fig_p004_01.png)
+![Five-stage paradigm shift](/assets/images/paper/llm-mllm-medicine-survey/page_004.png)
 *Figure 2: Five-stage evolution of NLP from supervised learning through prompt-based unsupervised pretraining to multimodal and high-quality-data eras. GPT-3 is positioned as the start of "LLMs"; Flamingo is positioned as the start of "MLLMs"; LIMA anchors the data-engineering thesis.*
 
 ## Claims & Evidence Analysis
@@ -68,7 +68,7 @@ The survey's novelty is **organizational**, not methodological. Three structural
 
 ## Method & Architecture
 
-![MLLM core pipeline: vision encoder, alignment module, LLM backbone](/assets/images/paper/llm-mllm-medicine-survey/fig_p007_01.png)
+![MLLM core pipeline: vision encoder, alignment module, LLM backbone](/assets/images/paper/llm-mllm-medicine-survey/page_007.png)
 *Figure 3: The MLLM architecture diagram that anchors Section 3.2 - image goes through a vision encoder V to image features Z_x, the alignment module converts Z_x into LLM-compatible tokens H_x, and the LLM backbone produces response R = L(H_x, T_x). The survey's four-family alignment taxonomy maps onto the middle box.*
 
 ### 1. Architectural taxonomy of medical LLMs (Section 3.1, Table 1)
@@ -100,7 +100,7 @@ The fine-tuning stack is laid out as a pipeline: **CPT** (continued pretraining 
 
 Three families. **Automatic** - Accuracy, BLEU-1..4, ROUGE-N/L/W/S, GLEU, Distinct-n, CIDEr, BERTScore. **Human** - helpfulness, safety, ethics, comprehensiveness. **AI-as-judge** - GPT-4 evaluation, with the survey explicitly noting GPT-4's documented biases (prefers the first response, prefers longer responses, prefers self-generated responses).
 
-![Three evaluation approaches and their trade-offs](/assets/images/paper/llm-mllm-medicine-survey/fig_p015_01.png)
+![Three evaluation approaches and their trade-offs](/assets/images/paper/llm-mllm-medicine-survey/page_015.png)
 *Figure 4: Trade-offs across automatic metrics, human evaluation, and AI-as-judge. Automatic metrics are cheap and reproducible but shallow; human evaluation is comprehensive but expensive; AI-as-judge is scalable but biased. The survey endorses AI-as-judge and immediately enumerates its biases - a tension worth flagging.*
 
 ## Experimental Results
@@ -116,7 +116,7 @@ The survey reports no experiments of its own. The quoted results, with sources, 
 | **LIMA** | beats Alpaca / Bard with 1,000 curated prompts | General benchmarks | [38] | Anchor citation for the "data engineering" thesis. |
 | **LLaVA-Med + MedTrinity-25M** | ~10% avg gain | 3 biomedical VQA datasets | [56] | Specific gain breakdown not shown in this survey. |
 
-![Medical LLM/MLLM vs. traditional deep learning](/assets/images/paper/llm-mllm-medicine-survey/fig_p016_01.png)
+![Medical LLM/MLLM vs. traditional deep learning](/assets/images/paper/llm-mllm-medicine-survey/page_016.png)
 *Figure 5 (the controversial one): the survey's Fig. 8 - claimed superiority of medical LLMs/MLLMs over traditional DL on QA and VQA. There are no error bars, no significance tests, no normalization across datasets. Read it as a thesis statement, not as evidence.*
 
 ### Dataset coverage (Table 3 - the actual contribution)
@@ -148,7 +148,7 @@ A large fraction of the instruction-following corpora are **GPT-4-synthesized**,
 - **Real-world deployment evidence.** Section 5 lists applications but cites no FDA-cleared deployments and no prospective clinical trials of medical LLMs.
 - **Language and equity.** The bias section does not address language equity or low-resource medical AI despite the survey itself cataloging many Chinese-focused models (Qilin-Med, HuatuoGPT, Zhongjing, TCM-GPT, PediatricsGPT, MedChatZH, Apollo).
 
-![Open challenges and future directions](/assets/images/paper/llm-mllm-medicine-survey/fig_p022_30.png)
+![Open challenges and future directions](/assets/images/paper/llm-mllm-medicine-survey/page_022.png)
 *Figure 6: The survey's Section 6/7 organizing diagram - hallucination, deployment cost, recency, privacy, and bias on the challenges side; edge deployment (6G MEC), medical agents, and "generalist medical assistant" on the future-directions side. The challenges half is well-supported; the future-directions half is speculative.*
 
 ## Why It Matters for Medical AI

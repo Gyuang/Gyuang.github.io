@@ -52,7 +52,7 @@ The load-bearing idea is **reasoning-distillation, not label-distillation**. The
 
 ## Method & Architecture
 
-![SynthPert workflow](/assets/images/paper/synthpert/fig_p002_01.png)
+![SynthPert workflow](/assets/images/paper/synthpert/page_002.png)
 *Figure 1: SynthPert workflow — o4-mini generates chain-of-thought rationales conditioned on (perturbation, gene, ground-truth outcome); a critic LLM keeps only "excellent" traces; the 8B DeepSeek-R1 student is LoRA-SFT'd on the filtered synthetic CoTs.*
 
 **Task formulation.** Learn $f: (\text{cell type}, \text{perturbation}, \text{gene}) \mapsto \{\text{up}, \text{down}, \text{not DE}\}$, parameterized by an LLM that emits `<think>…</think><answer>…</answer>` tokens.

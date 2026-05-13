@@ -60,14 +60,14 @@ Stem's pitch is therefore both methodological (use a conditional generative mode
 
 ## Method & Architecture
 
-![Stem overview](/assets/images/paper/stem/fig_p003_01.png)
+![Stem overview](/assets/images/paper/stem/page_003.png)
 *Figure 1: Stem pipeline. H&E patches are encoded by CONCH + UNI and pooled into a single conditioning vector c_hist; gene counts are diffused in expression space and a DiT denoiser predicts the noise conditioned on c_hist. At inference, 20 samples are drawn and the sample mean is reported.*
 
 The forward process is standard DDPM in **gene-expression space**: `q(X_t | X_0, V) = N(sqrt(ᾱ_t) X_0, (1 − ᾱ_t) I)` with linear schedule `β_t = (t/T) β_max + (1 − t/T) β_min` and `ᾱ_t = Π α_s`. The reverse process is `p_θ(X_{t−1} | X_t, V) = N(μ_θ(X_t, V, t), σ_t² I)` parameterized via ε-prediction, giving the training objective
 
 $$\mathcal{L}_\epsilon(\theta) = \mathbb{E}_{t, X_t}\, \lVert \epsilon_\theta(X_t, V, t) - \epsilon_t \rVert_2^2.$$
 
-![Stem DiT block](/assets/images/paper/stem/fig_p006_01.png)
+![Stem DiT block](/assets/images/paper/stem/page_006.png)
 *Figure 2: DiT block detail. Gene count is embedded by a 2-layer SiLU MLP and added to a learnable gene-type embedding; the sinusoid time embedding plus the pooled image embedding c_hist drive adaLN-Zero modulation in every block. Output head: adaLN + linear → R¹ per gene token (predicted ε for that gene's noisy count).*
 
 Key knobs: D=384, 12 DiT blocks, 6 attention heads; AdamW lr 1e-4, batch 256, 250k iterations, EMA 0.9999; 7 distortion-free augmentations (flips, 90/180/270° rotations, transpose, transverse) with augmentation ratio up to 1:4.
@@ -104,7 +104,7 @@ Stem wins PCC at every k and RVD by a wide margin, but **on HVG MSE is 1.7529 vs
 
 This is the cleanest sweep: Stem wins every column on both gene panels. The RVD drop from 0.6025 (BLEEP) to 0.0693 is the headline figure of the paper.
 
-![HER2ST HMHVG variance curves](/assets/images/paper/stem/fig_p016_01.png)
+![HER2ST HMHVG variance curves](/assets/images/paper/stem/page_016.png)
 *Figure 3: Sorted per-gene variance on HER2ST HMHVG. The blue curve is ground-truth variance; orange dots are each model's predicted variance. HisToGene/BLEEP/TRIPLEX flatten to near-zero variance (mode collapse); Stem tracks the ground-truth curve.*
 
 ### Prostate PRAD and mouse brain

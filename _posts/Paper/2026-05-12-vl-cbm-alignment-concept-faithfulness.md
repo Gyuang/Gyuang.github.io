@@ -135,7 +135,7 @@ Figure 4's t-SNE corroborates: CSS concept vectors form tight, well-separated cl
 
 ### Label-efficiency ablation (Figure 3)
 
-![Figure 3: concept accuracy vs. labels-per-class on CUB and RIVAL](/assets/images/paper/vl-cbm-alignment/fig_p006_01.png)
+![Figure 3: concept accuracy vs. labels-per-class on CUB and RIVAL](/assets/images/paper/vl-cbm-alignment/page_006.png)
 *Figure 3: Concept accuracy as a function of concept-label budget. On CUB, CSS rises from 63.53% at 9 labels/class to 70.64% at 30; LaBo trails by 15-20 pp across the entire range. On RIVAL, CSS is near-saturated already at 8 labels/class.*
 
 ### Class-level intervention (Table 6, CUB)

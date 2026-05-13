@@ -34,7 +34,7 @@ The authors' argument is direct: gene expression is the right "text" for sub-til
 - **Manual verification at scale.** Every dataset is hand-checked for coordinate-image alignment.
 - **Pathologist labels.** 71 slides across 9 studies receive spot-level domain annotations (DLPFC layers, breast tissue regions, prostate, kidney, mouse brain).
 
-![STimage-1K4M overview](/assets/images/paper/stimage-1k4m/fig_p004_01.png)
+![STimage-1K4M overview](/assets/images/paper/stimage-1k4m/page_004.png)
 *Figure 1: STimage-1K4M overview — (a) sources span GEO, Spatial Research, 10x Genomics, and publications; (b) sequencing-based ST technologies (ST v1, Visium, Visium HD) and their spot/bin geometry; (c) 1,149-slide / 4.3 M-spot composition across technology, species, and 50 tissues.*
 
 ## Claims & Evidence Analysis
@@ -56,7 +56,7 @@ The authors' argument is direct: gene expression is the right "text" for sub-til
 
 ## Method & Architecture
 
-![Tasks enabled by STimage-1K4M](/assets/images/paper/stimage-1k4m/fig_p006_01.png)
+![Tasks enabled by STimage-1K4M](/assets/images/paper/stimage-1k4m/page_006.png)
 *Figure 2: Four canonical tasks STimage-1K4M targets — gene-expression super-resolution, image-gene contrastive representation learning, image-driven spatial clustering, and deconvolution + nuclei segmentation.*
 
 ### Proof-of-concept training recipe
@@ -115,14 +115,14 @@ The two datasets are genuinely complementary: STimage-1K4M is the broader catalo
 
 **License caveat.** STimage-1K4M's "permissible license for research-based use" — distributed via a Google Form (https://forms.gle/3Waa4FQnqpK8UGSY7) — is opaque relative to HEST-1k's clean **CC BY-NC-SA 4.0** on HuggingFace. For anyone planning to redistribute a derived model or dataset, HEST-1k's terms are far less ambiguous, and STimage-1K4M users may need to negotiate per-source-dataset rights.
 
-![Pathologist annotation coverage](/assets/images/paper/stimage-1k4m/fig_p023_01.png)
+![Pathologist annotation coverage](/assets/images/paper/stimage-1k4m/page_023.png)
 *Figure 4: Spot-level pathologist annotations span 71 slides / 9 studies across human brain, breast, prostate, kidney, and mouse brain — the labeled subset for clustering benchmarks.*
 
 ## Experimental Results
 
 The paper's only experiments are the DLPFC linear-probing demo (Figure 3). This is a dataset paper, not a model paper.
 
-![DLPFC proof-of-concept results](/assets/images/paper/stimage-1k4m/fig_p007_01.png)
+![DLPFC proof-of-concept results](/assets/images/paper/stimage-1k4m/page_007.png)
 *Figure 3: DLPFC proof-of-concept — (a) macro-F1 across encoders; (b) cluster-quality boxplots; (c) pathologist-annotated brain reference; (d) t-SNE panels per model.*
 
 ### Brain-layer (L1-L6, WM) linear-probing macro F1

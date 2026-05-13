@@ -53,7 +53,7 @@ Diagnostic pathology spans thousands of entities and is heavily verbal: reports,
 
 ## Method & Architecture
 
-![CONCH overview: data curation, CoCa training, and downstream radar](/assets/images/paper/2307.12914_CONCH/fig_p004_01.png)
+![CONCH overview: data curation, CoCa training, and downstream radar](/assets/images/paper/2307.12914_CONCH/page_004.png)
 *Figure 1: CONCH overview — automated curation of 1.17M pathology image-caption pairs (a-b), CoCa-style image-encoder / text-encoder / multimodal-decoder training (c), and downstream performance radar across 13 tasks (d).*
 
 ### 1. Pretraining-data curation (1.17M pairs)
@@ -115,14 +115,14 @@ Training config: 8x A100 80GB, local batch 48 with gradient accumulation 4 (effe
 
 CONCH leads every entry, with the most dramatic gap on SICAP (Gleason grading) where PLIP collapses to 0.187 quadratic kappa.
 
-![Zero-shot and supervised classification comparison](/assets/images/paper/2307.12914_CONCH/fig_p007_01.png)
+![Zero-shot and supervised classification comparison](/assets/images/paper/2307.12914_CONCH/page_007.png)
 *Figure 2: Zero-shot (c) and supervised (d) classification of CONCH vs PLIP / BiomedCLIP / OpenAICLIP across 7 tasks; an example IDC slide and its CONCH cosine-similarity heatmap (e).*
 
 ### Label efficiency
 
 In BRCA subtyping, CONCH+ABMIL with **8 labels/class** already beats every baseline using **64 labels/class** — an 8x labeling reduction. CONCH **zero-shot** beats PLIP/BiomedCLIP **supervised** up to 64 labels/class on BRCA and up to 128 on NSCLC.
 
-![Slide-level few-shot ABMIL boxplots](/assets/images/paper/2307.12914_CONCH/fig_p009_01.png)
+![Slide-level few-shot ABMIL boxplots](/assets/images/paper/2307.12914_CONCH/page_009.png)
 *Figure 3: Slide-level few-shot ABMIL boxplots (n=5 runs per nc). The dotted line is CONCH zero-shot performance — it outperforms baseline few-shot supervised training up to 64 labels/class on BRCA and 128 on NSCLC.*
 
 ### Cross-modal retrieval (mean recall, text->image / image->text)
@@ -135,7 +135,7 @@ In BRCA subtyping, CONCH+ABMIL with **8 labels/class** already beats every basel
 
 Caveat: TCGA LUAD t2i gain over BiomedCLIP is only 5.3 points and **not statistically significant (p=0.22)**, and Source A/B are private.
 
-![Zero-shot retrieval bars and TCGA LUAD examples](/assets/images/paper/2307.12914_CONCH/fig_p010_01.png)
+![Zero-shot retrieval bars and TCGA LUAD examples](/assets/images/paper/2307.12914_CONCH/page_010.png)
 *Figure 4: Zero-shot cross-modal retrieval — text-to-image and image-to-text Recall@K on Source A/B and TCGA LUAD (a), retrieval schematic (b), and example top-5 retrievals on TCGA LUAD (c).*
 
 ### Zero-shot segmentation (Dice / Precision / Recall)
@@ -147,7 +147,7 @@ Caveat: TCGA LUAD t2i gain over BiomedCLIP is only 5.3 points and **not statisti
 
 The main-text Methods quotes DigestPath Dice 0.569 / Recall 0.684 / Precision 0.644 while Extended Data Table 27 reports 0.615 / 0.709 / 0.663 — the discrepancy is unexplained in-text; we use Table 27.
 
-![Zero-shot segmentation pipeline and qualitative masks](/assets/images/paper/2307.12914_CONCH/fig_p012_01.png)
+![Zero-shot segmentation pipeline and qualitative masks](/assets/images/paper/2307.12914_CONCH/page_012.png)
 *Figure 5: Zero-shot segmentation pipeline (a), Dice / Precision / Recall on SICAP and DigestPath (b-c), and qualitative tumor masks vs ground truth (d-e).*
 
 ### Supervised classification — does the encoder match CTransPath?
@@ -172,14 +172,14 @@ On the two tasks where CTransPath does not have a TCGA leakage advantage (SICAP,
 
 Read as a proof-of-concept rather than a deployment-ready captioner — only 558 fine-tuning pairs, 162 test, and the authors flag verbatim regurgitation in the failure analysis.
 
-![Captioning bars plus a success and a clear-cell RCC vs fat-necrosis failure](/assets/images/paper/2307.12914_CONCH/fig_p014_01.png)
+![Captioning bars plus a success and a clear-cell RCC vs fat-necrosis failure](/assets/images/paper/2307.12914_CONCH/page_014.png)
 *Figure 6: Captioning METEOR/ROUGE vs GIT-base/large (a); a successful caption example (b); and a clear-cell-RCC-vs-fat-necrosis confusion that the authors flag as a typical failure mode (c).*
 
 ### Pretraining-data ablation
 
 Human-only CoCa > full unfiltered > H&E-only on the **classification** average, and human-only CoCa > human-only **CLIP** on classification — but the CLIP variant edges ahead on retrieval. This means the captioning loss helps representation learning more on classification than on retrieval.
 
-![Pretraining-data ablation across classification and retrieval](/assets/images/paper/2307.12914_CONCH/fig_p036_01.png)
+![Pretraining-data ablation across classification and retrieval](/assets/images/paper/2307.12914_CONCH/page_036.png)
 *Extended Figure 8: Pretraining-data ablation across 7 classification benchmarks (a) and 3 retrieval datasets (b) — human-only CoCa wins on average classification; the CLIP variant on the same data edges ahead on retrieval.*
 
 ## Limitations

@@ -148,7 +148,7 @@ After occluding a 64x64 patch from each CUB-299 image, the authors measure the *
 ![Cutout/hue sweeps monotonically increase uncertainty; uncertainty correlates with prediction accuracy](/assets/images/paper/probabilistic-cbm/page_008.png)
 *Figure 5: (Fig 8) Increasing cutout patch size or hue shift monotonically increases concept and class uncertainty on CUB and AwA2. (Fig 9-10) PCA of the leg-color embedding space; test images bucketed by uncertainty into 10 groups show monotonically decreasing accuracy in higher-uncertainty buckets — so ProbCBM's uncertainty is useful as a failure predictor.*
 
-![Uncertainty-ordered intervention reaches 100% class accuracy faster than random-order intervention on CUB](/assets/images/paper/probabilistic-cbm/fig_p009_02.png)
+![Uncertainty-ordered intervention reaches 100% class accuracy faster than random-order intervention on CUB](/assets/images/paper/probabilistic-cbm/page_009.png)
 *Figure 6 (paper Fig 11): On CUB, intervening on concepts in descending order of estimated uncertainty reaches 100% class accuracy faster than random-order intervention (mean +/- std over 5 random orders). This is the cleanest practical payoff of having calibrated $\sigma_c$ — uncertainty becomes a queue for the radiologist's attention.*
 
 ## Limitations

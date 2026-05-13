@@ -55,7 +55,7 @@ Architecture novelty is modest; the contribution is the data and the encoder cho
 
 ## Method & Architecture
 
-![PathChat overview: PathChatInstruct dataset, CONCH-Large + Llama 2 13B MLLM, UNI SSL backbone](/assets/images/paper/pathchat/fig_p004_01.png)
+![PathChat overview: PathChatInstruct dataset, CONCH-Large + Llama 2 13B MLLM, UNI SSL backbone](/assets/images/paper/pathchat/page_004.png)
 *Figure 1: PathChat overview — six-format instruction dataset feeds a CONCH-Large + Llama 2 13B MLLM trained on top of UNI's ~100M-patch SSL backbone.*
 
 ### 1. Vision encoder: UNI → CONCH-Large
@@ -85,7 +85,7 @@ BF16, ZeRO-3, batch 64 x grad-accum 2, cosine LR, warmup ratio 0.03, peak LR **2
 
 ### 5. PathChatInstruct in pictures
 
-![Six instruction families used to train PathChat](/assets/images/paper/pathchat/fig_p019_01.png)
+![Six instruction families used to train PathChat](/assets/images/paper/pathchat/page_019.png)
 *Figure 2: Examples from the six PathChatInstruct categories — MCQ, free response, description, conversation, guardrail, and text-only — illustrating instruction-format diversity.*
 
 ## Experimental Results
@@ -108,7 +108,7 @@ BF16, ZeRO-3, batch 64 x grad-accum 2, cosine LR, warmup ratio 0.03, peak LR **2
 
 *GPT-4V: only 12/23 (MCQ image-only) and 97/115 (open-ended) queries succeeded due to guardrails; refusals scored as incorrect. When restricted to successful queries only (Ext. Tab. 10), GPT-4V MCQ image-only rises to 41.7% — still well below PathChat's 66.7% on the same subset.
 
-![Headline benchmark — PathQABench MCQ and 115-question open-ended results](/assets/images/paper/pathchat/fig_p007_01.png)
+![Headline benchmark — PathQABench MCQ and 115-question open-ended results](/assets/images/paper/pathchat/page_007.png)
 *Figure 3: Headline benchmark — PathChat dominates image-grounded categories while trailing GPT-4V on text-only Clinical and Ancillary Testing categories.*
 
 ### Head-to-head rankings (Ext. Tab. 12, Fig. 2e)
@@ -119,25 +119,25 @@ BF16, ZeRO-3, batch 64 x grad-accum 2, cosine LR, warmup ratio 0.03, peak LR **2
 | LLaVA-Med | 0.148 | 0.148 | 0.704 |
 | LLaVA 1.5 | 0.113 | 0.191 | 0.696 |
 
-![Category-stratified head-to-head](/assets/images/paper/pathchat/fig_p024_01.png)
+![Category-stratified head-to-head](/assets/images/paper/pathchat/page_024.png)
 *Figure 4: Head-to-head win/tie/lose by category — image-grounded categories (Microscopy, Diagnosis) are PathChat wins; text-only categories (Clinical, Ancillary) flip in GPT-4V's favor.*
 
 ### Qualitative examples
 
-![Oligodendroglioma case](/assets/images/paper/pathchat/fig_p020_01.png)
+![Oligodendroglioma case](/assets/images/paper/pathchat/page_020.png)
 *Figure 5: Open-ended example #1 — PathChat is the only model to give the correct oligodendroglioma diagnosis; the other three converge on outdated 'GBM' terminology.*
 
-![Multi-turn use cases — Gleason, IHC, DDx](/assets/images/paper/pathchat/fig_p010_01.png)
+![Multi-turn use cases — Gleason, IHC, DDx](/assets/images/paper/pathchat/page_010.png)
 *Figure 6: Multi-turn interactive use cases — Gleason grading, IHC interpretation, and human-in-the-loop differential diagnosis. Cherry-picked; no aggregate metric exists for multi-turn fidelity.*
 
 ### Honesty checkpoint — hallucination admitted
 
-![Hallucinated cribriform pattern](/assets/images/paper/pathchat/fig_p022_01.png)
+![Hallucinated cribriform pattern](/assets/images/paper/pathchat/page_022.png)
 *Figure 7: Open-ended example #3 — all models rated low; PathChat fabricates a cribriform pattern that is not in the image. The authors flag this anecdotally; the underlying hallucination rate is never measured.*
 
 ### Benchmark critique — PathVQA quality
 
-![PathVQA low-quality examples](/assets/images/paper/pathchat/fig_p026_01.png)
+![PathVQA low-quality examples](/assets/images/paper/pathchat/page_026.png)
 *Figure 8: Examples of low-quality PathVQA question-answer pairs motivating PathQABench; cherry-picked critique with no systematic PathVQA audit reported.*
 
 ### Subgroup observations

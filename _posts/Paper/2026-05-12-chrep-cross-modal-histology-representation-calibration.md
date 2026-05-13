@@ -54,7 +54,7 @@ CHRep's argument is structural: stable representation learning and systematic bi
 
 ## Method & Architecture
 
-![CHRep two-phase pipeline: training-time representation learning with three branches and three losses, followed by inference-time post-hoc calibration with a frozen encoder, Estimate Module, and Correction Module](/assets/images/paper/chrep/fig_p003_01.png)
+![CHRep two-phase pipeline: training-time representation learning with three branches and three losses, followed by inference-time post-hoc calibration with a frozen encoder, Estimate Module, and Correction Module](/assets/images/paper/chrep/page_003.png)
 *Figure 1: CHRep two-phase pipeline — training combines an H&E branch, a coordinate branch, and a gene branch under correlation-aware regression + symmetric contrastive alignment + coordinate-induced multi-hop topology; inference freezes the encoder, retrieves top-k training spots for a similarity-weighted Estimate, then adds a magnitude-regularized residual Correction.*
 
 **Phase 1 — representation learning.** For each spot triplet `(x, p, g)` with an H&E patch `x ∈ R^{3×224×224}`, coordinate `p ∈ R^2`, and HVG expression `g ∈ R^G`, counts are library-size normalized, log-transformed, and per-gene standardized using train-fold μ, σ to give `g̃`.
@@ -93,16 +93,16 @@ $$\mathcal{L}_{reg} = \frac{1}{BG}\sum_i \|\hat g_i - \tilde g_i\|_2^2 + \lambda
 
 CHRep wins every PCC column across all three cohorts. The MSE/MAE picture is not uniform: HAGE retains the HER2+ error wins (0.4830 vs 0.5616 MSE; 0.3606 vs 0.5002 MAE) and the cSCC MAE win (0.3296 vs 0.4048). The paper's positioning is therefore "best correlation, not always best absolute error" — and explicitly attributes the gap to a magnitude-vs-correlation tension on HER2+.
 
-![Per-slide gene-wise PCC distributions on HER2+ across 32 sections](/assets/images/paper/chrep/fig_p006_01.png)
+![Per-slide gene-wise PCC distributions on HER2+ across 32 sections](/assets/images/paper/chrep/page_006.png)
 *Figure 2: Per-slide gene-wise PCC distribution on HER2+ (785 genes); CHRep shows higher medians and tighter IQRs across most slides versus representative baselines.*
 
-![PCC at varying held-out gene-set sizes K on HER2+](/assets/images/paper/chrep/fig_p007_01.png)
+![PCC at varying held-out gene-set sizes K on HER2+](/assets/images/paper/chrep/page_007.png)
 *Figure 3: HER2+ PCC across gene sets (ACG, HEG@50/100/200) with error bars across folds — CHRep stays on top throughout the gene-set sweep.*
 
-![Per-slide gene-wise PCC distributions on cSCC across 12 sections](/assets/images/paper/chrep/fig_p008_01.png)
+![Per-slide gene-wise PCC distributions on cSCC across 12 sections](/assets/images/paper/chrep/page_008.png)
 *Figure 4: Per-slide gene-wise PCC distribution on cSCC under LOSO; CHRep's gain is broadly distributed across held-out slides rather than concentrated on a single favorable section.*
 
-![Qualitative spatial expression maps for SBSN, PAICS, CELF1](/assets/images/paper/chrep/fig_p009_01.png)
+![Qualitative spatial expression maps for SBSN, PAICS, CELF1](/assets/images/paper/chrep/page_009.png)
 *Figure 5: Held-out cSCC slide — ground-truth vs CHRep vs mclSTExp spatial expression for SBSN, PAICS, CELF1; red boxes highlight regions where CHRep recovers localized high-expression structure more faithfully.*
 
 ### Ablations

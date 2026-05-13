@@ -55,7 +55,7 @@ The headline benchmark result (C1, C4) is real but narrow: a single tissue type,
 
 The whole pipeline is a frozen, training-free composition of two pre-existing models plus an evaluation harness; the only new training is a lung-specific DeepSpot regressor.
 
-![SpotWhisperer pipeline and web UI demo](/assets/images/paper/spotwhisperer_2025.07.14.664402/fig_p002_01.png)
+![SpotWhisperer pipeline and web UI demo](/assets/images/paper/spotwhisperer_2025.07.14.664402/page_002.png)
 *Figure 1 - SpotWhisperer pipeline (a) and web UI demo (b-c): a free-text query for "T cells" highlights tertiary-lymphoid-structure regions identified by experts, and the same regions show enriched LTB expression, while existing VLMs (d) link only to macroscale labels.*
 
 The pipeline breaks down into five steps:
@@ -83,7 +83,7 @@ Key setup choices:
 
 The conclusion up front: the evaluation set is small (5 samples) but it is the first spot-level benchmark with both expert region labels and atlas-derived cell-type labels.
 
-![Benchmark construction with dual label tracks](/assets/images/paper/spotwhisperer_2025.07.14.664402/fig_p004_01.png)
+![Benchmark construction with dual label tracks](/assets/images/paper/spotwhisperer_2025.07.14.664402/page_004.png)
 *Figure 2 - Construction of the lung-cancer microscale benchmark: ground-truth labels are derived two ways (bioinformatics cell types and pathologist region annotations), then SpotWhisperer and the PLIP/CONCH baselines are scored zero-shot via per-class AUROC.*
 
 - 5 lung-cancer Visium samples from Dawo et al. (Zenodo 14620362, 2025).
@@ -131,7 +131,7 @@ What is missing is any ablation of **SpotWhisperer itself**: no test of measured
 
 ### Does the molecular bottleneck preserve signal?
 
-![UMAP of CellWhisperer embeddings on DeepSpot-inferred profiles](/assets/images/paper/spotwhisperer_2025.07.14.664402/fig_p006_01.png)
+![UMAP of CellWhisperer embeddings on DeepSpot-inferred profiles](/assets/images/paper/spotwhisperer_2025.07.14.664402/page_006.png)
 *Figure 3 - UMAP of CellWhisperer embeddings on DeepSpot-inferred 5,000-HVG profiles for the lung evaluation set; tumor and normal regions cluster cleanly while infiltrating cells remain diffuse, indicating that the molecular intermediate retains expert-distinguishable structure.*
 
 Qualitatively, Fig. 1b shows the "T cells" query map overlapping expert TLS contours, and Fig. 1c shows an interpretable LTB gene expression map at the same locations. Useful as narrative evidence for biological plausibility - but it is a single qualitative example.

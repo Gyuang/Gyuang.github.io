@@ -48,12 +48,12 @@ The methodological contribution is orchestration, not modeling — there is no f
 
 ## Method & Architecture
 
-![STAgent system schematic and SC-pancreas STARmap dataset](/assets/images/paper/stagent/fig_p017_01.png)
+![STAgent system schematic and SC-pancreas STARmap dataset](/assets/images/paper/stagent/page_017.png)
 *Figure 1: STAgent architecture and the SC-pancreas STARmap dataset spanning three maturation timepoints — wet-lab pipeline (a), conventional ML pipeline (b), STAgent backend with LangGraph orchestration / code-RAG / Python REPL / Scholar retrieval (c), Streamlit frontend (d), and UMAP + spatial maps at 4 / 16 / 20 weeks (e–i).*
 
 The backend pairs Claude-3.7-Sonnet and GPT-4o (used **without fine-tuning**, model selectable from the Streamlit sidebar) with a LangGraph state graph that exposes four tools: a Python REPL (CodeAct-style), a Chroma vector store of code snippets retrieved from public bioinformatics repos, a SerpAPI / Google Scholar wrapper, and a typed multimodal memory. The conventional-ML baseline pipeline the agent is compared against runs Scanpy preprocessing (`normalize_total → log1p → scale → pca → neighbors → umap → leiden`), STAligner (graph attention autoencoder on STAGATE embeddings + Louvain) for 6 cross-slice spatial domains, Tangram for whole-transcriptome imputation (mapping GSE151117 scRNA-seq onto the 154-gene STARmap data → ~15,000 imputed genes), and CellChat on the imputed data with the human-specific CellChatDB.
 
-![STAgent autonomously generates and executes analysis code](/assets/images/paper/stagent/fig_p019_01.png)
+![STAgent autonomously generates and executes analysis code](/assets/images/paper/stagent/page_019.png)
 *Figure 2: STAgent autonomously generates Scanpy/Squidpy code and produces UMAP, temporal cell-composition, spatial distribution, and neighborhood-enrichment analyses from a one-line natural-language prompt.*
 
 Key hyperparameters and operational details that are **not reported** in the paper: temperature / top-p for either backbone; the specific OpenAI embedding model used in the code-RAG index; max-step budget; code-execution timeout; retry policy on failed Python execution; which GitHub repos populate the Chroma store; licensing handling for retrieved code. Cost and latency per analysis are reported only as "minutes".
@@ -70,13 +70,13 @@ There are **no quantitative comparisons of STAgent vs. baseline** — no agent-a
 | Two-stage host revascularization (peripheral → infiltrating) | Inferred from spatial maps + CellChat | Fig. 5d, with retrieved citation to Pepper et al. 2013 | Agent adds literature grounding |
 | **β-cell maturation themes** (FXYD2/SCG5/IAPP/CPE/NPTX2 up; GCG up → bihormonal plasticity; PARVB/CDH7 cell-matrix; β-cell heterogeneity) | Differential expression on 4 vs 20 week β-cells (Fig. 4b volcano) | Fig. 4d four functional themes via Google Scholar context | Agent provides thematic grouping the baseline does not |
 
-![Visual reasoning over rendered cell-type maps with literature grounding](/assets/images/paper/stagent/fig_p020_01.png)
+![Visual reasoning over rendered cell-type maps with literature grounding](/assets/images/paper/stagent/page_020.png)
 *Figure 3: STAgent reads rendered spatial maps directly, calls out architectural features at 4w vs 20w (α-mantle / β-core, mesenchymal network, graft-host interface), and pairs each observation with a Google Scholar retrieval to ground it in published literature.*
 
-![Context-aware gene-set analysis returns β-cell-specific themes](/assets/images/paper/stagent/fig_p022_01.png)
+![Context-aware gene-set analysis returns β-cell-specific themes](/assets/images/paper/stagent/page_022.png)
 *Figure 4: Where traditional GO/KEGG/Reactome enrichment on the same gene list surfaces irrelevant hits ("muscle contraction, glucose metabolism" — top, red flag), STAgent's literature-grounded reasoning returns four biologically coherent β-cell maturation themes (bottom).*
 
-![End-to-end research report generation](/assets/images/paper/stagent/fig_p023_01.png)
+![End-to-end research report generation](/assets/images/paper/stagent/page_023.png)
 *Figure 5: An autonomously generated research report covering transcriptomic profile evolution, cell composition dynamics, spatial organization, cell-cell signaling, islet architecture recapitulation, mesenchymal niche, vascular dynamics, and exocrine relationships — with inline citations to Arrojo e Drigo, Brereton, Hematti, Barachini, Sordi, and Pepper et al.*
 
 ### What is missing

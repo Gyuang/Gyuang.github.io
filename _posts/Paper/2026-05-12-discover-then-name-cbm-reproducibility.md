@@ -121,18 +121,18 @@ ImageNet, CIFAR-10 and CIFAR-100 reproduce within ~1pp. The Places365* -3.5pp ga
 
 ### Task-agnostic concept grids (the C2 stress test)
 
-![Top-aligned task-agnostic concepts: plaid, burgundy, turquoise, sweater](/assets/images/paper/discover-then-name-cbm/fig_p007_01.png)
+![Top-aligned task-agnostic concepts: plaid, burgundy, turquoise, sweater](/assets/images/paper/discover-then-name-cbm/page_007.png)
 *Figure 2: Top-activating images across ImageNet / CIFAR-10 / CIFAR-100 / Places365* for the **four highest-cosine concepts** ("plaid", "burgundy", "turquoise", "sweater"). The cherry-picked success case — visually coherent and matching their assigned names.*
 
-![Low-aligned task-agnostic concepts: zealand, silhouette, commissioned, sauna](/assets/images/paper/discover-then-name-cbm/fig_p007_02.png)
+![Low-aligned task-agnostic concepts: zealand, silhouette, commissioned, sauna](/assets/images/paper/discover-then-name-cbm/page_007.png)
 *Figure 3: Same layout for **low-cosine concepts** ("zealand", "silhouette", "commissioned", "sauna"). Top-activating images are visibly incoherent and rarely match the assigned name — the central piece of evidence against claim C2.*
 
 ### Local explanations on original DN-CBM
 
-![Local explanation, original DN-CBM, coherent case](/assets/images/paper/discover-then-name-cbm/fig_p008_01.png)
+![Local explanation, original DN-CBM, coherent case](/assets/images/paper/discover-then-name-cbm/page_008.png)
 *Figure 4: A Places365 image where the reproduced DN-CBM surfaces thematically coherent concepts (greenhouse case).*
 
-![Local explanation, original DN-CBM, failure case](/assets/images/paper/discover-then-name-cbm/fig_p008_02.png)
+![Local explanation, original DN-CBM, failure case](/assets/images/paper/discover-then-name-cbm/page_008.png)
 *Figure 5: A failure case where DN-CBM surfaces "kayaking", "dams", "trivium" for an escalator — concrete evidence that "explanations" can be incoherent even on correct classifications.*
 
 ### Cosine-score distribution after fine-tuning
@@ -141,15 +141,15 @@ Reproduced DN-CBM cosine scores range roughly -0.01 to 0.42 with mean **0.146**.
 
 ### Extension qualitative results
 
-![Fine-tuned task-agnostic concepts — the same four labels now show coherent images](/assets/images/paper/discover-then-name-cbm/fig_p011_01.png)
+![Fine-tuned task-agnostic concepts — the same four labels now show coherent images](/assets/images/paper/discover-then-name-cbm/page_011.png)
 *Figure 6: After fine-tuning, the same four low-aligned concepts ("zealand", "silhouette", "commissioned", "sauna") now produce visibly coherent top-activating images — "zealand" -> New-Zealand-like landscapes, "silhouette" -> dark shadowy shapes, "commissioned" -> artworks and statues. Sauna remains uneven outside Places365*.*
 
 ### Side-by-side local explanations
 
-![Original vs fine-tuned local explanations, Places365 rainforest](/assets/images/paper/discover-then-name-cbm/fig_p012_01.png)
+![Original vs fine-tuned local explanations, Places365 rainforest](/assets/images/paper/discover-then-name-cbm/page_012.png)
 *Figure 7: Local explanations for a Places365* "rainforest" image — original DN-CBM neighbors include junk concepts; the fine-tuned model surfaces "meadow", "fields", "flower".*
 
-![Original vs fine-tuned local explanations, CIFAR-10 horse](/assets/images/paper/discover-then-name-cbm/fig_p012_03.png)
+![Original vs fine-tuned local explanations, CIFAR-10 horse](/assets/images/paper/discover-then-name-cbm/page_012.png)
 *Figure 8: CIFAR-10 horse classification — original DN-CBM lists "arnold", "cosmos", "labrador", "eleven", "pelican", "michigan", "aaliyah", "busty", "elephants"; fine-tuned DN-CBM lists "horses", "equine", "horseback", "meadow", "fields", "flower". Direct evidence that activation-weighted alignment fixes specifically the predictively active neurons.*
 
 ### Study 2: n=203 Wilcoxon comparison
@@ -176,7 +176,7 @@ Fine-tuned DN-CBM (v3): starts at **67.39%** overall (fine-tuning hurts Waterbir
 
 ### Study 2 user-survey interface
 
-![Example user-study survey UI for concept "Tomb"](/assets/images/paper/discover-then-name-cbm/fig_p015_01.png)
+![Example user-study survey UI for concept "Tomb"](/assets/images/paper/discover-then-name-cbm/page_015.png)
 *Figure 9: Example survey question from Study 2 — participants rate how well a single name (here "Tomb") describes a 5-image set, from 0 to 5. The pairing structure for the Wilcoxon test is at the concept level (random sampling without replacement), not the participant level.*
 
 ## Limitations

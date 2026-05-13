@@ -60,7 +60,7 @@ LGDiST attacks both gaps: reference-free *and* expressive enough to exploit the 
 
 ## Method & Architecture
 
-![LGDiST pipeline overview: neighborhood-conditioned latent diffusion for Visium spot completion](/assets/images/paper/lgdist/fig_p002_06.png)
+![LGDiST pipeline overview: neighborhood-conditioned latent diffusion for Visium spot completion](/assets/images/paper/lgdist/page_002.png)
 *Figure 1: LGDiST pipeline — the central Visium spot's missing HSAG values are recovered from a (6+1)-spot hexagonal neighborhood through a latent autoencoder and a conditional DiT.*
 
 ### Stage 0 — Preprocessing
@@ -72,7 +72,7 @@ LGDiST attacks both gaps: reference-free *and* expressive enough to exploit the 
 
 ### Stage 1 — Genomics-based Latent Autoencoder
 
-![Stage 1 autoencoder: maps (n+1) x g neighborhoods into a 128-dim latent](/assets/images/paper/lgdist/fig_p003_01.png)
+![Stage 1 autoencoder: maps (n+1) x g neighborhoods into a 128-dim latent](/assets/images/paper/lgdist/page_003.png)
 *Figure 2: Stage 1 — a 4-layer transformer encoder (1 head, tanh, dropout 0.1) maps the neighborhood with 2D positional encoding into a 128-dim latent; a 2-layer MLP decoder reconstructs it.*
 
 5. Add 2D positional encoding: $X_p = X + \text{PE}_{2D}$.
@@ -87,7 +87,7 @@ The exact $\alpha$ is **not stated in the paper**. AE training: 5,000 epochs, lr
 
 ### Stage 2 — Conditional Latent DiT
 
-![Stage 2 DiT training: central-spot-only masking, neighbor latents as condition](/assets/images/paper/lgdist/fig_p004_01.png)
+![Stage 2 DiT training: central-spot-only masking, neighbor latents as condition](/assets/images/paper/lgdist/page_004.png)
 *Figure 3(a): Stage 2 — only the central row of the latent neighborhood is noised; the un-noised neighbor rows serve as the conditioning signal alongside the timestep.*
 
 10. Architecture: **12-layer DiT, 16 attention heads** (Peebles & Xie 2023); ~3.22 GFLOPs.
@@ -105,7 +105,7 @@ $$\mathcal{L}_{\text{DDPM}} = \mathbb{E}_{X_E, t, \varepsilon}\bigl[\,\|\varepsi
 
 ### Stage 3 — Inference
 
-![Stage 3 inference: decode, filter CGs, return only originally missing HSAG entries](/assets/images/paper/lgdist/fig_p004_02.png)
+![Stage 3 inference: decode, filter CGs, return only originally missing HSAG entries](/assets/images/paper/lgdist/page_004.png)
 *Figure 3(b): Inference — encode the median-pre-completed neighborhood, denoise the central spot, decode, **filter CGs**, and write only the originally missing HSAG positions.*
 
 16. Encode the (median-pre-completed) neighborhood, run the DiT to denoise the central latent row, decode with $D_\phi$.
@@ -150,10 +150,10 @@ On the 10XGMBSP dataset, LGDiST holds MSE roughly flat at ~0.53-0.55 from 10% to
 
 ### Downstream gene-prediction enhancement (Fig. 8, 6 models)
 
-![Downstream MSE bar chart: 6 histology-to-expression models trained on LGDiST-completed data](/assets/images/paper/lgdist/fig_p008_01.png)
+![Downstream MSE bar chart: 6 histology-to-expression models trained on LGDiST-completed data](/assets/images/paper/lgdist/page_008.png)
 *Figure 8(a): All six histology-to-expression models (ST-Net, SEPAL, HisToGene-class, BLEEP, EGGN-style, EGN) improve in MSE when trained on LGDiST-completed data versus SpaCKLE; BLEEP shows the largest reduction (up to 10%).*
 
-![Downstream PCC bar chart: SEPAL shows +188% but the absolute baseline is undisclosed](/assets/images/paper/lgdist/fig_p008_02.png)
+![Downstream PCC bar chart: SEPAL shows +188% but the absolute baseline is undisclosed](/assets/images/paper/lgdist/page_008.png)
 *Figure 8(b): PCC also improves across all six models, with SEPAL +188% as the headline; the absolute baseline PCC is not disclosed, so the gain may reflect a near-zero baseline.*
 
 - **BLEEP:** up to **10%** MSE reduction.
@@ -162,10 +162,10 @@ On the 10XGMBSP dataset, LGDiST holds MSE roughly flat at ~0.53-0.55 from 10% to
 
 ### Qualitative (Fig. 5, 6)
 
-![Optimal qualitative case: LGDiST recovers spatial patterns SpaCKLE flattens](/assets/images/paper/lgdist/fig_p006_01.png)
+![Optimal qualitative case: LGDiST recovers spatial patterns SpaCKLE flattens](/assets/images/paper/lgdist/page_006.png)
 *Figure 5: Optimal case (gene ENSG00000075624) — LGDiST achieves MSE 0.439 vs. SpaCKLE 1.049 and preserves the spatial pattern.*
 
-![Failure case: LGDiST regresses predictions toward tissue median, sometimes worse than SpaCKLE](/assets/images/paper/lgdist/fig_p007_01.png)
+![Failure case: LGDiST regresses predictions toward tissue median, sometimes worse than SpaCKLE](/assets/images/paper/lgdist/page_007.png)
 *Figure 6: Suboptimal case — LGDiST predictions compress toward the tissue median; on this gene LGDiST MSE 1.254 is **worse** than SpaCKLE's 0.969.*
 
 ## Limitations

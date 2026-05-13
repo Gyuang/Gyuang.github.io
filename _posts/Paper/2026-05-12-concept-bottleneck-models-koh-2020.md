@@ -58,7 +58,7 @@ Variance is reported as +/- 2SD across random seeds (small seed count, not speci
 
 ## Method & Architecture
 
-![CBM pipeline: x -> c -> y for OAI knee x-rays and CUB birds](/assets/images/paper/cbm-koh-2020/fig_p001_01.png)
+![CBM pipeline: x -> c -> y for OAI knee x-rays and CUB birds](/assets/images/paper/cbm-koh-2020/page_001.png)
 *Figure 1: The canonical CBM pipeline — knee x-ray (OAI) routed through 10 clinical concepts (joint space narrowing, bone spurs, calcification, ...) to a KLG severity score, and bird photo (CUB) routed through 112 binary attributes to a 200-way species prediction.*
 
 ### 1. Setup
@@ -117,7 +117,7 @@ The CUB class-level denoising is the load-bearing preprocessing step. It is conv
 
 Average Pearson correlation between predicted and true concepts is >=0.87 for all CBMs on OAI; F1 ~0.92 on CUB vs 0.77 for the linear probe baseline. The "no tradeoff" claim travels on OAI; on CUB the standard model is 2.4 pts better than joint and 7 pts better than independent/sequential.
 
-![Task-vs-concept frontier and data efficiency](/assets/images/paper/cbm-koh-2020/fig_p005_01.png)
+![Task-vs-concept frontier and data efficiency](/assets/images/paper/cbm-koh-2020/page_005.png)
 *Figure 2: (Left) Task-vs-concept-error frontier on OAI and CUB — essentially no tradeoff on OAI and a visible mild tradeoff on CUB. (Middle) Per-concept accuracy histograms. (Right) Data-efficiency curves where the OAI sequential CBM matches the standard model at ~25% of the training data.*
 
 ### Test-time intervention (Figure 4)
@@ -127,10 +127,10 @@ Average Pearson correlation between predicted and true concepts is >=0.87 for al
 - **OAI joint with `lambda=0.01`** (control): replacing $\hat{c}$ with true $c$ actually *increases* test error — concepts have drifted from their human meaning.
 - **CUB**: intervention reduces error monotonically; Independent drops from ~0.24 to ~0.03 at full intervention (28 concept groups). Joint plateaus around ~0.10. "Joint from sigmoid" intervenes more naturally and catches up to Sequential, but starts from worse base error (0.224).
 
-![Qualitative intervention examples](/assets/images/paper/cbm-koh-2020/fig_p007_01.png)
+![Qualitative intervention examples](/assets/images/paper/cbm-koh-2020/page_007.png)
 *Figure 3: Qualitative test-time intervention. Flipping a single concept value — joint-space narrowing on OAI; under-tail or throat colour on CUB — flips an incorrect prediction to the correct class.*
 
-![Intervention sweep curves](/assets/images/paper/cbm-koh-2020/fig_p007_02.png)
+![Intervention sweep curves](/assets/images/paper/cbm-koh-2020/page_007.png)
 *Figure 4: Intervention sweeps. (Left) OAI with nonlinear c -> y — Independent RMSE collapses to ~0.15 at full intervention; the joint control with lambda=0.01 actually gets worse, exposing concept misalignment. (Middle) OAI with linear c -> y — intervention much less effective (open puzzle). (Right) CUB — Independent reaches near-zero error at full intervention; "Joint from sigmoid" rescues intervenability at a cost to base accuracy.*
 
 ### Background-shift robustness (TravelingBirds)
@@ -144,7 +144,7 @@ Average Pearson correlation between predicted and true concepts is >=0.87 for al
 
 All CBMs cut error by ~14-15 points vs the standard model on shuffled-background test data. But TravelingBirds is a *synthetic* composite, and there is no comparison to dedicated robust-training methods (GroupDRO, IRM) — so this is one data point, not a general claim.
 
-![TravelingBirds background-shift illustration](/assets/images/paper/cbm-koh-2020/fig_p009_01.png)
+![TravelingBirds background-shift illustration](/assets/images/paper/cbm-koh-2020/page_009.png)
 *Figure 5: TravelingBirds — the same Black-billed Cuckoo class shifts from a forest-path background at train to a coffee-shop background at test, motivating the robustness experiment in Table 3.*
 
 ### Data efficiency

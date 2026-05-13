@@ -41,7 +41,7 @@ Vision Transformers had just landed (Dosovitskiy et al., 2021) and the authors s
 
 ## Method & Architecture
 
-![HisToGene workflow: modified ViT over an entire tissue section with one-hot coordinate embeddings and dense overlapping inference for super-resolution](/assets/images/paper/histogene/fig_p027_01.png)
+![HisToGene workflow: modified ViT over an entire tissue section with one-hot coordinate embeddings and dense overlapping inference for super-resolution](/assets/images/paper/histogene/page_027.png)
 *Figure 1: HisToGene workflow. (a) A modified ViT consumes a sequence of H&E spot patches with one-hot (x, y) coordinate embeddings; (b) at inference, dense overlapping patch sampling lets the same trained model emit a 4x super-resolution gene expression map by averaging predictions across overlapping spot-tokens.*
 
 ### 1. Patch extraction
@@ -84,7 +84,7 @@ $$E_\text{sub-patch} = \tfrac{1}{4}\!\left(E_\text{top-left} + E_\text{top-right
 
 This produces (a) a 4x-finer SR map (`HisToGene_SR`) and (b) when the four sub-patches of an original spot are re-summed, a spot-level estimate `HisToGene*` that usually correlates better with the observed expression than the single-pass prediction.
 
-![Attention maps reveal shallow-to-deep behaviour](/assets/images/paper/histogene/fig_p031_01.png)
+![Attention maps reveal shallow-to-deep behaviour](/assets/images/paper/histogene/page_031.png)
 *Figure 5: Attention maps from layers 1, 4, and 8 of the modified ViT at original and super-resolution settings. Shallow layers attend to the target spot; deep layers attend to distant tumour-related spots. Single-example qualitative figure — treat as illustration, not evidence.*
 
 ## Claims & Evidence Analysis
@@ -109,7 +109,7 @@ The paper reports no single summary table; numbers are read off Figures 2 and 4.
 
 ### Per-section Pearson correlation, 785 genes (Fig 2a)
 
-![Per-section Pearson correlation across 785 genes on HER2+ and GSEA on top-100 predicted genes](/assets/images/paper/histogene/fig_p028_01.png)
+![Per-section Pearson correlation across 785 genes on HER2+ and GSEA on top-100 predicted genes](/assets/images/paper/histogene/page_028.png)
 *Figure 2: Per-section Pearson correlation across 785 genes on the HER2+ breast cancer dataset. (a) HisToGene* (yellow) > HisToGene (blue) > ST-Net (grey) in nearly every section; ST-Net medians cluster around 0. (b) GSEA on the top-100 predicted gene list shows enrichment in breast-cancer-relevant pathways for HisToGene/HisToGene*.*
 
 | Method | Metric | Dataset | Number (as plotted) |
@@ -130,12 +130,12 @@ Top gene mean Pearson r across 32 sections (HER2+):
 
 ### Qualitative super-resolution maps (Fig 3)
 
-![Spatial expression maps for top predicted genes including 4x super-resolution](/assets/images/paper/histogene/fig_p029_01.png)
+![Spatial expression maps for top predicted genes including 4x super-resolution](/assets/images/paper/histogene/page_029.png)
 *Figure 3: Spatial expression maps for top predicted genes (GNAS, MYL12B, FASN, CLDN4 in (a); GNAS, FN1, MYL12B, FASN in (b)) compared across observed, ST-Net, HisToGene, HisToGene*, and 4x super-resolution HisToGene_SR. Per-section Pearson r annotated. SR maps reveal fine-grained patterns absent in spot-level predictions but are not independently validated.*
 
 ### K-means clustering vs. pathologist annotation (Fig 4, ARI)
 
-![K-means clustering ARI on 6 pathologist-annotated HER2+ sections](/assets/images/paper/histogene/fig_p030_01.png)
+![K-means clustering ARI on 6 pathologist-annotated HER2+ sections](/assets/images/paper/histogene/page_030.png)
 *Figure 4: K-means clustering (k=4) of predicted gene expression on the 6 pathologist-annotated HER2+ sections. HisToGene* yields the highest ARI in 4/6 sections (B1: 0.30; D1: 0.26; F1: 0.22; C1: 0.11) and beats clustering of observed expression in 4/6 — the paper's most-cited but most-fragile claim, given N=6 and no variance.*
 
 | Section | Observed expr. | ST-Net | HisToGene | **HisToGene\*** | Winner |

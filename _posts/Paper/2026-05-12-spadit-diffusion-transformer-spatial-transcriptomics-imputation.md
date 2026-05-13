@@ -66,7 +66,7 @@ Three design choices, all coupled:
 
 ## Method & Architecture
 
-![SpaDiT architecture overview](/assets/images/paper/spadit/fig_p003_06.png)
+![SpaDiT architecture overview](/assets/images/paper/spadit/page_003.png)
 *Figure 1: SpaDiT architecture — (A) training masks ST genes and uses the full scRNA-seq matrix as conditioning; (B) inference denoises Gaussian noise into predicted gene expression. The Latent Embedding `φ` concatenates shared-gene representations and the Condition Embedding `ψ` compresses the full scRNA-seq matrix via Flash-Attention into adaLN modulation in every DiT block.*
 
 **Diffusion in latent space.** Standard DDPM with conditional reverse:
@@ -105,7 +105,7 @@ The paper does not report `N`, hidden size, `T` (timesteps), learning rate, opti
 
 SpaDiT wins PCC on 9/10 datasets; **ML is the exception** — SpatialScope wins both PCC and RMSE there. Std bars are within-gene only (no run-to-run variance).
 
-![Accuracy Score across 10 paired datasets](/assets/images/paper/spadit/fig_p005_01.png)
+![Accuracy Score across 10 paired datasets](/assets/images/paper/spadit/page_005.png)
 *Figure 2: Accuracy Score (AS, composite) across 10 paired scRNA-seq + ST datasets — SpaDiT's box sits above all eight baselines on every dataset (no numeric table provided, which is a real omission).*
 
 **Backbone ablation (Table 3, AS metric):**
@@ -137,16 +137,16 @@ Transformer wins on all 10 datasets; Mamba is essentially tied with U-Net. Clean
 
 Dropping the condition entirely (`w/o ψ`) is the worst — the scRNA-seq prior is doing real work. Flash-Attention vs. MLP costs ~7–15 AS points. Concatenating shared-gene reps in `φ` is consistently positive (~3–15 AS).
 
-![UMAP overlays of predicted vs. true expression](/assets/images/paper/spadit/fig_p007_01.png)
+![UMAP overlays of predicted vs. true expression](/assets/images/paper/spadit/page_007.png)
 *Figure 3: UMAP of predicted vs. true gene expressions across 10 datasets and 9 methods — SpaDiT's predictions (orange) nearly overlap the ground truth (blue), while baselines show visibly larger displacement. Qualitative.*
 
-![Hierarchical clustering of pairwise gene distances](/assets/images/paper/spadit/fig_p008_01.png)
+![Hierarchical clustering of pairwise gene distances](/assets/images/paper/spadit/page_008.png)
 *Figure 4: Hierarchical clustering on pairwise gene-distance matrices per method — SpaDiT's heatmap structure most closely matches ground truth, indicating gene-gene similarity is preserved. No Mantel/LISI/kBET quantification.*
 
-![Spatial expression patterns per dataset](/assets/images/paper/spadit/fig_p009_01.png)
+![Spatial expression patterns per dataset](/assets/images/paper/spadit/page_009.png)
 *Figure 5: Spatial expression patterns for a marker gene per dataset (MG / MHPR / HBC / MPMC / MC) — SpaDiT reproduces spatial contours more faithfully than the 8 baselines. Caveat: the displayed gene per dataset is explicitly the highest-PCC gene, so this is best-case visualization.*
 
-![Robustness under downsampling on MH](/assets/images/paper/spadit/fig_p010_01.png)
+![Robustness under downsampling on MH](/assets/images/paper/spadit/page_010.png)
 *Figure 6: Robustness Score (fraction of genes with PCC > 0.5) on the MH dataset at downsampling rates 0.1/0.3/0.5/0.7 — SpaDiT retains a higher RS than baselines. Important caveat: shown only for MH in the main text, and MH has the **lowest dropout (6.3%)** of all 10 datasets — i.e. the easiest case for downsampling.*
 
 ## Limitations

@@ -145,10 +145,10 @@ ConvNeXtV2-Bpt@384 reaches **CIDEr 17.9 / SPICE 6.9** versus ZeroCap CIDEr 14.6 
 
 ### Polysemy failure mode
 
-![Polysemy failure on the drake (bird) class](/assets/images/paper/clip-free-label-free-cbm/fig_p015_01.png)
+![Polysemy failure on the drake (bird) class](/assets/images/paper/clip-free-label-free-cbm/page_015.png)
 *Figure 4: Top-detected concepts for a duck image labeled "drake" are "drake, dylan, cory, rihanna, robbie, thug, lyric, duck". The model latches onto Drake the rapper before Drake the bird — a striking failure mode for a system whose pitch is human-readable explanations.*
 
-![Polysemy failure on the african grey parrot class](/assets/images/paper/clip-free-label-free-cbm/fig_p015_02.png)
+![Polysemy failure on the african grey parrot class](/assets/images/paper/clip-free-label-free-cbm/page_015.png)
 *Figure 5: Same failure on "african grey" parrot — top concepts are "ethiopian, tanzania, arabidopsis, turquoise, purple, blues, greens". The 20K-word concept set drags in geographic and chromatic associations that have nothing to do with the bird.*
 
 ## Limitations

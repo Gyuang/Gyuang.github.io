@@ -50,7 +50,7 @@ Three moves stacked together:
 
 ## Method & Architecture
 
-![FeatLLM pipeline](/assets/images/paper/featllm/fig_p003_01.png)
+![FeatLLM pipeline](/assets/images/paper/featllm/page_003.png)
 *Figure 1: FeatLLM pipeline — a bagged sample is serialized into a prompt; the LLM emits per-class rules; rules are parsed by a second LLM call into binary features; a non-negative linear model scores classes; T=20 trials are ensembled.*
 
 The linear scorer (Eq. 2 in the paper):
@@ -77,25 +77,25 @@ where $z^i_k \in \{0,1\}^R$ is the binary rule-hit vector for class $k$ ($R=10$)
 
 Note the XGBoost row: **50.00 AUC at 4-shot on every dataset** indicates a degenerate baseline collapsing to a single class. The paper does not re-run XGBoost with class weights and never benchmarks CatBoost, LightGBM, or a tuned GBDT — the obvious modern competitors. The "few-shot win" is real; the "feature engineering replaces tabular models" framing is not established.
 
-![Shot scaling](/assets/images/paper/featllm/fig_p008_01.png)
+![Shot scaling](/assets/images/paper/featllm/page_008.png)
 *Figure 2: Averaged AUC across all 13 datasets vs number of training shots. FeatLLM holds 76–82 AUC across 4–64 shots while XGBoost and RandomForest only close the gap around 32–64 shots.*
 
 **Wide-feature datasets (Table 3).** TabLLM, TABLET, TabPFN, and in-context are N/A on Communities (103 feat) and Myocardial (111 feat) because the prompt overflows. FeatLLM survives via feature bagging. But on **Myocardial at 16 shots FeatLLM scores 55.32 vs STUNT 61.22 and LogReg 60.00** — a loss on a clinical dataset that the abstract never mentions.
 
 **Robustness — and its caveat.**
 
-![Spurious columns from Adult](/assets/images/paper/featllm/fig_p009_01.png)
+![Spurious columns from Adult](/assets/images/paper/featllm/page_009.png)
 *Figure 3: Heart dataset AUC as 0–5 random unrelated columns from Adult are appended. FeatLLM degrades least; per-sample LLM baselines collapse.*
 
-![Spurious columns from Myocardial](/assets/images/paper/featllm/fig_p022_01.png)
+![Spurious columns from Myocardial](/assets/images/paper/featllm/page_022.png)
 *Figure 4 (Appendix I): When the appended noise columns come from a domain-related dataset (Myocardial → Heart), FeatLLM becomes unstable and the share of rules drawing on noisy columns jumps from 1–2% to 7–8%. The robustness claim of Fig. 3 is conditional on noise being out-of-domain.*
 
 **Ablations.**
 
-![Rules per class](/assets/images/paper/featllm/fig_p009_02.png)
+![Rules per class](/assets/images/paper/featllm/page_009.png)
 *Figure 5: AUC vs rules-per-class. R=10 is the sweet spot across all shot counts; R=30 overfits in the 4-shot regime.*
 
-![Ensemble size](/assets/images/paper/featllm/fig_p017_01.png)
+![Ensemble size](/assets/images/paper/featllm/page_017.png)
 *Figure 6: AUC vs ensemble size T. Gains plateau around T=20, the default in the main experiments.*
 
 From Table 4 (deltas vs full FeatLLM, averaged over 13 datasets): **−Ensemble = −5.4 to −7.4 AUC** (largest single ablation, confirming C7); −Tuning = −1.4 (4-shot) → −5.8 (32-shot); −Reasoning Step 1 = −5.0 at 4-shot, only −1.5 at 16-shot; −Description = −0.3 to −1.8.

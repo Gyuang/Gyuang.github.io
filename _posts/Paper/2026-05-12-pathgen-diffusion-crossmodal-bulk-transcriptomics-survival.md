@@ -55,7 +55,7 @@ PathGen reframes the problem: at deployment, **synthesise the bulk transcriptomi
 
 ## Method & Architecture
 
-![PathGen pipeline: WSI patches to UNI embeddings to diffusion gene synthesis to MCAT_GR](/assets/images/paper/pathgen/fig_p018_01.png)
+![PathGen pipeline: WSI patches to UNI embeddings to diffusion gene synthesis to MCAT_GR](/assets/images/paper/pathgen/page_018.png)
 *Figure 1: PathGen pipeline — WSI patches → frozen UNI embeddings → DDPM-based gene-group embedding synthesis → MCAT_GR multimodal grade/risk head with split-conformal uncertainty.*
 
 ### 1. WSI preprocessing and patch embedding
@@ -110,7 +110,7 @@ A modified MCAT (Chen 2021) adding a parallel global-attention-pooling branch fo
 
 ### Architecture detail
 
-![PathGen architecture detail: diffusion model, MCAT_GR head, transformer, co-attention, encoder/decoder](/assets/images/paper/pathgen/fig_p024_01.png)
+![PathGen architecture detail: diffusion model, MCAT_GR head, transformer, co-attention, encoder/decoder](/assets/images/paper/pathgen/page_024.png)
 *Figure 2: Architectural breakdown — (a) PathGen diffusion model; (b) MCAT_GR head; (c) PathGen transformer with three rounds of co-attention; (d) gene encoder; (e) genomic-guided co-attention block; (f) gene decoder.*
 
 ## Experimental Results
@@ -153,7 +153,7 @@ WSI+synth beats WSI-only on every row (Wilcoxon p<0.05; ANOSIM p=0.001) and is n
 
 ### Synthesis fidelity and main results panel
 
-![Fidelity, downstream gain, and conformal coverage across cohorts](/assets/images/paper/pathgen/fig_p019_01.png)
+![Fidelity, downstream gain, and conformal coverage across cohorts](/assets/images/paper/pathgen/page_019.png)
 *Figure 3: (a) Real-vs-synth gene-group correlation (Spearman) and nMAE across cohorts; (b) significant gain of WSI+synth over WSI-only and statistical closeness to WSI+real for both risk (C-Index) and grade (AUC); (c) conformal coverage and uncertainty profiles.*
 
 **Spearman / nMAE per cohort (Suppl. Table 5):** GBMLGG 0.713 / 0.141 · KIRC 0.717 / 0.160 · UCEC 0.436 / 0.173 · BRCA 0.642 / 0.155 · CPTAC-GBM 0.662 / 0.167 · CPTAC-UCEC 0.669 / 0.178. TCGA-UCEC at 0.436 is the weakest — flagged but not investigated.
@@ -164,26 +164,26 @@ On TCGA-GBMLGG C-Index: GSCNN 0.781, DeepAttnMISL 0.734, MCAT 0.817, Pathomic Fu
 
 ### Co-attention fidelity (the real internal sanity check)
 
-![Distributed-vs-pooled parity, real-vs-synth co-attention correlation, per-group contribution](/assets/images/paper/pathgen/fig_p022_01.png)
+![Distributed-vs-pooled parity, real-vs-synth co-attention correlation, per-group contribution](/assets/images/paper/pathgen/page_022.png)
 *Figure 4: (a) Per-patch vs whole-bag grading parity (Wilcoxon p>0.05) and true-vs-false-grade attention contrast; (b) real-vs-synth co-attention map Spearman per gene group (0.85-0.998); (c) per-cohort percentage co-attention contribution by gene group.*
 
 The real-vs-synth co-attention correlation (0.85-0.998 Spearman; nMAE 0.013-0.063) is **substantially tighter than the underlying gene-level correlation (0.436-0.717)** — this is the mechanism the authors invoke to explain why downstream metrics survive the gene-fidelity gap. Plausible, but not the same as showing the diffusion model is necessary: a deterministic regressor producing low-fidelity gene embeddings could in principle also yield faithful co-attention maps.
 
 ### Qualitative case (TCGA-LGG, grade III, male 58)
 
-![TCGA-LGG case heatmaps and co-attention maps for real vs synth genes](/assets/images/paper/pathgen/fig_p020_01.png)
+![TCGA-LGG case heatmaps and co-attention maps for real vs synth genes](/assets/images/paper/pathgen/page_020.png)
 *Figure 5: TCGA-LGG case — WSI, distributed per-patch grade/risk heatmaps, and per-gene-group co-attention maps for real vs synthesised gene expression. Real and synth co-attention concentrate on the same anatomical regions despite the gene-level correlation being moderate.*
 
 ### Fairness / demographics
 
-![Per-patient risk, uncertainty, and demographic strata sorted by predicted risk](/assets/images/paper/pathgen/fig_p023_01.png)
+![Per-patient risk, uncertainty, and demographic strata sorted by predicted risk](/assets/images/paper/pathgen/page_023.png)
 *Figure 6: Per-patient predicted risk, uncertainty, and demographic strata sorted by predicted risk across TCGA-GBMLGG, CPTAC-GBM, TCGA-KIRC, TCGA-UCEC, and CPTAC-UCEC.*
 
 Wilcoxon p>0.05 on per-group uncertainty deltas between real and synth across gender, age, censorship, time-bin, and magnification. Some subgroups undercover the 0.9 conformal target but fall within the Beta(n+1-l, l) coverage-slack window for the small calibration-set sizes. **Survival Munc = 1.0 on TCGA-UCEC and CPTAC-UCEC** means the conformal set contains every time-bin — i.e. the model cannot distinguish anything on those cohorts.
 
 ### λ ablation
 
-![Lambda sweep on TCGA-GBMLGG and TCGA-KIRC](/assets/images/paper/pathgen/fig_p026_01.png)
+![Lambda sweep on TCGA-GBMLGG and TCGA-KIRC](/assets/images/paper/pathgen/page_026.png)
 *Suppl. Figure 8: AUC and C-Index vs λ on TCGA-GBMLGG and TCGA-KIRC. λ = 0.3 is the joint sweet spot, but the C-Index surface is fairly flat across 0.1-0.6; AUC drops sharply only at λ ≥ 0.8.*
 
 ### Other ablations (Suppl. Table 4)

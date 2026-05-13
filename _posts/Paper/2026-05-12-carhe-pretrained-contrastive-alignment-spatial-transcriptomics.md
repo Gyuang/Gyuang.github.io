@@ -53,7 +53,7 @@ The strongest claims are C7, C8, and C4 — downstream-clinically-relevant metri
 
 ## Method & Architecture
 
-![CarHE overview: contrastive alignment of HIPT patches to scGPT cell-cluster embeddings, followed by Grad-CAM iterative refinement](/assets/images/paper/carhe/fig_p021_01.png)
+![CarHE overview: contrastive alignment of HIPT patches to scGPT cell-cluster embeddings, followed by Grad-CAM iterative refinement](/assets/images/paper/carhe/page_021.png)
 *Figure 1: CarHE overview — scGPT cell-cluster embeddings are contrastively aligned to HIPT image features, then iteratively refined by Grad-CAM masking.*
 
 **Inputs.** Paired H&E WSI (stain-normalized via `staintools.LuminosityStandardizer`) and ST counts. Each spot/cell sits at the center of a 256×256 px patch at ~0.5 µm/px.
@@ -105,7 +105,7 @@ The softened off-diagonal α is what prevents the contrastive objective from col
 | Cluster ID | Mouse intestine HD | AUROC | **>0.9** (all 21) | — | — | — | — | Fig 5C/D |
 | **DFS prediction** | **In-house lung 1,600+ slides** | **AUC** | **0.734** | — | — | — | — | vs. unnamed SOTA 0.586 / 0.643 |
 
-![BRCA H1 marker genes and melanoma Xenium cell-type recovery](/assets/images/paper/carhe/fig_p022_01.png)
+![BRCA H1 marker genes and melanoma Xenium cell-type recovery](/assets/images/paper/carhe/page_022.png)
 *Figure 2: BRCA H1 and melanoma Xenium benchmarks — CarHE recovers marker-gene patterns (CD3D / CD74 / COL3A1) and cell-type composition where HisToGene / Hist2ST / THItoGene / STEM flatline.*
 
 ### Reading between the rows
@@ -117,16 +117,16 @@ The softened off-diagonal α is what prevents the contrastive objective from col
 - **DFS AUC = 0.734 is the strongest clinical evidence.** But the comparison baselines (AUC 0.586, 0.643) are unnamed in the main text — presumably image-only deep models — so we cannot tell whether they are a fairly trained Prov-GigaPath or an off-the-shelf weak baseline. No K-M survival curves or hazard ratios are shown, only an ROC, and there is a single validation cohort.
 - **Effectively no ablations.** Step-1-only vs full pipeline, raw-counts vs scGPT-cluster targets, k ≠ 100 — none reported.
 
-![TLS detection in HER2ST BRCA patients 1 and 2](/assets/images/paper/carhe/fig_p023_01.png)
+![TLS detection in HER2ST BRCA patients 1 and 2](/assets/images/paper/carhe/page_023.png)
 *Figure 3: TLS recovery vs. pathologist annotation in BRCA patients 1 and 2 — CarHE flags a putative TLS initially annotated as cancer that shows immune infiltration on zoom.*
 
-![DLPFC 3D reconstruction across 4 consecutive sections](/assets/images/paper/carhe/fig_p024_01.png)
+![DLPFC 3D reconstruction across 4 consecutive sections](/assets/images/paper/carhe/page_024.png)
 *Figure 4: DLPFC 3D reconstruction — even with raw-expression PCC = 0.32, CarHE recovers the L1–WM laminar layout and an L1→WM PAGA trajectory.*
 
-![Mouse intestine Visium HD cross-species transfer](/assets/images/paper/carhe/fig_p025_01.png)
+![Mouse intestine Visium HD cross-species transfer](/assets/images/paper/carhe/page_025.png)
 *Figure 5: Cross-species transfer — on mouse intestine Visium HD, CarHE achieves per-cluster AUROC > 0.9 and correctly localizes Lyz1 to gland regions.*
 
-![In-house lung cohort: TLS detection and DFS prediction](/assets/images/paper/carhe/fig_p026_01.png)
+![In-house lung cohort: TLS detection and DFS prediction](/assets/images/paper/carhe/page_026.png)
 *Figure 6: In-house 880-patient lung cohort — CarHE-identified TLS regions match pathologist annotation, and a downstream MLP on CarHE features reaches DFS AUC = 0.734 (vs. unnamed baselines at 0.586 and 0.643).*
 
 ## Limitations
