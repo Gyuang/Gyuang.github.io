@@ -1,0 +1,979 @@
+
+===== PAGE 1 =====
+3D-CT-GPT: Generating 3D Radiology Reports through Integration of Large
+Vision-Language Models
+Hao Chen1*, Wei Zhao2,3,4*, Yingli Li1, Tianyang Zhong1, Yisong Wang2, Youlan Shang2, Lei Guo1,
+Junwei Han1, Tianming Liu5, Jun Liu2,3†, Tuo Zhang1‡,
+1The School of Automation, Northwestern Polytechnical University, Xi’an 710072, China
+2Department of Radiology, The Second Xiangya Hospital, Central South University, Changsha 410011, China
+3Clinical Research Center for Medical Imaging in Hunan Province, Changsha, China
+4Institute of Biomedical and Health Engineering, Shenzhen Institutes of Advanced Technology, Chinese Academy of Sciences,
+Shenzhen 518055, China
+5The School of Computing, University of Georgia, Athens, GA 30602, USA
+chenhao24@mail.nwpu.edu.cn, wei.zhao@csu.edu.cn, zhangtuo.npu@gmail.com, junliu123@csu.edu.cn
+Abstract
+Medical image analysis is crucial in modern radiological di-
+agnostics, especially given the exponential growth in medical
+imaging data. The demand for automated report generation
+systems has become increasingly urgent. While prior research
+has mainly focused on using machine learning and multimodal
+language models for 2D medical images, the generation of
+reports for 3D medical images has been less explored due
+to data scarcity and computational complexities. This paper
+introduces 3D-CT-GPT, a Visual Question Answering (VQA)-
+based medical visual language model specifically designed
+for generating radiology reports from 3D CT scans, partic-
+ularly chest CTs. Extensive experiments on both public and
+private datasets demonstrate that 3D-CT-GPT significantly
+outperforms existing methods in terms of report accuracy and
+quality. Although current methods are few, including the par-
+tially open-source CT2Rep and the open-source M3D, we
+ensured fair comparison through appropriate data conversion
+and evaluation methodologies. Experimental results indicate
+that 3D-CT-GPT enhances diagnostic accuracy and report
+coherence, establishing itself as a robust solution for clinical
+radiology report generation. Future work will focus on expand-
+ing the dataset and further optimizing the model to enhance
+its performance and applicability.
+Introduction
+In recent decades, the field of radiological imaging has under-
+gone revolutionary changes, making the accurate and efficient
+interpretation of medical images crucial in modern diagnos-
+tics (Liu et al. 2024). The exponential growth of medical
+imaging data has placed immense pressure on radiologists,
+who must not only possess extensive diagnostic expertise
+but also spend considerable time drafting detailed reports,
+thereby increasing their workload. Consequently, develop-
+ing an automated system capable of generating accurate and
+timely diagnostic reports is essential for alleviating the bur-
+den on physicians, improving workflow efficiency, and ensur-
+*Co-first authors.
+†Co-corresponding authors. Second corresponding author.
+‡Co-corresponding authors. First corresponding author.
+Figure 1: Comparison between: (a) Existing models like
+RadMD and M3D-LaMed, and (b) Our 3D-CT-GPT, that
+uniquely combines CT ViT, 3D Average Pooling and a pro-
+jection layer (dashed box) to enhance report generation from
+3D CT scans, improving on past methods.
+ing diagnostic quality, particularly in resource-constrained
+environments where high diagnostic accuracy is critical.
+While significant progress has been made in using machine
+learning and multimodal language models to automatically
+generate radiology reports from 2D medical images (Jing,
+Xie, and Xing 2017; Chen et al. 2022, 2020; Qin and Song
+2022), the generation of reports from 3D medical images
+remains relatively unexplored. This is primarily due to chal-
+lenges related to data scarcity (Li et al. 2023c), the com-
+plexity of feature extraction, and the computational demands
+associated with processing large datasets. Three-dimensional
+imaging modalities, such as Computed Tomography (CT) and
+Magnetic Resonance Imaging (MRI), offer a more compre-
+hensive view of patient conditions compared to 2D imaging
+(M¨uller 2002), capturing intricate anatomical details and pro-
+viding higher diagnostic accuracy, especially in detecting
+arXiv:2409.19330v1  [cs.CV]  28 Sep 2024
+
+===== PAGE 2 =====
+complex pathologies that 2D imaging might miss. Despite
+these advantages, generating high-quality reports from 3D
+images remains a significant challenge.
+Existing methods, such as RadFM (Wu et al. 2023),
+CT2Rep (Hamamci, Er, and Menze 2024), and M3D-LaMed
+(Bai et al. 2024), have initiated exploration into generating
+radiology reports from 3D images. Although RadFM and
+M3D-LaMed demonstrate capabilities in tasks like anomaly
+detection and case retrieval, they fall short when applied to
+the more intricate task of accurate and coherent report gen-
+eration from complex 3D medical images. A critical limita-
+tion is their insufficient integration of large language models
+(LLMs) with 3D imaging data, which hampers the generation
+of diagnostically valuable and contextually accurate reports.
+CT2Rep, while pioneering in the automated generation of 3D
+chest CT reports, suffers from an overly complex architecture
+and high computational demands, limiting its practicality and
+scalability in real-world clinical settings. Thus, there remains
+a significant gap in developing a streamlined, efficient, and
+accurate approach to 3D radiology report generation that ef-
+fectively harnesses the power of LLMs within an optimized
+framework.
+To address these challenges and advance the development
+of automatic report generation for 3D medical imaging, we
+present 3D-CT-GPT, a novel medical visual language model
+based on Visual Question Answering (VQA) (Antol et al.
+2015), specifically designed for generating radiology reports
+from 3D CT scans, with a particular focus on chest CTs. As
+illustrated in Figure 1, our model uniquely combines CT ViT,
+3D Average Pooling, and a projection layer, setting it apart
+from existing approaches. Our model’s contributions to the
+field of 3D medical image-based radiology report generation
+are:
+• CT-Specific Integration of 3D Imaging and Language
+Models: We achieve direct and accurate radiology report
+generation from 3D CT scans by seamlessly integrating
+CT ViT with a large language model, enhancing both the
+accuracy and coherence of the generated reports.
+• Efficient Training and Data Utilization: By optimizing
+our training strategies—pre-training on public datasets fol-
+lowed by fine-tuning on small-scale private datasets—we
+significantly reduce data requirements while maintaining
+superior performance.
+• Computational Efficiency and Scalability: Our model
+is designed for computational efficiency, ensuring scala-
+bility and practicality, particularly in resource-constrained
+environments.
+• Robust Generalization and Controlled Text Gener-
+ation: The model demonstrates strong generalization
+across diverse datasets and achieves a balanced trade-off
+between report diversity and accuracy through an opti-
+mized temperature control mechanism.
+Related Works
+Large Language Models in Medical Imaging
+The extraordinary generative capabilities of large language
+models (LLMs) have opened new avenues in natural language
+processing and computer vision (Touvron et al. 2023; Gan
+et al. 2023; Tian et al. 2023). Large Language Vision Models
+(LLVMs) aim to bridge the gap between visual and textual
+information, allowing machines to understand and generate
+content that synthesizes these modalities. Recent research has
+demonstrated the potential of LLVMs in various tasks, includ-
+ing image captioning (Zhu et al. 2023), visual question an-
+swering (Bazi et al. 2023; Liu et al. 2023b; Maaz et al. 2023),
+and image generation (Zhang, Rao, and Agrawala 2023), with
+applications extending into multimodal scenarios (Li et al.
+2023b; Zhu et al. 2023), including the medical field (Thawkar
+et al. 2023; Tu et al. 2024). As a result, employing LLMs for
+the automatic generation of medical imaging analysis reports
+has emerged as a more effective approach. Several existing
+studies have utilized LLMs for the analysis of 2D medical im-
+ages, such as X-rayGPT (Thawkar et al. 2023), LLava-Med
+(Li et al. 2023a), ChatDoctor (Li et al. 2023d), Med-Alpaca
+(Quispe Bonilla et al. 2023), PMC-LLaMA (Wu et al. 2024),
+Clinical Camel (Faye and Bengoumi 2018), DoctorGLM
+(Xiong et al. 2023), and Huatuo (Wang et al. 2023). These
+models are typically initialized with open-source LLMs and
+fine-tuned on specialized biomedical datasets tailored to spe-
+cific guidelines. The resulting LLMs hold significant poten-
+tial, particularly in understanding patient needs and providing
+informed recommendations.
+3D Medical Image Analysis and Report Generation
+The field of 3D medical image analysis and report generation
+has seen significant advancements, yet it continues to face
+numerous challenges. CT-CLIP (Hamamci et al. 2024), uti-
+lizing the CT-RATE dataset, has effectively aligned textual
+information with 3D medical images, enhancing the accu-
+racy of multi-abnormality detection and case retrieval tasks.
+However, its application in report generation remains limited.
+RadFM (Wu et al. 2023), a foundational model in radiol-
+ogy, employs large-scale multimodal datasets for pre-training,
+leading to improvements in report generation accuracy. Nev-
+ertheless, it struggles with long sentence generation, 3D im-
+age handling, and evaluation metrics. CT2Rep(Hamamci, Er,
+and Menze 2024), the first method specifically designed for
+generating chest CT reports, leverages advanced 3D vision
+encoders and multimodal fusion modules. While it shows
+progress in the precision of report generation, data and com-
+putational complexity remain significant obstacles. M3D-
+LaMed (Bai et al. 2024) focuses on 3D medical image anal-
+ysis, utilizing a large-scale 3D multimodal medical dataset.
+Despite its strong performance, challenges persist in enhanc-
+ing dataset diversity and managing task complexity. Overall,
+these methods lay the groundwork for automating 3D med-
+ical image report generation, but challenges related to data
+scarcity, model complexity, and evaluation standards still
+require further research and resolution.
+Method
+Model Architecture
+3D CT Image Encoder:
+As demonstrated in Fig-
+ure 2(a),the CT-ViT encoder(Φct
+enc), derived from CT-CLIP
+(Hamamci et al. 2024), is utilized to extract features from 3D
+
+===== PAGE 3 =====
+Figure 2: Overview of the 3D-CT-GPT model architecture, featuring three key components: (a) 3D CT Image Encoder utilizing
+CT-ViT for feature extraction; (b) Linear Projection Layer for feature transformation; (c) Integration of Vision and Language
+Models for generating contextually relevant radiology reports.
+chest CT volumes by dividing them into smaller patches and
+embedding these into a lower-dimensional latent space. This
+process results in embedded CT tokens Zx, which are used
+for subsequent analysis.
+Given a 3D CT image x with dimensions X
+∈
+R240×480×480, the image is segmented into non-overlapping
+patches of size 15 × 30 × 30. Each patch is then mapped into
+a 512-dimensional space D, resulting in a tensor Zx with
+dimensions B × T × H
+ph × W
+pw × D, where B is the batch
+size, T represents the number of temporal patches, H and
+W are the height and width of the slices, and ph, pw are the
+spatial patch dimensions.
+The 3D chest CT volume feature extraction process is
+formally defined as Zx = Φct
+enc(x), ensuring the preserva-
+tion of 3D volumetric information and effectively support-
+ing the construction of sequence-to-sequence models for re-
+port generation. To adapt the output for the projection layer,
+the transformation process for a tensor Zx with dimensions
+B × T ×
+H
+2ph ×
+W
+2pw × D involves the following steps:
+First, the tensor is permuted to obtain:
+Z′
+x = P(Zx, [0, 4, 1, 2, 3])
+(1)
+resulting in Z′
+x with dimensions B × D × T ×
+H
+2ph ×
+W
+2pw .
+Next, 3D average pooling is applied with a kernel size of
+2, yielding:
+Z′′
+x = A(Z′
+x, kernel size = 2)
+(2)
+resulting in Z′′
+x with dimensions B × D × T ×
+H
+2ph ×
+W
+2pw .
+This tensor is then reshaped to:
+Z′′′
+x = R(Z′′
+x, [B, D, T × H
+2ph
+× W
+2pw
+])
+(3)
+resulting in Z′′′
+x with dimensions B × D × (T × H′ × W ′),
+where H′ =
+H
+2ph and W ′ =
+W
+2pw .
+Finally, a permute operation is applied to obtain:
+Pv = P(Z′′′
+x , [0, 2, 1])
+(4)
+producing Pv with dimensions B × (T × H′ × W ′) × D.
+The complete transformation is summarized as:
+Pv = P
+ R
+ A
+ P
+ Φct
+enc(x), [0, 4, 1, 2, 3]
+
+(5)
+Here, Pv represents the output tensor that contains em-
+bedded feature tokens for each batch, preserving crucial 3D
+volumetric information, which is essential for accurate report
+generation. yielding the desired output, where each batch
+contains 512 feature tokens, each of dimension 512.
+Linear Projection Layer:
+For simplicity and efficiency,
+we opted for a straightforward linear projection technique for
+input projection, drawing inspiration from the architecture
+of the LLaVA multimodal large language model. As demon-
+strated in Figure 2(b),specifically, we employ a trainable
+projection matrix W to align the CT image token embed-
+dings Pv with the semantic space of text word embeddings.
+This is accomplished by applying the projection matrix to
+the image token embeddings, resulting in language-aligned
+embeddings Mv = W × Pv. This transformation ensures
+that the dimensionality of the image tokens matches that of
+the word embeddings used in the language model, thereby
+enabling efficient and effective data fusion between the visual
+and textual modalities.
+Integration of Vision and Language Models:
+As illus-
+trated in Figure 2(c), the query is concatenated with an image
+placeholder and combined with a dialogue template to form
+
+===== PAGE 4 =====
+the prompt. This prompt is then processed by the LLM’s
+tokenizer, which converts the text into tokens. Each token
+corresponds to a specific token ID based on the LLM’s vo-
+cabulary. The image placeholder is assigned a special token
+ID of -200, serving as a marker within the LLM’s vocabulary.
+Using the LLM’s embeddings, the text tokens are mapped
+into word vectors Mq. The dimensionality of these word vec-
+tors varies according to the size of the language model. Since
+the image placeholder does not have a corresponding entry
+in the vocabulary, its token embeddings are split into Mq1
+and Mq2. The image feature vectors, output from the linear
+projection layer and matched to the same dimensionality, are
+then concatenated with the split word vectors to form the full
+input M = concat([Mq1, Mv, Mq2]). This combined input
+is fed into the language model to produce output token IDs,
+which are then decoded by the LLM’s embedding layer to
+generate the final output Xa.
+Thus, the LLM function is defined as g(·). The overall
+computation can be expressed as:
+Xa = g (concat ([Mq1, Mv, Mq2]))
+(6)
+Dataset
+Data Collection:
+We adopted a subset of a public dataset,
+CT-RATE (Hamamci et al. 2024). It includes 25,692 non-
+contrast chest CT volumes, which have been expanded to
+50,188 volumes through various reconstruction techniques,
+representing 21,304 unique patients, and is further enriched
+with corresponding radiology text reports, multiple abnor-
+mality labels, and metadata. We selected 8,070 cases as the
+foundational data for our study. Additionally, we collected
+2,000 3D chest CT scans and corresponding radiology re-
+ports from a renowned international hospital, designated as
+the private Dataset-XY. In this dataset, patients’ ages range
+from 20 to 88 years, with a mean age of 51.42 years. The
+gender distribution is 44.7% female and 55.3% male.
+Each CT volume in Dataset-XY has an axial screen res-
+olution of 512x512 pixels, with the number of slices per
+volume ranging from 100 to 600. Each CT volume in CT-
+RATE has the same axial screen resolution and slice count
+range as Dataset-XY. The CT-RATE had already undergone
+strict anonymization procedures, eliminating the need for
+further de-identification or format conversion.
+Data Preprocessing:
+For Dataset-XY, we first imple-
+mented de-identification measures to ensure patient privacy.
+To maintain the high quality and consistency of the radiology
+reports with their corresponding 3D chest CT volumes, we
+conducted rigorous data cleaning, focusing on three key as-
+pects: removing duplicates, correcting data inconsistencies,
+and filtering out irrelevant text information. Duplicate entries
+were manually screened to identify and remove redundant
+elements directly related to data values and report titles, re-
+sulting in a standardized and unique dataset. For the image
+data, we filtered out low-resolution images and eliminated
+duplicate or irrelevant entries. Then, a meticulous manual
+review and consolidation process was carried out to ensure
+dataset uniformity and coherence, ultimately producing a
+highly optimized dataset consisting of 1,887 cases.
+For both datasets, we utilized the slope and intercept values
+from the metadata to convert CT values to Hounsfield Units
+(HU), cropping them to the range of [-1000 HU, +200 HU],
+which reflects the diagnostic limits of the HU scale. Each
+volume was then resampled to achieve a uniform spacing
+of 0.75 mm in the x and y axes and 1.5 mm in the z axis,
+with volumes cropped or padded as necessary to maintain a
+consistent resolution of 240x480x480. Table 1 presents the
+statistics of the datasets, including the number of radiographic
+images, the number of reports, and the average report length
+for the training, testing, and evaluation sets, split at a ratio of
+0.8, 0.1, 0.1, respectively.
+Dataset
+CT-RATE
+Dataset-XY
+Train
+Test
+Val
+Train
+Test
+Val
+Image
+6456
+807
+807
+1508
+190
+188
+Report
+6456
+807
+807
+1508
+190
+188
+Avg. Len.
+198.7
+196.0
+198.9
+88.4
+88.6
+88.9
+Table 1: Table shows the statistics of the two benchmark
+datasets, including the number of images, reports, and the
+average word-based length (Avg.Len.) of reports in each set.
+VQA Dataset Creation:
+To develop a robust Visual Ques-
+tion Answering (VQA) system capable of understanding and
+generating accurate responses based on 3D medical images,
+we constructed a specialized dataset that pairs 3D chest CT
+images with corresponding textual descriptions. This dataset
+is crucial for training and fine-tuning the model, ensuring
+that it can accurately interpret complex medical imagery and
+generate meaningful diagnostic information.
+Each entry in the dataset consists of a 3D chest CT im-
+age, a related question, and an answer. This structured de-
+sign enables the model to learn the intricate relationships
+between visual features in CT scans and their correspond-
+ing text, thereby enhancing the system’s comprehension and
+generation capabilities. During model training, prompts are
+provided that combine 3D chest CT images with textual
+information. A specific prompt structure is employed consis-
+tently throughout the training process. In this structure, the
+Xsystem-message initiates the interaction, followed by a stopping
+token <STOP>. The human provides an instruction Xinstruct,
+which is followed by another stopping token. These instruc-
+tions are randomly selected from a predefined set of prompts,
+which include various types of queries such as ”What findings
+do you observe in this CT scan?”, ”Could you summarize
+the observations from this CT scan?”, ”What abnormalities
+are present in this CT scan?”, or ”How would you interpret
+the results of this CT scan?”. The system then generates a
+response Xa, in the form of a report corresponding to the 3D
+chest CT image.
+It is noted that, although the VQA system is designed
+to flexibly handle a wide range of questions related to 3D
+medical imaging, this paper currently focuses on a specific
+task—generating radiology reports—to deeply evaluate the
+core functionality of the model in a controlled environment.
+Nevertheless, the architecture and dataset have been de-
+signed with future scalability in mind, laying the foundation
+
+===== PAGE 5 =====
+for exploring more complex and diverse medical question-
+answering tasks in subsequent research.
+Experiment
+Our initial model training process is inspired by conventional
+multimodal language training methodologies, beginning with
+pre-training followed by a stage of visual instruction fine-
+tuning (Liu et al. 2023a).
+Implementation Details
+Setup
+To initialize the model, we leveraged a pre-trained
+CT-ViT as the visual encoder, alongside the Vicuna-7B model
+as the large language model (LLM) component. Addition-
+ally, to strike an optimal balance between complexity and
+effectiveness, a randomly initialized linear layer was utilized
+as the projection module. The training was conducted on a
+single RTX 3090 GPU (24GB memory). During pre-training,
+the learning rate was set to 1e-3, and a batch size of 1 was
+assigned per GPU. For the instruction fine-tuning phase, the
+learning rate and batch size per GPU were adjusted to 2e-4
+and 1, respectively. Both training stages employed the Adam
+optimizer, a cosine learning rate scheduler, and bfloat16 preci-
+sion. The pre-training phase required 14GB of GPU memory,
+while the instruction fine-tuning phase occupied 22GB of
+GPU memory.
+Stage 1: Pre-training
+The model aimed to understand the
+relationship between 3D CT image features and their corre-
+sponding reports by analyzing a large collection of 3D CT
+image-report pairs. During this phase, we froze the image
+encoder and language model, focusing solely on training
+the projection layer. The training was conducted using our
+custom-built VQA dataset. Due to the scarcity of paired
+3D CT images and reports, we were unable to employ the
+large-scale alignment training typical of multimodal models.
+Instead, we adopted an interactive approach across multiple
+data types to address this challenge.
+Stage 2: Fine-tuning
+The model from Stage 1 was further
+refined to align 3D CT image features with specific radiol-
+ogy reports using image-text pairs. During this phase, we
+continued to freeze the image encoder but trained both the
+projection layer and the LLM. Given the constraints on com-
+putational resources and the limited dataset, we fine-tuned
+the language model using a LoRA (Hu et al. 2022) mod-
+ule rather than full parameter tuning. The number of epochs
+was determined based on avoiding overfitting during train-
+ing. The high-quality VQA dataset described in Section 4
+was again utilized for training. Despite limited resources and
+sparse datasets, our adequately trained 3D CT-GPT demon-
+strated the ability to generate more natural and high-quality
+radiology-specific responses for given 3D chest CT images.
+Evaluation Metrics
+To evaluate the efficiency of our radiology report generation,
+we employed natural language generation (NLG) metrics.
+The primary NLG metrics used include BLEU (Papineni et al.
+2002), METEOR (Banerjee and Lavie 2005), and ROUGE-L
+(Lin 2004), which measure word overlap, synonym usage,
+and sequence matching in the radiology reports, respectively.
+Specifically, ROUGE scores assess the consistency between
+the generated text and that of human experts, capturing the
+presence and order of n-grams, thereby evaluating the quality
+and coherence of the text. These traditional metrics quan-
+tify textual similarity through n-gram overlap or variation,
+forming a comprehensive framework for assessing automated
+radiology report generation systems and establishing techni-
+cal standards for model outputs.
+Impact of Different Training Strategies on Model
+Performance
+In the task of medical image generation, the scarcity and large
+volume of 3D chest CT data pose significant challenges for
+conducting large-scale model training. To make the most of
+the limited available datasets and achieve sufficient training,
+we designed several distinct training strategies and compared
+the quality of the generated reports. Specifically, our approach
+utilizes a fine-tuned image encoder and a linear projection
+module comprising a 2-layer MLP, both adapted with private
+dataset fine-tuning. To ensure consistent and fair comparison
+across different training strategies, we selected a uniform
+temperature parameter (0.7) for all strategies and reported the
+results based on this setting. The evaluation was conducted
+on the validation set (Dataset-XYval), which was not used
+during the training phase, ensuring that the test results reflect
+the model’s true generalization performance.
+T1 Training Strategy: We first pre-trained the model for
+5 epochs using CT-RATEtrain, followed by fine-tuning with
+1508 private data samples (Dataset-XYtrain) for 2 epochs. The
+total time required was 16 hours.
+T2 Training Strategy: We used 1508 private data
+samples(Dataset-XYtrain) to simultaneously pre-train the
+model for 5 epochs and fine-tune it for 2 epochs. The to-
+tal time required was 6 hours.
+T3 Training Strategy: We pre-trained and fine-tuned the
+model solely using the public dataset (CT-RATEtrain), which
+took a total of 18 hours.
+The results of these strategies are presented in Table 2.
+Comparison with Existing Methods
+To comprehensively evaluate the performance of 3D-CT-GPT
+model, we compared it against existing methods, including
+CT2Rep (Hamamci, Er, and Menze 2024), RadFM (Wu et al.
+2023), and M3D (Bai et al. 2024). Due to significant dif-
+ferences in model architecture and the unavailability of pre-
+trained weights and inference files for CT2Rep, it was ex-
+cluded from this comparison. The M3D literature indicates
+that RadFM does not outperform M3D in generating 3D med-
+ical reports, leading us to focus on a fair comparison between
+our model and M3D. To ensure a balanced evaluation, we
+adjusted our comparison strategy to account for differences
+in data processing and model accessibility, employing both
+direct and indirect assessment methods.
+Direct Comparison on Unified Datasets
+The M3D model
+processes 3D medical images by stacking multiple 2D PNG
+images into a 3D format. However, it does not utilize CT
+
+===== PAGE 6 =====
+Model / Method
+BLEU
+ROUGE-1
+ROUGE-2
+ROUGE-L
+METEOR
+BERTScore F1
+Training Strategies
+3D-CT-GPT (T1)
+0.3836
+0.4749
+0.2191
+0.3281
+0.3565
+0.8890
+3D-CT-GPT (T2)
+0.3476
+0.4446
+0.1978
+0.3092
+0.3198
+0.8862
+3D-CT-GPT (T3)
+0.2323
+0.3008
+0.0706
+0.1567
+0.2509
+0.8482
+Direct Comparison on Unified Dataset (Unseen by both models)
+3D-CT-GPT (T3) (Private Dataset)
+0.2323
+0.3008
+0.0706
+0.1567
+0.2509
+0.8482
+M3D (Private Dataset)
+0.0869
+0.1336
+0.0227
+0.1028
+0.0710
+0.8244
+3D-CT-GPT (T2) (Public Dataset)
+0.1327
+0.2594
+0.0586
+0.1454
+0.1403
+0.8412
+M3D (Public Dataset)
+0.0299
+0.1164
+0.0223
+0.0781
+0.0549
+0.8203
+Indirect Comparison (Literature Results)
+M3D (Linear) (Literature Result)
+0.1449
+0.1925
+-
+-
+0.1411
+0.8832
+M3D (MLP) (Literature Result)
+0.1515
+0.1955
+-
+-
+0.1438
+0.8846
+3D-CT-GPT (T1)
+0.3836
+0.4749
+0.2191
+0.3281
+0.3565
+0.8890
+Ablation Experiments (Based on T2 Strategy)
+3D-CT-GPT (T2-Unfine)
+0.2950
+0.4163
+0.1830
+0.2873
+0.3037
+0.8809
+3D-CT-GPT (T2)
+0.3476
+0.4446
+0.1978
+0.3092
+0.3198
+0.8862
+3D-CT-GPT (T2-Linear)
+0.3418
+0.4467
+0.1992
+0.3067
+0.3338
+0.8850
+Table 2: Performance comparison of 3D-CT-GPT and M3D across different training strategies and datasets. The table presents
+the evaluation metrics BLEU, ROUGE-1, ROUGE-2, ROUGE-L, METEOR, and BERTScore F1 for different models, training
+strategies, and datasets. The best and second-best results for each metric are highlighted in bold and underlined, respectively.
+values, which are crucial for accurate CT image analysis. Al-
+though M3D’s pre-trained weights are not publicly available,
+its complete model architecture and weights are accessible,
+enabling us to perform inference. To fully assess our model’s
+performance, we converted our data format to be compatible
+with M3D and used its provided inference code to generate
+radiology reports.
+We first conducted a direct comparison between 3D-CT-
+GPT (T3 training strategy) and M3D on the private dataset
+Dataset-XYval, ensuring that both models were tested under
+identical conditions. Then, to further evaluate the models’
+generalization capabilities, we tested 3D-CT-GPT (T2 train-
+ing strategy) and M3D on the public dataset CT-RATEval,
+ensuring the validity and fairness of the comparison.
+Indirect Comparison Using Literature Results
+Since
+M3D’s pre-trained weights weren’t publicly available, we
+couldn’t fine-tune the model and instead opted for direct
+comparison. However, considering that data formatting dif-
+ferences could affect M3D’s performance, we acknowledged
+that direct comparison might introduce some bias. To mit-
+igate this, we used the best evaluation metrics reported in
+the M3D literature as the benchmark. Simultaneously, we
+compared these with the performance of 3D-CT-GPT un-
+der the T1 training strategy. This approach ensures a fairer
+assessment of the relative advantages of our 3D-CT-GPT
+model.
+Ablation Study
+To assess the impact of different training strategies on model
+performance, we conducted an ablation study based on the
+T2 training strategy. The specific experiments are as follows:
+Comparison 1: Using the T2 training strategy, we first fine-
+tuned the CT-ViT model and compared it with the CT-ViT
+model without fine-tuning. Comparison 2: In the T2 training
+strategy, we compared the model performance using a 2-layer
+MLP versus a simple linear projection layer.
+The Impact of Temperature Parameters on
+Generation Quality
+The temperature parameter plays a crucial role in controlling
+the diversity and randomness of the generated text. Lower
+temperatures make the model’s output more deterministic,
+resulting in more conservative and accurate outcomes, which
+is particularly suitable for applications where accuracy is
+paramount, such as medical report generation. In this study,
+using the T2 training strategy as an example, we adjusted the
+temperature parameter in our experiments to observe its effect
+on the quality of the generated reports. To better illustrate the
+impact of temperature settings on report quality, we show the
+impact of various temperature settings (ranging from 0.1 to
+0.9) on several evaluation metrics, including BLEU, ROUGE,
+and METEOR in Figure 4.
+Results and Analysis
+Comparison of Different Training Strategies
+As shown in Table 2 under the Training Strategies section,
+the performance of the 3D-CT-GPT model varies across
+different training strategies. The T1 strategy, which com-
+bines pre-training on a public dataset with fine-tuning on
+private data, achieved the highest scores in BLEU (0.3836),
+
+===== PAGE 7 =====
+Report generation
+True Report：
+The bronchovascular bundles of both lungs are clear, and multiple nodules can be seen in both lungs. 
+The largest one is located in a solid nodule in the anteromedial basal segment of the lower lobe of the 
+left lung. The bronchus of each lobe and segment are unobstructed. No enlarged lymph nodes are 
+seen in the mediastinum and hilus of the lungs. No obvious abnormalities are observed in the heart 
+and major blood vessels. No thickening of bilateral pleura, and no effusion is observed in bilateral 
+thoracic cavity. Multiple round-like low-density shadows were seen in the liver on scan.
+3D-CT-GPT(T1):The bronchovascular bundles of both lungs are clear, no obvious major lesions are seen.The largest one is a 
+solid nodule in the outer basal segment of the lower lobe of left lung. The bronchus of each lobe and segment are unobstructed, 
+enlarged lymph nodes are scattered in the mediastinum and hilus of the lung, no abnormalities are observed in heart and major 
+blood vessels,dense shadows can be seen in some aorta, calcified foci can also be found in it, and no thickening of bilateral 
+pleura, pleural effusion on both sides, is seen.
+3D-CT-GPT(T2):The bronchovascular bundles of both lungs are clear, and several scattered small nodules can be seen. The 
+largest one is located in the anterior segment of the upper lobe of right lung, which is a solid nodule. A cord shadow can also be 
+clearly seen in both lower lung. No obvious major lesions are seen, the bronchus of each lobes and segment are unobstructed, 
+no enlarged lymph nodes are found in their mediastinum and hilus of lings, some aorta and coronary arteries are calcified, small 
+calcifications can still be found on the walls of some of them, bilateral thyroid glands are enlarge and density is uniform, liver 
+density decreased.
+3D-CT-GPT(T3):Trachea, both main bronchi are open. Mediastinal main vascular structures, heart contour, size are normal. 
+Thoracic aorta diameter is normal, pericardial effusion-thickening was not observed. Calcific atheroma plaques are observed in 
+the coronary arteries. A few millimetric lymph nodes are seen in both axillae. No enlarged lymeph node was detected in 
+prevascular, pre-paratracheal, subcarinal or bilateral hilar pathological dimensions. When examined in lung parenchyma window; 
+At the apical level of the right lung, there are signs of atelectasis in which air bronchograms are also observed, and nodular 
+ground glass densities are present. The findings were evaluated as compatible with the infectious process. It is recommended to 
+be evaluated together with clinical and laboratory find.
+Figure 3: Qualitative comparison of report generation be-
+tween 3D-CT-GPT and the ground truth. The generated re-
+ports from three different training strategies (T1, T2, T3)
+are compared against the true report. Text highlighted in the
+same color indicates similar content between the generated
+reports and the ground truth.
+ROUGE-1 (0.4749), and METEOR (0.3565), indicating su-
+perior report generation quality. However, this approach re-
+quired the longest training time (16 hours). The T2 strategy,
+which simultaneously pre-trains and fine-tunes on private
+data, offered a balanced solution, delivering slightly lower
+but still competitive performance, making it more suitable for
+resource-constrained environments. The T3 strategy, trained
+solely on public data, exhibited lower performance when
+tested on a private dataset. Nonetheless, it demonstrated the
+capability to generate reports even in the absence of private
+data, highlighting the potential of public data in achieving
+reasonable performance.
+To further illustrate these findings,Figure 3 presents an
+example where the generated reports from the three different
+training strategies (T1, T2, and T3) are compared against
+the ground truth for the same image. It is evident from the
+comparison that the T1 strategy produces reports that most
+closely align with the actual diagnostic results.
+Performance on Unified Dataset
+As shown in the Direct Comparison on Unified Dataset
+(Unseen by both models) section of Table 2, the 3D-CT-
+GPT model (T3 strategy) significantly outperforms M3D
+on the private dataset (Dataset-XYval). Specifically, 3D-CT-
+GPT achieved higher BLEU (0.2323 vs. 0.0869), ROUGE-1
+(0.3008 vs. 0.1336), ROUGE-2 (0.0706 vs. 0.0227), and
+ROUGE-L (0.1567 vs. 0.1028) scores.
+To evaluate generalization, we tested the T2-trained 3D-
+CT-GPT on the public dataset (CT-RATEval), where it contin-
+ued to outperform M3D, with a BLEU of 0.1327 vs. 0.0299,
+ROUGE-1 of 0.2594 vs. 0.1164, and ROUGE-L of 0.1454
+vs. 0.0781. The METEOR score also favored 3D-CT-GPT
+(0.1403 vs. 0.0549), highlighting its robustness and clinical
+potential.
+Indirect Comparison with Literature Results
+As shown in Table 2 under the Indirect Comparison (Lit-
+erature Results) section, the T1 training strategy outper-
+forms the M3D model in all key metrics, including BLEU
+(0.3836), ROUGE-1 (0.4749), ROUGE-L (0.3281), ME-
+TEOR (0.3565), and BERTScore F1 (0.8890). In comparison,
+M3D’s reported scores in the literature are lower, with BLEU
+ranging from 0.1449 to 0.1515, ROUGE-1 from 0.1925 to
+0.1955, and METEOR from 0.1411 to 0.1438. These results
+emphasize the superior capability of 3D-CT-GPT in generat-
+ing accurate and coherent radiology reports, even without the
+specific data formatting advantages of M3D. This reinforces
+the robustness and effectiveness of our model, particularly in
+leveraging both public and private datasets, and establishes
+3D-CT-GPT as a more reliable solution for clinical radiology
+report generation.
+Figure 4: Effect of Temperature on T2 Model Performance
+across different metrics (BLEU, ROUGE, METEOR).
+Ablation Study and Training Strategy Impact
+Under the T2 training strategy, the performance of the 3D-
+CT-GPT model across three configurations is summarized as
+follows:
+Without fine-tuning: The model showed weaker perfor-
+mance, with BLEU 0.2950, ROUGE-1 0.4163, METEOR
+0.3037, and BERTScore F1 0.8809.
+With fine-tuning: Performance improved significantly,
+achieving BLEU 0.3476, ROUGE-1 0.4446, METEOR
+0.3198, and BERTScore F1 0.8862.
+Using a linear projection layer: The model maintained
+strong performance, with BLEU 0.3418, higher ROUGE,
+METEOR scores, and BERTScore F1 0.8850.
+Fine-tuning significantly boosts performance, and the lin-
+ear projection layer offers a slight edge in semantic alignment,
+providing valuable insights for model optimization.
+Higher temperatures increased text diversity but reduced
+accuracy, as seen in Figure 4.
+Conclusion
+The experimental results demonstrate that the 3D-CT-GPT
+model, particularly when employing the T1 and T2 train-
+ing strategies, significantly outperforms existing methods
+in generating high-quality radiology reports. The model’s
+strong generalization across diverse datasets, coupled with
+the benefits of fine-tuning and carefully designed training
+strategies, underscores its potential for clinical deployment
+
+===== PAGE 8 =====
+in medical imaging. These findings validate the effectiveness
+of our approach and open up opportunities for further refine-
+ment and broader application in the field of radiology report
+generation.
+References
+Antol, S.; Agrawal, A.; Lu, J.; Mitchell, M.; Batra, D.; Zit-
+nick, C. L.; and Parikh, D. 2015. VQA: Visual Question
+Answering. In 2015 IEEE International Conference on Com-
+puter Vision (ICCV), 2425–2433.
+Bai, F.; Du, Y.; Huang, T.; Meng, M. Q. H.; and Zhao, B.
+2024. M3D: Advancing 3D Medical Image Analysis with
+Multi-Modal Large Language Models. arXiv:2404.00578.
+Banerjee, S.; and Lavie, A. 2005. METEOR: An Automatic
+Metric for MT Evaluation with Improved Correlation with
+Human Judgments. In Goldstein, J.; Lavie, A.; Lin, C.-Y.; and
+Voss, C., eds., Proceedings of the ACL Workshop on Intrinsic
+and Extrinsic Evaluation Measures for Machine Translation
+and/or Summarization, 65–72. Ann Arbor, Michigan: Asso-
+ciation for Computational Linguistics.
+Bazi, Y.; Rahhal, M. M. A.; Bashmal, L.; and Zuair, M. 2023.
+Vision–language model for visual question answering in med-
+ical imagery. Bioengineering, 10(3): 380.
+Chen, Z.; Shen, Y.; Song, Y.; and Wan, X. 2022. Cross-modal
+memory networks for radiology report generation. arXiv
+preprint arXiv:2204.13258.
+Chen, Z.; Song, Y.; Chang, T.-H.; and Wan, X. 2020. Generat-
+ing radiology reports via memory-driven transformer. arXiv
+preprint arXiv:2010.16056.
+Faye, B.; and Bengoumi, M. 2018. Camel clinical biochem-
+istry and hematology. Springer.
+Gan, R.; Wu, Z.; Sun, R.; Lu, J.; Wu, X.; Zhang, D.; Pan,
+K.; Yang, P.; Yang, Q.; Zhang, J.; et al. 2023.
+Ziya2:
+Data-centric Learning is All LLMs Need. arXiv preprint
+arXiv:2311.03301.
+Hamamci, I. E.; Er, S.; Almas, F.; Simsek, A. G.; Esirgun,
+S. N.; Dogan, I.; Dasdelen, M. F.; Wittmann, B.; Simsar,
+E.; Simsar, M.; et al. 2024.
+A foundation model utiliz-
+ing chest CT volumes and radiology reports for supervised-
+level zero-shot detection of abnormalities. arXiv preprint
+arXiv:2403.17834.
+Hamamci, I. E.; Er, S.; and Menze, B. 2024. Ct2rep: Auto-
+mated radiology report generation for 3d medical imaging.
+arXiv preprint arXiv:2403.06801.
+Hu, E. J.; Shen, Y.; Wallis, P.; Allen-Zhu, Z.; Li, Y.; Wang, S.;
+Wang, L.; and Chen, W. 2022. LoRA: Low-Rank Adaptation
+of Large Language Models. In International Conference on
+Learning Representations.
+Jing, B.; Xie, P.; and Xing, E. 2017.
+On the automatic
+generation of medical imaging reports.
+arXiv preprint
+arXiv:1711.08195.
+Li, C.; Wong, C.; Zhang, S.; Usuyama, N.; Liu, H.; Yang, J.;
+Naumann, T.; Poon, H.; and Gao, J. 2023a. Llava-med: Train-
+ing a large language-and-vision assistant for biomedicine in
+one day. arXiv preprint arXiv:2306.00890.
+Li, J.; Li, D.; Savarese, S.; and Hoi, S. 2023b. Blip-2: Boot-
+strapping language-image pre-training with frozen image
+encoders and large language models. In International confer-
+ence on machine learning, 19730–19742. PMLR.
+Li, J.; Zhu, G.; Hua, C.; Feng, M.; Bennamoun, B.; Li, P.;
+Lu, X.; Song, J.; Shen, P.; Xu, X.; et al. 2023c. A systematic
+collection of medical image datasets for deep learning. ACM
+Computing Surveys, 56(5): 1–51.
+Li, Y.; Li, Z.; Zhang, K.; Dan, R.; Jiang, S.; and Zhang, Y.
+2023d. Chatdoctor: A medical chat model fine-tuned on a
+large language model meta-ai (llama) using medical domain
+knowledge. Cureus, 15(6).
+Lin, C.-Y. 2004. ROUGE: A Package for Automatic Evalu-
+ation of Summaries. In Text Summarization Branches Out,
+74–81. Barcelona, Spain: Association for Computational Lin-
+guistics.
+Liu, C.; Tian, Y.; Chen, W.; Song, Y.; and Zhang, Y. 2024.
+Bootstrapping Large Language Models for Radiology Report
+Generation. In Wooldridge, M. J.; Dy, J. G.; and Natarajan,
+S., eds., AAAI, 18635–18643.
+Liu, H.; Li, C.; Li, Y.; and Lee, Y. J. 2023a. Improved Base-
+lines with Visual Instruction Tuning.
+Liu, Y.; Wang, Z.; Xu, D.; and Zhou, L. 2023b.
+Q2atransformer: Improving medical vqa via an answer query-
+ing decoder. In International Conference on Information
+Processing in Medical Imaging, 445–456. Springer.
+Maaz, M.; Rasheed, H.; Khan, S.; and Khan, F. S.
+2023. Video-chatgpt: Towards detailed video understand-
+ing via large vision and language models. arXiv preprint
+arXiv:2306.05424.
+M¨uller, N. 2002. Computed tomography and magnetic reso-
+nance imaging: past, present and future. European Respira-
+tory Journal, 19(35 suppl): 3s–12s.
+Papineni, K.; Roukos, S.; Ward, T.; and Zhu, W.-J. 2002.
+Bleu: a Method for Automatic Evaluation of Machine Trans-
+lation. In Isabelle, P.; Charniak, E.; and Lin, D., eds., Pro-
+ceedings of the 40th Annual Meeting of the Association for
+Computational Linguistics, 311–318. Philadelphia, Pennsyl-
+vania, USA: Association for Computational Linguistics.
+Qin, H.; and Song, Y. 2022. Reinforced cross-modal align-
+ment for radiology report generation. In Findings of the
+Association for Computational Linguistics: ACL 2022, 448–
+458.
+Quispe Bonilla, M. D.; Quispe Bonilla, C.; Serrano Arriezu,
+L. J.; Trigo Vilaseca, J. D.; Bengoechea, J.; and Quispe Pe˜na,
+E. 2023. Development and validation of a smart system for
+medullation and diameter assessment of alpaca, llama and
+mohair fibres. Animal 17, 5 (2023) 100800.
+Thawkar, O.; Shaker, A.; Mullappilly, S. S.; Cholakkal, H.;
+Anwer, R. M.; Khan, S.; Laaksonen, J.; and Khan, F. S. 2023.
+Xraygpt: Chest radiographs summarization using medical
+vision-language models. arXiv preprint arXiv:2306.07971.
+Tian, Y.; Gan, R.; Song, Y.; Zhang, J.; and Zhang, Y. 2023.
+Chimed-gpt: A chinese medical large language model with
+full training regime and better alignment to human prefer-
+ences. arXiv preprint arXiv:2311.06025.
+
+===== PAGE 9 =====
+Touvron, H.; Lavril, T.; Izacard, G.; Martinet, X.; Lachaux,
+M.-A.; Lacroix, T.; Rozi`ere, B.; Goyal, N.; Hambro, E.;
+Azhar, F.; et al. 2023. Llama: Open and efficient founda-
+tion language models. arXiv preprint arXiv:2302.13971.
+Tu, T.; Azizi, S.; Driess, D.; Schaekermann, M.; Amin, M.;
+Chang, P.-C.; Carroll, A.; Lau, C.; Tanno, R.; Ktena, I.; et al.
+2024. Towards generalist biomedical AI. NEJM AI, 1(3):
+AIoa2300138.
+Wang, H.; Liu, C.; Xi, N.; Qiang, Z.; Zhao, S.; Qin, B.; and
+Liu, T. 2023. Huatuo: Tuning llama model with chinese
+medical knowledge. arXiv preprint arXiv:2304.06975.
+Wu, C.; Lin, W.; Zhang, X.; Zhang, Y.; Xie, W.; and Wang,
+Y. 2024. PMC-LLaMA: toward building open-source lan-
+guage models for medicine. Journal of the American Medical
+Informatics Association, ocae045.
+Wu, C.; Zhang, X.; Zhang, Y.; Wang, Y.; and Xie, W. 2023.
+Towards Generalist Foundation Model for Radiology. ArXiv,
+abs/2308.02463.
+Xiong, H.; Wang, S.; Zhu, Y.; Zhao, Z.; Liu, Y.; Huang,
+L.; Wang, Q.; and Shen, D. 2023. Doctorglm: Fine-tuning
+your chinese doctor is not a herculean task. arXiv preprint
+arXiv:2304.01097.
+Zhang, L.; Rao, A.; and Agrawala, M. 2023. Adding condi-
+tional control to text-to-image diffusion models. In Proceed-
+ings of the IEEE/CVF International Conference on Computer
+Vision, 3836–3847.
+Zhu, D.; Chen, J.; Shen, X.; Li, X.; and Elhoseiny, M.
+2023. Minigpt-4: Enhancing vision-language understand-
+ing with advanced large language models. arXiv preprint
+arXiv:2304.10592.

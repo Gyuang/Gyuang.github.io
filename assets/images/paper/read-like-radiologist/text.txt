@@ -1,0 +1,1484 @@
+
+===== PAGE 1 =====
+Read Like a Radiologist: Efficient Vision-Language
+Model for 3D Medical Imaging Interpretation
+Changsun Leea,1, Sangjoon Parkb,1, Cheong-Il Shind, Woo Hee Choie, Hyun
+Jeong Parkf, Jeong Eun Leec,∗, Jong Chul Yea,∗
+aKim Jaechul Graduate School of AI, Korea Advanced Institute of Science and
+Technology (KAIST), Daejeon, Republic of Korea
+bDepartment of Radiation Oncology, Yonsei Cancer Center, Heavy Ion Therapy Research
+Institute, Yonsei University College of Medicine, Seoul, Republic of Korea
+cDepartment of Radiology, Chungnam National University Hospital, Chungnam National
+University College of Medicine, Daejeon, Republic of Korea
+dDepartment of Radiology, Seoul National University Hospital, Seoul National University
+College of Medicine, Seoul, Republic of Korea
+eDepartment of Nuclear Medicine, St. Vincent’s Hospital, College of Medicine, The
+Catholic University of Korea, Suwon, Republic of Korea
+fDepartment of Radiology, Chung-Ang University Hospital, Chung-Ang University
+College of Medicine, Seoul, Republic of Korea
+Abstract
+Recent medical vision-language models (VLMs) have shown promise in
+2D medical image interpretation. However extending them to 3D medical
+imaging has been challenging due to computational complexities and data
+scarcity. Although a few recent VLMs specified for 3D medical imaging have
+emerged, all are limited to learning volumetric representation of a 3D medi-
+cal image as a set of sub-volumetric features. Such process introduces overly
+correlated representations along the z-axis that neglect slice-specific clini-
+cal details, particularly for 3D medical images where adjacent slices have
+low redundancy.
+To address this limitation, we introduce MS-VLM that
+mimic radiologists’ workflow in 3D medical image interpretation. Specifi-
+cally, radiologists analyze 3D medical images by examining individual slices
+sequentially and synthesizing information across slices and views. Likewise,
+∗Corresponding authors
+Email addresses: leeje290@gmail.com (Jeong Eun Lee), jong.ye@kaist.ac.kr
+(Jong Chul Ye)
+1Co-first author
+Preprint submitted to Elsevier
+December 19, 2024
+arXiv:2412.13558v1  [eess.IV]  18 Dec 2024
+
+===== PAGE 2 =====
+MS-VLM leverages self-supervised 2D transformer encoders to learn a volu-
+metric representation that capture inter-slice dependencies from a sequence of
+slice-specific features. Unbound by sub-volumetric patchification, MS-VLM
+is capable of obtaining useful volumetric representations from 3D medical
+images with any slice length and from multiple images acquired from dif-
+ferent planes and phases. We evaluate MS-VLM on publicly available chest
+CT dataset CT-RATE and in-house rectal MRI dataset. In both scenarios,
+MS-VLM surpasses existing methods in radiology report generation, produc-
+ing more coherent and clinically relevant reports. These findings highlight
+the potential of MS-VLM to advance 3D medical image interpretation and
+improve the robustness of medical VLMs.
+Keywords:
+3D Medical Imaging, Radiology Report Generation,
+Self-Supervised Learning, Vision Transformers, Large Language Models
+1. Introduction
+Attempts to non-invasively visualize the internal structures of the hu-
+man body have driven significant advancements in medical imaging technol-
+ogy. These efforts began with two-dimensional (2D) modalities like plain
+X-rays, but gradually evolved toward more sophisticated three-dimensional
+(3D) imaging techniques, such as computed tomography (CT) and mag-
+netic resonance imaging (MRI), which offer a more detailed visualization of
+anatomical structures (Bushberg and Boone, 2011; Kalender, 2011; McRob-
+bie et al., 2017). CT and MRI imaging, by providing comprehensive insights
+without the need for invasive procedures, have become crucial and indeed in-
+evitable tools in modern medicine, supporting both diagnosis and treatment
+across diverse medical fields (Bushberg and Boone, 2011; Kalender, 2011;
+McRobbie et al., 2017).
+However, interpreting 3D medical imaging modalities, such as CT and
+MRI demands high level of expertise, often requiring significant time and
+effort from well-trained radiologists. Radiologists, however are not immune
+to the risk of error (Brady, 2017), which has spurred the development of
+artificial intelligence (AI) models aimed at assisting radiologists’ 3D medical
+image interpretation (Litjens et al., 2017). Despite some successes, particu-
+larly in specific tasks such as segmentation and detection (Wang et al., 2019;
+Hatamizadeh et al., 2022; Litjens et al., 2017), when compared to the per-
+formance of multi-modal models on simpler 2D modalities like X-rays (Lee
+2
+
+===== PAGE 3 =====
+et al., 2024; Li et al., 2024; Chaves et al., 2024), these AI models still face
+significant limitations in broader applications such as radiology report gen-
+eration or visual question answering (VQA).
+The limited success of 3D imaging AI models can be attributed to several
+key factors. First, there is a fundamental shortage of paired 3D image-report
+datasets compared to the abundance of datasets available for 2D imaging
+modalities such as X-rays (Johnson et al., 2019; Demner-Fushman et al.,
+2012; Irvin et al., 2019), resulting in significant data insufficiency. This chal-
+lenge is further exacerbated by the immense data volume and computational
+demands of 3D imaging, which are several hundred times greater than those
+of 2D imaging (Litjens et al., 2017). Second, the inherent complexity of 3D
+medical imaging poses significant challenges for effective encoding, as cur-
+rent 3D vision encoders often lack the capacity to capture the full scope
+of information required for accurate 3D image interpretation (Litjens et al.,
+2017; Dou et al., 2017; Isensee et al., 2021). Existing vision-language models
+(VLMs) also struggle to efficiently process the complex and voluminous data
+inherent in 3D imaging, leading to notable inefficiencies. Specifically, most
+state-of-the-art models (Wu et al., 2023; Blankemeier et al., 2024; Bai et al.,
+2024) rely on 3D vision encoders that partition image volumes into fixed-size
+3D patches. This approach introduces processing inefficiencies by creating
+unnecessary correlations across the z-axis, further limiting their effectiveness
+in handling 3D medical imaging data.
+To address these challenges, we propose a novel VLM inspired by the way
+radiologists interpret 3D medical images. Unlike traditional methods that
+treat the entire 3D volume as a uniform entity, our model, termed MultiSlice
+Vision Language Model (MS-VLM), processes 3D volumes as a collection of
+2D planes. This approach enables the model to encode information from each
+2D plane independently before combining them to produce a comprehensive
+interpretation. By leveraging this method, MS-VLM achieves significantly
+higher data and computational efficiency while delivering superior perfor-
+mance compared to conventional approaches. Additionally, the structural
+design of MS-VLM allows it to handle volumetric data with variable slice
+lengths, enhancing its versatility and adaptability across diverse clinical ap-
+plications. Notably, MS-VLM excels in scenarios where specific planes and
+phases are critical for accurate diagnosis, such as rectal MRI, where inter-
+pretations across different phases (e.g., pre-contrast and post-contrast) and
+planes (e.g., sagittal and axial) are essential. By incorporating reconstruc-
+tions of images from multiple planes and phases, MS-VLM closely mirrors
+3
+
+===== PAGE 4 =====
+the interpretive processes employed by radiologists, leading to improved di-
+agnostic performance.
+Our contributions can be summarized as follows:
+• Inspired by radiologists, we propose a novel 3D imaging interpretation
+method that treats 3D volumes as a collection of 2D planes, significantly
+improving data and computational efficiency.
+• By introducing a novel Z-former, the proposed MS-VLM model han-
+dles volumetric data with variable slice lengths, enhancing its practical
+utility in diverse clinical scenarios.
+• Specifically, by incorporating reconstructions from various planes and
+phases through the Z-former, MS-VLM aligns with radiologists’ inter-
+pretative workflows, resulting in improved performance.
+2. Related Work
+In this section, we provide a concise overview of recent research on the
+development of multi-modal foundation models in the medical domain and
+the approaches of the VLM for 3D medical imaging.
+2.1. Multi-modal Foundation Model in Medical Domain
+Healthcare is inherently multi-modal, requiring clinicians to synthesize
+information from various sources, such as medical images, clinical notes, lab
+results, electronic health records (EHR), genomic data, etc. to provide ef-
+fective patient care. In recent years, significant progress has been made in
+developing AI systems that achieve expert level performance within individ-
+ual modalities, such as interpreting radiographic images, analyzing pathology
+slides, or detecting genetic mutations (Pham et al., 2022; Taori et al., 2023;
+Qu et al., 2021). However, the complexity and multi-modal nature of health-
+care require AI models capable of integrating these diverse data types into a
+cohesive framework. The early attempts to achieve this integration leverage
+contrastive learning models, such as CLIP (Radford et al., 2021). CLIP maps
+images and corresponding contextual information into a shared embedding
+space through large-scale contrastive learning, demonstrating promising re-
+sults in integrating simple medical imaging data, like chest radiographs, with
+radiology reports. Medical adaptions of CLIP such as MedCLIP, CheXzero
+and CXR-CLIP (Wang et al., 2022; Tiu et al., 2022; You et al., 2023) perform
+4
+
+===== PAGE 5 =====
+image-text retrieval on chest X-ray (CXR) images and the corresponding re-
+ports demonstrating bidirectional understanding of the two modalities.
+Building on this foundation, more sophisticated approaches emerged to
+directly integrate data from different modalities. Unlike earlier CLIP-based
+methods, these newer approaches enable a more comprehensive understand-
+ing of multi-modal data, supporting advanced applications such as detailed
+medical report generation and VQA. Vision encoders for image data and text
+encoders for textual information are used together, with cross-attention and
+self-attention mechanisms facilitating seamless integration of complex infor-
+mation. This deeper level of integration not only correlates visual and textual
+data but also supports holistic tasks that require a nuanced understanding
+of medical data. Notable examples include PPKED, MedViLL, and Medical
+X-VL(Liu et al., 2021; Moon et al., 2022; Park et al., 2024).
+More recently, the impressive capabilities of large language models (LLMs)
+have driven efforts to develop multi-modal models with a generalist architec-
+ture. These models aim to handle multiple modalities using a single frame-
+work, enhancing flexibility and simplifying the integration process compared
+to specialized encoder modules. Med-PaLM M (Tu et al., 2024) is a pioneer-
+ing effort in this area, demonstrating the ability to process text, imaging, and
+genomic data within a unified framework. This design maximizes flexibility
+and information transfer across modalities, providing a strong foundation for
+future multi-modal AI systems. Med-PaLM M has also shown potential to
+outperform specialized models in specific tasks, suggesting that generalist
+models may offer superior performance even in domain-specific applications.
+Subsequent models, such as BioMedGPT and PathChat (Zhang et al., 2024a;
+Lu et al., 2024), have further built on these capabilities, underscoring the po-
+tential of foundational models to provide generalized solutions in the medical
+domain.
+2.2. VLMs for 3D Medical Imaging Interpretation
+Most initial efforts to develop effective multi-modal models in the medi-
+cal domain have largely focused on simpler 2D imaging modalities, such as
+plain radiographs and pathology slides (Tu et al., 2024; Li et al., 2024). How-
+ever, developing such models for 3D medical imaging modalities, like CT and
+MRI, have presented unique challenges: limited training data and high data
+dimensionality. Furthermore, current vision encoders often lack the capacity
+to adequately process the intricate information found in 3D medical images,
+5
+
+===== PAGE 6 =====
+as they require handling large-scale data while understanding complex spatial
+relationships.
+Unlike natural 3D data such as video, which contains significant redun-
+dancy across numerous frames and can comprise thousands of individual
+frames over a short duration, medical 3D imaging typically consists of fewer
+slices along the z-axis, usually ranging from 20 to 300. This fundamental
+difference presents challenges for the application of fixed-size 3D patch em-
+bedding methods. Approaches using fixed-size patches, such as those with
+dimensions of 16 by 16 by 16, often struggle to capture fine anatomical details
+effectively due to the lower number of slices in the z-axis compared to the
+high in-plane resolution typical of medical imaging, such as 512 by 512 for
+CT scans. As a result, while fixed embedding methods have proven effective
+for processing natural 3D data, they are less suited to the structural and
+informational characteristics of medical 3D imaging.
+Despite these challenges, progress has been made. RadFM (Wu et al.,
+2023) supports both 2D and 3D images, focusing on text generation tasks
+like report generation, rationale generation and VQA. Another significant
+contribution is CT-CLIP (Hamamci et al., 2024a), introducing the open-
+source dataset CT-RATE, which consists of over 25,000 chest CT volume-
+report pairs. CT-CLIP demonstrates that contrastive learning can align CT
+images with reports using a 3D vision encoder and text encoder, similar to
+CLIP. Both CT2Rep (Hamamci et al., 2024b) and 3D-CT-GPT (Chen et al.,
+2024) employ the 3D vision encoder architecture from CT-CLIP as part of its
+chest CT report generation model. Unlike CT2Rep that leverages a simple
+transformer decoder for report generation only, 3D-CT-GPT leverages LLM
+and perform both report generation and VQA. The M3D-LaMed model (Bai
+et al., 2024) further advances the field by integrating visual information into
+LLM through a perceiver module, enabling tasks like captioning, VQA, and
+segmentation. However, M3D-LaMed still relies on a 3D Vision Transformer
+(ViT) (Dosovitskiy, 2020) with fixed patch embedders, limiting its ability to
+capture detailed visual information, and retaining challenges in representing
+complex 3D medical structures effectively.
+3. Method
+3.1. Model Architecture
+MS-VLM comprises a vision encoder module, a bridger module, and a
+LLM as shown in Figure 1. The vision encoder includes a 2D ViT and a
+6
+
+===== PAGE 7 =====
+Fig. 1. Overview of MS-VLM architecture.
+novel Z-former that integrates slice-by-slice 2D ViT embeddings, while the
+bridger module features a perceiver resampler and an MLP layer to project
+volumetric representation to a fixed-size learnable query. The learnable query
+is then used as a visual prompt when instruction fine-tuning the LLM to
+perform vision-language tasks (report generation or VQA).
+Given a 3D medical image, each slice along the z-axis is processed by a
+pre-trained 2D ViT. The [CLS] token embeddings from the last layer are then
+concatenated to form a volumetric representation of the given image as a se-
+quence of slice-specific features. This volumetric representation is input to
+Z-former, which is constructed using a conventional transformer encoder ar-
+chitecture that employs sparse attention mechanism, Big Bird (Zaheer et al.,
+2020).
+The last hidden layer of Z-former then outputs a volumetric rep-
+resentation as a sequence of sub-volumetric features of which each feature
+incorporate information from both the original and neighboring slice-specific
+features. The last hidden layer output of Z-former is then used as keys and
+values for the perceiver resampler. The learned queries from the perceiver
+resampler then become the final volumetric representation of the given image
+and is provided as a visual prompt when instruction fine-tuning the LLM for
+report generation or VQA. The perceiver resampler allows the model to han-
+dle 3D medical images of varying slice lengths by enabling LLM fine-tuning
+on a fixed-size learnable query.
+3.2. Model Training
+The training consists of four stages – Stage 0: Training a domain-specific
+DINO vision encoder, Stage 1: Training a Z-former, Stage 2: Training a
+bridger module; Stage 3: Instruction fine-tuning a LLM for report generation
+7
+
+===== PAGE 8 =====
+and VQA. Figure 2 demonstrates the overall scheme of how the vision and
+language data are processed for each stage of training.
+Fig. 2.
+Overview of MS-VLM training and evaluation.
+a) MS-VLM is evaluated on
+public chest CT dataset CT-RATE and in-house Rectal MRI dataset. MS-VLM learns
+volumetric representation off of a single axial view for chest CT and multi-view for rectal
+MRI.
+3.2.1. Training a Domain-Specific DINO Vision Encoder
+We utilize a 2D ViT-B/16 model pre-trained on ImageNet-1K using DINO
+(Self-Distillation with No Labels) (Caron et al., 2021) to extract slice-specific
+spatial features from volumetric images. DINO is a self-supervised learn-
+ing method that leverages a teacher-student network structure to learn vi-
+sual representations without labels. By aligning information between views,
+DINO effectively captures high-quality features suitable for various down-
+stream tasks. During the self-supervised learning process, DINO enables the
+2D ViT to learn semantic representations and essential patch-level features,
+which are crucial for visual understanding. For a volumetric image with slice
+length L, each 2D slice i is processed through the pre-trained encoder. We
+extract the [CLS] token embedding z[CLS]
+i
+from the final layer, representing
+slice-specific spatial features. These embeddings are concatenated along the
+z-axis to create a comprehensive volumetric representation.
+Zvol = [z[CLS]
+1
+, z[CLS]
+2
+, . . . , z[CLS]
+L
+]
+8
+
+===== PAGE 9 =====
+The concatenated embeddings Zvol are then input to the Z-former for further
+processing.
+3.2.2. Training the Z-former
+To train the Z-former, we introduce masked embedding modeling (MEM),
+inspired by masked image modeling (Xie et al., 2022). Instead of predicting
+pixel values, MEM regresses on [CLS] token embeddings from Zvol, where
+each embedding is masked with a fixed probability.
+The Z-former recon-
+structs the masked embeddings, optimizing via ℓ1 loss against the original:
+LMEM =
+1
+|M|∥ˆZmasked −Zvol∥1
+(1)
+Here, M refers to the set of masked embeddings and |M| denotes its cardi-
+nality. The l1 norm is defined as the sum of the absolute differences of each
+vector embedding.
+Using sparse attention, the Z-former captures dependencies along the z-
+axis, effectively learning the relational structure across slices to represent spa-
+tial dependencies. The final hidden state embedding encodes sub-volumetric
+features incorporating information from the current and neighboring slices.
+3.2.3. Training the Bridger Module
+The task-agnostic volumetric representation generated by the Z-former
+requires further alignment with the language space of the LLM. To address
+this modality gap, we utilize a perceiver resampler (Alayrac et al., 2022)
+and an MLP with ReLU activation. The Z-former’s final hidden state is pro-
+jected as keys and values for the perceiver resampler’s cross-attention module,
+where the learnable query attends to specific sub-volumetric representations
+and aggregates them into refined visual features. These features are subse-
+quently mapped to the LLM’s conceptual language space using the MLP,
+which adjusts the query dimension to match that of the LLM embedding
+space.
+During this process, the DINO vision encoder, Z-former and LLM remain
+frozen, ensuring the preservation of pre-trained knowledge in the vision en-
+coder module while avoiding catastrophic forgetting in the LLM. The bridger
+module is optimized to align the visual feature to the LLM embedding space
+such that aligned feature generate the corresponding reports. The bridger
+module thus plays a critical role in transforming the visual features into a
+format that is fully compatible with the LLM’s language space.
+9
+
+===== PAGE 10 =====
+Fig. 3. Instruction prompts used for instruction fine-tuning the LLM for report genera-
+tion.
+Fig. 4. Generating synthetic VQA pairs from CT-RATE reports using LLaMA-3-8B.
+3.2.4. Instruction Fine-tuning
+We employ Vicuna-7B-v1.5 (Chiang et al., 2023) as our LLM, selected
+for its exemplary instruction-following capabilities among publicly accessible
+checkpoints (Liu et al., 2024; Chiang et al., 2023; Taori et al., 2023). The
+instructions provided for the chest CT report are illustrated in Figure 3.
+The placeholder <ImageHere> represents the learned query generated by
+the bridger module, which will henceforth be referred to as the visual fea-
+tures. These visual features are encapsulated within <Img/> and </Img>
+token embeddings to distinguish them from the report generation instruc-
+tions.
+During this stage, the DINO vision encoder and the Z-former re-
+main frozen, while only the bridger module and the LLM are subject to
+fine-tuning. Specifically, the LLM is fine-tuned using Low-Rank Adaptation
+(LoRA) by minimizing the negative log-likelihood (NLL) of generating the
+report Y = {y1, y2, . . . , yT}, conditioned on the visual features Q and the
+instruction I.
+Linst = −
+T
+X
+t=1
+log P(yt | y<t, Q, I)
+(2)
+One key challenge in aligning 3D medical images, such as CT scans, with
+radiology reports is the presence of multiple findings within a single scan.
+Radiology reports inherently describe diverse findings, complicating effective
+alignment between the image and the text, often resulting in inadequate
+10
+
+===== PAGE 11 =====
+representation of individual findings.
+To address this challenge, we decompose radiology reports into individ-
+ual components and construct a VQA dataset. Each VQA pair specifically
+queries the presence and attributes (e.g., location or severity) of a single find-
+ing, thereby ensuring precise alignment between each distinct finding in the
+image and its corresponding textual description. For this purpose, we uti-
+lize the RadGenome-ChestCT dataset (Zhang et al., 2024b), which provides
+VQA pairs related to the presence, location, size, and type of abnormali-
+ties in CT-RATE chest CT scans. Additionally, we generate synthetic VQA
+pairs based on CT-RATE reports using LLaMA-3-8B, as illustrated in Fig-
+ure 4, with detailed prompt instructions available in Appendix A. Both the
+RadGenome-ChestCT dataset and the synthetic VQA pairs are employed in
+the VQA task.
+Finally, MS-VLM is fine-tuned on both the report generation task and
+the VQA task. The report generation task aims to generate comprehensive
+radiology reports, while the VQA task focuses on answering specific ques-
+tions about individual findings. These tasks are jointly fine-tuned with a 1:1
+sample ratio per training iteration.
+3.3. Implementation Details
+3.3.1. Datasets
+For the chest CT report generation task, we evaluate our model using the
+CT-RATE dataset, introduced in CT-CLIP (Hamamci et al., 2024a). The
+CT-RATE dataset comprises 25,692 non-contrast chest CT volumes from
+21,304 unique patients. With multiple reconstructions, the dataset expands
+to 50,188 volumes, each paired with radiology reports detailing findings and
+impressions.
+We train our model on 47,149 volumes from 20,000 unique patients, ex-
+cluding cases with insufficiently short reports. The test set consists of 3,039
+volumes from 1,304 unique patients. To ensure a fair comparison with exist-
+ing methods, such as CT2Rep, we focus exclusively on the findings sections
+of the reports.
+CT volumes are preprocessed following the CT-CLIP protocol (Hamamci
+et al., 2024a), which includes resizing to achieve uniform spacing of 1.5 mm
+along the z-axis and 0.75 mm along the x- and y-axes. Each volume is then
+padded or center-cropped to maintain a consistent resolution of 480 × 480 ×
+240 across the dataset.
+11
+
+===== PAGE 12 =====
+Fig. 5. An example of a rectal MRI report that describes the seven most common rectal
+tumor-related abnormalities. Each sentence is color-coded based on the abnormality it
+describes.
+For the chest CT VQA task, we utilize both synthetic VQA pairs and pairs
+from the RadGenome-ChestCT dataset (Zhang et al., 2024b). The synthetic
+dataset, comprising approximately 180,000 QA pairs, excludes instances with
+overly brief answers, such as “Yes” or “No.” RadGenome-ChestCT, a large-
+scale dataset with detailed 3D chest CT annotations, provides 1.3 million
+QA pairs based on CT-RATE. For training, we filter QA pairs to retain
+only those mentioning the most specific anatomical regions associated with
+common abnormalities, ensuring precise alignment. An example QA pair
+is provided in Appendix
+A. For training, we randomly select 121,000 QA
+pairs related to the types of abnormalities, 136,000 presence-related QA pairs,
+110,000 location-related QA pairs, and 14,000 size-related QA pairs, creating
+a comprehensive training dataset that ensures robust coverage across different
+aspects of chest CT interpretation.
+The rectal MRI report generation was conducted using in-house data ob-
+tained from Chungnam University Hospital. The dataset comprised MRI
+volumes from 311 patients and their corresponding radiology reports. Most
+of the radiolgy reports, though unstructured and presented in free-form text,
+consistently contained information on seven key findings: tumor location,
+peritoneal involvement, T staging, circumferential resection margin (CRM)
+involvement, anal sphincter involvement (ASI), mesorectal lymph node in-
+volvement (MLNI), and extramural venous invasion (EMVI). Tumor location
+was measured in centimeters from the anal verge to guide treatment deci-
+sions, while peritoneal involvement was categorized as none, partial, or full to
+assess the extent of invasion. T staging classified the tumor’s depth (T1-T4),
+indicating its local invasiveness. The CRM was evaluated to determine the
+proximity of the tumor to the mesorectal fascia, which serves as an indicator
+of local recurrence risk. ASI assessed the potential tumor extension into the
+12
+
+===== PAGE 13 =====
+anal sphincter, influencing surgical options regarding sphincter preservation.
+MLNI involved checking for signs of lymph node enlargement or metastasis,
+which are crucial prognostic factors. EMVI assessed the tumor’s invasion
+into extramural veins, which is associated with an increased risk of metasta-
+sis (refer to Figure 5 for details).
+The MRI volumes for each patient were acquired using three different con-
+trasts: T1-weighted (T1), T2-weighted (T2), and Diffusion-Weighted Imag-
+ing (DWI). The T1 and T2 volumes were obtained across five imaging planes:
+axial, oblique axial, sagittal, coronal, and oblique coronal, while the DWI
+volumes were captured exclusively in the axial plane. The T1 volumes were
+acquired with or without modifiers such as Fat Suppression (FS), Spectral
+Presaturation with Inversion Recovery (SPIR), and Contrast Enhancement
+(CE) to improve image clarity. For some patients, both modified and un-
+modified versions of T1 volumes were available. Overall, the MRI volumes
+per patient included at least four axial volumes, two sagittal volumes, and
+one coronal volume.
+These multi-view and multi-phase MRI volumes were utilized to compare
+a baseline model that exclusively uses T2 axial volumes, which are consid-
+ered most critical for rectal tumor MRI interpretation, with the proposed
+MS-VLM, capable of robustly processing all imaging phases regardless of se-
+quence length. Further details regarding the availability of volumes for each
+imaging plane and contrast phase can be found in Appendix B.
+The study received approval from the Institutional Review Board (IRB)
+of Chungnam University Hospital (IRB number 2022-05-113), and the re-
+quirement for informed consent was waived due to the retrospective nature
+of the study.
+3.3.2. Training Details
+To train on CT-RATE during Stage 0, we employed a ViT-B/16 model
+as the DINO vision encoder, initialized with ImageNet-1K DINO pretrained
+weights. We fine-tuned the model for 50 epochs on volumetric image slices
+using DINO. Global and local crops were applied with area ranges of 0.8–1.0
+and 0.1–0.3, respectively, relative to the input image area. Data augmenta-
+tions included random rotations, auto-contrast, and equalization.
+For subsequent training stages, input image dimensions were set to 240×
+3 × 480 × 480, representing full volumes. A Z-former, with 12 hidden layers
+and a model dimension of 768, was employed. The Z-former utilized a sparse
+attention mechanism with a sliding window size of 16 and three random
+13
+
+===== PAGE 14 =====
+blocks, without global blocks. It was pre-trained for 20 epochs using masked
+embedding modeling (MEM) to capture dependencies along the z-axis. The
+masking probability was set to 0.3. Both the 2D ViT and Z-former were
+trained with the Adam optimizer with learning rate of 1e-4 and an initial
+warmup phase of 50 linear iterations starting from 1e-5.
+The perceiver resampler was initialized with 32 learnable queries, each
+with a dimension of 4096. Both the perceiver resampler and an associated
+MLP layer were randomly initialized before training. For the LLM, Vicuna-
+7B-1.5v was used. The bridger module was trained for 1 epoch, followed by 5
+epochs of joint training with the LLM. An AdamW optimizer was used with
+a learning rate of 1e-4 and a weight decay of 0.05.
+The rectal MRI dataset consisted of 311 patients, of which 82 were ex-
+cluded from training due to radiology reports lacking sufficient detail on the
+seven key findings. The remaining dataset was divided into 186 patients for
+training and 43 patients for testing. For all training stages, we employed
+a configuration similar to the CT-RATE training pipeline. Specifically, a
+domain-specific DINO vision encoder was pre-trained in a self-supervised
+manner using only the T1/T2 axial and sagittal views, as these are the most
+critical planes for analyzing rectal tumors. In cases where patients had more
+volumes than the required number, a prioritization strategy was applied to
+select volumes in the following order: T2 volumes, T1 volumes with modifiers
+(e.g., FS, CE), and T1 volumes without modifiers. This order reflects the rel-
+ative significance of these imaging modalities in diagnosing rectal tumors. As
+a result, 20 slices were sampled from each of the six selected phases, leading
+to a stacked input configuration of 120 × 3 × 480 × 480.
+All experiments on CT-RATE were conducted on eight NVIDIA A100
+(40GB) GPUs, while those on rectal MRI were conducted on a single NVIDIA
+A100 (40GB) GPU.
+3.4. Evaluation Metrics for Chest CT
+To assess the clinical efficacy of the generated radiology reports, we em-
+ploy two evaluation approaches: natural language generation (NLG) met-
+rics, including BLEU (Papineni et al., 2002), ROUGE (Rouge, 2004), and
+METEOR (Lavie and Denkowski, 2009), and clinical accuracy (CA) metrics,
+including precision, recall and F1, as utilized in CT2Rep. NLG metrics quan-
+tify the linguistic similarity between the generated reports and the ground
+truth by evaluating n-gram overlaps, sequence alignment, and synonym us-
+age.
+These metrics provide an objective measure of the overall linguistic
+14
+
+===== PAGE 15 =====
+quality and coherence of the generated reports with respect to the ground
+truth.
+For CA metrics, we use a RadBERT-based text classifier introduced in
+CT-CLIP (Yan et al., 2022; Hamamci et al., 2024a) to determine whether the
+generated reports include the abnormalities present in the ground truth. We
+calculate precision, recall, and F1 scores for each abnormality to evaluate this
+alignment. CA metrics thus measure how well the generated reports capture
+critical findings from the ground truth while minimizing hallucinated content.
+Radiology reports may differ in specific phrasing or structure while con-
+veying fundamentally the same information. To accommodate such variabil-
+ity, we employed an additional evaluation framework utilizing LLMs. Con-
+ventional NLP metrics, which primarily capture structural similarity, often
+fail to account for semantic equivalence. Similarly, CA metrics provide quan-
+tifiable measures but struggle to reflect nuanced or alternative expressions of
+equivalent clinical content. LLM-based evaluation offers a potential solution
+by addressing these limitations and enabling more flexible and context-aware
+assessments.
+In the evaluation of chest CT reports, four key categories were defined:
+Presence, Severity, Location, and Hallucination. Each category is assessed
+binarily, with a score of 1 indicating complete accuracy across all abnormal
+findings in the reference report. A score of 0 signifies the presence of factual
+errors in the generated report concerning the relevant category. GPT-4o-
+mini was used for evaluation. Detailed evaluation prompts for each category
+are provided in Appendix C.
+3.5. Evaluation Metrics for Rectal MRI
+The evaluation of rectal MRI involved the seven key findings previously
+mentioned to assess tumor staging and invasion: tumor location, peritoneal
+involvement, T staging, CRM involvement, ASI, MLNI, and EMVI. Given
+the heterogeneous nature of these findings, distinct evaluation approaches
+were employed based on their characteristics.
+Metrics such as tumor location and peritoneal involvement are inherently
+complex and difficult to evaluate using straightforward binary classification.
+These findings often involve nuanced descriptions and categorizations, such
+as precise tumor distance from the anal verge or the extent of peritoneal inva-
+sion. To address this complexity, a LLM was utilized to indirectly assess the
+validity of these metrics. By leveraging advanced contextual understanding,
+15
+
+===== PAGE 16 =====
+the LLM provided an approximate measure of accuracy.
+Specifically, o1-
+mini was employed for this evaluation, enabling a flexible and context-aware
+assessment of these findings. The prompts used for o1-mini evaluation is
+detailed in Appendix C.
+In contrast, findings such as CRM involvement, ASI, MLNI, and EMVI,
+which can be distinctly classified as either positive or negative, were evalu-
+ated using CA metrics. These metrics quantified the classification accuracy
+through measures such as precision, recall, and F1 scores, providing a robust
+evaluation of the generated reports’ ability to accurately reflect the presence
+or absence of these clinically significant features.
+4. Experimental Results
+4.1. Experimental Results on CT-RATE
+Among the existing methods for chest CT report generation, we selected
+CT2Rep and 3D-CT-GPT as primary baselines due to their demonstrated
+effectiveness in processing chest CT scans. Other approaches, such as RadFM
+and M3D-LaMed, rely on pre-training datasets sourced from Radiopedia,
+and their performance on report generation has been shown to lag behind
+that of 3D-CT-GPT. Accordingly, our evaluation emphasizes models that are
+specialized for chest CT report generation.
+In addition, to demonstrate the efficiency of MS-VLM’s volumetric rep-
+resentation processing, we conducted an additional experiment where the
+vision encoder in MS-VLM was replaced with a 3D ViT, closely mirroring
+the architecture used in existing models. We refer to this MS-VLM variant
+as MS-VLM (3D encoder).
+Only stages 2 and 3 of the MS-VLM training procedure are applied to
+training MS-VLM (3D encoder), with the 3D ViT also being trained for
+both stages. A direct comparison with MS-VLM (3D encoder) under identi-
+cal experimental conditions enables a clear evaluation of the improvements
+introduced by our approach.
+Using the official implementation and training settings provided for CT2Rep,
+we successfully reproduced its results and evaluated its performance on the
+CT-RATE test set. Since the code for 3D-CT-GPT is not publicly available,
+we relied on the performance metrics reported in the original paper (Chen
+et al., 2024). Specifically, we compared against the 3D-CT-GPT (T2) model,
+which was pre-trained on a private chest CT dataset and validated on CT-
+16
+
+===== PAGE 17 =====
+Table 1
+Comparison of NLG metrics and CA metrics on the generated reports between MS-VLM and baseline methods.
+Method
+NLG Metrics
+CA Metrics
+BLEU-4
+ROUGE-L
+METEOR
+Precision
+Recall
+F1 Score
+3D-CT-GPT
+0.133
+0.145
+0.140
+-
+-
+-
+CT2Rep (3D encoder)
+0.252
+0.432
+0.328
+0.355
+0.132
+0.175
+MS-VLM (3D encoder)
+0.184
+0.364
+0.331
+0.193
+0.231
+0.207
+MS-VLM (w/o VQA)
+0.189
+0.374
+0.313
+0.192
+0.298
+0.232
+MS-VLM (proposed)
+0.232
+0.438
+0.396
+0.222
+0.329
+0.261
+* The best performance is highlighted in bold, and the second-best is underlined. CA metrics are averaged across 18
+chest-related abnormalities.
+RATE. The results on 3D-CT-GPT that is trained and validated solely on
+CT-RATE were unavailable.
+4.1.1. Report Generation Results
+As presented in Table 1, MS-VLM demonstrates superior performance in
+radiology report generation compared to baseline methods. It consistently
+surpasses 3D-CT-GPT (T2) and CT2Rep in ROUGE and METEOR metrics,
+highlighting its ability to generate reports that closely align with the original
+radiology report structure annotated by experts.
+In terms of CA metrics, MS-VLM achieves the highest overall perfor-
+mance, with an average F1 score of 0.261.
+While CT2Rep demonstrates
+higher precision, its lower recall reduces its overall F1 score. The qualitative
+comparison in Figure 6 further highlights the superiority of MS-VLM. It ef-
+fectively recalls a greater number of abnormal findings, generating reports
+that closely align with the ground truth. Notably, MS-VLM demonstrates
+the ability to identify subtle positive findings, such as satellite masses and
+fibrotic changes, which are often overlooked by other baseline models.
+MS-VLM also outperforms its variant, MS-VLM (3D encoder), which is
+a variant of MS-VLM using 3D ViT encoder without Z-former, in both NLG
+and CA metrics. Higher average ROUGE, METEOR, and F1 scores confirm
+that MS-VLM generates reports that better match radiologists’ annotations
+while addressing critical findings more effectively, demonstrating the utility of
+the proposed combination of a 2D vision encoder and the Z-former compared
+to conventional 3D vision encoder approaches. As shown in Figure 6, MS-
+VLM identifies more true positives compared to MS-VLM (3D encoder).
+For additional qualitative analyses, refer to Appendix D. Similar trends are
+observed in comparisons with other MS-VLM variants. When VQA task is
+17
+
+===== PAGE 18 =====
+Fig. 6.
+Qualitative evaluation on CT-RATE. Each sentence from the report is color
+coded to identify True Positive, True Negative, False Positive and False Negatives on the
+findings mentioned in the ground truth report. MS-VLM achieves greater recall on the
+true positives and is less prone to generating false negatives. MS-VLM (3D encoder): A
+variant of MS-VLM using 3D ViT encoder without Z-former.
+18
+
+===== PAGE 19 =====
+Table 2
+Comparison of GPT-4o-mini evaluation performance between MS-VLM and baseline
+methods.
+Method
+Presence
+Location
+Severity
+Hallucination
+CT2Rep (3D encoder)
+0.186
+0.197
+0.216
+0.186
+MS-VLM (3D encoder)
+0.203
+0.216
+0.223
+0.122
+MS-VLM (w/o VQA)
+0.212
+0.207
+0.209
+0.124
+MS-VLM (proposed)
+0.217
+0.225
+0.234
+0.127
+* The best performance is highlighted in bold, and the second-best is underlined.
+not performed jointly with report generation task during training, MS-VLM
+(w/o VQA) performance becomes suboptimal, suggesting the importance of
+integrating both tasks for optimal performance.
+For quantitative evaluation, detailed CA metric results for MS-VLM
+across 18 abnormality categories are provided in Appendix
+E. Table 2
+presents the evaluation results using GPT-4o-mini.
+Unlike abnormality-
+specific evaluations, GPT-4o-mini assesses the overall report’s accuracy for
+each category on a binary scale. Due to this strict evaluation criterion, even
+minor inaccuracies result in a score of zero, leading to relatively low average
+scores across all categories for all models.
+MS-VLM demonstrates superior performance in the presence, location,
+and severity categories, with the exception of the hallucination category.
+These results indicate that MS-VLM not only accurately predicts abnormal-
+ities but also exceeds baseline models in identifying their precise location and
+severity. However, in the hallucination category, MS-VLM achieves slightly
+lower scores compared to CT2Rep.
+The relatively better performance of
+CT2Rep in the hallucination category is likely attributable to its tokenizer,
+which has been specifically trained on CT-RATE radiology reports.
+MS-VLM outperforms both its variants, MS-VLM (3D encoder) and MS-
+VLM (w/o VQA), across all evaluated categories. These results suggest the
+superiority of the proposed Z-former-based approach over traditional 3D vi-
+sion encoder methods. Furthermore, they highlight the critical role of VQA
+training focused on single abnormalities in improving the model’s under-
+standing and alignments for the fine-grained findings, thereby enabling more
+precise attention to detailed abnormalities and enhancing overall model per-
+formance.
+19
+
+===== PAGE 20 =====
+Table 3
+Comparison of CA metrics of the generated reports when
+MS-VLM is given volumes with fixed z-length versus volumes with
+original slice length.
+Method
+Precision
+Recall
+F1
+all volumes
+CT2Rep (z = 240)
+0.355
+0.132
+0.175
+MS-VLM (z = 240)
+0.222
+0.329
+0.261
+MS-VLM (z = L)
+0.234
+0.286
+0.245
+volumes with L > 240
+CT2Rep (z = 240)
+0.330
+0.146
+0.190
+MS-VLM (z = 240)
+0.229
+0.258
+0.237
+MS-VLM (z = L)
+0.226
+0.284
+0.246
+* z denotes the number of slices in z-axis, and L denotes original
+slice length of the volume.
+4.1.2. Robustness of Z-former
+Our model inherently integrates visual information into a single [CLS]
+token embedding z[CLS]
+i
+irrespective of the z-length, enabling it to process
+visual information seamlessly across varying z-lengths. This capability offers
+a significant advantage in clinical settings where slice lengths are not fixed,
+as scan ranges are determined post-scout view (tomogram) acquisition, re-
+sulting in variable slice lengths for each patient. This flexibility contrasts
+with traditional models that rely on 3D vision encoder with a fixed z-length,
+which may lead to information loss.
+To validate this hypothesis, we conducted experiments analyzing the im-
+pact of slice count on CT volume performance. For a fair comparison with
+previous studies, the baseline setting involves fixing the z-length to a con-
+stant value of 240. However, when the z-length L exceeds 240, fixed z-length
+approaches may suffer from significant information loss. We compared our
+method, MS-VLM which uses original slice length without fixing the z-length,
+against both traditional fixed z-length methods and MS-VLM with fixed z-
+length.
+Table 3 summarizes the experimental results. The MS-VLM approach,
+which retains the original slice length without imposing a fixed z-length,
+exhibits no significant performance degradation, demonstrating its adapt-
+ability. This advantage is particularly evident in subgroup analyses of data
+with longer slice length (L > 240), where the proposed method outper-
+20
+
+===== PAGE 21 =====
+Table 4
+Comparison of o1-mini evaluation performance and F1 scores of abnormality prediction between MS-VLM and baseline methods.
+Model
+Location
+Peritoneum
+T Stage
+CRM
+ASI
+MLNI
+EMVI
+Accuracy
+F1
+CT2Rep (T2 axial)
+0.209
+0.488
+0.163
+0.143
+0.133
+0.108
+0.000
+MS-VLM (3D encoder, T2 axial)
+0.116
+0.372
+0.116
+0.171
+0.121
+0.426
+0.111
+MS-VLM (T2 axial)
+0.209
+0.395
+0.279
+0.308
+0.114
+0.298
+0.111
+MS-VLM (all views & phases)
+0.233
+0.512
+0.581
+0.421
+0.222
+0.667
+0.143
+* Accuracy is evaluated using o1-mini. The best values are highlighted in bold, and the second-best are underlined. The name
+of the abnormalities are shortened for readability.
+forms not only fixed z-length approaches such as CT2Rep but also the fixed
+z-length variant of MS-VLM. These findings effectively validate our hypothe-
+sis and suggest the utility of MS-VLM in clinical scenarios involving variable
+z-lengths.
+4.2. Experimental Results on Rectal MRI
+The rectal MRI experiments were conducted to evaluate the proposed
+MS-VLM architecture under key conditions characterized by fewer slices per
+volume compared to CT, the necessity of integrating multiple views (e.g., ax-
+ial, sagittal) and phases (e.g., T1, T2), and limited data availability. These
+conditions were designed to assess the advantages of MS-VLM’s pre-trained
+2D vision encoder using DINO and its subsequent Z-former self-supervised
+learning approach, along with the overall training framework, in efficiently
+handling multi-phase and multi-view data and adapting to data-scarce clin-
+ical settings.
+Table 4 summarizes the experimental results, demonstrating that MS-
+VLM outperformed baseline methods, including CT2Rep and MS-VLM (3D
+encoder), across all critical findings. Notably, the proposed MS-VLM achieved
+significant improvements in key metrics such as T stage classification, CRM
+threatening, and MLNI detection. In these metrics, MS-VLM not only out-
+performed CT2Rep and MS-VLM (3D encoder) but also exceeded the perfor-
+mance of a variant using only the primary view, T2 axial, within the identical
+MS-VLM framework. These results validate MS-VLM’s ability to effectively
+integrate information from multi-view and multi-phase data, underscoring
+the importance of such integration for optimal performance. For qualitative
+examples of the generated reports, refer to Appendix D.
+21
+
+===== PAGE 22 =====
+4.3. Results on Computational Efficiency
+Our approach leverages DINO to effectively learn critical visual represen-
+tations from individual slices in the initial stage, followed by the Z-former to
+capture inter-slice dependencies. This two-step strategy facilitates rapid con-
+vergence during subsequent training with 3D volumetric data, offering com-
+putational efficiency in terms of data utilization. Furthermore, our method
+maximizes the benefits of pre-trained LLMs by separating the tuning pro-
+cess into distinct stages, allowing us to exploit the advantages of pre-training
+to further improve computational efficiency.
+To validate this hypothesis,
+we compared the convergence speed of models during the training process.
+Figure 7 demonstrates that the MS-VLM architecture achieves the fastest
+convergence in CA metric performance compared to other methods. For in-
+stance, CT2Rep attains an average F1 score of only 0.038 after the same
+five epochs, indicating that it requires significantly more training to achieve
+comparable performance. Specifically, CT2Rep needed 40 epochs of training
+to reach an average F1 score of 0.175. Notably, the proposed MS-VLM ap-
+proach, which utilizes a 2D vision encoder and the Z-former, achieves faster
+convergence and superior performance compared to methods employing a 3D
+vision encoder. This demonstrates the efficiency of the sequential training
+strategy, wherein DINO is used to pre-train the 2D vision encoder, followed
+by training the Z-former to capture inter-slice dependencies. These results
+suggest the computational advantages of our staged approach, effectively
+leveraging the strengths of pre-trained LLMs to achieve efficient convergence
+while maintaining high performance.
+5. Discussion
+Recent advancements in multi-modal AI models and improvements in
+model scalability have underscored the potential of true multi-modal medi-
+cal foundation models (Tu et al., 2024; Zhang et al., 2024a; Lu et al., 2024).
+These models aim to integrate diverse data modalities such as images and
+text, with a growing emphasis on extending capabilities beyond 2D images
+to volumetric 3D imaging modalities like CT and MRI (Wu et al., 2023;
+Hamamci et al., 2024a; Chen et al., 2024; Bai et al., 2024). Despite these
+promising developments, the performance of VLMs for 3D medical imag-
+ing remains suboptimal, particularly in tasks requiring precise alignment of
+image features with textual descriptions.
+22
+
+===== PAGE 23 =====
+Fig. 7. Average F1 score across 18 chest abnormalities over training epochs. MS-VLM
+achieves superior average F1 score compared to baseline methods.
+A key limitation lies in the relative under-performance of vision encoders
+compared to LLMs. While LLMs excel in understanding detailed clinical
+context and generating coherent reports, vision encoders often struggle to
+embed fine-grained anatomical details from 3D medical images effectively (Hu
+et al., 2024). This discrepancy arises from the inherent differences in how
+current models process 3D volumetric data.
+Most existing approaches treat 3D medical images in a manner analo-
+gous to videos, employing 3D patch embeddings within 3D vision encoders.
+However, this methodology overlooks critical distinctions between 3D med-
+ical imaging and video data. Videos typically consist of a large number of
+frames (e.g., a 5-minute video at 30 frames per second results in 224 × 224 ×
+9000), characterized by substantial redundancy across frames, which makes
+3D patch embeddings effective for capturing spatial and temporal correla-
+tions (Madan et al., 2024). In contrast, 3D medical images generally contain
+significantly fewer slices (e.g., 512×512×24) with lower redundancy between
+adjacent slices. Under such conditions, the use of 3D patch embeddings can
+lead to over-correlated representations along the z-axis, potentially impairing
+model performance. This limitation is particularly pronounced when subtle
+pathologies appear or disappear between slices, making it crucial to avoid ex-
+cessive correlation that could obscure meaningful slice-specific information.
+23
+
+===== PAGE 24 =====
+To address these challenges, we developed MS-VLM, a VLM architecture
+inspired by radiologists’ workflows. Radiologists typically analyze 3D medical
+images by examining individual slices sequentially and synthesizing informa-
+tion across slices and views. They also focus on inter-slice relationships; for
+instance, a structure suspected to be a tumor might be identified as a blood
+vessel if it continues across slices, whereas a nodular shape that disappears in
+subsequent slices may be classified as a tumor. Radiologists integrate these
+observations with multi-view (e.g., axial, sagittal) and multi-phase (e.g., T1,
+T2) imaging to arrive at a comprehensive interpretation.
+MS-VLM mirrors this process by independently embedding slice-specific
+features using a 2D vision encoder and aggregating them into volumetric
+representations through the Z-former. This approach significantly reduces
+redundant correlations along the z-axis while preserving slice-specific granu-
+larity and inter-slice relationships, thereby enhancing diagnostic accuracy.
+The flexibility of MS-VLM was demonstrated in experiments involving
+varying CT scan ranges. In scenarios with a larger number of slices, MS-
+VLM outperformed fixed-length models, which often experience information
+loss when exceeding their predefined length, by effectively leveraging its abil-
+ity to aggregate meaningful information across the entire volume without
+such losses.
+This adaptability is particularly valuable in clinical settings,
+where scan ranges can vary depending on the target anatomy or the imaging
+protocol employed.
+Moreover, MS-VLM exhibited robust performance in multi-view and multi-
+phase integration, both of which are critical for comprehensive diagnostic
+workflows. For instance, in rectal MRI experiments, MS-VLM achieved su-
+perior accuracy by simultaneously processing axial and sagittal views along-
+side multi-phase data, such as T1, T2 images. This capability underscores
+its clinical relevance, as the integration of multi-view and multi-phase data is
+essential for identifying critical abnormalities and ensuring precise diagnoses.
+Another significant advantage of MS-VLM is its reliance on 2D vision
+encoders, which benefit from advanced pre-training techniques like DINO.
+This design enables the model to converge rapidly and efficiently learn visual
+representations, demonstrating improved computational efficiency in terms
+of fast convergence, as shown in our experiments. Furthermore, MS-VLM’s
+architecture is highly generalizable, capable of adapting to various imaging
+modalities, including CT, MRI, PET-CT, and 3D ultrasound. This adapt-
+ability positions MS-VLM as a versatile tool for diverse clinical applications,
+ranging from diagnostic imaging to complex multi-modal analyses.
+24
+
+===== PAGE 25 =====
+Despite its promising results, MS-VLM has several limitations.
+First,
+the model is not entirely free from hallucination errors and may occasionally
+miss critical findings. While this study introduces a novel proof-of-concept
+architecture, it is important to note that larger-scale studies utilizing more
+diverse and higher-quality datasets could potentially achieve better absolute
+performance.
+Second, the validation was limited to chest CT and rectal
+MRI, leaving the model’s generalizability to other imaging modalities, such
+as abdominal CT, unexplored. Further research is necessary to confirm its
+applicability across a broader range of clinical scenarios. Third, this study did
+not include direct expert evaluation, which would provide critical insights into
+the model’s clinical utility and guide its refinement for practical deployment.
+6. Conclusion
+In this paper, we present MS-VLM, which introduces a novel Z-former
+architecture that integrates slice-by-slice embeddings into a volumetric repre-
+sentation for 3D medical image interpretation. MS-VLM effectively addresses
+the challenges of processing 3D medical imaging by adopting a radiologist-
+inspired approach that preserves slice-specific granularity and captures inter-
+slice relationships. Its ability to integrate multi-view and multi-phase infor-
+mation, combined with flexibility across varying scan ranges, demonstrates
+its adaptability to diverse clinical scenarios. These advancements position
+MS-VLM as a significant step forward in advancing medical VLMs, particu-
+larly by enhancing vision encoders to process the complexity of 3D medical
+imaging with broad generalizability across various modalities.
+Appendix A. Details on Synthetic VQA Generation
+Inspired by LLM-CXR (Lee et al., 2024), we generate an instruction
+prompt that guides LLaMA-3-8B to generate synthetic VQA pairs from a
+radiology report.
+25
+
+===== PAGE 26 =====
+Fig. A.1. Instruction prompt given to LLaMA-3-8B for synthetic VQA generation from
+CT-RATE reports.
+Fig. A.2. An example of a QA pair from RadGenome-ChestCT dataset, which asks about
+the type of abnormalities present in a certain region.
+Appendix B. Availability of Rectal MRI Dataset
+The in-house rectal MRI dataset consists of volumes acquired using three
+different contrasts: T1, T2 and DWI. For T1, T2 volumes, each volume was
+taken with one of Turbo Spin Echo (TSE), Fast Spin Echo (FSE) and Fast
+recovery FSE (FrFSE) imaging techniques. Only the T1, T2 volumes were
+used for training MS-VLM.
+26
+
+===== PAGE 27 =====
+Table B.1
+Availability of in-house rectal MRI dataset.
+Contrast
+Imaging Technique
+Modifier
+Imaging Plane
+Axial (+oblique)
+Sagittal
+Coronal (+oblique)
+T1-weighted
+TSE/FSE
+None
+✓
+✓
+✗
+TSE/FSE
+FS/SPIR, CE
+✓
+✓
+✓
+T2-weighted
+TSE/FSE/FrFSE
+None
+✓
+✓
+✓
+DWI
+ADC
+N/A
+✓
+✗
+✗
+b-value 0
+N/A
+✓
+✗
+✗
+b-value (800 or 1000)
+N/A
+✓
+✗
+✗
+27
+
+===== PAGE 28 =====
+Appendix C. Instruction Prompts for LLM-based Evaluation
+Fig. C.1. Instruction prompt for GPT-4o-mini used to evaluate the generated reports on
+the CT-RATE test set.
+28
+
+===== PAGE 29 =====
+29
+
+===== PAGE 30 =====
+Fig. C.2. Instruction prompt for o1-mini used to evaluate the generated reports on the
+rectal MRI test set. The generated report is evaluated on seven abnormalities: Tumor
+location, Peritoneal involvement, T staging, CRM, ASI, MLNI, and EMVI.
+30
+
+===== PAGE 31 =====
+Appendix D. Qualitative Examples
+Fig. D.1. Qualitative evaluation on CT-RATE. Each sentence from the report is color
+coded to identify True Positive, True Negative, False Positive and False Negatives on the
+findings mentioned in the ground truth report. MS-VLM achieves greater recall on the
+true positives.
+31
+
+===== PAGE 32 =====
+Fig. D.2. Qualitative evaluation on CT-RATE. Each sentence from the report is color
+coded to identify True Positive, True Negative, False Positive and False Negatives on the
+findings mentioned in the ground truth report. MS-VLM achieves greater recall on the
+true positives while generating less false positive findings.
+32
+
+===== PAGE 33 =====
+Fig. D.3. An example of VQA by MS-VLM on a test set sample of CT-RATE.
+Fig. D.4.
+Qualitative evaluation on rectal MRI. Correct predictions are highlighted.
+MS-VLM generates reports more faithful to the ground truth in terms of abnormality
+prediction.
+Fig. D.5.
+Qualitative evaluation on rectal MRI. Correct predictions are highlighted.
+MS-VLM generates reports more faithful to the ground truth in terms of abnormality
+prediction.
+33
+
+===== PAGE 34 =====
+Appendix E. CA metrics on Chest CT Report Generation & VQA
+Table E.1
+Precision, Recall, and F1 Score across 18 chest-related abnormalities on the
+generated reports by MS-VLM.
+Abnormality
+Precision
+Recall
+F1 Score
+Medical material
+0.155
+0.158
+0.157
+Arterial wall calcification
+0.306
+0.367
+0.334
+Cardiomegaly
+0.249
+0.298
+0.271
+Pericardial effusion
+0.130
+0.214
+0.162
+Coronary artery wall calcification
+0.254
+0.435
+0.321
+Hiatal hernia
+0.141
+0.245
+0.179
+Lymphadenopathy
+0.268
+0.393
+0.319
+Emphysema
+0.215
+0.410
+0.282
+Atelectasis
+0.257
+0.305
+0.279
+Lung nodule
+0.466
+0.536
+0.499
+Lung opacity
+0.440
+0.592
+0.505
+Pulmonary fibrotic sequela
+0.256
+0.451
+0.327
+Pleural effusion
+0.133
+0.315
+0.187
+Mosaic attenuation pattern
+0.128
+0.230
+0.164
+Peribronchial thickening
+0.133
+0.353
+0.194
+Consolidation
+0.235
+0.370
+0.287
+Bronchiectasis
+0.125
+0.100
+0.111
+Interlobular septal thickening
+0.104
+0.157
+0.125
+Average
+0.222
+0.329
+0.261
+34
+
+===== PAGE 35 =====
+Table E.2
+Precision, Recall, and F1 Score across 18 chest-related abnormalities on VQA by
+MS-VLM
+Abnormality
+Precision
+Recall
+F1 Score
+Medical material
+0.132
+0.158
+0.144
+Arterial wall calcification
+0.546
+0.436
+0.485
+Cardiomegaly
+0.143
+0.198
+0.166
+Pericardial effusion
+0.674
+0.602
+0.636
+Coronary artery wall calcification
+0.250
+0.435
+0.317
+Hiatal hernia
+0.226
+0.289
+0.254
+Lymphadenopathy
+0.293
+0.537
+0.379
+Emphysema
+0.232
+0.346
+0.278
+Atelectasis
+0.279
+0.379
+0.321
+Lung nodule
+0.466
+0.536
+0.499
+Lung opacity
+0.440
+0.592
+0.505
+Pulmonary fibrotic sequela
+0.265
+0.368
+0.308
+Pleural effusion
+0.200
+0.287
+0.236
+Mosaic attenuation pattern
+0.105
+0.185
+0.134
+Peribronchial thickening
+0.133
+0.180
+0.153
+Consolidation
+0.252
+0.292
+0.271
+Bronchiectasis
+0.178
+0.096
+0.125
+Interlobular septal thickening
+0.132
+0.156
+0.143
+Average
+0.277
+0.337
+0.297
+References
+Alayrac, J.B., Donahue, J., Luc, P., Miech, A., Barr, I., Hasson, Y., Lenc, K.,
+Mensch, A., Millican, K., Reynolds, M., et al., 2022. Flamingo: a visual
+language model for few-shot learning.
+Advances in neural information
+processing systems 35, 23716–23736.
+Bai, F., Du, Y., Huang, T., Meng, M.Q.H., Zhao, B., 2024. M3d: Advancing
+3d medical image analysis with multi-modal large language models. arXiv
+preprint arXiv:2404.00578 .
+Blankemeier, L., Cohen, J.P., Kumar, A., Van Veen, D., Gardezi, S.J.S.,
+Paschali, M., Chen, Z., Delbrouck, J.B., Reis, E., Truyts, C., et al., 2024.
+Merlin: A vision language foundation model for 3d computed tomography.
+arXiv preprint arXiv:2406.06512 .
+Brady, A.P., 2017. Error and discrepancy in radiology: inevitable or avoid-
+able? Insights into Imaging 8, 171–182.
+35
+
+===== PAGE 36 =====
+Bushberg, J.T., Boone, J.M., 2011. The Essential Physics of Medical Imag-
+ing. Lippincott Williams & Wilkins.
+Caron, M., Touvron, H., Misra, I., J´egou, H., Mairal, J., Bojanowski, P.,
+Joulin, A., 2021. Emerging properties in self-supervised vision transform-
+ers, in: Proceedings of the IEEE/CVF international conference on com-
+puter vision, pp. 9650–9660.
+Chaves, J.M.Z., Huang, S.C., Xu, Y., Xu, H., Usuyama, N., Zhang, S., Wang,
+F., Xie, Y., Khademi, M., Yang, Z., et al., 2024. Training small multimodal
+models to bridge biomedical competency gap: A case study in radiology
+imaging. CoRR .
+Chen, H., Zhao, W., Li, Y., Zhong, T., Wang, Y., Shang, Y., Guo, L.,
+Han, J., Liu, T., Liu, J., et al., 2024. 3d-ct-gpt: Generating 3d radiology
+reports through integration of large vision-language models. arXiv preprint
+arXiv:2409.19330 .
+Chiang, W.L., Li, Z., Lin, Z., Sheng, Y., Wu, Z., Zhang, H., Zheng,
+L., Zhuang, S., Zhuang, Y., Gonzalez, J.E., et al., 2023.
+Vicuna: An
+open-source chatbot impressing gpt-4 with 90%* chatgpt quality.
+See
+https://vicuna. lmsys. org (accessed 14 April 2023) 2, 6.
+Demner-Fushman, D., Antani, S., Simpson, M., Thoma, G., 2012. Design
+and development of a multimodal biomedical information retrieval sys-
+tem.
+Journal of Computing Science and Engineering 6.
+doi:10.5626/
+JCSE.2012.6.2.168.
+Dosovitskiy, A., 2020. An image is worth 16x16 words: Transformers for
+image recognition at scale. arXiv preprint arXiv:2010.11929 .
+Dou, Q., Yu, L., Chen, H., Jin, Y., Yang, X., Qin, J., Heng, P.A., 2017.
+3d deeply supervised network for automated segmentation of volumetric
+medical images. Medical image analysis 41, 40–54.
+Hamamci, I.E., Er, S., Almas, F., Simsek, A.G., Esirgun, S.N., Dogan, I.,
+Dasdelen, M.F., Wittmann, B., Simsar, E., Simsar, M., et al., 2024a.
+A foundation model utilizing chest ct volumes and radiology reports
+for supervised-level zero-shot detection of abnormalities. arXiv preprint
+arXiv:2403.17834 .
+36
+
+===== PAGE 37 =====
+Hamamci, I.E., Er, S., Menze, B., 2024b.
+Ct2rep: Automated radiology
+report generation for 3d medical imaging, in: International Conference on
+Medical Image Computing and Computer-Assisted Intervention, Springer.
+pp. 476–486.
+Hatamizadeh, A., Tang, Y., Nath, V., Yang, D., Myronenko, A., Landman,
+B., Roth, H.R., Xu, D., 2022. Unetr: Transformers for 3d medical image
+segmentation, in: Proceedings of the IEEE/CVF winter conference on
+applications of computer vision, pp. 574–584.
+Hu, M., Qian, J., Pan, S., Li, Y., Qiu, R.L., Yang, X., 2024. Advancing
+medical imaging with language models: featuring a spotlight on chatgpt.
+Physics in Medicine & Biology 69, 10TR01.
+Irvin, J., Rajpurkar, P., Ko, M., Yu, Y., Ciurea-Ilcus, S., Chute, C., Mark-
+lund, H., Haghgoo, B., Ball, R., Shpanskaya, K., et al., 2019. Chexpert:
+A large chest radiograph dataset with uncertainty labels and expert com-
+parison, in: Proceedings of the AAAI conference on artificial intelligence,
+pp. 590–597.
+Isensee, F., Jaeger, P.F., Kohl, S.A., Petersen, J., Maier-Hein, K.H., 2021.
+nnu-net: a self-configuring method for deep learning-based biomedical im-
+age segmentation. Nature methods 18, 203–211.
+Johnson, A., Pollard, T., Berkowitz, S., Greenbaum, N., Lungren, M., Deng,
+C.y., Mark, R., Horng, S., 2019. Mimic-cxr, a de-identified publicly avail-
+able database of chest radiographs with free-text reports. Scientific Data
+6, 317. doi:10.1038/s41597-019-0322-0.
+Kalender, W.A., 2011. Computed Tomography: Fundamentals, System Tech-
+nology, Image Quality, Applications. Publicis Publishing.
+Lavie, A., Denkowski, M.J., 2009. The meteor metric for automatic evalua-
+tion of machine translation. Machine translation 23, 105–115.
+Lee, S., Kim, W.J., Chang, J., Ye, J.C., 2024.
+LLM-CXR: Instruction-
+finetuned LLM for CXR image understanding and generation, in: The
+Twelfth International Conference on Learning Representations.
+URL:
+https://openreview.net/forum?id=BqHaLnans2.
+37
+
+===== PAGE 38 =====
+Li, C., Wong, C., Zhang, S., Usuyama, N., Liu, H., Yang, J., Naumann,
+T., Poon, H., Gao, J., 2024. Llava-med: Training a large language-and-
+vision assistant for biomedicine in one day. Advances in Neural Information
+Processing Systems 36.
+Litjens, G., et al., 2017. A survey on deep learning in medical image analysis.
+Medical Image Analysis 42, 60–88.
+Liu, F., Wu, X., Ge, S., Fan, W., Zou, Y., 2021. Exploring and distilling pos-
+terior and prior knowledge for radiology report generation, in: Proceedings
+of the IEEE/CVF conference on computer vision and pattern recognition,
+pp. 13753–13762.
+Liu, H., Li, C., Wu, Q., Lee, Y.J., 2024. Visual instruction tuning. Advances
+in neural information processing systems 36.
+Lu, M.Y., Chen, B., Williamson, D.F., Chen, R.J., Zhao, M., Chow, A.K.,
+Ikemura, K., Kim, A., Pouli, D., Patel, A., et al., 2024. A multimodal
+generative ai copilot for human pathology. Nature 634, 466–473.
+Madan, N., Møgelmose, A., Modi, R., Rawat, Y.S., Moeslund, T.B., 2024.
+Foundation models for video understanding: A survey.
+arXiv preprint
+arXiv:2405.03770 .
+McRobbie, D.W., et al., 2017. MRI from Picture to Proton. Cambridge
+University Press.
+Moon, J.H., Lee, H., Shin, W., Kim, Y.H., Choi, E., 2022. Multi-modal un-
+derstanding and generation for medical images and text via vision-language
+pre-training. IEEE Journal of Biomedical and Health Informatics 26, 6070–
+6080.
+Papineni, K., Roukos, S., Ward, T., Zhu, W.J., 2002. Bleu: a method for
+automatic evaluation of machine translation, in: Proceedings of the 40th
+annual meeting of the Association for Computational Linguistics, pp. 311–
+318.
+Park, S., Lee, E.S., Shin, K.S., Lee, J.E., Ye, J.C., 2024. Self-supervised
+multi-modal training from uncurated images and reports enables monitor-
+ing ai in radiology. Medical Image Analysis 91, 103021.
+38
+
+===== PAGE 39 =====
+Pham, H.H., Nguyen, H.Q., Nguyen, H.T., Le, L.T., Khanh, L., 2022. An ac-
+curate and explainable deep learning system improves interobserver agree-
+ment in the interpretation of chest radiograph. IEEE Access 10, 104512–
+104531.
+Qu, H., Zhou, M., Yan, Z., Wang, H., Rustgi, V.K., Zhang, S., Gevaert, O.,
+Metaxas, D.N., 2021. Genetic mutation and biological pathway prediction
+based on whole slide images in breast carcinoma using deep learning. NPJ
+precision oncology 5, 87.
+Radford, A., Kim, J.W., Hallacy, C., Ramesh, A., Goh, G., Agarwal, S.,
+Sastry, G., Askell, A., Mishkin, P., Clark, J., et al., 2021. Learning trans-
+ferable visual models from natural language supervision, in: International
+conference on machine learning, PMLR. pp. 8748–8763.
+Rouge, L.C., 2004. A package for automatic evaluation of summaries, in:
+Proceedings of Workshop on Text Summarization of ACL, Spain.
+Taori, R., Gulrajani, I., Zhang, T., Dubois, Y., Li, X., Guestrin, C., Liang,
+P., Hashimoto, T.B., 2023. Stanford alpaca: an instruction-following llama
+model (2023). URL https://github. com/tatsu-lab/stanford alpaca 1.
+Tiu, E., Talius, E., Patel, P., Langlotz, C.P., Ng, A.Y., Rajpurkar, P., 2022.
+Expert-level detection of pathologies from unannotated chest x-ray images
+via self-supervised learning. Nature Biomedical Engineering 6, 1399–1406.
+Tu, T., Azizi, S., Driess, D., Schaekermann, M., Amin, M., Chang, P.C.,
+Carroll, A., Lau, C., Tanno, R., Ktena, I., et al., 2024. Towards generalist
+biomedical ai. NEJM AI 1, AIoa2300138.
+Wang, X., Han, S., Chen, Y., Gao, D., Vasconcelos, N., 2019. Volumetric at-
+tention for 3d medical image segmentation and detection, in: Medical Im-
+age Computing and Computer Assisted Intervention–MICCAI 2019: 22nd
+International Conference, Shenzhen, China, October 13–17, 2019, Proceed-
+ings, Part VI 22, Springer. pp. 175–184.
+Wang, Z., Wu, Z., Agarwal, D., Sun, J., 2022. Medclip: Contrastive learning
+from unpaired medical images and text. arXiv preprint arXiv:2210.10163
+.
+39
+
+===== PAGE 40 =====
+Wu, C., Zhang, X., Zhang, Y., Wang, Y., Xie, W., 2023. Towards generalist
+foundation model for radiology. arXiv preprint arXiv:2308.02463 .
+Xie, Z., Zhang, Z., Cao, Y., Lin, Y., Bao, J., Yao, Z., Dai, Q., Hu, H., 2022.
+Simmim: A simple framework for masked image modeling, in: Proceedings
+of the IEEE/CVF conference on computer vision and pattern recognition,
+pp. 9653–9663.
+Yan, A., McAuley, J., Lu, X., Du, J., Chang, E.Y., Gentili, A., Hsu, C.N.,
+2022. Radbert: adapting transformer-based language models to radiology.
+Radiology: Artificial Intelligence 4, e210258.
+You, K., Gu, J., Ham, J., Park, B., Kim, J., Hong, E.K., Baek, W., Roh,
+B., 2023. Cxr-clip: Toward large scale chest x-ray language-image pre-
+training, in: International Conference on Medical Image Computing and
+Computer-Assisted Intervention, Springer. pp. 101–111.
+Zaheer, M., Guruganesh, G., Dubey, K.A., Ainslie, J., Alberti, C., Ontanon,
+S., Pham, P., Ravula, A., Wang, Q., Yang, L., et al., 2020. Big bird: Trans-
+formers for longer sequences. Advances in neural information processing
+systems 33, 17283–17297.
+Zhang, K., Zhou, R., Adhikarla, E., Yan, Z., Liu, Y., Yu, J., Liu, Z., Chen,
+X., Davison, B.D., Ren, H., et al., 2024a. A generalist vision–language
+foundation model for diverse biomedical tasks. Nature Medicine , 1–13.
+Zhang, X., Wu, C., Zhao, Z., Lei, J., Zhang, Y., Wang, Y., Xie, W., 2024b.
+Radgenome-chest ct: A grounded vision-language dataset for chest ct anal-
+ysis. arXiv preprint arXiv:2404.16754 .
+40

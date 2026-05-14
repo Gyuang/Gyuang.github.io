@@ -1,0 +1,1358 @@
+
+===== PAGE 1 =====
+Scaling medical imaging report generation with
+multimodal reinforcement learning
+Qianchu Liu∗, Sheng Zhang∗, Guanghui Qin∗,
+Yu Gu, Ying Jin, Sam Preston, Yanbo Xu, Sid Kiblawi,
+Wen-wai Yim, Tim Ossowski, Tristan Naumann, Mu Wei†, Hoifung Poon†
+Microsoft Research
+Abstract
+Frontier models have demonstrated remarkable capabilities in understanding and reasoning with
+natural-language text, but they still exhibit major competency gaps in multimodal understanding and
+reasoning especially in high-value verticals such as biomedicine. Medical imaging report generation is a
+prominent example. Supervised fine-tuning can substantially improve performance, but they are prone to
+overfitting to superficial boilerplate patterns. In this paper, we introduce Universal Report Generation
+(UniRG) as a general framework for medical imaging report generation. By leveraging reinforcement
+learning as a unifying mechanism to directly optimize for evaluation metrics designed for end applications,
+UniRG can significantly improve upon supervised fine-tuning and attain durable generalization across
+diverse institutions and clinical practices. We trained UniRG-CXR on publicly available chest X-ray
+(CXR) data and conducted a thorough evaluation in CXR report generation with rigorous evaluation
+scenarios. On the authoritative ReXrank benchmark, UniRG-CXR sets new overall SOTA, outperforming
+prior state of the art by a wide margin.
+Main
+Medical imaging report generation has been an important application area for medical foundation models,
+aiming to automatically produce coherent and clinically meaningful diagnostic reports from medical images such
+as chest radiographs. Beyond its potential to reduce reporting burden, improve workflow efficiency, and enhance
+diagnostic consistency, report generation represents a key benchmark for evaluating broader multimodal
+reasoning capabilities in healthcare AI. Despite recent progress driven by large-scale vision–language models
+and domain-specific training corpora [17, 26, 32], enabling models to produce faithful, clinically grounded
+reports that generalize across real-world imaging environments remains a substantial challenge.
+A central obstacle lies in cross-institution generalization. For example, radiology reporting practices
+vary widely across datasets and healthcare systems, influenced by differences in institutional guidelines,
+departmental conventions, radiologist writing styles, and patient populations [5]. Consequently, models
+trained through supervised fine-tuning (SFT) tend to inherit the lexical biases, phrasing patterns of their
+training datasets. While such models may achieve high scores on in-distribution benchmarks, they often
+show substantial degradation when evaluated on unseen institutions or external datasets. This brittleness is
+particularly concerning for safety-critical applications, where reliable performance across demographic groups,
+institutions, and imaging conditions is essential.
+A second major limitation of prior work is that SFT objectives primarily optimize next-word prediction,
+which encourages surface-level lexical similarity to reference reports rather than alignment with clinically
+important factual attributes. As a result, conventional report generation systems often overfit to n-gram–based
+metrics (e.g., BLEU, ROUGE) that are only weakly correlated with radiological correctness [22, 26]. This
+misalignment highlights the need for training paradigms that optimize models directly for clinical usefulness
+and factual accuracy rather than superficial linguistic similarity.
+∗Equal contributions
+†Corresponding authors: muhsin.wei@microsoft.com, hoifung@microsoft.com
+1
+arXiv:2601.17151v1  [cs.CV]  23 Jan 2026
+
+===== PAGE 2 =====
+To address these challenges, we introduce UniRG, a unified and universal report generation framework
+built upon a novel reinforcement learning framework designed to enhance generalization, factual alignment,
+and robustness. Our RL strategy directly optimizes clinically grounded reward signals that capture disease-
+specific correctness, structured factual relationships, and multi-metric performance. Using this framework,
+we train UniRG-CXR on chest X-rays and show that it moves beyond dataset-specific reporting conventions,
+instead learning generalizable representations that yield consistently strong performance across diverse clinical
+settings.
+We conduct extensive and rigorous evaluations to benchmark UniRG-CXR against existing radiology
+report generation models across a broad spectrum of settings. Our evaluation suite includes standard
+report-level generation metrics, condition/diesease-level classification, cross-dataset/institution/demographics
+generalization, and longitudinal evaluation reflecting real-world clinical practices. Across all axes, UniRG-
+CXR achieves overall state-of-the-art (SOTA) performance, consistently surpassing prior baselines and
+demonstrating universal, reliable capabilities rarely observed in prior RRG systems.
+In summary, our contributions are threefold:
+A new reinforcement learning framework (UniRG) for radiology report generation, yielding
+UniRG-CXR, a single model that attains overall SOTA performance across multiple datasets and evaluation
+metrics.
+A comprehensive, clinically grounded evaluation of UniRG-CXR, spanning report-level met-
+rics, disease-level correctness, cross-dataset and cross-institution generalization, robustness analyses, and
+longitudinal assessment.
+Demonstration of UniRG-CXR’s universal capabilities, showing that UniRG-CXR overcomes the
+longstanding specialization and metric-overfitting issues of SFT-based report generation models by producing
+clinically aligned, generalizable reports across diverse real-world conditions.
+Together, these advances establish UniRG as a robust and generalizable foundation for radiology report
+generation and highlight the promise of reinforcement learning as a key component of next-generation clinical
+vision–language models.
+Results
+Overview of UniRG and UniRG-CXR
+We propose UniRG, a next-generation approach for medical imaging report using reinforcement learning.
+With this framework, we train UniRG-CXR, a state-of-the-art model for radiology report generation that
+produces clinically faithful reports across diverse institutions and datasets with substantial lead over existing
+baselines. Built upon the open-source Qwen3-VL-8B-Instruct foundation, UniRG-CXR combined supervised
+fine-tuning with reinforcement learning to directly optimize for clinically relevant objective aggregating
+multiple metrics spanning rule-based (BLEU), model-based (BERTScore, SembScore, RadGraph F1), and
+LLM-based (CheXprompt) metrics. Trained on large-scale datasets including MIMIC-CXR, CheXpert Plus,
+ReXGradient and IU (covering over 560k studies from 80+ institutions), UniRG-CXR can condition on the
+current image, contextual text, and prior study information where available and output both findings and
+impression as a full radiology report from the x-ray interpretation. To evaluate the quality of UniRG-CXR, we
+assess UniRG-CXR on held-out test sets (MIMIC-CXR [11], CheXpert Plus [4], ReXGradient [30], IU [6]) and
+unseen proprietary data. Report quality is measured using ReXrank metrics [29] and CheXprompt, an LLM-
+based clinical-error metric [27], while diagnostic ability is evaluated via F1-based disease classification from
+generated reports. UniRG-CXR demonstrates unprecedented generalization and robustness, outperforming
+prior state-of-the-art systems (e.g., MedVersa, MedGemma, MAIRA-2) by substantial margins across public
+and private benchmarks across our evaluation settings.
+As shown in (d) and (e) from Figure 2, we present the detailed ReXrank leaderboard results1 which
+compares UniRG-CXR against previous SOTA models across four datasets—ReXGradient [30], MIMIC-CXR
+[11], IU X-Ray [6], and CheXpert Plus [4]. Each dataset is evaluated under two generation settings: findings-
+only and the more challenging findings + impression setup. Performance is measured by 1/RadCliQ-v1
+[24] (higher is better), a composite metric used as the default metric in RexRank leaderboard and was
+1Results are collected from the ReXrank leaderboard [29]
+2
+
+===== PAGE 3 =====
+(a)
+(b)
+UniRG-CXR
+RadPhi4VisionCXR
+CheXOne-R1
+MoERad-IU
+MedVersa
+MedGemma
+MAIRA-2
+0.8
+1.1
+1.4
+1.7
+Findings
+1/RadCliQ-v1
+1.62
+1.35
+1.12
+1.02 1.01 1.01 0.96
+ReXGradient
+UniRG-CXR
+MedVersa
+CheXOne-R1
+RadPhi4VisionCXR
+Libra
+RadPhi3.5Vision
+CXRMate-ED
+0.75
+0.93
+1.12
+1.30
+1.23
+1.10
+1.06 1.03
+0.90 0.89 0.87
+MIMIC-CXR
+UniRG-CXR
+MoERad-IU
+CheXOne-R1
+MedVersa
+CXRMate-RRG24
+VLCI-IU
+MedGemma
+0.6
+2.0
+3.4
+4.8
+4.80
+1.92
+1.67 1.46 1.46 1.38 1.34
+IU Xray
+UniRG-CXR
+CheXOne-R1
+RadPhi3.5Vision
+RadPhi4VisionCXR
+CXP+CheX-MIMIC
+CXRMate-RRG24
+MAIRA-2
+0.65
+0.83
+1.02
+1.20
+1.16
+1.05
+0.86 0.85
+0.81 0.80 0.79
+CheXpert Plus
+UniRG-CXR
+MedVersa
+CheXOne-R1
+CXP+CheX-MIMIC
+CXP+MIMIC
+CXP+CheX
+RadFM
+0.5
+0.9
+1.3
+1.6
+Findings + Impression
+1/RadCliQ-v1
+1.59
+0.98 0.93
+0.84 0.79 0.75 0.74
+UniRG-CXR
+MedVersa
+CheXOne-R1
+CXP+CheX-MIMIC
+CXP+MIMIC
+CXP+CheX
+RadFM
+0.50
+0.72
+0.93
+1.15
+1.07
+0.92 0.91
+0.82 0.80
+0.71
+0.62
+UniRG-CXR
+MedVersa
+CXP+CheX-MIMIC
+RadFM
+CXP+MIMIC
+CheXOne-R1
+CXP+CheX
+0.4
+2.0
+3.6
+5.2
+5.14
+1.45 1.25 1.22 1.11 1.04 0.99
+UniRG-CXR
+CheXOne-R1
+CXP+CheX
+CXP+CheX-MIMIC
+MedVersa
+CXP+MIMIC
+RadFM
+0.35
+0.48
+0.62
+0.75
+0.70
+0.68
+0.51 0.51 0.49 0.48
+0.44
+(d)
+(c)
+UniRG-CXR
+x N
+······
+sex age
+indication
+···
+Study i
+Study i -1
+Time
+Context
+Vision encoder
+Language model
+Findings: There are low lung
+volumes... There is evidence
+of trace pulmonary edema
+with a left pleural effusion.
+Left retrocardiac atelectasis
+is noted. There are old
+bilateral rib fractures.
+Impression: 1. TRACE
+PULMONARY EDEMA WITH
+LEFT PLEURAL EFFUSION.
+2. LOW LUNG VOLUMES A
+ND LEFT LOWER LOBE
+ATELECTASIS.
+3. OLD BILATERAL RIB
+FRACTURES
+229,161 patients
+563,494 studies
+785,687 images
+UniRG-CXR
+(longitudinal input)
+Reward aggregator
+GRPO
+ReXrank
+metrics
+Text-based
+classiﬁer
+Clinical
+errors
+Cardiomegaly
+Pleural Effusion
+Atelectasis
+Lung Opacity
+···
+Disease-level evaluation
+Unseen external data 
+Rule-based rewards
+Rule-based rewards
+Rule-based rewards
+Model-based rewards
+Model-based rewards
+Rule-based rewards
+Rule-based rewards
+Model-based rewards
+LLM-based rewards
+Held-out test data
+Training Data
+Dataset
+Department
+Sex
+Race
+Age
+Over 80 medical institutions
+0-20
+4%
+20-40
+10%
+40-60
+19%
+60-80
+22%
+unknown
+35%
+80+
+10%
+unknown
+71%
+black
+2%
+asian
+4%
+white
+23%
+maie
+37%
+female
+29%
+unknown
+34%
+emergency
+34%
+in/outpatient
+66%
+CheXpert Plus
+40%
+MIMIC-CXR
+33%
+ReXGraident
+26%
+Institution
+Report-level
+evaluation
+F1
+scores
+Figure 1: Overview of UniRG-CXR. (a) Training Data: UniRG-CXR is trained on the training splits of MIMIC-
+CXR [11], CheXpert Plus [4], ReXGradient-160k [30] and IU [6] covering diverse institutions and patient demographics.
+(b) Training and Rewards: Taking input from the current image, clinical context (e.g., indication), and optionally prior
+studies, UniRG-CXR uses GRPO reinforcement learning to optimize composite rewards that combine rule-based,
+model-based, and LLM-based metrics. (c) Evaluation: We assess UniRG-CXR on held-out test sets from MIMIC-CXR,
+CheXpert Plus, ReXGradient and additionally assess zero-shot generalization on an external proprietary dataset
+and IU-Xray (the zero-shot setting excludes IU-Xray training data). Report quality is measured using ReXrank
+metrics [29] and an LLM-based clinical-error metric [27], while diagnostic ability is evaluated via F1-based disease
+classification from generated reports. (d) ReXrank Results: UniRG-CXR achieves SOTA performance across four
+datasets and two generation settings (findings only and findings + impression), showing substantial gains over prior
+state-of-the-art.
+3
+
+===== PAGE 4 =====
+found to correlate more strongly with human judgment than individual metrics. As shown in Figure 1,
+UniRG-CXR achieves consistent and substantial gains over prior SOTA models in every steup. Notably, on
+the ReXGradient and IU test set, UniRG-CXR exceeds the previous best model by over 50%, underscoring
+its strong generalization capability for radiology report generation.
+UniRG-CXR achieves SOTA with universal improvements across metrics
+While RadCliQ-v1 serves as our primary evaluation metric, Figure 2 further illustrates that UniRG-CXR
+delivers broad improvements across diverse metrics including both those emphasizing lexical similarity (e.g.,
+BLEU, BERTScore) and those emphasizing factual correctness (e.g., SembScore). Notably, UniRG-CXR also
+improves metrics it was not explicitly optimized for, such as RaTEScore, highlighting that its performance
+gains are universal and multi-faceted rather than overfitted to specific metrics (Figure 2 (a)). The key to this
+universal improvements lies in our combined reward RL which jointly optimizes multiple individual metrics.
+As shown in Figure 2 (b) and (c), we compare UniRG-CXR with ablation studies that only optimize an
+individual metric. We show that our proposed combined reward RL achieves balanced gains across individual
+metrics and yields overall the best RadCliQ-v1 score.
+Beyond the ReXrank-provided metrics, we additionally evaluate UniRG-CXR using CheXprompt [27],
+an LLM-based metric that quantifies the number of clinical errors relative to the reference report (following
+Zambrano Chaves et al. [27], we use GPT-4 as the backbone evaluator). As shown in Figure 2 (f), we
+compare the proportion of generated reports with varying numbers of clinical errors (≤1, 2, 3, and ≥4)
+across UniRG-CXR, MedVersa, and MedGemma. UniRG-CXR produces substantially more error-free or
+low-error reports (21.3% ≤1 error) compared with prior state-of-the-art systems (Medversa 16.1% and
+MedGemma 3.1%), while markedly reducing the fraction of high-error reports (≥4 errors: 14.8%) relative
+to MedVersa (32.3%) and MedGemma (43.5%). These results indicate that UniRG-CXR achieves more
+clinically faithful and accurate report generation. Qualitatively, we show an example where UniRG-CXR
+can generate error-free report that covers all the important findings while output from MedGemma and
+MedVersa contain errors or partial errors. The key to the improvement on clinical error reduction is the
+incorporation of error awareness metric (i.e. CheXprompt) in our combined RL recipe in UniRG-CXR. In
+Figure 2 (d), the RL(no error awareness) ablation that does not contain CheXprompt optimization shows
+stagnant learning in terms of reducing clinical errors whereas our full RL recipe from UniRG-CXR that
+incorporates error awareness leads to a steady downward trajectory of reduction in report errors throughout
+training, indicating that explicit optimization for clinical correctness effectively improves report fidelity.
+UniRG-CXR enhances longitudinal report generation
+In the real-world setting, radiologists routinely reference prior studies (both reports and images) when
+interpreting the current exam, often noting changes such as whether pneumonia has improved or worsened
+compared to a previous scan. To better approximate this realistic workflow, we incorporate longitudinal
+training, enabling the model to condition on both the prior image and prior report, during the RL training. As
+shown in Figure 3, UniRG-CXR achieves the best performance in longitudinal report generation compared
+with prior longitudinal report generation models such as Maira-2 and frontier large language model such
+as GPT-5. We also notice that longitudinal information is effectively incorporated in UniRG-CXR as it
+boosts performance over its non-longitudinal set up. To understand the gain of UniRG-CXR in more
+granularity, we further categorize the reports as shown in Figure 3 (b). The test studies from MIMIC are
+split into five categories according to their encounter time points ranging from first encounter report without
+prior information to increased complexity in 2nd, 3rd, 4th and 5th+ encounter points where the report is
+written in reference with multiple encounters the patient has experienced in the history. We observe that
+the first-encounter reports are generally the most challenging, and as the number of encounters increases,
+report quality improves consistently. This trend is intuitive: for the first encounter, the model must generate
+a completely new description based solely on the current image, without any prior context. In contrast,
+subsequent encounters provide previous reports that capture the patient’s underlying conditions, enabling the
+model to generate more accurate and contextually faithful reports. Across all encounter points, UniRG-CXR
+achieves substantial performance gains over prior models. Moreover, UniRG-CXR significantly outperforms
+the “copy prior report” baseline, demonstrating that it effectively leverages prior information rather than
+4
+
+===== PAGE 5 =====
+0
+100
+200
+Training Steps
+1.65
+1.70
+1.75
+1.80
+1.85
+1.90
+0
+100
+200
+Training Steps
+1.5
+1.6
+1.7
+1.8
+1.9
+1/RadCliQ-v1
+RL (full)
+RL (BLEU only)
+1.95
+# errors per report
+RL (full)
+RL (no error awareness)
+BLEU
+SembScore Radgraph 1/RadCliQ-v1
+SFT baseline
++ BLEU RL
++ SembScore RL
++ RadGraph RL
+Combined reward RL
+(UniRG-CXR)
+0.0%
+0.0%
+0.0%
+0.0%
++13.2%
++2.1%
++12.3%
++7.2%
+-1.6%
++15.7%
+0.0%
++5.1%
+-2.1%
++3.5%
++9.7%
++6.1%
++5.3%
++12.2%
++13.1%
++15.3%
+-2%
+0%
++2%
++4%
++6%
++8%
++10%
++12%
++14%
+1/RadCliQ-v1
+BLEU
+BertScore
+SembScore
+RadGraph
+RaTEScore
+1.62
+0.29
+0.54
+0.58
+0.30
+0.62
+Findings
+ReXGradient
+1/RadCliQ-v1
+BLEU
+BertScore
+SembScore
+RadGraph
+RaTEScore
+1.23
+0.26
+0.49
+0.50
+0.27
+0.60
+MIMIC-CXR
+1/RadCliQ-v1
+BLEU
+BertScore
+SembScore
+RadGraph
+RaTEScore
+4.80
+0.38
+0.64
+0.70
+0.40
+0.73
+IU Xray
+1/RadCliQ-v1
+BLEU
+BertScore
+SembScore
+RadGraph
+RaTEScore
+1.16
+0.22
+0.45
+0.53
+0.26
+0.58
+CheXpert Plus
+1/RadCliQ-v1
+BLEU
+BertScore
+SembScore
+RadGraph
+RaTEScore
+1.59
+0.30
+0.53
+0.57
+0.30
+0.61
+Findings + Impression
+1/RadCliQ-v1
+BLEU
+BertScore
+SembScore
+RadGraph
+RaTEScore
+1.07
+0.20
+0.42
+0.49
+0.27
+0.61
+1/RadCliQ-v1
+BLEU
+BertScore
+SembScore
+RadGraph
+RaTEScore
+5.14
+0.40
+0.64
+0.70
+0.40
+0.72
+1/RadCliQ-v1
+BLEU
+BertScore
+SembScore
+RadGraph
+RaTEScore
+0.70
+0.17
+0.18
+0.52
+0.18
+0.57
+UniRG-CXR
+MoERad-IU
+MedVersa
+CheXpertPlus-CheX-MIMIC
+Libra
+MedGemma
+MAIRA-2
+RadFM
+(a)
+(b)
+(c)
+(d)
+(e)
+Correct
+Incorrect
+Partially correct
+(f)
+Context: Age: 20-30. Gender: F. 
+Indication: Hyperglycemia and fatigue.  
+Comparison: Chest radiograph from ___.
+UniRG-CXR: A right internal jugular central venous catheter now 
+terminates in the lower SVC. There are low lung volumes. There is 
+no pneumothorax. There is no focal consolidation or pleural effusion.
+MedVersa: A portable frontal chest radiograph demonstrates 
+repositioning of the right internal jugular catheter, which now termin-
+ates in the mid SVC.  The remainder of the exam is unchanged, 
+including low lung volumes and mild elevation of the right 
+hemidiaphragm.
+MedGemma: The right internal jugular central venous catheter is now 
+positioned in the superior vena cava. There is no evidence of pneu-
+mothorax. The lungs are clear. The heart size is normal. The media-
+stinum is normal in width. The bony structures are intact.
+MedGemma
+MedVersa
+UniRG-CXR
+8.1%
+21.0%
+27.4%
+43.5%
+16.1%
+21.0%
+30.6%
+32.3%
+21.3%
+32.8%
+31.1%
+14.8%
+1 error
+2 errors
+3 errors
+4+ errors
+Figure 2: UniRG-CXR achieves state-of-the-art performance, delivering consistent and comprehensive performance
+gains across metrics. (a) On the ReXrank leaderboard, UniRG-CXR (green) shows robust, universal improvement
+across all evaluation metrics. (b). Starting from the same SFT checkpoint, RL with our combined reward achieves
+more balanced gains across metrics and the highest RadCliQ-v1 score compared to RL on single metrics. This ablation
+study is trained and tested on MIMIC (c). Ablation study on the training dynamics shows RL full (UniRG-CXR)
+achieves significantly better RadCliQ-v1 score than RL only on BLEU. (d). During training, RL full (UniRG-CXR)
+shows a steady decrease in clinical errors per report as compared with a fluctuating trajectory without consistent
+improvement from an ablation run without error awareness (i.e. removing CheXprompt metric optimization). Both
+(c) and (d) show results on 1024 MIMIC validation set from ablations that are trained on MIMIC. (e). Case studies
+illustrate that UniRG-CXR can produce error-free reports, unlike MedVersa and MedGemma. (f). UniRG-CXR
+yields a substantially higher proportion of reports with ≤1 error and fewer with ≥4 errors than prior models.
+relying on it as a shortcut, a behavior observed in some competing models (e.g., MedGemma, GPT-4o, and
+GPT-5) which only marginally exceed the copy-prior baseline. As longitudinal report generation involves
+capturing temporal changes in disease state across patient encounters. In Figure 3(c), we categorize each report
+into five temporal description types (first study (no prior study), new development, no change, progression,
+5
+
+===== PAGE 6 =====
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+1.2
+1.4
+1/RadCliQ-v1
+UniRG-CXR
+UniRG-CXR
+(w/o longitudinal)
+Maira-2
+Maira-2
+(w/o longitudinal)
+GPT-5
+MedGemma
+GPT-4o
+(a)
+(c)
+1st
+(n=810)
+2nd
+(n=461)
+3rd
+(n=303)
+4th
+(n=221)
+5th+
+(n=552)
+Longitudinal Encounter
+0.7
+0.8
+0.9
+1.0
+1.1
+1.2
+1.3
+1.4
+1/RadCliQ-v1
+UniRG-CXR
+Maira-2
+MedGemma
+GPT-4o
+GPT-5
+Copy Prior
+(b)
+Regression
+(n=260)
+The abnormality has 
+decreased but not fully 
+resolved.
+Prior report: ... There is a stable moderate layering right pleural effusion since___ 
+... There is no evidence of pneumothorax ...
+UniRG-CXR: There has been interval decrease in the right moderate pleural 
+effusion. There is no pneumothorax ... 
+Gold: There has been mild interval decrease of a still moderate right pleural 
+effusion ... There is no evidence of pneumothorax ...
+  
+Conext: Age:70-80.Gender:M.Indication: ... recurrent right pleural effusion status 
+post thoracentesis.  Evaluate for pneumothorax or reexpansion ...
+1/RadCliQ-v1
+0.8
+1.0
+1.2
+1.4
+1.6
+UniRG-CXR
+Maira-2
+GPT-5
+MedGemma
+****
+Progression
+(n=258)
+The abnormality has 
+increased in size, 
+extent, or severity.
+Prior report: ... right-sided pneumothorax is slightly smaller. There has, however, 
+been interval enlargement of the right-sided pleural effusion ... 
+UniRG-CXR: There has been interval increase in the large right pleural effusion. 
+There is a small right pneumothorax. The left lung is clear ... 
+Gold: ... there has been continued increase in the pleural effusion which is now 
+large and leaving only the right upper lobe aerated ... 
+  
+Conext: Age:40-50.Gender:M.Indication: History of cirrhosis with TIPS and 
+thoracentesis ... complicated by pneumothorax. Comparison: Multiple priors ...
+1/RadCliQ-v1
+0.8
+1.0
+1.2
+1.4
+1.6
+UniRG-CXR
+Maira-2
+GPT-5
+MedGemma
+****
+No change
+(n=744)
+No significant difference 
+compared to the prior 
+study.
+Prior report: ... slightly rotated positioning ... opacification of the right lung ... There 
+may be some volume loss on the right ...
+UniRG-CXR: As compared to the previous radiograph, there is no relevant change. 
+The extensive right pleural effusion with volume loss in the right lung is unchanged ... 
+Gold: As compared to the previous radiograph, there is no relevant change. 
+Extensive right pleural effusion... 
+Conext: Age:60-70.Gender:F.Indication:Pneumonia, evaluation for interval change.
+1/RadCliQ-v1
+0.8
+1.0
+1.2
+1.4
+1.6
+UniRG-CXR
+Maira-2
+GPT-5
+MedGemma
+****
+New development
+(n=275)
+A new abnormality has 
+appeared that was not 
+seen previously.
+Prior report: ... no focal consolidation, pneumothorax or pleural effusion.The lungs 
+are hyperinflated ... no free air under the right hemidiaphragm ...
+UniRG-CXR: ... There is a new opacity in the left mid lung. The cardiomediastinal 
+and hilar contours are normal ... 
+Gold: In the left mid lung is a 2.9 cm rounded opacity with an air-fluid level 
+concerning for a cavitary lesion. This was no present in the prior exam ... 
+  
+Conext: Age:20-30.Gender:M.Indication: Chest pain after recent fall...
+1/RadCliQ-v1
+0.8
+1.0
+1.2
+1.4
+1.6
+UniRG-CXR
+Maira-2
+GPT-5
+MedGemma
+****
+No prior-study
+view
+First study
+(n=810)
+Initial imaging examin-
+ation for the current 
+clinical episode.
+No prior report
+UniRG-CXR: ... There is opacity in the right lung. There is no pneumothorax or 
+pleural effusion. The heart is enlarged. A tracheostomy tube is in place ... 
+Gold: ... Tracheostomy tube is present ... There is no pneumothorax or pleural 
+effusion. There is a hazy veil-like opacity in the right upper lung zone ... Heart size 
+appears enlarged ... 
+  
+Conext: Age:50-60.Gender:M.Indication: ... question pneumonia, pneumothorax...
+1/RadCliQ-v1
+0.8
+1.0
+1.2
+1.4
+1.6
+UniRG-CXR
+Maira-2
+GPT-5
+MedGemma
+****
+Figure 3: UniRG-CXR enhances longitudinal report generation. (a). Comparing UniRG-CXR and its non-
+longitudinal ablation with prior models on longitudinal report generation, we show UniRG-CXR exhibits the best
+performance and the longitudinal information is beneficial to the performance. (b). UniRG-CXR achieves the best
+performance across different longitudinal encounter points ranging from the first encounter to the more complex 5th+
+encounters, showcasing its improvements are across the board. In comparison, prior models such as GPT-5, GPT-4o
+and MedGemma are barely surpassing the copy prior report baseline (grey lines). (c). Compared with prior models
+which barely improve over the copy prior baseline (dashed line), UniRG-CXR significantly and consistently improves
+performance across different temporal disease change categories including new development, no change, progression
+and regression (categorized by GPT-5 on ground truth report). Qualitative examples are shown for each category
+where UniRG-CXR correctly predicts the temporal change based on the input. All results in this figure are on MIMIC
+test set with prior information where available.
+and regression) using GPT-5 as an automatic labeler. We evaluate UniRG-CXR ’s performance across
+these categories, comparing it against prior models and the copy prior report baseline. As expected, the no
+6
+
+===== PAGE 7 =====
+change category is the easiest, since much of the content can be reused from the prior report. In contrast,
+categories reflecting disease evolution such as regression or new development are more challenging, as the
+model must accurately localize and quantify subtle changes. UniRG-CXR demonstrates consistent and
+substantial improvements across all categories, markedly surpassing both prior models and the copy-prior
+baseline. Qualitative examples further illustrate that UniRG-CXR generates clinically faithful longitudinal
+descriptions, correctly identifying changes such as new findings or resolving abnormalities. Collectively,
+these results highlight UniRG-CXR ’s superior capability to model and reason over longitudinal patient
+trajectories.
+Generalization and Robustness of UniRG-CXR
+0
+10
+20
+UniRG-CXR
+MedGemma
+MedVersa
+GPT-5
+GPT-4o
+IU-Xray
+BLEU
+0
+20
+40
+60
+BERTScore
+0
+20
+40
+60
+SembScore
+0
+10
+20
+30
+RadGraph
+0
+1
+2
+1/RadCliQ-v1
+0
+10
+20
+UniRG-CXR
+MedGemma
+MedVersa
+GPT-5
+GPT-4o
+Proprietary Data
+0
+20
+40
+0
+20
+40
+0
+10
+20
+0.0
+0.5
+1.0
+(a)
+(b)
+(c)
+Male
+Female
+Male
+Female
+0.6
+0.8
+1.0
+1.2
+1.4
+1.6
+1/RadCliQ-v1
+<60
+60+
+Male
+Female
+Male
+Female
+0.6
+0.8
+1.0
+1.2
+1.4
+1.6
+1/RadCliQ-v1
+white
+non-white
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+F1
+Pneumothorax
+(n=81)
+Pleural Other
+(n=106)
+Fracture
+(n=133)
+No Finding
+(n=141)
+Lung Lesion
+(n=178)
+Consolidation
+(n=249)
+Pneumonia
+(n=473)
+Enlarged Cardio.
+(n=628)
+Edema
+(n=663)
+Atelectasis
+(n=842)
+Lung Opacity
+(n=918)
+Pleural Effusion
+(n=926)
+Support Devices
+(n=953)
+Cardiomegaly
+(n=1026)
+UniRG-CXR
+MedGemma
+MedVersa
+GPT-5
+GPT-4o
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+F1
+Pleural Effusion
+(n=1120)
+Atelectasis
+(n=1313)
+Support Devices
+(n=1859)
+Cardiomegaly
+(n=2173)
+Lung Opacity
+(n=2670)
+No Finding
+(n=2816)
+UniRG-CXR
+MedGemma
+MedVersa
+GPT-5
+GPT-4o
+(d)
+Figure 4: Generalization and robustness of UniRG-CXR. (a). We held out two datasets sources (IU-Xray and
+PD (proprietary data) from the training data and evaluate UniRG-CXR in a zero-shot setting on these datasets .
+UniRG-CXR consistently outperforms prior models, maintaining substantial performance gains in this challenging
+setup. (b) and (c) present condition-level F1 scores on MIMIC-CXR and PD and highlight that UniRG-CXR remains
+the overall top-performing model in condition-level diagnostic accuracy. (d). UniRG-CXR demonstrates stable and
+robust performance across gender, age, and race subgroups, all of which exceed the performance of the second-best
+model (the dashed lines).
+7
+
+===== PAGE 8 =====
+In this section, we evaluate the robustness and generalization of UniRG-CXR. First of all, a robust
+universal report generation model should generalize well across institutions, including those with data
+distributions unseen during training. To test this, we create an experiment setup where we intentionally
+leave out certain data sources (IU data and a propriety data source) from the training of UniRG-CXR. We
+then test the model’s zero-shot performance on these two datasets, as shown in Figure 4 (a). UniRG-CXR
+consistently achieves the best performance across all out-of-distribution datasets, surpassing prior baselines
+with substantial margins.
+Another key generalization of chest radiology report generation models is to accurately identify and
+classify specific thoracic diseases/conditions, thereby expediting the diagnostic process for clinicians [14]. We
+evaluate the condition diagnosis capabilities of the output from UniRG-CXR by applying the CheXbert
+model [20] to detect diseases from its generated reports. As shown in Figure 4 (b) and (c), UniRG-CXR is
+leading the performance across all the prevalent diseases compared with other prior models in both MIMIC
+and out-of-distribution proprietary dataset.
+Finally, we evaluate the robustness of UniRG-CXR across gender, age, and race. As shown in Figure 4(d),
+we present performance stratified by these demographic subgroups on the CheXpert-Plus dataset. UniRG-
+CXR achieves consistently high scores across all groups, with overlapping distributions and no noticeable
+performance drop in any demographic category. Moreover, all subgroup performances of UniRG-CXR
+surpass those of the second-best model (dashed line), demonstrating that UniRG-CXR is robust and fair
+across demographic subgroups while maintaining superiority over prior models.
+Discussion
+In this work, we introduce UniRG, a reinforcement learning-based framework for medical imaging report
+generation. Using this framework, we are able to train UniRG-CXR, a state-of-the-art radiology report
+generation system for chest radiographs, which establishes a new performance standard across benchmarks on
+the ReXrank leaderboard, which spans multiple clinical contexts (inpatient, outpatient, and emergency care)
+and data from over 70 medical sites. Unlike previous models, which often excelled on isolated benchmarks or
+on specific metrics, UniRG-CXR delivers consistent performance improvement across multiple metrics on
+four widely used datasets (MIMIC-CXR, IU-Xray, CheXpert Plus, and ReXGradient) as well as additional
+proprietary dataset.
+Our evaluation protocol provides a comprehensive assessment of AI-based radiology report generation.
+We benchmark the system using lexical similarity, embedding-based similarity, and LLM-based clinical error
+metrics, enabling a holistic comparison against both reference reports and competing models. Beyond these,
+we conduct longitudinal evaluations that simulate real-world radiologists’ workflows, assess generalization
+and robustness on unseen distributions, and stratify performance by demographic subgroups. We further
+link report-level quality to condition-level diagnostic accuracy. Collectively, these analyses underscore the
+universality, robustness, and clinical alignment of UniRG-CXR
+Universal across institutions and data distributions
+Radiology reporting practices vary widely across
+institutions, regions [8], and documentation conventions [12]. Prior systems often overfit to dataset-specific
+phrasing or reporting styles, leading to performance drops when evaluated on unseen datasets or across
+sites [9, 15, 21]. UniRG-CXR overcomes this limitation by exhibiting consistent high performance across
+all benchmark datasets and on entirely unseen distributions with zero-shot inference, including both public
+and private cohorts collected from diverse institutions. These results indicate that UniRG-CXR captures
+the underlying clinical semantics rather than memorizing superficial textual templates—achieving true
+generalization across data sources, institutions, and domains. Such robustness establishes UniRG-CXR as
+a universal foundation model for radiology reporting, capable of maintaining reliability and fidelity across
+heterogeneous real-world environments.
+Universal across evaluation metrics
+Traditional text-generation metrics such as BLEU or ROUGE
+correlate only weakly with clinical judgments [13, 23], often obscuring medically significant errors. UniRG-
+CXR bridges this gap by explicitly integrating clinical error signals into its reinforcement learning reward
+design, aligning optimization with radiological practice rather than surface-level linguistic similarity. As
+8
+
+===== PAGE 9 =====
+a result, it achieves strong and balanced performance across both NLG and clinically grounded metrics,
+representing a universal improvement across evaluation dimensions.
+Universal across diagnostic levels
+Prior work typically assessed performance at the report level [17, 26,
+32], obscuring whether models captured critical findings [14]. By incorporating disease-level assessments, we
+provide a finer-grained view of diagnostic fidelity. These evaluations showcase the ability of UniRG-CXR to
+reflect diagnostic information, including in the long tail of rare conditions where training data are sparse.
+Universal across longitudinal contexts
+Radiologists often rely on prior studies when interpreting new
+exams [2, 3, 18, 33]. While previous models primarily operated in single-study settings [32], we additionally set
+up the longitudinal evaluation where the model is supplied with not only current CXRs but also prior reports
+and images. UniRG-CXR excels in both standard and longitudinal conditions. It effectively integrates prior
+images and reports to produce clinically coherent updates, achieving state-of-the-art results in temporal
+reasoning and demonstrating superior longitudinal modeling capability.
+Universal across demographics
+We further validate UniRG-CXR across stratified demographic sub-
+groups, confirming robust and equitable performance across gender, age, and race. This fairness evaluation
+is critical for real-world deployment, ensuring minimal bias and consistent report quality across patient
+populations.
+Overall, UniRG-CXR represents a substantial advance in radiology report generation, unifying high
+performance across datasets, metrics, diagnostic levels, longitudinal setups, and demographic subgroups.
+Beyond surpassing prior systems, it embodies the principles of universality, generalizability, and clinical
+alignment, paving the way for reliable real-world deployment. In the longer term, augmenting this system
+with interactive, instruction-following capabilities and expanding to multimodal patient data (e.g., lab tests,
+prior imaging, and clinical notes) could further enhance its clinical utility. We anticipate that UniRG-CXR
+will serve as both a strong benchmark for future research and a foundation for building reliable, assistive AI
+systems in radiology.
+Methods
+Model
+UniRG-CXR is built by fine-tuning a state-of-the-art open-source vision–language foundation model, Qwen3-
+VL-8B-Instruct [1] for the report generation tasks. In the sections that follow, we describe our task formulation,
+inference and evaluation protocols, optimization strategy, and dataset curation in detail.
+Tasks
+Our model is trained to generate both the ‘findings’ and ‘impression’ sections of the report for a frontal view
+(anterior–posterior or posterior–anterior) of the chest radiograph, which typically capture the key observations
+made in a study. The model receives additional contextual information, including the study indication and
+any available comparison text. To improve computational efficiency, each radiograph is resized to a resolution
+of 512 × 512 pixels. In routine clinical practice, radiologists frequently reference prior images and prior
+reports when interpreting the current study. To mirror this workflow and enhance clinical fidelity, we also
+supply the model with the most recent prior frontal radiograph and its associated report as supplementary
+inputs.
+Inference and Evaluation Metrics
+We follow the exact setup from ReXrank to take into account context (indication + comparison). We only
+use the key image path provided by ReXrank which is typically frontal view image. We keep temperature as
+0 for inference. We follow the setups in ReXrank [29] to evaluate report quality using the following metrics:
+9
+
+===== PAGE 10 =====
+BLEU-2 [16]. BLEU is a standard metric for machine translation and text generation that measures
+n-gram precision between generated and reference texts (0–1 scale). Following Zhang et al. [29], we report
+BLEU-2, which captures bigram precision.
+BERTScore [7, 28]. BERTScore evaluates semantic similarity by computing cosine similarity between
+BERT embeddings of the generated and reference reports, providing a meaning-aware alternative to surface
+n-gram metrics.
+SembScore [20]. SembScore is a radiology-specific metric that computes cosine similarity between 14-
+pathology indicator vectors produced by the CheXbert labeler for generated and groundtruth reports.
+RadGraph-F1 [10] measures the overlap in clinical entities and relations extracted by RadGraph from
+candidate and reference reports.
+1/RadCliQ-v1 [24] is the reciprocal of the RadCliQ composite metric, which aggregates BLEU, BERTScore,
+SembScore, and RadGraph-F1 for holistic radiology report evaluation. Because RadCliQ is originally lower-
+is-better, we follow ReXrank [29] and report its inverse so that higher values indicate better performance to
+be consistent with other scores.
+RaTEScore [31] is an entity-centric metric emphasizing key medical concepts such as diagnoses and
+anatomical structures, while being robust to medical synonyms and negation.
+CheXprompt [26] In addition to the ReXrank leaderboard metrics, we also evaluate report quality with
+CheXprompt, an LLM-based error detection metric.
+Optimization
+UniRG-CXR follows a two-stage SFT + RL training pipeline as we found that the combined approach is
+better than SFT alone or RL alone (details are in the supplementary information section).
+In the SFT stage, the model is initialized with a strong foundation for radiology report generation.
+The SFT training is performed over four datasets: MIMIC, CheXpert-Plus, ReXGradient and IU and we
+conduct a grid search over learning rates [1 × 10−5, 5 × 10−5] and batch sizes [128, 256, 521]. The optimal
+configuration is a learning rate of 5 × 10−5 with a batch size of 256 for 3 epochs.
+In the RL stage, we adopt GRPO [19] as our reinforcement learning algorithm, which eliminates the need
+for value functions by computing advantages within query-specific groups. Following recent advances [25],
+we incorporate two key improvements: (1) a higher clipping threshold to encourage response diversity and
+prevent entropy collapse; (2) remove KL penalty. Our training adopts a learning rate of 5 × 10−6, a global
+batch size of 256, and 16 sampled rollouts per query. The RL training is performed over four datasets:
+MIMIC, CheXpert-Plus, ReXGradient and IU. For reward optimization in the RL stage, we target BLEU,
+BERTScore, RadGraph-F1, SembScore, and CheXprompt (LLM-based), without using any format rewards
+since the model reliably produces well-structured reports after SFT. Our RL procedure follows a two-step
+optimization strategy.
+Step 1: RadCliQ-oriented optimization. We first optimize a weighted composite reward consisting of
+BLEU, BERTScore, SembScore, and RadGraph-F1, using the RadCliQ coefficients [24] of 0, 0.370, 0.253, and
+0.377, respectively. This stage runs for one epoch and encourages the model to generate outputs that are both
+lexically and clinically aligned with the ground-truth reports, effectively targeting RadCliQ improvement.
+Step 2: Error-reduction optimization. Starting from the best checkpoint from Step 1’s RadCliQ
+optimization, we perform an additional epoch in which we incorporate the CheXprompt error metric into
+the reward. Specifically, we use 1/(# CheXprompt errors + 1) as the CheXprompt reward to incentivize
+reducing factual reporting errors. To preserve the RadCliQ performance achieved in Step 1, we integrate the
+CheXprompt reward with a weight of 0.5 alongside the previous metrics. We also apply a KL regularization
+term with coefficient 0.03 to prevent excessive deviation from the Step 1 policy.
+Dataset Details
+Our training data consists of the training splits from MIMIC-CXR, CheXpert Plus, ReXGradient and IU.
+We extracted the indication, comparison, findings, and impression sections from the corresponding radiology
+reports. We then removed studies in which both the findings and impression sections were empty. Studies
+that contained a findings section but lacked an impression, or contained an impression but lacked findings,
+were retained. Depending on which ground-truth sections were available (findings and/or impression), we
+10
+
+===== PAGE 11 =====
+applied different prompt templates, as shown in the supplementary information section. We also set aside
+1,024 samples from the MIMIC-CXR training set as a validation set for all experiments.
+We follow ReXrank evaluation to evaluate UniRG-CXR on ReXrank official test sets from MIMIC-CXR,
+CheXpert Plus, IU-Xray and ReXGradient private test set. Apart from the ReXrank testsets, we also evaluate
+on a proprietary dataset which we name as PD. Below are the details for each dataset.
+MIMIC-CXR
+[11]. A large, publicly available dataset containing 377,110 chest X-rays from 227,835
+studies collected at the Beth Israel Deaconess Medical Center in Boston, MA. All images and reports are
+fully de-identified. We use the official ReXrank MIMIC test set, which includes 2,347 studies, for evaluation,
+and use the remaining training split for model development.
+CheXpert Plus
+[4] A publicly available dataset comprising 223,462 paired radiology reports and chest
+x-rays from 187,711 studies across 64,725 patients. We adopt the ReXrank test set, which follows the official
+CheXpert Plus test split and contains 200 studies. The CheXpert Plus training split is used for training
+UniRG-CXR.
+ReXGradient
+[30] A large-scale dataset curated by GradientHealth, consisting of a private testset of
+10,000 studies from 7,004 patients across 67 clinical sites in the United States. The publicly released official
+training set, comprising 140,000 studies, is used for training UniRG-CXR.
+IU-Xray
+[6] A public dataset containing 7,470 radiology reports paired with corresponding frontal and
+lateral chest x-rays. We follow the ReXrank split and evaluate on the test set of 590 studies and train with
+the rest as the train set. To assess the zero-shot generalization capability of UniRG-CXR on unseen data
+sources, we exclude the IU-Xray training set from the training corpus in the generalization study.
+Proprietary Dataset (PD)
+This proprietary dataset comprises 11,815 chest X-ray studies from inpatient
+and outpatient facilities across the United States. Each study includes corresponding radiology reports of
+frontal and lateral view images, without prior studies. The dataset was used exclusively for evaluation, with
+no overlap with any training sources.
+References
+[1] Shuai Bai, Yuxuan Cai, Ruizhe Chen, Keqin Chen, Xionghui Chen, Zesen Cheng, Lianghao Deng, Wei
+Ding, Chang Gao, Chunjiang Ge, Wenbin Ge, Zhifang Guo, Qidong Huang, Jie Huang, Fei Huang,
+Binyuan Hui, Shutong Jiang, Zhaohai Li, Mingsheng Li, Mei Li, Kaixin Li, Zicheng Lin, Junyang Lin,
+Xuejing Liu, Jiawei Liu, Chenglong Liu, Yang Liu, Dayiheng Liu, Shixuan Liu, Dunjie Lu, Ruilin Luo,
+Chenxu Lv, Rui Men, Lingchen Meng, Xuancheng Ren, Xingzhang Ren, Sibo Song, Yuchong Sun, Jun
+Tang, Jianhong Tu, Jianqiang Wan, Peng Wang, Pengfei Wang, Qiuyue Wang, Yuxuan Wang, Tianbao
+Xie, Yiheng Xu, Haiyang Xu, Jin Xu, Zhibo Yang, Mingkun Yang, Jianxin Yang, An Yang, Bowen Yu, Fei
+Zhang, Hang Zhang, Xi Zhang, Bo Zheng, Humen Zhong, Jingren Zhou, Fan Zhou, Jing Zhou, Yuanzhi
+Zhu, and Ke Zhu. Qwen3-vl technical report, 2025. URL https://arxiv.org/abs/2511.21631.
+[2] Shruthi Bannur, Stephanie Hyland, Qianchu Liu, Fernando Perez-Garcia, Maximilian Ilse, Daniel C
+Castro, Benedikt Boecking, Harshita Sharma, Kenza Bouzid, Anja Thieme, et al. Learning to exploit
+temporal structure for biomedical vision-language processing. In Proceedings of the IEEE/CVF Conference
+on Computer Vision and Pattern Recognition, pp. 15016–15027, 2023.
+[3] Shruthi Bannur, Kenza Bouzid, Daniel C. Castro, Anton Schwaighofer, Anja Thieme, Sam Bond-Taylor,
+Maximilian Ilse, Fernando P´erez-Garc´ıa, Valentina Salvatelli, Harshita Sharma, Felix Meissen, Mercy
+Ranjit, Shaury Srivastav, Julia Gong, Noel C. F. Codella, Fabian Falck, Ozan Oktay, Matthew P.
+Lungren, Maria Teodora Wetscherek, Javier Alvarez-Valle, and Stephanie L. Hyland. Maira-2: Grounded
+radiology report generation, 2024. URL https://arxiv.org/abs/2406.04449.
+11
+
+===== PAGE 12 =====
+[4] Pierre Chambon, Jean-Benoit Delbrouck, Thomas Sounack, Shih-Cheng Huang, Zhihong Chen, Maya
+Varma, Steven QH Truong, Chu The Chuong, and Curtis P. Langlotz. Chexpert plus: Augmenting a
+large chest x-ray dataset with text radiology reports, patient demographics and additional image formats,
+2024. URL https://arxiv.org/abs/2405.19538.
+[5] Jean-Benoit Delbrouck, Justin Xu, Johannes Moll, Alois Thomas, Zhihong Chen, Sophie Ostmeier,
+Asfandyar Azhar, Kelvin Zhenghao Li, Andrew Johnston, Christian Bluethgen, et al. Automated
+structured radiology report generation. In Proceedings of the 63rd Annual Meeting of the Association for
+Computational Linguistics (Volume 1: Long Papers), pp. 26813–26829, 2025.
+[6] Dina Demner-Fushman, Marc D Kohli, Marc B Rosenman, Sonya E Shooshan, Laritza Rodriguez, Sameer
+Antani, George R Thoma, and Clement J McDonald. Preparing a collection of radiology examinations
+for distribution and retrieval, 2015.
+[7] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. Bert: Pre-training of deep
+bidirectional transformers for language understanding. In Proceedings of the 2019 conference of the
+North American chapter of the association for computational linguistics: human language technologies,
+volume 1 (long and short papers), pp. 4171–4186, 2019.
+[8] Michael P Hartung, Ian C Bickle, Frank Gaillard, and Jeffrey P Kanne. How to create a great radiology
+report. Radiographics, 40(6):1658–1670, 2020.
+[9] Jonathan Huang, Luke Neill, Matthew Wittbrodt, David Melnick, Matthew Klug, Michael Thompson,
+John Bailitz, Timothy Loftus, Sanjeev Malik, Amit Phull, et al. Generative artificial intelligence for chest
+radiograph interpretation in the emergency department. JAMA network open, 6(10):e2336100–e2336100,
+2023.
+[10] Saahil Jain, Ashwin Agrawal, Adriel Saporta, Steven Truong, Du Nguyen Duong, Tan Bui, Pierre
+Chambon, Yuhao Zhang, Matthew P Lungren, Andrew Y Ng, et al. Radgraph: Extracting clinical
+entities and relations from radiology reports. In Thirty-fifth Conference on Neural Information Processing
+Systems Datasets and Benchmarks Track (Round 1), 2021.
+[11] Alistair EW Johnson, Tom J Pollard, Seth J Berkowitz, Nathaniel R Greenbaum, Matthew P Lungren,
+Chih-ying Deng, Roger G Mark, and Steven Horng. Mimic-cxr, a de-identified publicly available database
+of chest radiographs with free-text reports. Scientific data, 6(1):317, 2019.
+[12] Charles E Kahn Jr, Curtis P Langlotz, Elizabeth S Burnside, John A Carrino, David S Channin, David M
+Hovsepian, and Daniel L Rubin. Toward best practices in radiology reporting. Radiology, 252(3):852–856,
+2009.
+[13] Guanxiong Liu, Tzu-Ming Harry Hsu, Matthew McDermott, Willie Boag, Wei-Hung Weng, Peter
+Szolovits, and Marzyeh Ghassemi. Clinically accurate chest x-ray report generation. In Machine Learning
+for Healthcare Conference, pp. 249–269. PMLR, 2019.
+[14] ME Milam and CW Koo. The current status and future of fda-approved artificial intelligence tools in
+chest radiology in the united states. Clinical Radiology, 78(2):115–122, 2023.
+[15] Aaron Nicolson, Jason Dowling, and Bevan Koopman. Improving chest X-ray report generation by
+leveraging warm starting.
+Artificial Intelligence in Medicine, 144:102633, 2023.
+ISSN 0933-3657.
+doi: https://doi.org/10.1016/j.artmed.2023.102633. URL https://www.sciencedirect.com/science/
+article/pii/S0933365723001471.
+[16] Kishore Papineni, Salim Roukos, Todd Ward, and Wei-Jing Zhu. Bleu: a method for automatic evaluation
+of machine translation. In Proceedings of the 40th annual meeting of the Association for Computational
+Linguistics, pp. 311–318, 2002.
+[17] Andrew Sellergren, Sahar Kazemzadeh, Tiam Jaroensri, Atilla Kiraly, Madeleine Traverse, Timo
+Kohlberger, Shawn Xu, Fayaz Jamil, C´ıan Hughes, Charles Lau, Justin Chen, Fereshteh Mahvar, Liron
+Yatziv, Tiffany Chen, Bram Sterling, Stefanie Anna Baby, Susanna Maria Baby, Jeremy Lai, Samuel
+12
+
+===== PAGE 13 =====
+Schmidgall, Lu Yang, Kejia Chen, Per Bjornsson, Shashir Reddy, Ryan Brush, Kenneth Philbrick, Mercy
+Asiedu, Ines Mezerreg, Howard Hu, Howard Yang, Richa Tiwari, Sunny Jansen, Preeti Singh, Yun Liu,
+Shekoofeh Azizi, Aishwarya Kamath, Johan Ferret, Shreya Pathak, Nino Vieillard, Ramona Merhej,
+Sarah Perrin, Tatiana Matejovicova, Alexandre Ram´e, Morgane Riviere, Louis Rouillard, Thomas
+Mesnard, Geoffrey Cideron, Jean bastien Grill, Sabela Ramos, Edouard Yvinec, Michelle Casbon,
+Elena Buchatskaya, Jean-Baptiste Alayrac, Dmitry Lepikhin, Vlad Feinberg, Sebastian Borgeaud, Alek
+Andreev, Cassidy Hardin, Robert Dadashi, L´eonard Hussenot, Armand Joulin, Olivier Bachem, Yossi
+Matias, Katherine Chou, Avinatan Hassidim, Kavi Goel, Clement Farabet, Joelle Barral, Tris Warkentin,
+Jonathon Shlens, David Fleet, Victor Cotruta, Omar Sanseviero, Gus Martins, Phoebe Kirk, Anand
+Rao, Shravya Shetty, David F. Steiner, Can Kirmizibayrak, Rory Pilgrim, Daniel Golden, and Lin Yang.
+Medgemma technical report, 2025. URL https://arxiv.org/abs/2507.05201.
+[18] Francesco Dalla Serra, Chaoyang Wang, Fani Deligianni, Jeffrey Dalton, and Alison Q O’Neil. Controllable
+chest x-ray report generation from longitudinal representations. arXiv preprint arXiv:2310.05881, 2023.
+[19] Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Xiao Bi, Haowei Zhang, Mingchuan
+Zhang, YK Li, et al. Deepseekmath: Pushing the limits of mathematical reasoning in open language
+models. arXiv preprint arXiv:2402.03300, 2024.
+[20] Akshay Smit, Saahil Jain, Pranav Rajpurkar, Anuj Pareek, Andrew Y. Ng, and Matthew P. Lungren.
+Chexbert: Combining automatic labelers and expert annotations for accurate radiology report labeling
+using bert, 2020. URL https://arxiv.org/abs/2004.09167.
+[21] Tim Tanida, Philip M¨uller, Georgios Kaissis, and Daniel Rueckert. Interactive and explainable region-
+guided radiology report generation. In CVPR, 2023.
+[22] Alice C Yu, Bahram Mohajer, and John Eng. External validation of deep learning algorithms for
+radiologic diagnosis: a systematic review. Radiology: Artificial Intelligence, 4(3):e210064, 2022.
+[23] Feiyang Yu, Mark Endo, Rayan Krishnan, Ian Pan, Andy Tsai, Eduardo Pontes Reis, Eduardo Kaiser
+Ururahy Nunes Fonseca, Henrique Min Ho Lee, Zahra Shakeri Hossein Abad, Andrew Y Ng, et al.
+Evaluating progress in automatic chest x-ray radiology report generation. Patterns, 4(9), 2023.
+[24] Feiyang Yu, Mark Endo, Rayan Krishnan, Ian Pan, Andy Tsai, Eduardo Pontes Reis, Eduardo Kaiser
+Ururahy Nunes Fonseca, Henrique Min Ho Lee, Zahra Shakeri Hossein Abad, Andrew Y Ng, et al.
+Evaluating progress in automatic chest x-ray radiology report generation. Patterns, 4(9), 2023.
+[25] Qiying Yu, Zheng Zhang, Ruofei Zhu, Yufeng Yuan, Xiaochen Zuo, Yu Yue, Weinan Dai, Tiantian Fan,
+Gaohong Liu, Lingjun Liu, et al. Dapo: An open-source llm reinforcement learning system at scale.
+arXiv preprint arXiv:2503.14476, 2025.
+[26] Juan Manuel Zambrano Chaves, Shih-Cheng Huang, Yanbo Xu, Hanwen Xu, Naoto Usuyama, Sheng
+Zhang, Fei Wang, Yujia Xie, Mahmoud Khademi, Ziyi Yang, et al. A clinically accessible small multimodal
+radiology model and evaluation metric for chest x-ray findings. Nature Communications, 16(1):3108,
+2025.
+[27] Juan Manuel Zambrano Chaves, Shih-Cheng Huang, Yanbo Xu, Hanwen Xu, Naoto Usuyama, Sheng
+Zhang, Fei Wang, Yujia Xie, Mahmoud Khademi, Ziyi Yang, et al. A clinically accessible small multimodal
+radiology model and evaluation metric for chest x-ray findings. Nature Communications, 16(1):3108,
+2025.
+[28] Tianyi Zhang, Varsha Kishore, Felix Wu, Kilian Q Weinberger, and Yoav Artzi. Bertscore: Evaluating
+text generation with bert. In International Conference on Learning Representations, 2019.
+[29] Xiaoman Zhang, Hong-Yu Zhou, Xiaoli Yang, Oishi Banerjee, Juli´an N Acosta, Josh Miller, Ouwen
+Huang, and Pranav Rajpurkar. Rexrank: A public leaderboard for ai-powered radiology report generation.
+arXiv preprint arXiv:2411.15122, 2024.
+13
+
+===== PAGE 14 =====
+[30] Xiaoman Zhang, Juli´an N. Acosta, Josh Miller, Ouwen Huang, and Pranav Rajpurkar. Rexgradient-
+160k: A large-scale publicly available dataset of chest radiographs with free-text reports, 2025. URL
+https://arxiv.org/abs/2505.00228.
+[31] Weike Zhao, Chaoyi Wu, Xiaoman Zhang, Ya Zhang, Yanfeng Wang, and Weidi Xie. Ratescore: A
+metric for radiology report generation. In Proceedings of the 2024 Conference on Empirical Methods in
+Natural Language Processing, pp. 15004–15019, 2024.
+[32] Hong-Yu Zhou, Juli´an Nicol´as Acosta, Subathra Adithan, Suvrankar Datta, Eric J. Topol, and Pranav
+Rajpurkar. Medversa: A generalist foundation model for medical image interpretation, 2025. URL
+https://arxiv.org/abs/2405.07988.
+[33] Qingqing Zhu, Tejas Sudharshan Mathai, Pritam Mukherjee, Yifan Peng, Ronald M Summers, and
+Zhiyong Lu. Utilizing longitudinal chest x-rays and reports to pre-fill radiology reports. In International
+Conference on Medical Image Computing and Computer-Assisted Intervention, pp. 189–198. Springer,
+2023.
+Supplementary Information
+Comparing SFT and RL
+To identify the most effective training strategy for radiology report generation, we compare three approaches
+on the MIMIC dataset: SFT alone, RL alone, and the combined SFT + RL pipeline. All SFT and RL runs
+are trained for 3 epochs, while the SFT + RL configuration applies an additional 2 epochs of RL starting
+from the SFT checkpoint. As shown in Table 1, RL alone outperforms SFT on BERTScore and SembScore,
+but lags significantly behind on RadGraph-F1. This is likely because RadGraph is more sensitive to specific
+wording, phrasing, and lexical distributions, which SFT captures more directly through next-token prediction.
+Consequently, SFT slightly outperforms RL on the overall RadCliQ score. The combined SFT + RL setup
+yields the strongest results across all metrics. SFT first teaches the model the output format and dataset-
+specific lexical structure, and RL subsequently refines this foundation by optimizing more semantically and
+clinically aligned rewards, leading to the best synergy and overall performance.
+Table 1: Comparison of SFT, RL, and SFT + RL on findings + impression generation on MIMIC. The combined
+SFT + RL strategy achieves the best performance.
+Method
+BERTScore
+SembScore
+RadGraph-F1
+1/RadCliQ
+Baseline
+0.293
+0.242
+0.102
+0.625
+MIMIC SFT
+0.421
+0.426
+0.236
+0.962
+MIMIC RL
+0.437
+0.435
+0.198
+0.950
+MIMIC SFT + MIMIC RL
+0.449
+0.478
+0.267
+1.110
+Prompt Templates
+Below are training and inference prompt templates for findings + impression generation and findings generation.
+{input} is the placeholder for the input images and the context from the indication and comparison sections.
+Findings + Impression Generation Prompt
+This is a radiology report generation task. Here is the context: {input} Given the image and the
+context, provide the report in the following format: Findings: [write the findings] Impression: [write
+the impression] Now write the report in the format above.
+14
+
+===== PAGE 15 =====
+Findings Generation Prompt
+This is a radiology report generation task. Here is the context: {input} Given the image and the
+context, provide the findings in the following format: Findings: [write the findings] Now write the
+report in the format above.
+15

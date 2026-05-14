@@ -1,0 +1,1309 @@
+
+===== PAGE 1 =====
+arXiv:2506.23102v1  [eess.IV]  29 Jun 2025
+MedRegion-CT: Region-Focused Multimodal LLM for Comprehensive 3D CT
+Report Generation
+Sunggu Kyung, Jinyoung Seo, Hyunseok Lim, Dongyeong Kim, Hyungbin Park,
+Jimin Sung, Jihyun Kim, Wooyoung Jo, Yoojin Nam, Namkug Kim
+Department of Bioengineering, University of Ulsan College of Medicine, Asan Medical Center
+babbu3682@gmail.com, namkugkim@mail.ulsan.ac.kr
+Abstract
+The recent release of RadGenome-Chest CT has signifi-
+cantly advanced CT-based report generation. However, ex-
+isting methods primarily focus on global features, making
+it challenging to capture region-specific details, which may
+cause certain abnormalities to go unnoticed. To address
+this, we propose MedRegion-CT, a region-focused Multi-
+Modal Large Language Model (MLLM) framework, featur-
+ing three key innovations. First, we introduce Region Repre-
+sentative (R2) Token Pooling, which utilizes a 2D-wise pre-
+trained vision model to efficiently extract 3D CT features.
+This approach generates global tokens representing overall
+slice features and region tokens highlighting target areas,
+enabling the MLLM to process comprehensive information
+effectively. Second, a universal segmentation model gen-
+erates pseudo-masks, which are then processed by a mask
+encoder to extract region-centric features. This allows the
+MLLM to focus on clinically relevant regions, using six pre-
+defined region masks. Third, we leverage segmentation re-
+sults to extract patient-specific attributions, including organ
+size, diameter, and locations. These are converted into text
+prompts, enriching the MLLM’s understanding of patient-
+specific contexts. To ensure rigorous evaluation, we con-
+ducted benchmark experiments on report generation using
+the RadGenome-Chest CT. MedRegion-CT achieved state-
+of-the-art performance, outperforming existing methods in
+natural language generation quality and clinical relevance
+while maintaining interpretability. The code for our frame-
+work is publicly available.
+1. Introduction
+Computed tomography (CT) plays a crucial role in med-
+ical diagnostics, providing clinicians with detailed infor-
+mation about anatomical structures and pathological con-
+ditions [1]. Compared to 2D imaging, 3D CT captures spa-
+tial relationships and lesion details with higher precision,
+Figure 1. Comprehensive radiological workflow for clinical di-
+agnosis. (a) Initial Overview: fast and slow scanning techniques
+for preliminary image review. (b) Analysis by Region: system-
+atic assessment of major organ systems. (c) Clinical Integration:
+correlation with various medical information for comprehensive
+patient evaluation.
+thereby enabling more accurate and comprehensive diag-
+noses. However, manually analyzing numerous CT slices
+and generating radiology reports is a time-consuming and
+labor-intensive task for radiologists [2, 3]. Therefore, the
+development of automated systems that enhance diagnostic
+quality while alleviating clinicians’ workload is essential.
+Recent progress in Multi-Modal Large Language Mod-
+els (MLLMs) [4–8] have facilitated the effective handling
+of complex multimodal tasks by leveraging the robust lan-
+guage understanding capabilities of large language models
+(LLMs). In line with these advancements, MLLMs in the
+medical domain have demonstrated the ability to compre-
+hend medical images and relevant clinical information, en-
+abling their application in report generation tasks.
+Yet, most existing studies primarily focus on 2D med-
+
+===== PAGE 2 =====
+ical images, leaving the field of report generation for 3D
+data (e.g., CT, MRI) relatively unexplored. This limitation
+can be attributed to several technical challenges such as data
+scarcity, the complexity of feature extraction, and the high
+computational cost associated with processing large-scale
+datasets [9, 10].
+The recent release of large-scale 3D CT datasets, such
+as CT-RATE [11] and RadGenome-Chest CT [12], has cre-
+ated new opportunities for advancements in 3D medical im-
+age analysis and report generation. Notably, open-source
+3D medical MLLMs [13–17] have shown promising re-
+sults in few tasks such as anomaly detection and context
+retrieval. However, these MLLMs predominantly rely on
+global volume-level features, which limits their ability to
+capture the fine-grained, region-specific details that are es-
+sential for report generation. To advance MLLMs towards
+generating diagnostically valuable CT reports, it is crucial
+to develop models that not only extract region-focused in-
+formation effectively but also integrate it seamlessly into the
+report generation process.
+Another challenge in analyzing 3D medical images is
+the absence of robust and well-optimized encoders. While
+2D medical images share a similar data structure with natu-
+ral images, allowing for transfer learning using pre-trained
+universal 2D encoders [18–20], 3D medical images dif-
+fer significantly from natural images. This makes it diffi-
+cult to directly apply existing encoders to 3D medical im-
+ages. Inevitably, 3D encoders require extensive pre-training
+for medical imaging applications, which entails substantial
+computational costs.
+Radiologists initially review CT scans on a slice-wise ba-
+sis to perform a rapid holistic assessment, followed by a fo-
+cused examination of specific slices where key organs are
+clearly visible, allowing them to extract detailed regional
+features critical for precise diagnosis (see Fig. 1-(a)). To ef-
+fectively capture regional features in a similar manner, we
+introduce Region Representative (R2) Token Pooling. In
+this method, global tokens are constructed from visual to-
+kens extracted from individual slices of a CT scan, while
+additional region tokens are derived from clinically infor-
+mative slices. By incorporating these global tokens and rep-
+resentative region tokens, this framework enables to process
+3d visual features efficiently.
+After an initial overview, radiologists typically conduct
+organ-based analysis to obtain more detailed information
+(see Fig. 1-(b)). To emulate this analytical protocol, we in-
+troduce a Mask-Driven Visual Extractor for region-focused
+feature extraction. In this method, a universal segmenta-
+tion model generates pseudo-masks for key organs. These
+pseudo-masks are processed through the mask driven ex-
+tractor to extract mask tokens and spatial tokens, which are
+integrated into the LLM.
+Additionally, radiologists make their diagnostic deci-
+sions based on various medical information (see Fig. 1-
+(c)). We process the pseudo-masks of key organs and le-
+sions through a deterministic algorithm to extract Patient-
+Specific Attributes (e.g., organ volume, diameter, lesion lo-
+cation), which are then incorporated into the LLM as textual
+prompts. This strategy enhances the precision and clinical
+relevance of the generated reports by providing personal-
+ized diagnostic insights.
+In summary, we propose MedRegion-CT, an effective
+framework for generating 3D CT reports. In our experi-
+ments setting, MedRegion-CT achieves state-of-the-art per-
+formance in report generation tasks, surpassing existing
+methods in clinical validity and interpretability. The gen-
+erated reports exhibit superior accuracy and coherence, sig-
+nificantly enhancing the framework’s applicability in real-
+world clinical settings. Our contributions are as follows:
+• We introduce a Region Representative (R2) Token Pool-
+ing that efficiently extracts features from 3D CT images
+by leveraging pre-trained 2D vision models, generating
+region tokens focused on clinically informative slices, as
+well as global tokens representing the entire scan.
+• We propose Mask-Driven Visual Extractor that processes
+the pseudo-masks generated by the universal segmenta-
+tion model to extract region-focused features, allowing
+LLM to capture localized information of the region.
+• We extract Patient-Specific Attributes from the pseudo-
+masks and convert them into textual prompts, enhanc-
+ing the LLM’s contextual understanding of the individual
+case.
+2. Related Work
+2.1. Medical MLLMs.
+Recent advancements in MLLMs have demonstrated com-
+petent performance by employing LLM as decoders and us-
+ing instruction-following sets [21]. 2D medical MLLMs
+[22–30] have been developed by finetuning open source
+LLMs and using robust 2D vision models on large-scale
+paired medical image–text datasets [31–33]. These models
+have achieved remarkable performance across various med-
+ical applications, including report generation, visual ques-
+tion answering (VQA), and disease diagnosis.
+Despite these advancements, the development of 3D
+medical MLLMs has been comparatively restricted, mainly
+due to limited suitable data. To address these challenges,
+Hamamci et al. [17] introduced the CT-RATE dataset, con-
+sisting of 26K chest CT volumes paired with their corre-
+sponding radiology reports. Wu et al. [13], Bai et al. [15]
+collected diverse 3D medical data from publicly accessible
+professional medical websites and tailored them for various
+3D medical tasks. Recently, the release of RadGenome-
+Chest CT [12], a large-scale grounded dataset has opened
+new possibilities for further advancement in the field of 3D
+
+===== PAGE 3 =====
+MLLMs.
+Currently, several open-source 3D medical MLLMs have
+been introduced. RadFM [13] is a pioneering radiology-
+based model that processes both 2D and 3D scans across
+multiple imaging modalities through its combined 3D ViT
+and Perceiver architecture.
+MedBLIP [14] further en-
+hanced capabilities by incorporating EHR data and employ-
+ing MedQFormer to adapt 3D images to pre-trained 2D en-
+coders. CT2Rep [16] leveraged 3D Auto-regressive Trans-
+formers and memory-driven decoders to effectively pro-
+cess longitudinal data. M3D [15] employed 3D ViT en-
+coders with spatial pooling perceivers to compress high-
+dimensional tokens, while also enabling promptable seg-
+mentation. Despite these advancements, challenges remain
+in dataset diversity, computational optimization, and stan-
+dardized evaluation.
+2.2. 3D Vision Encoder for MLLMs.
+In the 3D medical MLLM domain, extracting spatial fea-
+tures has long been a challenging task. Prior research com-
+monly adopts one of two approaches. The first uses a 3D
+vision encoder like 3D ViT, which partitions an entire imag-
+ing volume into fixed-size 3D patches. Most MLLM mod-
+els [13, 15, 34] depend on such 3D vision encoders. How-
+ever, Due to the uniqueness of medical data (e.g., CT and
+MRI), these encoders often require pretraining from scratch
+and may fail to capture slice-level details.
+The second approach extracts features from each 2D
+slice independently and then aggregates them. While this
+method benefits from pretrained 2D encoders, it can lose
+3D context and inter-slice consistency. To address these is-
+sues, CT2Rep employs a CT-ViT [35] structure that groups
+selected slices before integrating them. MS-VLM [36] pro-
+cesses slices individually, then uses a z −former to ef-
+ficiently aggregate slice-level features, whereas Med-2E3
+[37] fuses features derived from both 3D and 2D encoders.
+Even if 3D features are successfully extracted, the high di-
+mensionality and large number of tokens in 3D medical data
+can create a heavy computational burden when fed into the
+LLM. Inevitably, MLLM methods often compress vision
+features to reduce computational cost while retaining spa-
+tial relationships and detailed context.
+Recently, the video editing domain has adopted a dual
+frame rate strategy—incorporating both slow and fast
+frames—to achieve more comprehensive content repre-
+sentation while significantly enhancing computational effi-
+ciency [38–40]. Inspired by the slow-fast architecture [41],
+we optimize computational efficiency by reinterpreting the
+concept of fast and slow tokens in the medical domain.
+Fast tokens were designed to provide depth information by
+embedding all slices while using fewer visual tokens per
+slice. In contrast, slow tokens, generated by embedding
+slices that represent key regions, capture rich local infor-
+mation by employing more visual tokens per slice.
+2.3. Region-Focused MLLMs.
+Several studies [42–44] in general domains have explored
+the incorporation of local features into LLMs, demonstrat-
+ing their potential for region-level understanding. However,
+region-level interpretation in medical imaging remains rel-
+atively underexplored. Most existing medical MLLMs pro-
+cess entire images as a single representation, making it dif-
+ficult to generate text focusing on specific regions. Further-
+more, medical reports often describe multiple regions si-
+multaneously.
+To
+help
+identify
+specific
+clinically
+important
+re-
+gions, several studies fine-tuned models using instruction-
+following sets composed of Refer-and-Ground Conversa-
+tions that utilize bounding-box-based coordinate informa-
+tion [45–47].
+These datasets enable models to focus on
+specific regions, supporting object detection and grounded
+radiology report generation.
+MAIRA-2 [48] proposed
+the Grounded Radiology Report Generation task, utiliz-
+ing datasets that provide annotated locations correspond-
+ing to each finding in chest X-rays (CXR). A few studies
+[49, 50] have focused on utilizing region-of-interest (ROI)-
+aligned features and integrating it into the LLM. For in-
+stance, RGRG [49] employs a detector to extract ROI fea-
+tures for CXR report generation, allowing for more fine-
+grained descriptions.
+Recently, semantic segmentation-
+based approaches have been explored to provide LLMs with
+pixel-level features. MAIRA-SEG [28] uses mask-aware
+visual extractor proposed in Osprey [51] to extract segmen-
+tation tokens from major organ and lesion pseudo-masks
+obtained by expert models. These segmentation tokens are
+then combined with CXR images to serve as input for the
+LLM. Similarly, Reg2RG [52] utilizes universal segmenta-
+tion models [53] to extract organ pseudo-masks from CT
+images, preserving geometric information while retaining
+texture features in local embeddings. These local features
+are subsequently combined with global features to establish
+a coherent contextual understanding.
+Building on these prior studies, we adopt SAT [53], a
+universal segmentation model, to extract pseudo-masks and
+propose a framework that effectively integrates semantic
+segmentation information.
+2.4. Extention of Textual Prompts
+Prompts were originally introduced as a natural language
+processing technique to improve the generalization of lan-
+guage models [54]. This method allows a language model to
+contextualize its inputs through text templates, thereby im-
+proving its ability to adapt to diverse tasks. Recent critical
+analyses of MLLMs have highlighted issues such as hallu-
+cination and reasoning errors induced by the transmission
+of visual features. [55, 56].
+
+===== PAGE 4 =====
+Figure 2. Overview of MedRegion-CT. In R2 token pooling, CT images processed in slice-wise independent manner undergo efficient
+feature extraction, yielding 3D vision tokens composed of global tokens and region representative tokens. Pseudo-masks are tokenized
+through R2 pooling to correspond with Multi Level visual tokens, and these are subsequently combined via mask pooling. Spatial tokens
+are derived from pseudo-masks through a location extractor. These two types of token collectively form the segmentation tokens. The
+patient-specific attribute extractor derives key morphological characteristics unique to each lesion from pseudo-masks. These three types
+of tokens are fed into an LLM to perform report generation along with a prompt.
+To address these challenges, various methods utilizing
+prompts have been proposed. Qin et al. [57] leverages a pre-
+trained vision–language model to automatically construct
+medical prompts encompassing various graphical attributes
+such as color, texture, and shape. PromptMRG [58] is a
+pioneering study in introducing prompts to the medical re-
+port generation task, converting diagnostic outcomes into
+prompts. Dia-LLaMA [59] employs a disease-recognition
+attention module to extract disease-specific features from
+CT scan and classify the presence of each disease. The clas-
+sification results are then transformed into diagnostic text
+prompts to guide the LLM. Insight [60] uses an instance-
+segmentation-based visual translator to convert meibogra-
+phy image into quantifiable morphological data, provid-
+ing detailed insights in conjunction with clinical context.
+RadGPT [61] applies a deterministic algorithm to transform
+voxel-level annotations of tumors and organs into a struc-
+tured report, thereby ensuring diagnostic consistency. In-
+spired by the methodology of RadGPT, we extracted sup-
+plementary clinical information from pseudo-mask and in-
+corporated it into the LLM as textual input to enhance the
+quality of generated reports.
+3. Method
+MedRegion-CT. When generating a radiology report, ra-
+diologists typically analyze medical images region by re-
+gion. Inspired by this workflow, MedRegion-CT generates
+reports for 6 predefined anatomical regions instead of pro-
+ducing a full report. These individual region reports are
+subsequently merged to construct the final report. To align
+with this approach, we preprocessed the ground truth report
+by splitting them into the same predefined regions, creating
+a training set with the expected format. The architecture of
+MedRegion-CT is presented in Fig. 2. MedRegion-CT con-
+sists of 5 key elements: 1) 2D encoder for processing indi-
+vidual CT slices, 2) R2 Token Pooling that integrates fea-
+tures extracted at the slice level to construct 3D features, 3)
+Mask-Driven visual extractor, 4) Patient-Specific Attribute
+Extractor, 5) LLM.
+We first employ a universal segmentation model to gen-
+erate pseudo-masks for CT anatomical structures. These
+pseudo-masks serve as pseudo-labels for the MLLM. To
+extract visual features from each CT slice, we utilize a pre-
+trained 2D image encoder. We then integrate these features
+through R2 Token Pooling, a novel approach that combines
+global tokens and region-representative tokens to construct
+Tvision, the vision tokens of the image. Tvision is integrated
+with the pseudo-masks to input the Mask Driven Visual Ex-
+tractor. The Mask Driven Visual Extractor generates mask
+tokens and spatial tokens, which collectively form segmen-
+tation tokens, Tseg. Additionally, medical information is
+extracted from the pseudo-masks using deterministic algo-
+rithms, which are then converted into patient-specific at-
+tribute text tokens Tattr for comprehensive representation
+of medical data. Tvision, Tseg, Tattr are provided as input
+to the LLM with instruction prompts I. The LLM generates
+the report R. This can be formulated as:
+
+===== PAGE 5 =====
+R = LLM(Tvision, Tseg, Tattr, I)
+(1)
+This enables the generation of precise medical reports
+focused on specific anatomical regions. The following sec-
+tions provide detailed explanations of each element.
+3.1. Structured Report Generation
+To analyze chest CT scans in a structured way, we divide the
+anatomical field of view into 6 regions: 1) Lung, 2) Large
+airways, 3) Mediastinum, 4) Heart and great vessels, 5) Os-
+seous structures, and 6) Upper Abdomen. This categoriza-
+tion reflects the methodical approach that radiologists use
+to interpret chest images, ensuring that each region is eval-
+uated for relevant pathology [62]. Additionally, this struc-
+tured approach contributes to the quality and consistency
+of radiology reports by facilitating comprehensive docu-
+mentation of findings across all anatomical structures [63].
+For segmentation of the six primary regions, our framework
+does not depend on a specific segmentation model and pos-
+sesses a flexible architecture that facilitates the integration
+of various segmentation models as required.
+3.2. 3D Vision Token Using R2 Token Pooling
+Generally, encoders using slice-wise strategies outputs D
+× T tokens when processing 3D images (D is depth or
+the number of slices, T is the number of tokens per slice).
+While this approach would ideally involve all slices along
+the depth axis, directly inputting such large number of to-
+kens to the LLM module requires substantial computational
+resources. To address this issue, we adopted the concepts of
+fast and slow tokens introduced in LITA [38] and generated
+global tokens and region representative tokens from 3D CT
+images.
+Global tokens Tglob are densely sampled to provide slice
+depth information. We obtain one global token from each
+slice by averaging all visual tokens, resulting in a total of
+D global tokens.
+Region representative tokens Treg are
+sparsely sampled to preserve more detailed spatial informa-
+tion. We select s slices from the CT, and for each slice, we
+performed spatial adaptive pooling to downsample the to-
+kens by a factor of s. For each slice, we obtain T
+s tokens,
+resulting in a total of T region representative tokens.
+Unlike LITA [38], we applied a region-centric method
+for slow token sampling rather than uniform sampling. We
+sample representative slice for each region by selecting the
+slice with the highest number of pseudo-mask pixels.
+The obtained Tglob and Treg tokens are merged to con-
+struct the final 3D vision token.
+Tvisual = Concat(Tglobal, Tregion)
+(2)
+This approach allows us to represent 3D CT with a total of
+D + T tokens, compared to D × T tokens. This dramatically
+reduces the token count while effectively preserving inter-
+slice relationships and spatial information.
+3.3. Mask-Driven Visual Extractor
+To extract mask features, MAIRA-SEG [28] utilizes the
+mask encoder of Osprey [51], with a transformer-based
+Rad-DINO (ViT-B backbone) [64]. We adopt the MAIRA-
+SEG’s mask aware visual extractor to obtain mask tokens
+and spatial tokens. Mask tokens are generated from multi
+level visual tokens and pseudo-masks by applying mask
+pooling and linear projections. Spatial tokens are derived
+from the pseudo-masks through flattening and linear projec-
+tion. Mask tokens and spatial tokens are then concatenated
+to form segmentation tokens. This approach is highly effi-
+cient, as it generates only two segmentation tokens for each
+mask, making it well-suited for the LLM’s fixed computa-
+tional capacity and context length. The extracted segmenta-
+tion tokens are used to prompt the LLM along with image
+and text tokens.
+Compared to MAIRA-SEG [28] which is restricted to
+2D images, we expand this architecture to 3D. To miti-
+gate the computational burden associated with 3D exten-
+sion, we applied Mask-Driven Visual Extractor. Instead of
+directly utilizing multi-level image features, we adapts R²
+token pooling in mask pooling operation as illustrated in
+Fig.2. Mask information tokenized through R² token pool-
+ing is aligned with multi-level visual tokens to facilitate
+mask pooling.
+Another key distinction from MAIRA-SEG [28] is our
+consistent placement of text and segmentation tokens in
+fixed positions, regardless of mask positivity.
+This en-
+ables direct recognition of segmentation information inde-
+pendent of prompt structure and facilitates extension to le-
+sion masks by allowing autonomous assessment of lesion
+presence based on mask information.
+Apart from the aforementioned modifications, we use
+the same hyperparameter settings as MAIRA-SEG, includ-
+ing the linear projector, embedding dimension size, specific
+layer output indices of the ViT-B-based encoder, and the
+number of segmentation tokens.
+3.4. Patient Attribution Extractor
+MLLMs have certain limitations in processing visual data
+through encoders, and there is a possibility of losing details
+during the cropping and resizing of CT images. To address
+this, we propose a method of extracting additional clinical
+information using pseudo-masks. In this study, inspired by
+the vision translator concept suggested in previous research
+[60, 61], we quantitatively extracted clinical information us-
+ing deterministic algorithms. This transformation technique
+serves to integrate rich morphological details into the LLM
+by providing additional clinical metadata. We extracted (1)
+volumetric measurements for the lungs, heart, liver and kid-
+
+===== PAGE 6 =====
+Method
+NLG Metrics
+LM Based Metrics
+BLEU-4
+ROUGE-L
+METEOR
+CA-F1 score
+Green score
+GPT-4 score
+CT2Rep [16]
+0.242
+0.347
+0.431
+0.305
+0.374
+44.508
+RadFM [13]
+0.262
+0.365
+0.489
+0.350
+0.234
+46.178
+MedBLIP [14]
+0.279
+0.373
+0.494
+0.370
+0.215
+46.825
+M3D [15]
+0.288
+0.391
+0.497
+0.435
+0.297
+47.243
+Ours (Ablation-R2+Attr+Mask)
+0.290
+0.375
+0.494
+0.450
+0.278
+48.837
+Ablation-R2+Mask
+0.280
+0.367
+0.498
+0.430
+0.264
+44.457
+Ablation-R2+Attr
+0.293
+0.375
+0.489
+0.425
+0.282
+47.319
+Ablation-R2
+0.261
+0.345
+0.481
+0.405
+0.233
+43.014
+Ablation-LITA [38]
+0.268
+0.343
+0.479
+0.385
+0.231
+42.293
+Table 1. Comparison of NLG* Metrics and LM* Based Metrics on the generated reports between MS-VLM and baseline methods. LM
+Based Metrics include CA-F1 score (averaged across 18 chest-related abnormalities), Green Score, and GPT-4 score. The best performance
+is highlighted in bold and the second-best is underlined. LITA [38] uniformly sample slices for slow tokens. R2 denotes our Region
+Representative (R2) Token Pooling, which sample slices for slow tokens with region-centric method. Attr denotes our Patient Attribution
+Extractor. Mask denotes our Mask-Driven Visual Extractor. *NLG: Natural Language Generation, LM: Language Model.
+ney, (2) count, diameter and spatial location data for le-
+sions (nodules, effusion and cysts), as can be seen in Fig.
+4. The extracted clinical information was subsequently re-
+structured into patient-specific reports and delivered to the
+LLM in textual form, as shown in Fig. 5. This contributes
+to the generation of more reliable region-centric reports.
+Measuring organ volumes and characterizing lesions
+yields clinically significant information across various dis-
+ease states. In patients with idiopathic pulmonary fibrosis
+(IPF), lung volume progressively declines and demonstrates
+strong correlation with pulmonary function [65]. These vol-
+umetric measurements therefore serve as valuable quantita-
+tive biomarkers for both disease diagnosis and prognostic
+evaluation. Furthermore, the conversion of nodule masks
+and kidney cyst masks into textual attributes enhances ra-
+diologists’ interpretative capabilities [66, 67]. When rep-
+resented as textual parameters, these measurements can fa-
+cilitate more precise disease characterization and outcome
+prediction.
+4. Experiment
+4.1. Dataset and Evaluation Metric
+Dataset.
+In our study, we utilized RadGenome-Chest CT
+[12], a comprehensive dataset designed for 3D chest CT in-
+terpretation. Built upon CT-RATE[17], this dataset contains
+25,692 non-contrast chest CT volumes with correspond-
+ing radiology reports from approximately 20,000 patients.
+RadGenome-Chest CT provides detailed organ-level seg-
+mentation masks covering 197 anatomical regions, which
+were generated using SAT [53], the latest powerful text-
+prompted universal segmentation model. The dataset fea-
+tures 665K grounded reports where each sentence links to
+specific anatomical regions in the CT volumes through seg-
+mentation masks. We merged these numerous anatomical
+regions into six clinically relevant regions that we defined
+for our research. For each of these six regions, we inte-
+grated the corresponding report sentences to create com-
+prehensive region-specific reports, which we then used as
+ground truth text. We followed the official dataset division,
+with 20,000 patients (24,128 volumes) allocated to train-
+ing/validation and 1,304 patients (1,564 volumes) for test.
+Evaluation Metric.
+Evaluating generated radiology re-
+ports requires assessing both linguistic similarity and clin-
+ical accuracy. Our methodology incorporates two metric
+categories: 1) Natural Language Generation (NLG) Met-
+rics include BLEU [68] (Bilingual Evaluation Understudy),
+which calculates n-gram precision between candidate and
+reference texts; ROUGE (Recall-Oriented Understudy for
+Gisting Evaluation) [69], which measures how much ref-
+erence content appears in the candidate; and METEOR
+(Metric for Evaluation of Translation with Explicit Order-
+ing) [70], which aligns words using exact matches, stem-
+ming, and synonyms.
+2) Language Model (LM) Based
+Metrics consist of Clinical Accuracy (CA) metrics using
+RadBERT [71] from CT-CLIP [17], which assesses abnor-
+mality detection through F1 scores; and GREEN (Genera-
+tive Radiology Report Evaluation and Error Notation) [72],
+which identifies and explains clinically significant errors.
+We also utilize LLMs as evaluators to assess generated con-
+tent. We employed GPT-4o Mini as the evaluator model
+using prompt designs from M3D [15] to evaluate gener-
+ated reports against ground truth, providing scores from 0-
+100 that reflect diagnostic reasoning and contextual accu-
+racy. This integrated approach ensures comprehensive as-
+sessment across structural, linguistic, and clinical dimen-
+sions essential for radiology reporting.
+
+===== PAGE 7 =====
+Figure 3. Qualitative comparison of generated radiology reports for a patient with suspected COVID-19 pneumonia comparing previous
+works, our proposed model, and ablation studies (Ablation-R2+Mask, Ablation-R2+Attr), Ablation-R2. Text is color-coded to highlight
+clinically important findings of ground-truth report (green) and erroneous findings of generated reports (yellow). MedRegion-CT demon-
+strates superior performance in both diagnostic accuracy and localization compared to previous works and ablation studies.
+4.2. Quantitive and Qualitative Results
+Quantitative Results.
+In this study, we comparatively
+evaluated five models for the radiology report generation
+task, including our proposed model (Ours), M3D, Med-
+BLIP, RadFM, and CT2Rep.
+As shown in Table 1, our
+proposed model achieved the highest score among the five
+models in BLEU4 (0.290), as well as in CA (0.450) and
+GPT-4 score (48.837). These results suggest superior per-
+formance not only in lexical and structural similarity to ref-
+erence reports but also in accurately conveying clinically
+essential information without distortion and minimizing un-
+necessary hallucinations. M3D demonstrated relatively sta-
+ble performance through pretrained weights and multi-stage
+learning, showing competitive values in METEOR (0.497)
+and ROUGE-L (0.391). However, its CA and GPT-4 score
+were lower than our proposed model, indicating limitations
+in fully reflecting clinical accuracy. While both MedBLIP
+and RadFM utilize LLMs, MedBLIP, which employs pre-
+trained models, exhibited relatively faster and more stable
+fine-tuning. Nevertheless, their overall performance did not
+match that of M3D or our proposed model. CT2Rep, due to
+its complex structure, could not incorporate LLMs and in-
+stead used an open-source framework trained from scratch.
+As a result, this relatively lightweight model was insuffi-
+ciently trained with limited resources, leading to compara-
+tively lower scores in most metrics including BLEU4, CA,
+and GPT-4 score. Although it achieved the highest Green
+Score (0.374), this was identified as a biased result primar-
+ily due to overfitting to normal cases, which constitute a
+significant proportion of medical datasets. Collectively, our
+findings reveal that traditional NLG metrics alone are in-
+sufficient for fully measuring the clinical significance and
+diverse sentence expressions inherent in medical reports.
+The CA metric indicates clinical accuracy, while the GPT-
+4 score suggests more flexible contextual understanding
+and factual consistency. The fact that our proposed model
+demonstrated balanced performance across all metrics un-
+derscores its high potential as a report generation model that
+accurately conveys key content required in actual medical
+environments without distortion.
+Qualitative Results. Fig. 3 presents a comparative ex-
+ample of automated report generation results based on chest
+CT images of a patient with suspected COVID-19 pneumo-
+nia. MedRegion-CT accurately identified bilateral GGO le-
+sions and explicitly noted the absence of masses or nodules,
+thereby minimizing false-positive judgments. Clear perfor-
+mance differences among existing models were observed.
+M3D partially recognized the presence of diffuse GGO in
+bilateral lungs; however, it simultaneously exhibited errors
+of excessive localization to the lower lobes and inaccurate
+descriptions emphasizing the absence of nodules. MedBLIP
+and RadFM lacked specific descriptions of major lesions,
+omitting clear mention of GGO. In the case of CT2Rep,
+while it mentioned non-specific nodules, it failed to specify
+the key characteristic of ground-glass opacity and included
+unnecessary or false-positive findings such as emphysema-
+tous changes or linear atelectasis, which were inconsistent
+with the actual imaging findings.
+Based on comprehen-
+
+===== PAGE 8 =====
+sive analysis, our proposed model was evaluated to have
+enhanced clinical utility by most accurately reflecting clini-
+cally important information such as bilateral GGO and min-
+imizing unnecessary lesion descriptions. This suggests that
+the proposed approach has the potential to generate consis-
+tent and reliable automated reports in cases of COVID-19
+pneumonia.
+4.3. Ablation Study
+To evaluate the impact of individual components on the per-
+formance of our proposed model, we conducted ablation
+studies with various configurations. We experimented with
+four ablation variants: Ablation-R2+Mask (using R2 and
+masking mechanism), Ablation-R2+Attr (using R2 and at-
+tribute attention), Ablation-R2 (using only the R2 compo-
+nent), and Ablation-LITA (using LITA method, uniformly
+sampling slices for slow tokens, instead of R2). The per-
+formance comparison between these variants and our com-
+plete model (Ours) is presented in Table 1 and Fig.3. As
+shown in Table 1, our complete model (Ours) consistently
+outperformed all ablation variants across various evaluation
+metrics. The complete model achieved the highest scores
+in BLEU-4 (0.290), ROUGE-L (0.375), CA (0.450), and
+GPT-4 score (48.837), demonstrating that optimal perfor-
+mance is achieved when all proposed components work
+synergistically. The Ablation-LITA demonstrated inferior
+performance compared to the Ablation-R2 variant across
+LM-based evaluation metrics.
+These results provide ev-
+idence that R2 token pooling offers superior representa-
+tional efficiency for volumetric feature extraction compared
+to uniform pooling strategies in the context of radiology re-
+port generation tasks. Ablation-R2+Mask showed perfor-
+mance similar to the complete model in BLEU-4 (0.280),
+but recorded slightly lower scores in CA (0.430) and GPT-
+4 score (44.457). This suggests that while the combina-
+tion of R2 and masking mechanism contributes to struc-
+tural accuracy, other components are also important for en-
+hancing clinical accuracy. Interestingly, Ablation-R2+Attr
+showed a slightly higher value in BLEU-4 (0.293), but
+was lower than the complete model in CA (0.425) and
+GPT-4 score (47.319).
+This indicates that the combina-
+tion of R2 and attribute attention may be advantageous
+for linguistic accuracy but does not fully guarantee clin-
+ical accuracy.
+Ablation-R2 exhibited the lowest overall
+performance (BLEU-4: 0.261, METEOR: 0.481, ROUGE-
+L: 0.345, Green Score: 0.233, CA: 0.405, GPT-4 score:
+43.014). This suggests that the R2 component alone has
+limitations in generating complex radiological reports with-
+out other complementary mechanisms.
+Fig.3 presents a
+qualitative comparison of reports generated for a COVID-
+19 pneumonia case, showing how each model configura-
+tion affects the clinical accuracy and comprehensiveness of
+the reports. Our complete model (Ours) accurately identi-
+fied ”diffuse ground-glass opacity densities” in ”both lungs”
+and correctly interpreted it as ”compatible with COVID-
+19 pneumonia.” This aligns with the description in the
+ground truth report (GT) of ”COVID-19 viral pneumo-
+nia” and ”ground-glass opacities in both lungs.” Similarly,
+Ablation-R2+Mask identified ”diffuse ground-glass opaci-
+ties” in ”both lungs, especially the lower lobes,” but did not
+mention an explicit association with COVID-19 pneumonia.
+Ablation-R2+Attr identified ”diffuse ground-glass opaci-
+ties” in ”bilateral lower to mid lung zones” and interpreted
+this as ”COVID-19 viral pneumonia,” but unnecessarily rec-
+ommended ”clinical correlation and close follow-up.”. The
+most notable difference was observed with Ablation-R2,
+which completely failed to identify ground-glass opacities
+and instead reported ”normal aeration” and ”no nodules or
+infiltrative lesions,” presenting an interpretation entirely dif-
+ferent from the actual findings. This severe performance
+degradation emphasizes that both Attr and Mask compo-
+nents are essential for accurately interpreting radiological
+findings.
+5. Conclusion
+In this work, we introduced MedRegion-CT, a region-
+focused MLLM framework for 3D chest CT report
+generation. By integrating R2 Token Pooling to balance
+global slice coverage with high-resolution local details,
+alongside a Mask-Driven Visual Extractor that handles
+pseudo-masks of major anatomical structures, our approach
+effectively captures both broad volumetric context and
+fine-grained regional information. Additionally, extracting
+Patient-Specific Attributes—such as organ volumes and
+lesion measurements—and converting them into textual
+prompts reduces ambiguity and improves clinical rele-
+vance.
+Experimental results on RadGenome-Chest CT
+demonstrate that MedRegion-CT outperforms baselines
+not only in linguistic fluency but also in diagnostic fi-
+delity,
+underscoring the importance of region-centric
+cues for accurate and interpretable automated reporting.
+We anticipate future work can extend this structured,
+region-focused paradigm to other clinical imaging domains
+and more complex diagnostic scenarios, thereby further
+enhancing the reliability of AI-assisted medical reporting.
+References
+[1] Shah Hussain, Iqra Mubeen, Niamat Ullah, Syed Shahab
+Ud Din Shah, Bakhtawar Abduljalil Khan, Muhammad Za-
+hoor, Riaz Ullah, Farhat Ali Khan, and Mujeeb A Sultan.
+Modern diagnostic imaging technique applications and risk
+factors in the medical field: a review. BioMed research in-
+ternational, 2022(1):5164970, 2022. 1
+[2] Stacy K Goergen, Felicity J Pool, Tari J Turner, Jane E
+Grimm, Mark N Appleyard, Carmel Crock, Michael C Fa-
+hey, Michael F Fay, Nicholas J Ferris, Susan M Liew,
+et al. Evidence-based guideline for the written radiology re-
+
+===== PAGE 9 =====
+port: Methods, recommendations and implementation chal-
+lenges. Journal of medical imaging and radiation oncology,
+57(1):1–7, 2013. 1
+[3] Yann Erick Claessens,
+Marie-Pierre Debray,
+Florence
+Tubach, Anne Laure Brun, Blandine Rammaert, Pierre Haus-
+fater, Jean-Marc Naccache, Patrick Ray, Christophe Cho-
+quet, Marie France Carette, Charles Mayaud, Catherine Lep-
+ort, and Xavier Duval. Early chest computed tomography
+scan to assist diagnosis and guide treatment decision for
+suspected community-acquired pneumonia. American jour-
+nal of respiratory and critical care medicine, 192 8:974–82,
+2015. 1
+[4] Jean-Baptiste Alayrac, Jeff Donahue, Pauline Luc, Antoine
+Miech, Iain Barr, Yana Hasson, Karel Lenc, Arthur Men-
+sch, Katherine Millican, Malcolm Reynolds, et al. Flamingo:
+a visual language model for few-shot learning.
+Advances
+in neural information processing systems, 35:23716–23736,
+2022. 1
+[5] Junnan Li, Dongxu Li, Silvio Savarese, and Steven Hoi.
+Blip-2:
+Bootstrapping language-image pre-training with
+frozen image encoders and large language models. In In-
+ternational conference on machine learning, pages 19730–
+19742. PMLR, 2023.
+[6] Haotian Liu, Chunyuan Li, Qingyang Wu, and Yong Jae Lee.
+Visual instruction tuning. Advances in neural information
+processing systems, 36:34892–34916, 2023.
+[7] Zhiyu Wu, Xiaokang Chen, Zizheng Pan, Xingchao Liu,
+Wen Liu, Damai Dai, Huazuo Gao, Yiyang Ma, Chengyue
+Wu, Bingxuan Wang, et al.
+Deepseek-vl2: Mixture-of-
+experts vision-language models for advanced multimodal
+understanding. arXiv preprint arXiv:2412.10302, 2024.
+[8] Shuai Bai, Keqin Chen, Xuejing Liu, Jialin Wang, Wenbin
+Ge, Sibo Song, Kai Dang, Peng Wang, Shijie Wang, Jun
+Tang, et al. Qwen2. 5-vl technical report. arXiv preprint
+arXiv:2502.13923, 2025. 1
+[9] S. Kevin Zhou, Hayit Greenspan, Christos Davatzikos,
+James S. Duncan, Bram van Ginneken, Anant Madabhushi,
+Jerry L Prince, Daniel Rueckert, and Ronald M. Summers. A
+review of deep learning in medical imaging: Imaging traits,
+technology trends, case studies with progress highlights, and
+future promises.
+Proceedings of the IEEE, 109:820–838,
+2020. 2
+[10] Martin J. Willemink, Wojciech A Koszek, Cailin Hardell,
+Jie Wu, Dominik Fleischmann, Hugh Harvey, Les R. Folio,
+Ronald M. Summers, D. Rubin, and Matthew P. Lungren.
+Preparing medical imaging data for machine learning. Radi-
+ology, page 192224, 2020. 2
+[11] Ibrahim Ethem Hamamci,
+Sezgin Er,
+Furkan Almas,
+Ayse Gulnihan Simsek, Sevval Nil Esirgun, Irem Dogan,
+Muhammed Furkan Dasdelen, Bastian Wittmann, Enis Sim-
+sar, Mehmet Simsar, et al. A foundation model utilizing chest
+ct volumes and radiology reports for supervised-level zero-
+shot detection of abnormalities. CoRR, 2024. 2
+[12] Xiaoman Zhang, Chaoyi Wu, Ziheng Zhao, Jiayu Lei,
+Ya Zhang, Yanfeng Wang, and Weidi Xie. Radgenome-chest
+ct: A grounded vision-language dataset for chest ct analysis.
+arXiv preprint arXiv:2404.16754, 2024. 2, 6
+[13] Chaoyi Wu, Xiaoman Zhang, Ya Zhang, Yanfeng Wang, and
+Weidi Xie. Towards generalist foundation model for radi-
+ology by leveraging web-scale 2d&3d medical data. arXiv
+preprint arXiv:2308.02463, 2023. 2, 3, 6
+[14] Qiuhui Chen and Yi Hong.
+Medblip:
+Bootstrapping
+language-image pre-training from 3d medical images and
+texts. In Proceedings of the Asian Conference on Computer
+Vision, pages 2404–2420, 2024. 3, 6, 2
+[15] Fan Bai, Yuxin Du, Tiejun Huang, Max Q-H Meng, and
+Bo Zhao.
+M3d: Advancing 3d medical image analysis
+with multi-modal large language models.
+arXiv preprint
+arXiv:2404.00578, 2024. 2, 3, 6
+[16] Ibrahim Ethem Hamamci, Sezgin Er, and Bjoern Menze.
+Ct2rep: Automated radiology report generation for 3d medi-
+cal imaging. In International Conference on Medical Image
+Computing and Computer-Assisted Intervention, pages 476–
+486. Springer, 2024. 3, 6, 2
+[17] Ibrahim Ethem Hamamci,
+Sezgin Er,
+Furkan Almas,
+Ayse Gulnihan Simsek, Sevval Nil Esirgun, Irem Dogan,
+Muhammed Furkan Dasdelen, Omer Faruk Durugol, Bastian
+Wittmann, Tamaz Amiranashvili, et al. Developing general-
+ist foundation models from a multimodal dataset for 3d com-
+puted tomography. arXiv preprint arXiv:2403.17834, 2024.
+2, 6
+[18] Sedigheh Eslami, Christoph Meinel, and Gerard De Melo.
+Pubmedclip: How much does clip benefit visual question
+answering in the medical domain?
+In Findings of the As-
+sociation for Computational Linguistics: EACL 2023, pages
+1181–1193, 2023. 2
+[19] Fernando P´erez-Garc´ıa, Harshita Sharma, Sam Bond-Taylor,
+Kenza Bouzid, Valentina Salvatelli, Maximilian Ilse, Shruthi
+Bannur, Daniel C Castro, Anton Schwaighofer, Matthew P
+Lungren, et al. Exploring scalable medical image encoders
+beyond text supervision. Nature Machine Intelligence, pages
+1–12, 2025.
+[20] Xinrui Song, Xuanang Xu, and Pingkun Yan. General pur-
+pose image encoder dinov2 for medical image registration.
+arXiv preprint arXiv:2402.15687, 2024. 2
+[21] Liang Chen, Zekun Wang, Shuhuai Ren, Lei Li, Haozhe
+Zhao, Yunshui Li, Zefan Cai, Hongcheng Guo, Lei Zhang,
+Yizhe Xiong, et al.
+Next token prediction towards multi-
+modal intelligence: A comprehensive survey. arXiv preprint
+arXiv:2412.18619, 2024. 2
+[22] Chunyuan Li, Cliff Wong, Sheng Zhang, Naoto Usuyama,
+Haotian Liu, Jianwei Yang, Tristan Naumann, Hoifung Poon,
+and Jianfeng Gao. Llava-med: Training a large language-
+and-vision assistant for biomedicine in one day. Advances
+in Neural Information Processing Systems, 36:28541–28564,
+2023. 2
+[23] Omkar Thawkar, Abdelrahman Shaker, Sahal Shaji Mullap-
+pilly, Hisham Cholakkal, Rao Muhammad Anwer, Salman
+Khan, Jorma Laaksonen, and Fahad Shahbaz Khan. Xraygpt:
+Chest radiographs summarization using medical vision-
+language models. arXiv preprint arXiv:2306.07971, 2023.
+[24] Michael Moor, Qian Huang, Shirley Wu, Michihiro Ya-
+sunaga, Cyril Zakka, Yashodhara Dalmia, Eduardo Pontes
+Reis,
+Pranav Rajpurkar,
+and Jure Leskovec.
+Med-
+
+===== PAGE 10 =====
+flamingo: a multimodal medical few-shot learner.
+ArXiv,
+abs/2307.15189, 2023.
+[25] Zhanyu Wang, Lingqiao Liu, Lei Wang, and Luping Zhou.
+R2gengpt: Radiology report generation with frozen llms.
+Meta-Radiology, 1(3):100033, 2023.
+[26] Kai Zhang, Jun Yu, Eashan Adhikarla, Rong Zhou, Zhiling
+Yan, Yixin Liu, Zhengliang Liu, Lifang He, Brian Davison,
+Xiang Li, et al. Biomedgpt: A unified and generalist biomed-
+ical generative pre-trained transformer for vision, language,
+and multimodal tasks.
+arXiv e-prints, pages arXiv–2305,
+2023.
+[27] Zhihong Chen, Maya Varma, Jean-Benoit Delbrouck, Mag-
+dalini Paschali, Louis Blankemeier, Dave Van Veen, Jeya
+Maria Jose Valanarasu, Alaa Youssef, Joseph Paul Cohen,
+Eduardo Pontes Reis, et al.
+Chexagent: Towards a foun-
+dation model for chest x-ray interpretation. arXiv preprint
+arXiv:2401.12208, 2024.
+[28] Harshita Sharma, Valentina Salvatelli, Shaury Srivastav,
+Kenza Bouzid, Shruthi Bannur, Daniel C Castro, Maximil-
+ian Ilse, Sam Bond-Taylor, Mercy Prasanna Ranjit, Fabian
+Falck, et al.
+Maira-seg: Enhancing radiology report gen-
+eration with segmentation-aware multimodal large language
+models. arXiv preprint arXiv:2411.11362, 2024. 3, 5
+[29] Tao Tu, Shekoofeh Azizi, Danny Driess, Mike Schaeker-
+mann, Mohamed Amin, Pi-Chuan Chang, Andrew Carroll,
+Charles Lau, Ryutaro Tanno, Ira Ktena, et al. Towards gen-
+eralist biomedical ai. Nejm Ai, 1(3):AIoa2300138, 2024.
+[30] Yunfei Xie, Ce Zhou, Lang Gao, Juncheng Wu, Xianhang
+Li, Hong-Yu Zhou, Sheng Liu, Lei Xing, James Zou, Cihang
+Xie, et al. Medtrinity-25m: A large-scale multimodal dataset
+with multigranular annotations for medicine. arXiv preprint
+arXiv:2408.02900, 2024. 2
+[31] Jason J Lau, Soumya Gayen, Asma Ben Abacha, and Dina
+Demner-Fushman. A dataset of clinically generated visual
+questions and answers about radiology images.
+Scientific
+data, 5(1):1–10, 2018. 2
+[32] Alistair EW Johnson, Tom J Pollard, Seth J Berkowitz,
+Nathaniel R Greenbaum, Matthew P Lungren, Chih-ying
+Deng, Roger G Mark, and Steven Horng. Mimic-cxr, a de-
+identified publicly available database of chest radiographs
+with free-text reports. Scientific data, 6(1):317, 2019.
+[33] Xiaoman Zhang, Chaoyi Wu, Ziheng Zhao, Weixiong Lin,
+Ya Zhang, Yanfeng Wang, and Weidi Xie. Pmc-vqa: Vi-
+sual instruction tuning for medical visual question answer-
+ing. arXiv preprint arXiv:2305.10415, 2023. 2
+[34] Che Liu, Zhongwei Wan, Yuqi Wang, Hui Shen, Haozhe
+Wang, Kangyu Zheng, Mi Zhang, and Rossella Arcucci.
+Benchmarking and boosting radiology report generation
+for 3d high-resolution medical images.
+arXiv preprint
+arXiv:2406.07146, 2024. 3
+[35] Ibrahim Ethem Hamamci, Sezgin Er, Enis Simsar, An-
+jany Kumar Sekuboyina, Chinmay Prabhakar, Alperen Tez-
+can, Ayse Gulnihan Simsek, Sevval Nil Esirgun, Furkan Al-
+mas, Irem Dougan, Muhammed Furkan Dasdelen, Hadrien
+Reynaud, Sarthak Pati, Christian Bluethgen, Mehmet Kemal
+Ozdemir, and Bjoern H Menze. Generatect: Text-conditional
+generation of 3d chest ct volumes. In European Conference
+on Computer Vision, 2023. 3
+[36] Changsun Lee, Sangjoon Park, Cheong-Il Shin, Woo Hee
+Choi, Hyun Jeong Park, Jeong Eun Lee, and Jong Chul
+Ye.
+Read like a radiologist:
+Efficient vision-language
+model for 3d medical imaging interpretation. arXiv preprint
+arXiv:2412.13558, 2024. 3
+[37] Yiming Shi, Xun Zhu, Ying Hu, Chenyi Guo, Miao Li, and
+Ji Wu. Med-2e3: A 2d-enhanced 3d medical multimodal
+large language model.
+arXiv preprint arXiv:2411.12783,
+2024. 3
+[38] De-An Huang, Shijia Liao, Subhashree Radhakrishnan,
+Hongxu Yin, Pavlo Molchanov, Zhiding Yu, and Jan Kautz.
+Lita: Language instructed temporal-localization assistant.
+ArXiv, abs/2403.19046, 2024. 3, 5, 6
+[39] Mingze Xu, Mingfei Gao, Zhe Gan, Hong-You Chen,
+Zhengfeng Lai, Haiming Gang, Kai Kang, and Afshin De-
+hghan. Slowfast-llava: A strong training-free baseline for
+video large language models. ArXiv, abs/2407.15841, 2024.
+[40] Dabing Cheng, Haosen Zhan, Xingchen Zhao, Guisheng
+Liu, Zemin Li, Jinghui Xie, Zhao Song, Weiguo Feng, and
+Bingyue Peng. Text-to-edit: Controllable end-to-end video
+ad creation via multimodal llms.
+ArXiv, abs/2501.05884,
+2025. 3
+[41] Christoph Feichtenhofer, Haoqi Fan, Jitendra Malik, and
+Kaiming He. Slowfast networks for video recognition. 2019
+IEEE/CVF International Conference on Computer Vision
+(ICCV), pages 6201–6210, 2018. 3
+[42] Shilong Zhang, Pei Sun, Shoufa Chen, Min Xiao, Wenqi
+Shao, Wenwei Zhang, Kai Chen, and Ping Luo. Gpt4roi: In-
+struction tuning large language model on region-of-interest.
+ArXiv, abs/2307.03601, 2023. 3
+[43] Chuofan Ma, Yi Jiang, Jiannan Wu, Zehuan Yuan, and Xiao-
+juan Qi. Groma: Localized visual tokenization for grounding
+multimodal large language models. ArXiv, abs/2404.13013,
+2024.
+[44] Qiushan Guo, Shalini De Mello, Hongxu Yin, Wonmin
+Byeon, Ka Chun Cheung, Yizhou Yu, Ping Luo, and Sifei
+Liu. Regiongpt: Towards region understanding vision lan-
+guage model. 2024 IEEE/CVF Conference on Computer Vi-
+sion and Pattern Recognition (CVPR), pages 13796–13806,
+2024. 3
+[45] Xiaoshuang Huang, Haifeng Huang, Lingdong Shen, Yehui
+Yang, Fangxin Shang, Junwei Liu, and Jia Liu. A refer-and-
+ground multimodal large language model for biomedicine.
+In International Conference on Medical Image Computing
+and Computer-Assisted Intervention, 2024. 3
+[46] Hong-Yu Zhou, Subathra Adithan, Juli´an Nicol´as Acosta,
+Eric J. Topol, and Pranav Rajpurkar. A generalist learner
+for multifaceted medical image interpretation.
+ArXiv,
+abs/2405.07988, 2024.
+[47] Lehan Wang, Haonan Wang, Honglong Yang, Jiaji Mao, Ze-
+hong Yang, Jun Shen, and Xiaomeng Li. Interpretable bilin-
+gual multimodal large language model for diverse biomedi-
+cal tasks. ArXiv, abs/2410.18387, 2024. 3
+[48] Shruthi Bannur, Kenza Bouzid, Daniel C. Castro, Anton
+Schwaighofer, Sam Bond-Taylor, Maximilian Ilse, Fernando
+P’erez-Garc’ia, Valentina Salvatelli, Harshita Sharma, Fe-
+lix Meissen, Mercy Prasanna Ranjit, Shaury Srivastav, Julia
+
+===== PAGE 11 =====
+Gong, Fabian Falck, Ozan Oktay, Anja Thieme, Matthew P.
+Lungren, Maria Teodora Wetscherek, Javier Alvarez-Valle,
+and Stephanie L. Hyland. Maira-2: Grounded radiology re-
+port generation. ArXiv, abs/2406.04449, 2024. 3
+[49] Tim Tanida, Philip M¨uller, Georgios Kaissis, and Daniel
+Rueckert. Interactive and explainable region-guided radiol-
+ogy report generation. 2023 IEEE/CVF Conference on Com-
+puter Vision and Pattern Recognition (CVPR), pages 7433–
+7442, 2023. 3
+[50] Lin Wang, Munan Ning, Donghuan Lu, Dong Wei, Yefeng
+Zheng, and Jie lian Chen. An inclusive task-aware frame-
+work for radiology report generation.
+In International
+Conference on Medical Image Computing and Computer-
+Assisted Intervention, 2022. 3
+[51] Yuqian Yuan, Wentong Li, Jian Liu, Dongqi Tang, Xinjie
+Luo, Chi Qin, Lei Zhang, and Jianke Zhu. Osprey: Pixel un-
+derstanding with visual instruction tuning. 2024 IEEE/CVF
+Conference on Computer Vision and Pattern Recognition
+(CVPR), pages 28202–28211, 2023. 3, 5
+[52] Zhixuan Chen, Yequan Bie, Haibo Jin, and Hao Chen. Large
+language model with region-guided referring and grounding
+for ct report generation. ArXiv, abs/2411.15539, 2024. 3
+[53] Ziheng Zhao, Yao Zhang, Chaoyi Wu, Xiaoman Zhang,
+Ya Zhang, Yanfeng Wang, and Weidi Xie. One model to
+rule them all: Towards universal segmentation for medical
+images with text prompts. ArXiv, abs/2312.17183, 2023. 3,
+6, 2
+[54] Pengfei Liu, Weizhe Yuan, Jinlan Fu, Zhengbao Jiang, Hi-
+roaki Hayashi, and Graham Neubig. Pre-train, prompt, and
+predict: A systematic survey of prompting methods in nat-
+ural language processing. ACM Computing Surveys, 55:1 –
+35, 2021. 3
+[55] Yifan Li, Yifan Du, Kun Zhou, Jinpeng Wang, Wayne Xin
+Zhao, and Ji rong Wen. Evaluating object hallucination in
+large vision-language models. In Conference on Empirical
+Methods in Natural Language Processing, 2023. 3
+[56] Shengbang Tong, Zhuang Liu, Yuexiang Zhai, Yi Ma, Yann
+LeCun, and Saining Xie.
+Eyes wide shut? exploring the
+visual shortcomings of multimodal llms. 2024 IEEE/CVF
+Conference on Computer Vision and Pattern Recognition
+(CVPR), pages 9568–9578, 2024. 3
+[57] Ziyuan Qin, Huahui Yi, Qicheng Lao, and Kang Li. Medical
+image understanding with pretrained vision language mod-
+els: A comprehensive study. ArXiv, abs/2209.15517, 2022.
+4
+[58] Haibo Jin, Haoxuan Che, Yi-Mou Lin, and Haoxing Chen.
+Promptmrg: Diagnosis-driven prompts for medical report
+generation. ArXiv, abs/2308.12604, 2023. 4
+[59] Zhixuan Chen, Luyang Luo, Yequan Bie, and Hao Chen.
+Dia-llama: Towards large language model-driven ct report
+generation. ArXiv, abs/2403.16386, 2024. 4
+[60] Chun-Hsiao Yeh, Jiayun Wang, Andrew D. Graham, An-
+drea J. Liu, Bo Tan, Yubei Chen, Yi Ma, and Meng C. Lin.
+Insight: A multi-modal diagnostic pipeline using llms for oc-
+ular surface disease diagnosis. ArXiv, abs/2410.00292, 2024.
+4, 5
+[61] Pedro R.A.S. Bassi, Mehmet Can Yavuz, Kang Wang, Xi-
+aoxi Chen, Wenxuan Li, Sergio Decherchi, Andrea Cav-
+alli, Yang Yang, Alan L. Yuille, and Zongwei Zhou.
+Radgpt: Constructing 3d image-text tumor datasets. ArXiv,
+abs/2501.04678, 2025. 4, 5
+[62] Peter Andrew Marcovici and George Albert Taylor. Jour-
+nal club: Structured radiology reports are more complete
+and more effective than unstructured reports. AJR. Ameri-
+can journal of roentgenology, 203 6:1265–71, 2014. 5
+[63] Lorenzo Cereser, Francesco Cortiula, C. Simiele, Valeria Pe-
+ruzzi, Martina Bortolot, Annarita Tullio, Giuseppe Como,
+Chiara Zuiani, and Rossano Girometti. Assessing the impact
+of structured reporting on learning how to report lung cancer
+staging ct: A triple cohort study on inexperienced readers.
+European journal of radiology, 171:111291, 2024. 5
+[64] Fernando P’erez-Garc’ia, Harshita Sharma, Sam Bond-
+Taylor, Kenza Bouzid, Valentina Salvatelli, Maximilian Ilse,
+Shruthi Bannur, Daniel C. Castro, Anton Schwaighofer,
+Matthew P. Lungren, Maria Teodora Wetscherek, Noel
+Codella, Stephanie L. Hyland, Javier Alvarez-Valle, and
+Ozan Oktay. Rad-dino: Exploring scalable medical image
+encoders beyond text supervision. ArXiv, abs/2401.10815,
+2024. 5, 1
+[65] Salim Aymeric Si-Mohamed, Mouhamad Nasser, Marion
+Colevray, Olivier Nempont, Pierre Lartaud, Anna Sesilia
+Vlachomitrou, Thomas Broussaud, Kais Ahmad, Julie Tr-
+aclet, Vincent Cottin, and Loic Boussel. Automatic quan-
+titative computed tomography measurement of longitudinal
+lung volume loss in interstitial lung diseases. European Ra-
+diology, 32:4292 – 4303, 2022. 6
+[66] Shuai Ming, Wei Yang, Sijia Cui, Shuai Huang, and Xi-
+angyang Gong. Consistency of radiologists in identifying
+pulmonary nodules based on low-dose computed tomogra-
+phy. Journal of thoracic disease, 11 7:2973–2980, 2019. 6
+[67] Hans Jonas Meyer, Alina Pfeil, Dominik Schramm, An-
+dreas Gunter Bach, and Alexey Surov. Renal incidental find-
+ings on computed tomography. Medicine, 96, 2017. 6
+[68] Kishore Papineni, Salim Roukos, Todd Ward, and Wei-Jing
+Zhu. Bleu: a method for automatic evaluation of machine
+translation. In Pierre Isabelle, Eugene Charniak, and Dekang
+Lin, editors, Proceedings of the 40th Annual Meeting of the
+Association for Computational Linguistics, pages 311–318,
+Philadelphia, Pennsylvania, USA, July 2002. Association for
+Computational Linguistics. 6
+[69] Chin-Yew Lin. ROUGE: A package for automatic evaluation
+of summaries. In Text Summarization Branches Out, pages
+74–81, Barcelona, Spain, July 2004. Association for Com-
+putational Linguistics. 6
+[70] Satanjeev Banerjee and Alon Lavie. Meteor: An automatic
+metric for mt evaluation with improved correlation with hu-
+man judgments. In IEEvaluation@ACL, 2005. 6
+[71] An Yan, Julian McAuley, Xing Lu, Jiang Du, Eric Y. Chang,
+Amilcare Gentili, and Chun-Nan Hsu. Radbert: Adapting
+transformer-based language models to radiology. Radiology.
+Artificial intelligence, 4 4:e210258, 2022. 6
+[72] Sophie Ostmeier, Justin Xu, Zhihong Chen, Maya Varma,
+Louis Blankemeier, Christian Bluethgen, Arne Edward
+
+===== PAGE 12 =====
+Michalson, Michael E. Moseley, Curtis P. Langlotz, Ak-
+shay S. Chaudhari, and Jean-Benoit Delbrouck. Green: Gen-
+erative radiology report evaluation and error notation. ArXiv,
+abs/2405.03595, 2024. 6
+[73] Hugo Touvron, Thibaut Lavril, Gautier Izacard, Xavier
+Martinet, Marie-Anne Lachaux, Timoth´ee Lacroix, Baptiste
+Rozi`ere, Naman Goyal, Eric Hambro, Faisal Azhar, Aur´elien
+Rodriguez, Armand Joulin, Edouard Grave, and Guillaume
+Lample.
+Llama: Open and efficient foundation language
+models. ArXiv, abs/2302.13971, 2023. 2
+[74] J. Edward Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-
+Zhu, Yuanzhi Li, Shean Wang, and Weizhu Chen.
+Lora:
+Low-rank adaptation of large language models.
+ArXiv,
+abs/2106.09685, 2021. 2
+[75] Ilya Loshchilov and Frank Hutter. Fixing weight decay reg-
+ularization in adam. ArXiv, abs/1711.05101, 2017. 2
+[76] Samyam Rajbhandari, Jeff Rasley, Olatunji Ruwase, and
+Yuxiong He. Zero: Memory optimizations toward training
+trillion parameter models. SC20: International Conference
+for High Performance Computing, Networking, Storage and
+Analysis, pages 1–16, 2019. 2
+
+===== PAGE 13 =====
+MedRegion-CT: Region-Focused Multimodal LLM for Comprehensive 3D CT
+Report Generation
+Supplementary Material
+1. Patient Attribution Extractor
+1: function GET DIAMETER(mask)
+2:
+mask array ←
+3:
+sitk.GetArrayFromImage(mask)
+4:
+labeled mask ←
+5:
+skimage.measure.label(mask array)
+6:
+regions ←
+7:
+skimage.measure.regionprops(labeled mask)
+8:
+dmts ←∅
+9:
+for rg in regions do
+10:
+mnz, mny, mnx, mxz, mxy, mxx ←rg.bbox
+11:
+dmts.append(
+12:
+max(mxx-mnx, mxy-mny, mxz-mnz))
+13:
+end for
+14:
+return dmts
+15: end function
+16: function COUNT MASK(mask)
+17:
+mask array ←
+18:
+sitk.GetArrayFromImage(mask)
+19:
+labeled mask ←
+20:
+skimage.measure.label(mask array)
+21:
+num objects ←max(labeled mask)
+22:
+return num objects
+23: end function
+24: for organ = [Lung, Heart, Liver, Kidney . . .] do
+25:
+volume ←sitk.GetArrayFromImage(organ).sum()
+26: end for
+27: for legion = [Nodule, Cyst, Effusion, . . .] do
+28:
+count ←COUNT MASK(legion)
+29:
+diameter ←GET DIAMETER(legion)
+30:
+location ←Filter by mask filename
+31: end for
+Figure 4. This code employs a deterministic algorithm to compute
+the volumes of multiple anatomical structures (e.g., lungs, liver, le-
+sions) and to estimate the diameter of various pathological findings
+(e.g., nodules, cysts). The GET DIAMETER function determines
+the dimensional parameters of each lesion from the labeled masks.
+2. Training and Implementation
+Training. We preprocess the 3D CT images using consis-
+tent min-max normalization and resize the 3D images to
+Figure 5. The black text contains image information derived from
+CT slices, the blue text indicates region-specific segmentation to-
+kens labeled as <region i >. The green text comprises attribute
+information extracted from (a), encompassing clinically relevant
+quantitative data. This text offers a structured presentation of vol-
+umes, counts, and locations of major organs and lesions identified
+in the medical scan. Based on these details, prompts can be pro-
+vided for six distinct regions to generate corresponding clinical
+findings.
+256 × 256 × 32 for input. We utilize RAD-DINO as our
+vision encoder and leverage its pre-trained image encoder
+checkpoint[64]. The vision encoder remains frozen during
+MLLM training. For the Multimodal Connector, we use a
+linear layer. For the generation of pseudo-masks, we used
+
+===== PAGE 14 =====
+the SAT [53] to extract major lesion and anatomical masks
+when unavailable. After R2 token pooling, the final 356 vi-
+sion tokens are fed into the LLM. We utilize LLaMA3-8B
+[73] as our LLM base model and load its pre-trained param-
+eters. The MLLM training consists of two steps. Initially,
+we froze the vision encoder and LLM while fine-tuning the
+Multimodal Connector with an image-report dataset, apply-
+ing a batch size of 4 × 8, learning rate of 10−4, 3 epochs,
+with warmup and cosine decay. Subsequently, we fine-tune
+the Multimodal Connector, LLM, and segmentation module
+with structured report dataset, applying a batch size of 1 ×
+8, learning rate of 2 × 10−5, 3 epochs, with warmup and
+cosine decay. For LLM fine-tuning, we consistently apply
+the parameter-efficient LoRA [74] method, with LoRA pa-
+rameters set to r = 16, α= 32, and a dropout ratio of 0.1. The
+maximum sequence length for the LLM is set to 2,048. All
+models are trained using the AdamW [75] optimizer, and to
+optimize the training process, we leverage ZeRO [76] stage
+2. The implementation is performed in PyTorch, and train-
+ing is conducted in parallel on NVIDIA A100 GPUs with
+80GB memory.
+Comparison. For baseline comparisons, we compare
+three state-of-the-art open-source 3D methods capable of
+generating CT reports:
+RadFM [13], Med-BLIP [14],
+CT2Rep [16], and M3D [15].
+To maintain consistency
+across methods, we used LLaMA3-8B [73] as the language
+decoder for all comparison methods. The input volumes are
+resized to 256 × 256 × 32. Each compared model is either
+trained from scratch for models without pre-trained weights
+or initialized with pre-trained weights and further fine-tuned
+on the CT report generation dataset for models with pre-
+trained weights. Given resource limitations and to ensure
+a fair comparison, all experimental settings were controlled
+with a time constraint of 48 hours using two A100 GPUs
+for each experiment.
