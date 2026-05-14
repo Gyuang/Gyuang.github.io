@@ -1,0 +1,1905 @@
+
+===== PAGE 1 =====
+Explaining and Mitigating the Modality Gap
+in Contrastive Multimodal Learning
+Can Yaras†, Siyi Chen†, Peng Wang, Qing Qu
+Department of Electrical Engineering & Computer Science, University of Michigan
+† The first two authors contributed to this work equally.
+Abstract
+Multimodal learning has recently gained significant popularity, demonstrating impressive performance
+across various zero-shot classification tasks and a range of perceptive and generative applications.
+Models such as Contrastive Language-Image Pretraining (CLIP) are designed to bridge different
+modalities, such as images and text, by learning a shared representation space through contrastive
+learning. Despite their success, the working mechanisms underlying multimodal learning are not yet
+well understood. Notably, these models often exhibit a modality gap, where different modalities occupy
+distinct regions within the shared representation space. In this work, we conduct an in-depth analysis
+of the emergence of modality gap by characterizing the gradient flow learning dynamics. Specifically,
+we identify the critical roles of mismatched data pairs and a learnable temperature parameter in
+causing and perpetuating the modality gap during training. Furthermore, our theoretical insights are
+validated through experiments on practical CLIP models. These findings provide principled guidance
+for mitigating the modality gap, including strategies such as appropriate temperature scheduling and
+modality swapping. Additionally, we demonstrate that closing the modality gap leads to improved
+performance on tasks such as image-text retrieval.
+Keywords: Modality Gap, Multimodal Learning, Contrastive Learning
+Date: February 16, 2026
+Correspondence: cjyaras@umich.edu
+𝑡= 4.0
+𝑡= 4.0
+𝑡= 0
+𝑡= 0
+𝑡= 1𝑒5
+𝑡= 1𝑒5
+𝑡= 2.3
+𝑡= 2.3
+𝑡= 0.4
+𝑡= 0.4
+𝑡= 1𝑒2
+𝑡= 1𝑒2
+𝑡= 0
+𝑡= 0.4
+𝑡= 2.3
+𝑡= 4.0
+𝑡= 1𝑒2
+𝑡= 1𝑒5
+Matched
+Mismatched
+Matched
+Mismatched
+Figure 1: Dynamics of modality gap Δ and temperature 𝜏(defined in Section 2) during training
+on synthetic data. Features from the two modalities are depicted in red and blue, with ground
+truth pairs connected by lines. At 𝑡= 4.0, all pairs are successfully matched. Initially, modality gap
+increases due to significant mismatches between pairs, but it decreases as the level of mismatch
+diminishes. Notably, modality gap and temperature exhibit highly coupled dynamics throughout
+the learning process.
+1
+arXiv:2412.07909v2  [cs.LG]  13 Feb 2026
+
+===== PAGE 2 =====
+Contents
+1
+Introduction
+3
+2
+Problem Setup
+5
+3
+Explaining the Modality Gap
+7
+3.1
+Learning Temperature Stabilizes Modality Gap . . . . . . . . . . . . . . . . . . . . . .
+7
+3.2
+Mismatched Pairs Enlarge Modality Gap at Early Training Stages
+. . . . . . . . . . .
+8
+4
+Mitigating the Modality Gap
+9
+4.1
+Methods . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+9
+4.2
+Experimental Results and Implications . . . . . . . . . . . . . . . . . . . . . . . . . . .
+11
+5
+Conclusion
+12
+A Related Works
+18
+B
+Proofs
+19
+B.1
+Preliminaries . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+19
+B.2
+Proof of Theorem 3.1 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+19
+B.3
+Proof of Theorem 3.2 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+20
+B.4
+Proof of Theorem 3.3 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+22
+C Alternate Temperature Schemes
+23
+D Methods
+24
+D.1 Temperature Control . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+24
+D.2 Swap Modalities . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+24
+E
+Experiment Settings
+25
+E.1
+Pretraining . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+25
+E.2
+Metrics . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+25
+E.3
+Downstream Tasks
+. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+26
+F
+Additional Experimental Results
+27
+2
+
+===== PAGE 3 =====
+1 Introduction
+Recently, significant progress has been made in multimodal learning, particularly in connecting text
+and image modalities through self-supervised methods that leverage large-scale paired data. These
+include image-text contrastive learning (Radford et al., 2021; Saharia et al., 2022a; Nichol et al., 2021),
+image-text matching (Li et al., 2021; Wang et al., 2022a; Li et al., 2022), and masked modeling (Li
+et al., 2021; Wang et al., 2022b,c). Following pre-training, shared conceptual representations enable
+a variety of downstream tasks, including text-to-image generation (Ramesh et al., 2021; Saharia
+et al., 2022a), image captioning (Wang et al., 2022c; Li et al., 2022), and vision-based question
+answering (Wang et al., 2022a; Dou et al., 2022). Among these, one of the most popular multimodal
+models is Contrastive Language–Image Pre-training (CLIP) (Radford et al., 2021), which effectively
+learns visual concepts from language supervision through contrastive learning. CLIP jointly trains
+a vision model and a language model by embedding a large corpus of image-text pairs into a
+shared embedding space using self-supervised learning. The training process employs a contrastive
+learning objective (Chen et al., 2020), which encourages the model to bring similar pairs closer
+together in the embedding space, while it pushes dissimilar pairs further apart. The approach
+excels in zero-shot transfer for many downstream tasks across vision and language, even matching
+the performance of fully supervised models (Radford et al., 2021).
+Despite their empirical success, a complete understanding of the mechanisms underlying multi-
+modal learning models is lacking, with their behavior in certain scenarios even defying intuitive
+expectations about their design. For instance, while the contrastive loss is designed to align image
+embeddings with their corresponding text pairs, recent studies (Liang et al., 2022) have revealed
+a surprising phenomenon known as modality gap. As illustrated in Figure 2, this gap manifests
+as a significant separation between the embeddings of matched image-text pairs, with the two
+modalities occupying approximately parallel yet distant spaces (Zhang et al., 2022). Deepening our
+understanding of the factors underlying modality gap could shed light on the mechanisms driving
+the success of multimodal learning, as well as pave the way towards developing more effective
+multimodal models.
+Prior arts & limitations.
+Driven by this goal, existing studies have investigated modality gap from
+a largely empirical perspective. However, a comprehensive and rigorous explanation of modality
+gap remains elusive. For example, Shi et al. (2023) empirically demonstrated that modality gap
+could be caused by the types of initialization and temperature scaling of the loss on simple datasets,
+but they fall short of providing theoretical justifications of their studies. Schrodi et al. (2024)
+investigated the role of imbalanced information between image and text modalities, implying that
+balancing the information complexity between text and image datasets could help mitigate modality
+gap. Again, their study is rather empirical without sufficient theoretical justifications. We postpone
+discussion of additional works and background on multimodal learning to Section A.
+Understanding modality gap through learning dynamics.
+One surprising aspect of modality
+gap is that it contradicts with global optimality. Under ideal conditions, optimality conditions of the
+training loss imply perfect alignment between text and image embeddings. This is consistent with
+recent theoretical studies on neural collapse in classification problems (Papyan et al., 2020), which
+demonstrate that, with sufficiently large model capacity and perfect training, the classification
+head and the embeddings become perfectly aligned (Zhu et al., 2021; Yaras et al., 2022; Jiang et al.,
+2024; Wang et al., 2022d). Therefore, to gain deeper insight into the causes of modality gap, it is
+crucial to examine the factors influencing the learning dynamics of training these models. Moreover,
+3
+
+===== PAGE 4 =====
+(a) Stabilization
+(b) Enlargement
+Figure 2: Stabilization and enlargement of modality gap. We visualize the CLIP text-image
+embedding space via PCA, where image features are in red and text features are in blue. A line
+connects each image-text pair. A modality gap emerges between image and text pairs. (a) After a
+long training, the gap between text and image still exists. (b) When two modalities are initialized
+with a small modality gap, the gap is still enlarged after training.
+empirical studies revealed several interesting phenomena in the learning dynamics, which could
+contribute to modality gap. Specifically, as shown by our experiments on both real datasets with
+practical networks (Figure 2) and synthetic datasets with simplified models (Figure 1), we observed
+the following when following the CLIP training procedure outlined by (Radford et al., 2021):
+• Enlargement of modality gap under mismatch. When there exist mismatches1 of image and
+text embeddings at initialization, modality gap between image and text enlarges as training
+progresses, as shown in Figure 2b. In particular, as shown in Figure 1, this usually happens in
+the early phase of training when we start from random initializations, where modality gap first
+increases and then decreases after pairs of image and text embeddings become better aligned.
+• Stabilization of modality gap due to learned temperature. Furthermore, as shown by Liang et al.
+(2022), at random initialization, images and texts typically occupy distinct regions or “cones”
+within the feature space, resulting in a substantial modality gap. Observations in Figure 2a
+and Figure 1 imply that the gap-closing process remains limited when starting from random
+initialization. While the size of modality gap decreases in the later stages of training as mismatched
+pairs are reduced, it often stabilizes at a nonzero value, with limited reduction even as the training
+loss converges.
+Summary of our contributions.
+In this work, we conduct a theoretical analysis of contrastive
+multimodal learning by examining the learning dynamics through the lens of gradient flow –
+a largely overlooked yet critical perspective for understanding the cause of modality gap. Our
+approach reveals the factors contributing to modality gap, explaining why it may stabilize at a
+certain level or even increase during training. Based on these insights, we propose theory-guided
+approaches to reduce the gap and improve downstream performance. Our key contributions are as
+follows:
+• Theoretical contributions. Through a careful gradient flow analysis, we demonstrate that
+modality gap diminishes at the extremely slow rate of Ω(1/log(𝑡)2) in training time 𝑡, explaining
+1For a pair (hx, hy) of image and text embeddings, mismatch occurs if there exists an h′x such that h′x is “closer” to
+hy than hx (or the other way around)
+4
+
+===== PAGE 5 =====
+why modality gap is prevalent in multi-modal models such as CLIP. Our analysis highlights the
+role of learned temperature in the persistence of modality gap, indicating several ways to reduce
+modality gap. Moreover, we rigorously demonstrate why and how modality gap can be created
+at initialization, suggesting that it cannot be simply closed before training.
+• Practical contributions. Based on our theory, we propose practical methods, including tempera-
+ture scheduling and exchanging features between modalities, to reduce modality gap and explore
+their benefits across several downstream tasks. We demonstrate that reducing the gap improves
+performance in image-text retrieval tasks but has a relatively smaller impact on visual classifi-
+cation including zero-shot and linear probing. In contrast, improving feature space uniformity
+proves to be more advantageous for visual classification tasks.
+2 Problem Setup
+In this section, we introduce the basic setup of the problem. We consider a set of 𝑛paired training
+samples {(x𝑖, y𝑖)}𝑛
+𝑖=1 ⊆R𝑑𝑥× R𝑑𝑦. Here, (x𝑖, y𝑖) denotes a pair of two data points from different
+modalities (such as image and text) that are considered to be related to each other, e.g., y𝑖is
+the text caption of image x𝑖. In multimodal learning, we want to align the image embedding
+h𝑖
+θ,𝑋= 𝑓θ(x𝑖) and the text embedding of h𝑖
+ϕ,𝑌= 𝑔ϕ(y𝑖) through training two different deep
+networks 𝑓θ : R𝑑𝑥→R𝑑and 𝑔ϕ : R𝑑𝑦→R𝑑for each 𝑖.
+Contrastive loss for multimodal learning.
+Let Hθ,𝑋, Hϕ,𝑌∈R𝑛×𝑑collectively denote the ℓ2-
+normalized embeddings of two different modalities:
+Hθ,𝑋=
+
+norm( 𝑓θ(x1))
+. . .
+norm( 𝑓θ(x𝑛))⊤, Hϕ,𝑌
+=
+
+norm(𝑔ϕ(y1))
+. . .
+norm(𝑔ϕ(y𝑛))⊤,
+where the operator norm(z) = z/∥z∥2 for any z ∈R𝑑. As shown in Radford et al. (2021), we can
+jointly learn the parameters θ, ϕ of networks 𝑓, 𝑔respectively via
+min
+θ,ϕ,𝜈ℓ(𝛽(𝜈)Hθ,𝑋H⊤
+ϕ,𝑌)
+(1)
+where ℓ: R𝑛×𝑛→R is a certain contrastive loss. Here, following the convention in Radford et al.
+(2021), 𝛽(·) : R →R+ is the inverse temperature as a function of some learnable parameter 𝜈, i.e.,
+we have 𝛽(𝜈) = 1/𝜏(𝜈) = exp(𝜈) for training CLIP models where 𝜏is the conventional temperature.
+Additionally, for ease of exposition, we drop the superscripts and just write H𝑋, H𝑌.
+Figure 3: Parallel modalities with or without mis-
+matched pairs. Ground truth pairs are connected
+by a dashed line.
+The contrastive loss ℓis determined solely by
+the pairwise (𝛽-scaled) inner products between
+modalities. Its objective is to maximize the di-
+agonal entries of 𝛽H𝑋H⊤
+𝑌while minimizing
+the off-diagonal elements. For instance, CLIP
+achieves this using a specific symmetric cross-
+entropy (CE) loss for ℓ, which we also adopt
+in this work. To derive this loss, we first define
+the standard (softmax) CE loss, ℓCE(m, e(𝑖)), for
+logits m ∈R𝑛for a target one-hot distribution
+e(𝑖) ∈R𝑛as:
+ℓCE(m, e(𝑖)) := log ©­
+«
+𝑛
+Õ
+𝑗=1
+exp(m𝑗)ª®
+¬
+−m𝑖.
+5
+
+===== PAGE 6 =====
+Then, we can introduce ℓas applying the usual CE loss to each row and column of M individually
+and then averaging them:
+ℓ(M) := 1
+2𝑛
+𝑛
+Õ
+𝑖=1
+
+ℓCE(M:,𝑖, e(𝑖)) + ℓCE(M𝑖,:, e(𝑖))
+
+.
+(2)
+Training loss with parallel embeddings.
+Motivated by recent empirical studies (Zhang et al.,
+2022), in this work we assume that the representations of each modality are parallel. Specifically,
+Zhang et al. (2022) has empirically discovered that inter-modality variance and intra-modality variance
+are found to be orthogonal. Mathematically, we can impose the parallel constraint by replacing H𝑋
+with ˜H𝑋=
+hq
+1 −𝛾2
+𝑋H𝑋
+𝛾𝑋1𝑛
+i
+and H𝑌with ˜H𝑌=
+hq
+1 −𝛾2
+𝑌H𝑌
+𝛾𝑌1𝑛
+i
+, where 𝛾𝑋, 𝛾𝑌∈[−1, 1].
+For simplicity, we assume that 𝛾𝑋= 𝛾and 𝛾𝑌= −𝛾for some 𝛾∈[−1, 1]. Then, (1) becomes
+min
+θ,ϕ,𝜈,𝛾ℓ(𝛽(𝜈) ˜H𝑋˜H⊤
+𝑌) = ℓ(𝛽(𝜈)(1 −𝛾2)H𝑋H⊤
+𝑌).
+(3)
+Gradient flow dynamics.
+We consider the training dynamics of (3) under continuous-time gradi-
+ent flow, i.e., for time 𝑡≥0, the quantities θ(𝑡), ϕ(𝑡), 𝜈(𝑡), 𝛾(𝑡) satisfy
+𝑑θ(𝑡)
+𝑑𝑡
+= −𝜕ℓ
+𝜕θ ,
+𝑑ϕ(𝑡)
+𝑑𝑡
+= −𝜕ℓ
+𝜕ϕ,
+𝑑𝜈(𝑡)
+𝑑𝑡
+= −𝜕ℓ
+𝜕𝜈,
+𝑑𝛾(𝑡)
+𝑑𝑡
+= −𝜕ℓ
+𝜕𝛾
+(4)
+with initial conditions θ(0) = θ0, ϕ(0) = ϕ0, 𝜈(0) = 𝜈0, and 𝛾(0) = 𝛾0. We refer the reader to
+Section B.1 for the derivative and gradient computations.
+Measures of modality gap and margin.
+Based on the above assumptions of parallel embeddings
+between two modalities, we introduce two metrics of modality gap and margin that will be useful
+in our analysis. Given the reparameterized embeddings ˜H𝑋and ˜H𝑌of the image X and text Y
+that we introduced above, where each row ˜h𝑖
+x, ˜h𝑖
+y of ˜H𝑋, ˜H𝑌respectively correspond to a data
+sample, we define the modality centers as
+cX = 1
+𝑛
+𝑛
+Õ
+𝑗=1
+˜h𝑗
+x,
+cY = 1
+𝑛
+𝑛
+Õ
+𝑗=1
+˜h𝑗
+y.
+Following Liang et al. (2022), we can measure the modality gap by the center distance between two
+modalities as
+Δ := ∥cX −cY ∥.
+As such, a larger center distance implies a larger modality gap. Moreover, the modality gap Δ also
+satisfies Δ ≥2𝛾, which will simplify our analysis in Section 3.
+In our analysis, we also introduce a notion of margin to measure the match (angles) between
+associated pairs (x𝑖, y𝑖) in the embedding space. Intuitively, we want to measure the matchness
+by measuring the correlation between x𝑖and y𝑖in the embedding space. Let Z = H𝑋H⊤
+𝑌, which
+compute the correlation between H𝑋and H𝑌. We define the margin by
+𝛼(Z) := min
+𝑖≠𝑗(Z𝑖,𝑖−Z𝑖,𝑗) ∧(Z𝑗,𝑗−Z𝑖,𝑗),
+where ∧denotes minimum. Based on 𝛼(Z), we say that H𝑋, H𝑌are perfectly matched if 𝛼(H𝑋H⊤
+𝑌) >
+0, otherwise we say that they are mismatched. An illustration of perfectly matched and mismatched
+data pairs is shown in Figure 3. Intuitively, perfectly matched means all ground truth pairs are the
+closest to each other.
+6
+
+===== PAGE 7 =====
+3 Explaining the Modality Gap
+In this section, we provide our main theoretical results that explain how modality gap emerges and
+remains throughout training.
+3.1
+Learning Temperature Stabilizes Modality Gap
+As shown in Figure 1, modality gap Δ ≥2𝛾and temperature 𝜏are highly coupled, implying that
+learnable temperature plays a crucial role in the rate at which modality gap closes. Based upon the
+problem setup in Section 2, the following lemma directly reveals this relationship.
+Lemma 3.1. Let 𝜈(𝑡) and 𝛾(𝑡) be solutions to the gradient flow dynamics given in (4). Then we have
+𝑅= 𝑑𝛾/𝑑𝑡
+𝑑𝛽/𝑑𝑡= −
+2𝛽(𝜈)𝛾
+𝛽′(𝜈)2(1 −𝛾2)
+(5)
+for all 𝑡≥0, where 𝛽′(𝜈) denotes the derivative of 𝛽with respect to 𝜈. Moreover, given 𝛽(𝜈) = exp(𝜈), we
+have 𝛽′(𝜈) = 𝛽and the following holds:
+𝛽= 𝛽0
+r𝛾0
+𝛾exp
+ 
+𝛾2 −𝛾2
+0
+4
+!
+,
+and
+𝑅= Θ(1/𝛽).
+(6)
+The proof of Theorem 3.1 is provided in Section B.2. The lemma relates the rates at which
+𝛾and 𝛽change, while 𝑅= Θ(1/𝛽) implies that the ratio 𝑅decays to zero as 𝛽grows to infinity.
+This implies that an increasing 𝛽will dominate the decrease in 𝛾, preventing modality gap Δ from
+closing (i.e., its lower bound 2𝛾remains positive). This is made precise in the following theorem.
+Theorem 3.2. Based on the problem setup in Section 2, consider the gradient flow dynamics (4) for solving
+(3). Suppose Z(𝑡) = H𝑋(𝑡)H⊤
+𝑌(𝑡) and the initial temperature 𝛽0 ≥log(4(𝑛−1))/(𝛼(1 −𝛾2
+0)) with
+𝛽(𝜈) = exp(𝜈), and assume that the margin satisfies 𝛼(Z(𝑡)) ≥𝛼for all 𝑡≥0 for some 𝛼> 0. Then modality
+gap Δ satisfies
+Δ(𝑡) ≥Ω
+
+1
+log(𝑡)2
+
+for all 𝑡≥0.
+(7)
+The proof can be found in Section B.3. To elaborate, consider the simplified setting where we
+replace ℓin (3) with the scalar function ℓ(𝑚) = exp(−𝑚) mimicking the exponential tail of the cross-
+entropy loss. The gradient flow in this case is simply given by 𝑑𝛾/𝑑𝑡= −2𝛽𝛾exp(−𝛽(1 −𝛾2)), so
+via the equality (6) we have 𝑑𝛾/𝑑𝑡= Ω  −𝛾1/2 exp(−𝑐𝛾−1/2)
+= Ω  −𝛾3/2 exp(−𝑐′𝛾−1/2), for some
+𝑐′ < 𝑐. Integrating this equation and applying the inequality Δ ≥2𝛾yields Δ(𝑡) ≥Ω(1/log(𝑡)2).
+Remarks.
+We discuss Theorem 3.2 in the following:
+• Slow closure of modality gap. The result in (7) indicates that Δ, with rate Ω(1/log(𝑡)2), ap-
+proaches zero exceedingly slowly. Consequently, this lower bound implies that closing modality
+gap would require an impractically long training time. As shown in Figure 4a, this can be verified
+in practice on CLIP models trained on the MSCOCO dataset. Specifically, we sample 2048 random
+pairs of data and train the model from scratch for 10000 steps and record modality gap during
+training. In Figure 4a, we report modality gap from the 100th step when the gap begins to
+decrease consistently. The modality gap Δ(𝑡) versus −1/log(𝑡)2 exhibits a linear relationship,
+verifying our result and slow closure.
+7
+
+===== PAGE 8 =====
+(a) Slow closure of modality gap
+(b) Enlargement of modality gap
+Figure 4: Verifying theoretical results. We sample 2048 random pairs of MSCOCO examples
+and utilize a standard CLIP model to (a) plot Δ throughout training from scratch and (b) plot a
+histogram of the change in Δ across 100 initializations in the first 10 steps of training. More details
+regarding the experimental setup can be found in Section E.
+• Discussion on the assumptions. In Theorem 3.2, we assume a positive margin 𝛼> 0 throughout
+training, ensuring a minimum 𝛼gap between perfectly matched and mismatched pairs. While
+primarily for analytical purposes, this assumption can be relaxed in practice, as shown in the
+early stage of Figure 4a, where the result holds even with many mismatched pairs. Additionally,
+while parallel embeddings between modalities are typically valid, breaking this constraint can
+help to mitigate modality gap, a strategy we leverage in Section 4. We also assume a sufficiently
+large initial inverse temperature 𝛽0, a common practice Radford et al. (2021). Crucially, the
+choice 𝛽(𝜈) = exp(𝜈) is essential for achieving the rate in Theorem 3.2; changing 𝛽or employing a
+temperature schedule (see Section 4) can significantly change the convergence rate of modality
+gap. For details on convergence rates with various schemes, see Section C. We evaluate these
+methods for reducing modality gap and their impact on downstream performance in Section 4.
+3.2
+Mismatched Pairs Enlarge Modality Gap at Early Training Stages
+Second, we show that modality gap can be enlarged at the early stage of training, due to the large
+amount of mismatched pairs caused by random initialization. This further adds to the difficulty of
+closing modality gap.
+Theorem 3.3. Suppose the rows of H𝑋(0), H𝑌(0) are drawn independently and uniformly from S𝑑−1 and
+let 𝑎= 𝛽0(1 −𝛾2
+0). Then with probability 1 −𝛿, we have
+𝑑Δ
+𝑑𝑡
+
+𝑡=0
+≥4𝛽0𝛾0
+
+𝜉1 −2𝑒𝑎𝜖
+𝜉2 + (𝑒𝑎−𝑒−𝑎)𝜖−2𝜖
+
+(8)
+where 𝜖=
+p
+log((4𝑛+ 1)/𝛿)/(2𝑛) and
+𝜉1 = Γ
+
+𝑑
+2
+ 
+2
+𝑎
+𝜌
+𝐼𝜌−1(𝑎) −2𝜌
+𝑎𝐼𝜌(𝑎)
+
+,
+𝜉2 = Γ
+
+𝑑
+2
+ 
+2
+𝑎
+𝜌
+𝐼𝜌(𝑎),
+where 𝜌= (𝑑−2)/2, Γ is the gamma function, and 𝐼𝜌(𝑧) is the modified Bessel function of the first kind.
+8
+
+===== PAGE 9 =====
+The proof of Theorem 3.3 is given in Section B.4. In addition to the parallel modalities assumption,
+we assume that embeddings are uniformly distributed on the hypersphere. This aligns with practice,
+as the final-layer linear projections of 𝑓θ and 𝑔ϕ are typically initialized from a zero-mean isotropic
+Gaussian distribution, resulting in normalized features uniformly spread over the hypersphere.
+Next, we discuss Theorem 3.3 in the following:
+• Interpretation. As the number of training samples 𝑛is very large in practice, we can analyze the
+form of (8) in the limit 𝑛→∞, which gives
+𝑑Δ
+𝑑𝑡
+
+𝑡=0
+≥4𝛽0𝛾0
+𝜉1
+𝜉2
+= 4𝛽0𝛾0
+ 𝐼𝜌−1(𝑎)
+𝐼𝜌(𝑎) −2𝜌
+𝑎
+
+(9)
+almost surely. From the recurrence relation 𝐼𝜌−1(𝑎) = 𝐼𝜌+1(𝑎) + (2𝜌/𝑎)𝐼𝜌(𝑎) in (Magnus et al., 1967,
+(3.1.1)) and the fact that 𝐼𝜌(𝑧) > 0 for real order 𝜌and 𝑧> 0, we have
+𝐼𝜌−1(𝑎)
+𝐼𝜌(𝑎) −2𝜌
+𝑎=
+𝐼𝜌+1(𝑎)
+𝐼𝜌(𝑎)
+> 0
+so 𝑑Δ/𝑑𝑡> 0 at 𝑡= 0, i.e., modality gap enlarges initially. Moreover, we can write (9) in terms of
+elementary functions in the special case 𝑑= 3. From 𝜌= 1/2, we have
+𝑑Δ
+𝑑𝑡
+
+𝑡=0
+≥4𝛽0𝛾0
+ 𝐼−1/2(𝑎)
+𝐼1/2(𝑎) −1
+𝑎
+
+= 4𝛽0𝛾0
+ 
+cosh(𝛽0(1 −𝛾2
+0))
+sinh(𝛽0(1 −𝛾2
+0))
+−
+1
+𝛽0(1 −𝛾2
+0)
+!
+from closed-form expressions for half odd integer order Bessel functions (Magnus et al., 1967,
+(3.3)). For 𝛾0 = Θ(1), this gives 𝑑Δ/𝑑𝑡≥Θ(𝛽0 tanh(𝛽0)) ∼𝛽0. As such, a large initial inverse
+temperature (which is used in practice) encourages a large increase in Δ at initialization.
+• Experimental verification. We verify that 𝑑Δ/𝑑𝑡> 0 at initialization as implied by Theorem 3.2
+in practice via randomly initializing CLIP models and recording the change in modality gap
+after the first 10 steps. We measure the change in modality gap with 100 independent trials
+and present the distribution of changes in Figure 4b. From Figure 4b, we can see modality gap
+increases at the start of training for all random initialization, with the mean being near 0.15.
+4 Mitigating the Modality Gap
+The analysis of learning dynamics in Section 3 offers valuable insights into mitigating modality
+gap. It inspires us to design two types of methods for reducing modality gap: (i) Temperature
+Control, where we propose new temperature scheduling rules for accelerating the convergence
+rate of modality gap, and (ii) Modality Swapping, we proposed methods to manually break
+the parallel constraints of two modalities by swapping them during training. To evaluate these
+approaches, we train models from scratch on the MSCOCO dataset with different variants of the
+proposed methods and then measure modality gap and evaluate the performance on downstream
+tasks.In the following, we introduce the proposed methods in Section 4.1 and discuss the results
+and implications of reducing modality gap in Section 4.2.
+4.1
+Methods
+We introduce the main idea of each method, and leave details on implementations to Section D.
+9
+
+===== PAGE 10 =====
+𝑡
+𝜏= 1/𝛽
+(b) Control Temperature
+(a) Reducing The Gap
+(c) Swap Modalities
+𝒙!
+𝒙"
+𝒚!
+𝒚"
+𝒚!
+𝒚"
+𝒙!
+𝒙"
+Figure 5: We propose two categories of methods: Control Temperature and Swap Modality. (a)
+Our methods reduce modality gap and may influence the uniformity of the feature space. (b)
+Control Temperature maintains the temperature at larger values such as increasing temperature
+across training. (c) Swap Modalities swaps between image and text feature pairs.
+Temperature Control.
+Our first type of method involves the control of temperature 𝜏(𝜈) during
+training. As defined in (1), 𝛽(𝜈) = 1/𝜏(𝜈) = exp(𝜈) is the temperature parameterization. Usually,
+𝜏(𝜈) is the so-called temperature in CLIP loss Chen et al. (2020); Radford et al. (2021). Thus, we refer
+to 𝜏(𝜈) as temperature when we introduce the following methods. As shown by analysis in Section 3.1
+and Section C, the learnable temperature parameter is the key factor causing the stabilization of
+the modality gap. More specifically, the fast decrease in temperature outpaces the decrease in the
+modality gap, preventing it from closing. The following methods all counteract this decrease:
+• Temperature Scheduling (TS): Instead of allowing 𝜏(𝜈) to diminish freely with 𝜈(as shown in
+Figure 5(b)), we enforce a linearly increasing schedule for 𝜏during training.
+• Temperature Reparameterization (TR): As mentioned in Section 3.1, the specific parameterization
+of temperature also affects the gap closing rate. We replace the original parameterization, 1/𝜏(𝜈) =
+𝛽(𝜈) = exp(𝜈), with alternatives that yield a higher gap closing rate, such as 1/𝜏(𝜈) = log(1 + 𝑒𝜈).
+• Smaller Learning Rate of Temperature (SLRT): We use a smaller learning rate for the temperature
+parameter compared to other learnable parameters. This slows down the decrease in temperature,
+allowing larger temperature values to be maintained during training.
+• Fixed on Large Temperature (FLT): Rather than allowing the temperature to be freely learned,
+we fix 𝜏at a high value throughout the training process.
+Modality Swapping.
+Our second approach involves manually mixing the two modalities by
+swapping pairs, as illustrated in Figure 5c. This mixing prevents the two modalities from remaining
+segregated into parallel planes. Consequently, the repulsion caused by mismatched pairs no longer
+occurs between the original planes, thereby reducing the overall repulsion between them. We
+introduce two strategies for swapping pairs—hard swapping and soft swapping—both of which
+effectively mitigate modality gap.
+10
+
+===== PAGE 11 =====
+• Hard Swapping Between Modalities (HS). During training, we randomly select some images and
+their paired text descriptions. Then, we exchange the features of these images and the paired
+texts in the shared feature space, as visualized in Figure 5c.
+• Soft Swapping Between Modalities (SS). Different from hard swapping, for a pair of image and
+text features, soft swapping mixes the two features to create a pair of image and text features.
+4.2
+Experimental Results and Implications
+(a) Retrieval accuracies vs. modality gap.
+(b) Retrieval accuracies vs. uniformity.
+Figure 6: Image-text retrieval accuracy increases with reduced modality gap by our proposed
+methods. Uniformity does not show strong correlations with retrieval accuracies.
+Experimental setup.
+We train CLIP models from scratch on MSCOCO using the proposed methods
+and the original CLIP training process as a baseline. After pretraining, we evaluate two key attributes
+of the shared feature space: (i) modality gap between image and text features and (ii) feature
+space uniformity. Additionally, we assess the models on four downstream tasks: (i) zero-shot
+image classification, (ii) linear-probe image classification, (iii) image-text retrieval, and (iv) vision-
+language question answering (MMVP-VLM Tong et al. (2024)). For each training setting, we
+independently train three models and report averaged results for attributes and task performance.
+Detailed experimental setup is provided in Section E.
+Closing modality gap is especially helpful for image-text retrievals.
+We visualize the correlation
+between image-text retrieval accuracies and modality gap in Figure 6a, and the correlation between
+image-text retrieval accuracies and uniformity in Figure 6b. As shown in the figure, though these
+methods are different variants of Control Temperature and Swap Modality, a smaller modality
+gap clearly leads to a higher retrieval accuracy. This indicates reducing modality gap improves
+image-text retrieval. In contrast, uniformity does not show a strong correlation with the retrieval
+accuracy. We include more detailed results for each method variant in Section F.
+Closing modality gap is not all you need.
+Even though methods reducing modality gap increase
+retrieval performance, it does not mean modality gap is the only metric we should care about when
+characterizing the space. For example, as shown in Figure 7, bad uniformity will harm zero-shot
+and linear probe accuracies while a reduced modality gap does not have an obvious effect on
+them. Moreover, for the difficult vision-language question-answering task MMVP-VLM, we test
+different variants of Fixed on Large Temperature (FLT) and Temperature Scheduling (TS), and
+11
+
+===== PAGE 12 =====
+(a) Zero shot/linear probe vs. modality gap.
+(b) Zero shot/linear probe vs. uniformity.
+Figure 7: Zero-shot and linear probe accuracies are not strongly correlated with modality gap.
+Uniformity has a clear positive correlation with zero-shot and linear probe accuracies instead.
+Baseline
+FLT
+TS
+4 · 10−2
+7 · 10−2
+10−1
+S1
+S2
+S3
+Modality Gap (↓)
+0.294
+0.122
+0.033
+0.019
+0.198
+0.137
+0.088
+Uniformity (↑)
+-1.165
+-1.183
+-1.246
+-1.251
+-1.087
+-1.092
+-1.108
+MMVP-VLM (↑)
+14.321
+11.852
+14.074
+14.817
+14.074
+14.321
+13.087
+Table 1: MMVP-VLM accuracy does not strongly correlate with modality gap or uniformity.
+neither modality gap nor uniformity shows a strong correlation with the MMVP-VLM performance.
+We discuss the detailed settings of different variants in Section D and Section F
+5 Conclusion
+In this work, we investigated the modality gap in training multimodal models. By analyzing
+gradient flow learning dynamics, we theoretically characterized how learning temperature and
+mismatched pairs influence this gap. Based on our analysis, we proposed principled methods
+to control temperature and swap information between modalities to reduce the gap, which also
+improves downstream task performance—particularly in retrieval tasks. Our work opens up future
+directions, such as extending gradient flow analysis to study the difficulty of closing the gap
+with varying levels of shared information between modalities by modeling data distributions.
+Additionally, our results can provide insights into finetuning scenarios where domain differences
+between pretraining and finetuning data need to be considered. Motivated by recent advancements
+in understanding the compressibility of gradient dynamics through low-dimensional structures
+in data (Yaras et al., 2023, 2024; Kwon et al., 2024), a promising future direction is to investigate
+the compressibility of the Riemannian dynamics trajectory in multimodal learning to enhance the
+efficiency and performance of multimodal models.
+Acknowledgment
+We acknowledge support from NSF CAREER CCF-2143904, NSF IIS 2312842, NSF IIS 2402950, and
+ONR N00014-22-1-2529. Additionally, we acknowledge fruitful discussions with Yuexiang Zhai
+(UC Berkeley) and Liyue Shen (UMich).
+12
+
+===== PAGE 13 =====
+References
+Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal,
+Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, et al. Learning transferable visual
+models from natural language supervision. In International conference on machine learning, pages
+8748–8763. PMLR, 2021.
+Chitwan Saharia, William Chan, Saurabh Saxena, Lala Li, Jay Whang, Emily Denton, Seyed Kam-
+yar Seyed Ghasemipour, Burcu Karagol Ayan, S Sara Mahdavi, Rapha Gontijo Lopes, Tim Sali-
+mans, Jonathan Ho, David J Fleet, and Mohammad Norouzi. Photorealistic text-to-image diffusion
+models with deep language understanding. arXiv preprint arXiv:2205.11487, 2022a.
+Alex Nichol, Prafulla Dhariwal, Aditya Ramesh, Pranav Shyam, Pamela Mishkin, Bob McGrew, Ilya
+Sutskever, and Mark Chen. Glide: Towards photorealistic image generation and editing with
+text-guided diffusion models. arXiv preprint arXiv:2112.10741, 2021.
+Junnan Li, Ramprasaath Selvaraju, Akhilesh Gotmare, Shafiq Joty, Caiming Xiong, and Steven
+Chu Hong Hoi. Align before fuse: Vision and language representation learning with momentum
+distillation. Advances in neural information processing systems, 34:9694–9705, 2021.
+Peng Wang, An Yang, Rui Men, Junyang Lin, Shuai Bai, Zhikang Li, Jianxin Ma, Chang Zhou,
+Jingren Zhou, and Hongxia Yang. Ofa: Unifying architectures, tasks, and modalities through a
+simple sequence-to-sequence learning framework. In International Conference on Machine Learning,
+pages 23318–23340. PMLR, 2022a.
+Junnan Li, Dongxu Li, Caiming Xiong, and Steven Hoi.
+Blip:
+Bootstrapping language-
+image pre-training for unified vision-language understanding and generation. arXiv preprint
+arXiv:2201.12086, 2022.
+Wenhui Wang, Hangbo Bao, Li Dong, Johan Bjorck, Zhiliang Peng, Qiang Liu, Kriti Aggarwal,
+Owais Khan Mohammed, Saksham Singhal, Subhojit Som, and Furu Wei. Image as a foreign
+language: Beit pretraining for all vision and vision-language tasks. arXiv preprint arXiv:2208.10442,
+2022b.
+Jianfeng Wang, Zhengyuan Yang, Xiaowei Hu, Linjie Li, Kevin Lin, Zhe Gan, Zicheng Liu, Ce Liu,
+and Lijuan Wang. Git: A generative image-to-text transformer for vision and language. arXiv
+preprint arXiv:2205.14100, 2022c.
+Aditya Ramesh, Mikhail Pavlov, Gabriel Goh, Scott Gray, Chelsea Voss, Alec Radford, Mark Chen,
+and Ilya Sutskever. Zero-shot text-to-image generation. In International Conference on Machine
+Learning, pages 8821–8831. PMLR, 2021.
+Zi-Yi Dou, Yichong Xu, Zhe Gan, Jianfeng Wang, Shuohang Wang, Lijuan Wang, Chenguang Zhu,
+Pengchuan Zhang, Lu Yuan, Nanyun Peng, Zicheng Liu, and Michael Zeng. An empirical study of
+training end-to-end vision-and-language transformers. In Proceedings of the IEEE/CVF Conference
+on Computer Vision and Pattern Recognition, pages 18166–18176, 2022.
+Ting Chen, Simon Kornblith, Mohammad Norouzi, and Geoffrey Hinton. A simple framework
+for contrastive learning of visual representations. In Hal Daumé III and Aarti Singh, editors,
+International Conference on Machine Learning (ICML), volume 119 of Proceedings of Machine Learning
+Research, pages 1597–1607. PMLR, 2020. URL https://proceedings.mlr.press/v119/chen20j.
+html.
+13
+
+===== PAGE 14 =====
+Victor Weixin Liang, Yuhui Zhang, Yongchan Kwon, Serena Yeung, and James Y Zou. Mind the gap:
+Understanding the modality gap in multi-modal contrastive representation learning. Advances in
+Neural Information Processing Systems, 35:17612–17625, 2022.
+Yuhui Zhang, Jeff Z HaoChen, Shih-Cheng Huang, Kuan-Chieh Wang, James Zou, and Serena
+Yeung. Diagnosing and rectifying vision models using language. In The Eleventh International
+Conference on Learning Representations, 2022.
+Peiyang Shi, Michael C. Welle, Mårten Björkman, and Danica Kragic. Towards understanding the
+modality gap in CLIP. In ICLR 2023 Workshop on Multimodal Representation Learning: Perks and
+Pitfalls, 2023. URL https://openreview.net/forum?id=8W3KGzw7fNI.
+Simon Schrodi, David T. Hoffmann, Max Argus, Volker Fischer, and Thomas Brox. Two effects,
+one trigger: On the modality gap, object bias, and information imbalance in contrastive vision-
+language representation learning, 2024. URL https://arxiv.org/abs/2404.07983.
+Vardan Papyan, XY Han, and David L Donoho. Prevalence of neural collapse during the terminal
+phase of deep learning training. Proceedings of the National Academy of Sciences, 117(40):24652–
+24663, 2020.
+Zhihui Zhu, Tianyu Ding, Jinxin Zhou, Xiao Li, Chong You, Jeremias Sulam, and Qing Qu. A
+geometric analysis of neural collapse with unconstrained features. Advances in Neural Information
+Processing Systems, 34:29820–29834, 2021.
+Can Yaras, Peng Wang, Zhihui Zhu, Laura Balzano, and Qing Qu. Neural collapse with normalized
+features: A geometric analysis over the riemannian manifold. Advances in neural information
+processing systems, 35:11547–11560, 2022.
+Jiachen Jiang, Jinxin Zhou, Peng Wang, Qing Qu, Dustin G. Mixon, Chong You, and Zhihui Zhu.
+Generalized neural collapse for a large number of classes. In Proceedings of the 41st International
+Conference on Machine Learning, volume 235 of Proceedings of Machine Learning Research, pages
+22010–22041. PMLR, 2024.
+Peng Wang, Huikang Liu, Can Yaras, Laura Balzano, and Qing Qu. Linear convergence analysis
+of neural collapse with unconstrained features. In OPT 2022: Optimization for Machine Learning
+(NeurIPS 2022 Workshop), 2022d.
+Wilhelm Magnus, Fritz Oberhettinger, Raj Pal Soni, and Eugene P Wigner. Formulas and theorems
+for the special functions of mathematical physics. Physics Today, 20(12):81–83, 1967.
+Shengbang Tong, Zhuang Liu, Yuexiang Zhai, Yi Ma, Yann LeCun, and Saining Xie. Eyes wide
+shut? exploring the visual shortcomings of multimodal llms. 2024 IEEE/CVF Conference on
+Computer Vision and Pattern Recognition (CVPR), pages 9568–9578, 2024. URL https://api.
+semanticscholar.org/CorpusID:266976992.
+Can Yaras, Peng Wang, Wei Hu, Zhihui Zhu, Laura Balzano, and Qing Qu. The law of parsimony
+in gradient descent for learning deep linear networks. arXiv preprint arXiv:2306.01154, 2023.
+Can Yaras, Peng Wang, Laura Balzano, and Qing Qu. Compressible dynamics in deep overparame-
+terized low-rank learning & adaptation. In Forty-first International Conference on Machine Learning,
+2024. URL https://openreview.net/forum?id=uDkXoZMzBv.
+14
+
+===== PAGE 15 =====
+Soo Min Kwon, Zekai Zhang, Dogyoon Song, Laura Balzano, and Qing Qu. Efficient low-dimensional
+compression of overparameterized models. In International Conference on Artificial Intelligence and
+Statistics, pages 1009–1017. PMLR, 2024.
+Xinlei Chen and Kaiming He. Exploring simple siamese representation learning. 2021 IEEE/CVF
+Conference on Computer Vision and Pattern Recognition (CVPR), pages 15745–15753, 2020. URL
+https://api.semanticscholar.org/CorpusID:227118869.
+Kaiming He, Haoqi Fan, Yuxin Wu, Saining Xie, and Ross Girshick. Momentum contrast for
+unsupervised visual representation learning. In Proceedings of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition, pages 9726–9735, 2020. doi: 10.1109/CVPR42600.2020.00975.
+Mathilde Caron, Ishan Misra, Julien Mairal, Priya Goyal, Piotr Bojanowski, and Armand Joulin.
+Unsupervised learning of visual features by contrasting cluster assignments. In Advances in Neural
+Information Processing Systems, NeurIPS’20, Red Hook, NY, USA, 2020. Curran Associates Inc.
+ISBN 9781713829546.
+Christoph Feichtenhofer, Haoqi Fan, Bo Xiong, Ross Girshick, and Kaiming He. A large-scale study
+on unsupervised spatiotemporal representation learning. In Proceedings of the IEEE/CVF Conference
+on Computer Vision and Pattern Recognition, pages 3298–3308, 2021. doi: 10.1109/CVPR46437.2021.
+00331.
+Siyi Chen, Minkyu Choi, Zesen Zhao, Kuan Han, Qing Qu, and Zhongming Liu. Unfolding videos
+dynamics via taylor expansion, 2024a. URL https://arxiv.org/abs/2409.02371.
+Hongchao Fang and Pengtao Xie. CERT: contrastive self-supervised learning for language under-
+standing. CoRR, abs/2005.12766, 2020. URL https://arxiv.org/abs/2005.12766.
+Michael Heinzinger, Maria Littmann, Ian Sillitoe, Nicola Bordin, Christine Orengo, and Burkhard
+Rost. Contrastive learning on protein embeddings enlightens midnight zone. NAR Genomics
+and Bioinformatics, 4(2):lqac043, 06 2022. ISSN 2631-9268. doi: 10.1093/nargab/lqac043. URL
+https://doi.org/10.1093/nargab/lqac043.
+Tongzhou Wang and Phillip Isola. Understanding contrastive representation learning through
+alignment and uniformity on the hypersphere. In Proceedings of the 37th International Conference on
+Machine Learning, ICML’20. JMLR.org, 2020.
+Xianghong Fang, Jian Li, Xiangchu Feng, and Benyou Wang.
+Rethinking uniformity in
+self-supervised representation learning, 2023.
+URL https://openreview.net/forum?id=
+hFUlfiyf1oQ.
+Yihao Xue, Eric Gan, Jiayi Ni, Siddharth Joshi, and Baharan Mirzasoleiman. Investigating the
+benefits of projection head for representation learning. In The Twelfth International Conference on
+Learning Representations, 2024. URL https://openreview.net/forum?id=GgEAdqYPNA.
+Kartik Gupta, Thalaiyasingam Ajanthan, Anton van den Hengel, and Stephen Gould. Understanding
+and improving the role of projection head in self-supervised learning, 2022. URL https://arxiv.
+org/abs/2212.11491.
+Tianyu Hua, Wenxiao Wang, Zihui Xue, Yue Wang, Sucheng Ren, and Hang Zhao. On feature decor-
+relation in self-supervised learning. 2021 IEEE/CVF International Conference on Computer Vision
+(ICCV), pages 9578–9588, 2021. URL https://api.semanticscholar.org/CorpusID:233481690.
+15
+
+===== PAGE 16 =====
+Sanjeev Arora, Hrishikesh Khandeparkar, Mikhail Khodak, Orestis Plevrakis, and Nikunj Saunshi. A
+theoretical analysis of contrastive unsupervised representation learning. In International Conference
+on Machine Learning, 2019. URL https://api.semanticscholar.org/CorpusID:67855945.
+Chao Jia, Yinfei Yang, Ye Xia, Yi-Ting Chen, Zarana Parekh, Hieu Pham, Quoc V. Le, Yun-Hsuan
+Sung, Zhen Li, and Tom Duerig. Scaling up visual and vision-language representation learning
+with noisy text supervision. In Marina Meila and Tong Zhang, editors, Proceedings of the 38th
+International Conference on Machine Learning, ICML 2021, 18-24 July 2021, Virtual Event, volume
+139 of Proceedings of Machine Learning Research, pages 4904–4916. PMLR, 2021. URL http://
+proceedings.mlr.press/v139/jia21b.html.
+Richard Socher and Li Fei-Fei. Connecting modalities: Semi-supervised segmentation and annota-
+tion of images using unaligned text corpora. In 2010 IEEE Computer Society Conference on Computer
+Vision and Pattern Recognition, pages 966–973, 2010. doi: 10.1109/CVPR.2010.5540112.
+Yuhao Zhang, Hang Jiang, Yasuhide Miura, Christopher D. Manning, and C. Langlotz. Contrastive
+learning of medical visual representations from paired images and text. In Machine Learning in
+Health Care, 2020. URL https://api.semanticscholar.org/CorpusID:222125307.
+Patrick Esser, Sumith Kulal, Andreas Blattmann, Rahim Entezari, Jonas Müller, Harry Saini, Yam
+Levi, Dominik Lorenz, Axel Sauer, Frederic Boesel, Dustin Podell, Tim Dockhorn, Zion English,
+and Robin Rombach. Scaling rectified flow transformers for high-resolution image synthesis.
+In Forty-first International Conference on Machine Learning, 2024. URL https://openreview.net/
+forum?id=FPnUhsQJ5B.
+Simian Luo, Yiqin Tan, Longbo Huang, Jian Li, and Hang Zhao. Latent consistency models:
+Synthesizing high-resolution images with few-step inference. ArXiv preprint arXiv:2310.04378,
+2023.
+Chitwan Saharia, William Chan, Saurabh Saxena, Lala Li, Jay Whang, Emily L Denton, Kamyar
+Ghasemipour, Raphael Gontijo Lopes, Burcu Karagol Ayan, Tim Salimans, et al. Photorealistic
+text-to-image diffusion models with deep language understanding. Advances in Neural Information
+Processing Systems, 35:36479–36494, 2022b.
+María A. Bravo, Sudhanshu Mittal, Simon Ging, and Thomas Brox. Open-vocabulary attribute
+detection. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition
+(CVPR), pages 7041–7050, June 2023.
+Chenliang Zhou, Fangcheng Zhong, and Cengiz Öztireli. Clip-pae: Projection-augmentation
+embedding to extract relevant features for a disentangled, interpretable and controllable text-
+guided face manipulation. In ACM SIGGRAPH 2023 Conference Proceedings, SIGGRAPH ’23,
+New York, NY, USA, 2023. Association for Computing Machinery. ISBN 9798400701597. doi:
+10.1145/3588432.3591532. URL https://doi.org/10.1145/3588432.3591532.
+Siyi Chen, Huijie Zhang, Minzhe Guo, Yifu Lu, Peng Wang, and Qing Qu.
+Exploring low-
+dimensional subspace in diffusion models for controllable image editing. In The Thirty-eighth
+Annual Conference on Neural Information Processing Systems, 2024b. URL https://openreview.
+net/forum?id=50aOEfb2km.
+Changdae Oh, Junhyuk So, Hoyoon Byun, YongTaek Lim, Minchul Shin, Jong-June Jeon,
+and Kyungwoo Song.
+Geodesic multi-modal mixup for robust fine-tuning.
+In A. Oh,
+16
+
+===== PAGE 17 =====
+T. Naumann, A. Globerson, K. Saenko, M. Hardt, and S. Levine, editors, Advances
+in Neural Information Processing Systems, volume 36, pages 52326–52341. Curran Asso-
+ciates, Inc., 2023.
+URL https://proceedings.neurips.cc/paper_files/paper/2023/file/
+a45296e83b19f656392e0130d9e53cb1-Paper-Conference.pdf.
+Abrar Fahim, Alex Murphy, and Alona Fyshe. It’s not a modality gap: Characterizing and addressing
+the contrastive gap, 2024. URL https://arxiv.org/abs/2405.18570.
+Sedigheh Eslami and Gerard de Melo. Mitigate the gap: Investigating approaches for improving
+cross-modal alignment in clip, 2024. URL https://arxiv.org/abs/2406.17639.
+Joram Soch et al. Statproofbook/statproofbook.github.io: The book of statistical proofs (version
+2023), 2024. URL https://doi.org/10.5281/zenodo.4305949.
+DLMF. NIST Digital Library of Mathematical Functions. https://dlmf.nist.gov/, Release 1.2.2 of
+2024-09-15. URL https://dlmf.nist.gov/. F. W. J. Olver, A. B. Olde Daalhuis, D. W. Lozier, B. I.
+Schneider, R. F. Boisvert, C. W. Clark, B. R. Miller, B. V. Saunders, H. S. Cohl, and M. A. McClain,
+eds.
+Mehdi Cherti, Romain Beaumont, Ross Wightman, Mitchell Wortsman, Gabriel Ilharco, Cade
+Gordon, Christoph Schuhmann, Ludwig Schmidt, and Jenia Jitsev. Reproducible scaling laws
+for contrastive language-image learning. In Proceedings of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition, pages 2818–2829, 2023.
+Kaiming He, X. Zhang, Shaoqing Ren, and Jian Sun. Deep residual learning for image recognition.
+2016 IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pages 770–778, 2015.
+URL https://api.semanticscholar.org/CorpusID:206594692.
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Ł ukasz
+Kaiser, and Illia Polosukhin. Attention is all you need. In I. Guyon, U. Von Luxburg, S. Bengio,
+H. Wallach, R. Fergus, S. Vishwanathan, and R. Garnett, editors, Advances in Neural Information
+Processing Systems, volume 30. Curran Associates, Inc., 2017. URL https://proceedings.neurips.
+cc/paper_files/paper/2017/file/3f5ee243547dee91fbd053c1c4a845aa-Paper.pdf.
+17
+
+===== PAGE 18 =====
+A Related Works
+Contrastive Learning
+In the past, contrastive learning has been demonstrated as a powerful tool
+to learn reasonable representations in a self-supervised way (Chen and He, 2020; Chen et al., 2020;
+He et al., 2020; Caron et al., 2020). Representative contrastive methods including SimCLR (Chen
+et al., 2020), MOCO (He et al., 2020), and SwAV (Caron et al., 2020). Intuitively, contrastive learning
+aims to pair together data that contain similar information, and separate pairs that contain distinct
+information. Such a strategy can effectively extract key features within data that are useful for
+various downstream tasks. For example, by utilizing contrastive learning in images or videos, we
+can get image or video encoders that can perform zero-shot image and video retrieval, as well as
+image classification Chen et al. (2020); He et al. (2020); Caron et al. (2020), action detection, action
+segmantation, and other tasks (Feichtenhofer et al., 2021; Chen et al., 2024a). Moreover, contrastive
+learning can be applied to a wide range of data, from language to protein (Fang and Xie, 2020;
+Heinzinger et al., 2022). Apart from application, other works approach to analyze and understand
+contrastive learning from the perspective of alignment & uniformity (Wang and Isola, 2020; Fang
+et al., 2023), specific design choices (Xue et al., 2024; Gupta et al., 2022), and so on (Hua et al., 2021;
+Arora et al., 2019).
+Multimodal Learning
+Multimodal learning aims to learn a shared representation space for
+different modalities such as images and texts, where the learned representation space can express
+the shared information hidden in different modalities (Jia et al., 2021; Radford et al., 2021; Socher and
+Fei-Fei, 2010). Under this context, contrastive learning has been proved applicable and powerful to
+multimodal learning (Radford et al., 2021). The contrastive loss is applied between two modalities
+(take image and text as an example) such that positive pairs (i.e., image and text pairs that contain
+similar information) have similar representations but negative pairs (i.e., image and text pairs that
+contain distinct information) are apart from each other. The pretrained multimodal models excel
+in various downstream tasks such as linear probe, zero-shot classification, and retrieval (Radford
+et al., 2021), and are even useful for medical applications (Zhang et al., 2020) and generative models
+(Esser et al., 2024; Luo et al., 2023; Saharia et al., 2022b). Despite its great power, recently, several
+works have also identified bias and flaws in the learned multimodal models, such as uni-model
+bias (Bravo et al., 2023), and failure in understanding detailed information (Tong et al., 2024),
+which add difficulty to applications such as text-to-image editing (Zhou et al., 2023; Chen et al.,
+2024b). Therefore, the theoretical understanding of contrastive multimodal learning is an important
+problem for further solving the aforementioned problems.
+Modality Gap
+Following prior discoveries, existing works delve deeper into the modality gap
+from both theoretical and empirical perspectives. For instance, Shi et al. (2023) experimentally
+demonstrates the influence of different initialization and temperature parameters in the modality
+gap with toy datasets, but stops short of providing theoretical justifications for the emergence of
+modality gap under various conditions. Schrodi et al. (2024) investigates the role of information
+imbalance between modalities, suggesting that balancing information between text and image
+datasets helps close the modality gap. However, their claim is based solely on experiments with toy
+datasets and lacks a strong theoretical foundation. Instead of focusing on the reasons behind the
+modality gap, other studies propose practical solutions. For example, Oh et al. (2023) and Fahim
+et al. (2024) introduce new loss functions for fine-tuning the CLIP model to close the gap, while
+Eslami and de Melo (2024) encourages different modalities to share portions of their encoders.
+Although effective, they remain largely experimental and fail to provide a rigorous explanation for
+18
+
+===== PAGE 19 =====
+modality gap’s origin.
+B Proofs
+B.1
+Preliminaries
+The gradient of ℓgiven in (2) is given by
+∇ℓ(M) = 1
+2𝑛
+
+exp(M)
+1𝑛1⊤𝑛exp(M) +
+exp(M)
+exp(M)1𝑛1⊤𝑛
+
+−1
+𝑛I𝑛
+where division and exponentiation are carried out element-wise.
+Define the function 𝑔𝑎(Z) := −⟨Z, ∇ℓ(𝑎Z)⟩which can be written as
+𝑔𝑎(Z) = 1
+2𝑛
+ 𝑛
+Õ
+𝑖=1
+𝜇𝑖(Z:,𝑖, 𝑎) + 𝜇𝑖(Z𝑖,:, 𝑎)
+!
+where
+𝜇𝑖(z, 𝑎) = ⟨z, e(𝑖) −𝜎(𝑎z)⟩
+(10)
+and 𝜎is the softmax function 𝜎(m) = exp(m)/Í
+𝑗exp(m𝑗). Then we have
+𝜕ℓ
+𝜕𝜈= −𝛽′(𝜈)(1 −𝛾2)𝑔𝛽(𝜈)(1−𝛾2)(Z),
+𝜕ℓ
+𝜕𝛾= 2𝛽(𝜈)𝛾𝑔𝛽(𝜈)(1−𝛾2)(Z)
+which gives the gradient flow dynamics
+𝑑𝛽
+𝑑𝑡= (𝛽′)2(1 −𝛾2)𝑔𝛽(1−𝛾2)(Z),
+𝑑𝛾
+𝑑𝑡= −2𝛽𝛾𝑔𝛽(1−𝛾2)(Z)
+(11)
+where 𝛽′ := 𝛽′(𝜈).
+B.2
+Proof of Theorem 3.1
+Proof. From (11), we have
+1
+2𝛽𝛾
+
+−𝑑𝛾
+𝑑𝑡
+
+=
+1
+(𝛽′)2(1 −𝛾2)
+𝑑𝛽
+𝑑𝑡
+=⇒𝑅= 𝑑𝛾/𝑑𝑡
+𝑑𝛽/𝑑𝑡= −
+2𝛽𝛾
+(𝛽′)2(1 −𝛾2)
+which gives (5). Now let 𝛽= exp(𝜈) so 𝛽′ = 𝛽. Then we can rewrite and integrate as
+∫
+𝛽
+𝛽0
+𝑑𝛽
+𝛽= −1
+2
+∫
+𝛾
+𝛾0
+
+1
+𝛾−𝛾
+
+𝑑𝛾=⇒𝛽(𝛾) = 𝛽0
+r𝛾0
+𝛾exp
+ 
+𝛾2 −𝛾2
+0
+4
+!
+which gives (6).
+□
+19
+
+===== PAGE 20 =====
+B.3
+Proof of Theorem 3.2
+Lemma B.1. Let z ∈R𝑛and 𝑖∈[𝑛].
+(a) If z𝑖≥max𝑗z𝑗, then 𝜇𝑖(z, 𝑎) ≥0 for all 𝑎≥0.
+(b) For any 𝛼> 0, we have
+𝜇𝑖(z, 𝑎) ≤𝜇𝑖(𝛼(e(𝑖) −1), 𝑎)
+for all 𝑎≥log(4𝑛−4)/𝛼and for all z such that z𝑖−max𝑗≠𝑖z𝑗≥𝛼.
+Proof. We have
+⟨z, e(𝑖)⟩= z𝑖≥max
+𝑗
+z𝑗=
+Õ
+𝑙
+𝜎𝑙(𝑎z)
+
+max
+𝑗
+z𝑗
+
+≥
+Õ
+𝑙
+𝜎𝑙(𝑎z)z𝑙= ⟨z, 𝜎(𝑎z)⟩
+so 𝜇𝑖(z, 𝑎) ≥0, giving (a).
+To prove (b), without loss of generality, we can take 𝑖= 1 and assume z1 = 0 and z𝑗≤−𝛼
+for 𝑗≠1. Define w = z2:𝑛∈R𝑛−1 and
+𝜓(w, 𝑎) :=
+Í
+𝑗w𝑗exp(𝑎w𝑗)
+1 + Í
+𝑗exp(𝑎w𝑗)
+so that 𝜇1(z, 𝑎) = −𝜓(w, 𝑎). The statement is then equivalent to showing 𝜓(w, 𝑎) ≥𝜓(−𝛼1, 𝑎) for
+any w such that w𝑗≤−𝛼for all 𝑗∈[𝑛−1]. It suffices to show that for any 𝑘, we have 𝜕𝜓/𝜕w𝑘≤0
+whenever w ⪯−𝛼1, i.e., 𝜓is decreasing in any argument for the region bounded above by −𝛼1.
+We compute
+𝜕𝜓
+𝜕w𝑘
+=
+exp(𝑎w𝑘)
+1 + Í
+𝑗exp(𝑎w𝑗)
+ 1 + 𝑎w𝑘−𝑎𝜓(w, 𝑎)
+where
+𝑎𝜓(w, 𝑎) =
+Í
+𝑗𝑎w𝑗exp(𝑎w𝑗)
+1 + Í
+𝑗exp(𝑎w𝑗) ≥
+Õ
+𝑗
+𝑎w𝑗exp(𝑎w𝑗) ≥−(𝑛−1)𝑎𝛼exp(−𝑎𝛼)
+provided that w ⪯−𝛼1, where the last inequality follows from 𝛼≥1/𝑎. Now, for any 𝑥≥log(4𝑛−4),
+we have that (𝑛−1) ≤exp(𝑥)(1 −1/𝑥) by 1 −1/𝑥≥1/4. Therefore, 𝑥= 𝑎𝛼≥log(4𝑛−4) satisfies
+(𝑛−1) exp(−𝑎𝛼) ≤1 −1
+𝑎𝛼=⇒−(𝑛−1)𝑎𝛼exp(−𝑎𝛼) ≥1 −𝑎𝛼.
+Combining the above inequalities along with 1 + 𝑎w𝑘≤1 −𝑎𝛼yields 𝑎𝜓(w, 𝑎) ≥1 + 𝑎w𝑘, and thus
+𝜕𝜓/𝜕w𝑘≤0, completing the proof.
+□
+Proof of Theorem 3.2. First, we note by (11) that 𝛽(𝑡) is increasing in 𝑡and 𝛾(𝑡) is decreasing in 𝑡due
+to the fact that 𝑔𝛽(1−𝛾2)(Z) ≥0 via perfect mismatch and (a) in Theorem B.1. Now, we can substitute
+the expression for 𝛽in (6) into the dynamics of 𝛾in (11) giving
+𝑑𝛾
+𝑑𝑡= −2𝛽(𝛾)𝛾𝑔𝛽(𝛾)(1−𝛾2)(Z).
+20
+
+===== PAGE 21 =====
+Since
+𝛽(𝛾)(1 −𝛾2) ≥𝛽0 exp(−𝛾2
+0/4)(1 −𝛾2
+0)
+we have by 𝛽0 ≥log(4𝑛−4)/(𝛼(1 −𝛾2
+0)), (b) in Theorem B.1, and the fact that 𝛽(𝑡) and 𝛾(𝑡) are
+increasing and decreasing in 𝑡respectively that
+𝑔𝛽(𝛾)(1−𝛾2)(Z) ≤𝜇1
+
+𝛼(e(1) −1), 𝛽(𝛾)(1 −𝛾2)
+
+= 1 − 𝑝1 + (1 −𝛼)(1 −𝑝1)
+= 𝛼(1 −𝑝1)
+where 𝑝1 is the first entry of 𝜎 𝛽(𝛾)(1 −𝛾2)𝛼(e(1) −1)
+. We compute
+1 −𝑝1 =
+1
+1 + exp(𝛽(𝛾)(1 −𝛾2)𝛼)/(𝑛−1) ≤(𝑛−1) exp(−𝛽(𝛾)(1 −𝛾2)𝛼)
+so overall we have
+2𝛽(𝛾)𝛾𝑔𝛽(1−𝛾2)(Z) ≤2𝛼(𝑛−1)𝛽(𝛾)𝛾exp(−𝛽(𝛾)(1 −𝛾2)𝛼)
+≤2𝛼(𝑛−1)𝛽0
+r𝛾0
+𝛾𝛾exp
+ 
+−𝛽0
+r𝛾0
+𝛾exp
+ 
+−
+𝛾2
+0
+4
+!
+(1 −𝛾2
+0)𝛼
+!
+where the second inequality follows from 𝛾≤𝛾0 and exp  −𝛾2
+0/4
+≤exp  (𝛾2 −𝛾2
+0)/4
+≤1. Let
+𝑐1 = 2𝛼(𝑛−1)𝛽0√𝛾0 and 𝑐2 = 𝛼𝛽0√𝛾0(1 −𝛾2
+0) exp(−𝛾2
+0/4), and define a new problem
+𝑑˜𝛾
+𝑑𝑡= −𝑐1
+p
+˜𝛾exp
+ 
+−𝑐2
+p
+˜𝛾
+!
+with initial condition ˜𝛾(0) = 𝛾0. Since 𝑑˜𝛾/𝑑𝑡≤𝑑𝛾/𝑑𝑡whenever ˜𝛾= 𝛾, we have that ˜𝛾(𝑡) ≤𝛾(𝑡) for
+all 𝑡≥0. We make the change of variables 𝜔= 1/
+p
+˜𝛾which gives
+𝑑𝜔
+𝑑𝑡= (1/2)𝑐1𝜔2 exp(−𝑐2𝜔)
+with 𝜔(0) = 1/√𝛾0. From the fact that (1/55)𝑥2 exp(−𝑥/10) ≤1 for all 𝑥≥0, we have that
+(1/2)𝑐1𝜔2 exp(−𝑐2𝜔) ≤𝑐3 exp(−𝑐4𝜔)
+where 𝑐3 = 55𝑐1/2 and 𝑐4 = 𝑐2 −1/10 so defining
+𝑑˜𝜔
+𝑑𝑡= 𝑐3 exp(−𝑐4 ˜𝜔)
+with ˜𝜔(0) = 𝜔(0) = 1/√𝛾0 satisfies ˜𝜔(𝑡) ≥𝜔(𝑡) for all 𝑡≥0. Integrating, we have ˜𝜔(𝑡) =
+(1/𝑐4) log(𝑐3𝑡+ exp(𝑐4/√𝛾0)), and combining all the above bounds yields
+𝛾(𝑡) ≥
+𝑐2
+log(𝑐3𝑡+ exp(𝑐4/√𝛾0))2
+for all 𝑡≥0, which combined with Δ ≥2𝛾completes the proof.
+□
+21
+
+===== PAGE 22 =====
+B.4
+Proof of Theorem 3.3
+Lemma B.2. Let x, y 𝑖𝑖𝑑∼Uniform(S𝑑−1). Then 𝑧= ⟨x, y⟩∼𝑓𝑍where
+𝑓𝑍(𝑧) = Γ(𝑑/2)/(
+√
+𝜋Γ((𝑑−1)/2))(1 −𝑧2)(𝑑−3)/2, 𝑧∈[−1, 1].
+(12)
+Proof. By symmetry, we can fix y = e(1). We have that 𝑧2 = x2
+1
+𝑑= 𝑤2
+1/(𝑤2
+1 + · · · + 𝑤2
+𝑑) where
+𝑤1, . . . , 𝑤𝑑
+𝑖𝑖𝑑∼𝒩(0, 1). Letting 𝑣1 = 𝑤2
+1 and 𝑣2 = 𝑤2
+2 + · · · + 𝑤2
+𝑑such that 𝑣1 ∼𝜒2
+1 and 𝑣2 ∼𝜒2
+𝑑−1, we
+have 𝑧2 = 𝑣1/(𝑣1 + 𝑣2) ∼Beta(1/2, (𝑑−1)/2) (see the relationship between chi-squared distribution
+and beta distribution in Soch et al. (2024)). Then we have
+𝐹𝑍2(𝑧2) = P{𝑍2 ≤𝑧2} = P{−𝑧≤𝑍≤𝑧} = 2𝐹𝑍(𝑧)
+hence
+𝑓𝑍(𝑧) = 𝑧𝑓𝑍2(𝑧2) =
+Γ(𝑑/2)
+Γ(1/2)Γ((𝑑−1)/2)𝑧· 𝑧2(1/2−1)(1 −𝑧2)(𝑑−1)/2−1
+=
+Γ(𝑑/2)
+√𝜋Γ((𝑑−1)/2)
+(1 −𝑧2)(𝑑−3)/2,
+completing the proof.
+□
+Lemma B.3. Let 𝑧∼𝑓𝑍where 𝑓𝑍is given in (12) and 𝑎> 0. Then we have E[𝑧] = 0, and
+E[exp(𝑎𝑧)] = Γ
+
+𝑑
+2
+ 
+2
+𝑎
+𝜌
+𝐼𝜌(𝑎)
+(13)
+E[𝑧exp(𝑎𝑧)] = Γ
+
+𝑑
+2
+ 
+2
+𝑎
+𝜌
+𝐼𝜌−1(𝑎) −2𝜌
+𝑎𝐼𝜌(𝑎)
+
+(14)
+where 𝜌= (𝑑−2)/2, Γ is the gamma function and 𝐼𝜌(𝑧) is the modified Bessel function of the first kind.
+Proof. The first claim E[𝑧] = 0 follows directly from symmetry of 𝑓𝑍. Now define
+𝐹(𝑎, 𝑑) =
+1
+√𝜋Γ((𝑑−1)/2)
+∫
+1
+−1
+exp(𝑎𝑧)(1 −𝑧2)(𝑑−3)/2 𝑑𝑧.
+From the identity in (DLMF, (10.32.2)), we have that 𝐹(𝑎, 𝑑) = (2/𝑎)(𝑑−2)/2𝐼(𝑑−2)/2. Now
+E[exp(𝑎𝑧)] =
+Γ(𝑑/2)
+√𝜋Γ((𝑑−1)/2)
+∫
+1
+−1
+exp(𝑎𝑧)(1 −𝑧2)(𝑑−3)/2 𝑑𝑧= Γ(𝑑/2)𝐹(𝑎, 𝑑)
+which gives (13). On the other hand, we have
+E[𝑧exp(𝑎𝑧)] = 𝑑E[exp(𝑎𝑧)]
+𝑑𝑎
+= Γ(𝑑/2)𝑑𝐹(𝑎, 𝑑)
+𝑑𝑎
+where
+𝑑𝐹(𝑎, 𝑑)
+𝑑𝑎
+= 1
+2(1 −𝑑/2)
+
+2
+𝑎
+𝑑/2
+𝐼(𝑑−2)/2(𝑎) +
+
+2
+𝑎
+(𝑑−2)/2 𝑑𝐼(𝑑−2)/2(𝑎)
+𝑑𝑎
+with
+𝑑𝐼(𝑑−2)/2(𝑎)
+𝑑𝑎
+= 𝐼(𝑑−4)/2 −(𝑑−2)
+2𝑎
+𝐼(𝑑−2)/2(𝑎)
+by the identity in (Magnus et al., 1967, (3.1.1)). Putting together the above formulas and simplifying
+yields (14), completing the proof.
+□
+22
+
+===== PAGE 23 =====
+Proof of Theorem 3.3. Let Z = H𝑋(0)H⊤
+𝑌(0), so by Theorem B.2 we have Z𝑖𝑗∼𝑓𝑍where 𝑓𝑍is given
+by (12). We also note that any given row, column, or diagonal of Z forms a collection of independent
+variables (but not the entire matrix).
+Let z ∈[−1, 1]𝑛be a given row, column, or the diagonal of Z. From Theorem B.3 we have
+E[𝑧] = 0, and let 𝜉1 = E[𝑧exp(𝑎𝑧)] and 𝜉2 = E[exp(𝑎𝑧)]. By z𝑖∈[−1, 1], z𝑖exp(𝑎z𝑖) ∈[−𝑒𝑎, 𝑒𝑎], and
+exp(𝑎z𝑖) ∈[𝑒−𝑎, 𝑒𝑎] for all 𝑖∈[𝑛], applying one-sided Hoeffding inequalities gives
+P
+
+
+1
+𝑛
+Õ
+𝑗
+z𝑗≤2
+r
+log(1/𝛿)
+2𝑛
+
+
+≥1 −𝛿,
+P
+
+
+1
+𝑛
+Õ
+𝑗
+z𝑗exp(𝑎z𝑗) ≥𝜉1 −2𝑒𝑎
+r
+log(1/𝛿)
+2𝑛
+
+
+≥1 −𝛿,
+P
+
+
+1
+𝑛
+Õ
+𝑗
+exp(𝑎z𝑗) ≤𝜉2 + (𝑒𝑎−𝑒−𝑎)
+r
+log(1/𝛿)
+2𝑛
+
+
+≥1 −𝛿.
+Let 𝑎0 = 𝛽0(1 −𝛾2
+0). We compute
+𝑑𝛾
+𝑑𝑡
+
+𝑡=0
+= −2𝛽0𝛾0𝑔𝛽0(1−𝛾2
+0)(Z)
+= −𝛽0𝛾0
+𝑛
+ 𝑛
+Õ
+𝑖=1
+𝜇𝑖(Z:,𝑖, 𝑎0) + 𝜇𝑖(Z𝑖,:, 𝑎0)
+!
+= −𝛽0𝛾0
+𝑛
+ 𝑛
+Õ
+𝑖=1
+⟨Z:,𝑖, e(𝑖) −𝜎(𝑎0Z:,𝑖)⟩+ ⟨Z𝑖,:, e(𝑖) −𝜎(𝑎0Z𝑖,:)⟩
+!
+= 𝛽0𝛾0
+𝑛
+©­
+«
+𝑛
+Õ
+𝑖=1
+⟨Z:,𝑖, 𝜎(𝑎0Z:,𝑖)⟩+
+𝑛
+Õ
+𝑖=1
+⟨Z𝑖,:, 𝜎(𝑎0Z𝑖,:)⟩−2
+𝑛
+Õ
+𝑗=1
+Z𝑗,𝑗ª®
+¬
+= 𝛽0𝛾0
+𝑛
+©­
+«
+𝑛
+Õ
+𝑖=1
+1
+𝑛
+Í𝑛
+𝑗=1 Z𝑗,𝑖exp(𝑎0Z𝑗,𝑖)
+1
+𝑛
+Í𝑛
+𝑗=1 exp(𝑎0Z𝑗,𝑖)
++
+𝑛
+Õ
+𝑖=1
+1
+𝑛
+Í𝑛
+𝑗=1 Z𝑖,𝑗exp(𝑎0Z𝑖,𝑗)
+1
+𝑛
+Í𝑛
+𝑗=1 exp(𝑎0Z𝑖,𝑗)
+−2
+𝑛
+Õ
+𝑗=1
+Z𝑗,𝑗ª®
+¬
+.
+Applying the above concentration inequalities yields
+𝑑𝛾
+𝑑𝑡
+
+𝑡=0
+≥2𝛽0𝛾0
+
+𝜉1 −2𝑒𝑎0𝜖
+𝜉2 + (𝑒𝑎0 −𝑒−𝑎0)𝜖−2𝜖
+
+with probability 1 −𝛿where 𝜖=
+p
+log((4𝑛+ 1)/𝛿)/(2𝑛) by union bound for 4𝑛+ 1 events. Finally,
+we have 𝑑Δ/𝑑𝑡≥2𝑑𝛾/𝑑𝑡by Δ ≥2𝛾which gives the result.
+□
+C Alternate Temperature Schemes
+Consider the simplified setting ℓ(𝑚) = exp(−𝑚) discussed in Section 3.
+23
+
+===== PAGE 24 =====
+Temperature reparameterization.
+Take 𝛽(𝜈) = 𝜈with 𝛽′(𝜈) = 1 for 𝜈> 0. Integrating (5) gives
+𝛽(𝛾) = Θ  log(1/𝛾)1/2
+, which grows significantly slower compared to (6) as 𝛾→0. As a result, the
+dynamics of 𝛾become 𝑑𝛾/𝑑𝑡= Θ  −log(1/𝛾)1/2𝛾exp(−log(1/𝛾)1/2), which has solution 𝛾(𝑡) =
+Θ(1/𝑡log(𝑡)), a significantly faster rate of convergence than the one in Theorem 3.2.
+Temperature scheduling.
+Alternatively, one can consider a temperature schedule, where 𝛽(𝑡) is
+simply a function of time 𝑡. Then 𝛾(𝑡) = Θ
+
+exp
+
+−
+∫𝑡
+0 𝛽(𝑠) exp(−𝛽(𝑠)) 𝑑𝑠
+
+. In the simplest case, we
+can consider 𝛽(𝑠) = 𝛽0, i.e., a constant temperature, for which we have 𝛾(𝑡) = Θ(exp(−𝛽0 exp(−𝛽0)𝑡)).
+Provided that 𝛽0 is not too large or too small, the modality gap closes quickly at a linear rate.
+More generally, a linear schedule 𝛽(𝑠) = (1 −(𝑠/𝑡))𝛽0 + (𝑠/𝑡)𝛽1 also yields a linear decay 𝛾(𝑡) =
+exp(−𝑐(𝛽0, 𝛽1)𝑡) where 𝑐(𝛽0, 𝛽1) = [(𝛽0 + 1) exp(−𝛽0) −(𝛽1 + 1) exp(−𝛽1)]/(𝛽1 −𝛽0), while allowing
+a sweep of temperature values throughout training.
+D Methods
+In this section, we introduce the proposed methods in greater details, and present representative
+results in Table 2 as examples. We include more ablation studies in Section F.
+D.1
+Temperature Control
+Temperature Scheduling (TS).
+First, we propose to not learn the temperature as (Radford et al.,
+2021). Instead, we schedule the increase of temperature according to the training epochs linearly.
+With a larger temperature in the late stage, we can make more progress on reducing the modality
+gap. As shown in Table 2, linearly increasing temperature from 10−2 to 5 · 10−2 over the training
+process reduces the modality gap and leads to better text-image retrieval performance.
+Temperature Reparameterization (TR).
+Towards the same purpose, TR designs different param-
+eterization 𝜏(𝜈) from CLIP to slow down the decreasing of 𝜏(𝜈) when learning 𝜈. In comparison
+with the original CLIP with 1/𝜏(𝜈) = exp(𝜈), we propose to use 1/𝜏(𝜈) = exp(𝜈/𝑠) with 𝑠> 1 being
+a scalar to reduce the influence of 𝜈as it grows. Another way we propose is to design through
+softplus to achieve the same goal: 1/𝜏(𝜈) = log (1 + 𝑒𝜈). We report results using softplus in Table 2.
+Smaller Learning Rate of Temperature (SLRT).
+To slow down the decrease of 𝜏(𝜈), SLRT scales
+down the learning rate of 𝜈directly. In Table 2, we report the results from scaling the learning rate
+of 𝜈by 10−1. The result shows improved performance with reduced gap. It implies that the original
+choice of 𝜈in CLIP is far from optimal, and can be improved through a careful analysis.
+Fixed on Large Temperature (FLT).
+FLT freezes the temperature instead of learning it. We let
+𝜏(𝜈) range from 10−2 to 4 · 10−1 to find temperatures that can shrink the modality gap. The results
+from Table 2 is obtained with 𝜏(𝜈) = 4 · 10−2.
+D.2
+Swap Modalities
+Hard Swapping Between Modalities (HS).
+Recall H𝑋, H𝑌∈R𝑛×𝑑denote the image and text
+features. HS randomly swaps H𝑋[𝑖, 𝑗] and H𝑌[𝑖, 𝑗] for each (𝑖, 𝑗) independently with probability 0.5
+to obtain H𝑋, H𝑌. Then, the swapped features are input to the loss function for optimizing networks. Such
+swapping only happens for 𝑝random portion of the training, thus 𝑝controls how much swapping
+24
+
+===== PAGE 25 =====
+Baseline
+Controlling the Temperature
+Eliminating the Separation of Modalities
+FLT
+TS
+TR
+SLRT
+HS
+SS
+Modality Gap (↓)
+0.294
+0.122
+0.088
+0.284
+0.268
+0.225
+0.139
+Uniformity (↑)
+-1.165
+-1.183
+-1.108
+-1.153
+-1.152
+-1.156
+-1.152
+Zero-shot (↑)
+13.650
+14.400
+17.167
+14.860
+15.130
+13.910
+14.330
+Linear Probe (↑)
+65.550
+61.980
+67.500
+66.460
+66.630
+65.950
+64.940
+Image Retrieval (↑)
+68.233
+73.440
+75.723
+70.060
+70.320
+69.716
+68.912
+Text Retrieval (↑)
+78.367
+82.660
+85.313
+80.100
+80.400
+79.740
+79.160
+Table 2: Mitigating the modality gap with our proposed methods.
+is applied across training. We have conducted search on 𝑝from 1𝑒−3 to 1.0. It turns out to be a
+strong method for closing the gap. The results from Table 2 are obtained with 𝑝= 1𝑒−3.
+Soft Swapping Between Modalities (SS).
+SS is similar to HS, but swaps entries in a soft way.
+In SS, we randomly sample 𝜆𝑖𝑗∈[0, 1] for each (𝑖, 𝑗) independently, and then set H𝑋[𝑖, 𝑗] =
+𝜆𝑖𝑗H𝑋[𝑖, 𝑗] + (1 −𝜆𝑖𝑗)H𝑌[𝑖, 𝑗] and H𝑌[𝑖, 𝑗] = 𝜆𝑖𝑗H𝑌[𝑖, 𝑗] + (1 −𝜆𝑖𝑗)H𝑋[𝑖, 𝑗]. Similarly, the swapped
+features are input to the loss function for optimizing networks. Besides, swapping is also conducted
+for 𝑝random portion of the training. We have conducted a search on 𝑝from 1𝑒−2 to 1𝑒−1 The
+result from Table 2 is obtained with 𝑝= 5𝑒−2.
+E Experiment Settings
+E.1
+Pretraining
+Basics
+For the CLIP pretraining on MSCOCO using the train split, we utilize the OpenCLIP
+platform produced by Cherti et al. (2023). The neural network architecture for the image encoder is
+ResNet-50 (He et al., 2015) and the architecture for the text encoder is Transformer (Vaswani et al.,
+2017). Both architectures can be specified by ’RN50’ in the OpenCLIP platform. The input image is
+RandomResizedCrop to 224 × 224 followed by Normalization. For each method of pretraining, we
+select the best learning rate from [1𝑒−5, 5𝑒−5, 1𝑒−4, 5𝑒−4]. For each training process, we train
+the model for 100 epochs with batchsize 1024 using a cosine decay learning rate schedule and 20
+warmup epochs. We conduct the training 3 times for each specific setting and report the mean of
+the results among all 3 trainings.
+Computing Requirements
+All the experiments can be conducted on a single A100 GPU.
+E.2
+Metrics
+Modality Gap
+We measure the modality gap as modality center distance. The center distance is
+calculated between 512 random pairs in the MSCOCO test split. Let X and Y be image and text
+features, where each column is a feature sample, we define the modality centers as
+cX = 1
+𝑛
+𝑛
+Õ
+𝑗=1
+x𝑗, cY = 1
+𝑛
+𝑛
+Õ
+𝑗=1
+x𝑗.
+25
+
+===== PAGE 26 =====
+Then as proposed in Liang et al. (2022), we measure modality gap by the center distance:
+𝑚XY = ∥𝚫∥= ∥cX −cY ∥.
+The center distance reported is also averaged among three independent trainings. A larger center
+distance indicates a larger modality gap.
+Uniformity
+We utilize the uniformity metrix proposed by Fang et al. (2023). After concatenating
+X and Y and obtain Z ∈R𝑑×2𝑛, we define the sample mean of Z as bµ and the sample variance of
+Z as bµ. Calculate the quadratic Wasserstein distance between 𝒩(bµ, b𝚺) and 𝒩(0, I/𝑚):
+𝒲2 :=
+s
+∥bµ∥2
+2 + 1 + tr(b𝚺) −
+2
+√𝑚
+tr
+
+b𝚺
+1
+2
+
+.
+Then −𝒲2 serves as the uniformity metric. A larger value of −𝒲2 indicates a better uniformity
+of the feature space spanned by Z.
+E.3
+Downstream Tasks
+Linear Probe
+We conduct linear probing on CIFAR 10 following the same setting in Radford et al.
+(2021). After pertaining, we extract the image features from the vision encoder, and train a logistic
+regression based using the features in the train split. We evaluate the classification accuracy of the
+features in the test split and report the averaged results across three independent trainings. We
+report the Top-1 classification accuracy.
+Zero-shot Classification
+We conduct linear probing on CIFAR 10 following the same setting in
+Radford et al. (2021). For each class containing [NUMBER], we construct the text prompt as "A
+photo of the number [NUMBER]". For each image, the text encoder will embed the text prompts
+into text features for all classes, and the image encoder will embed the image into an image feature.
+The probability of each class is then obtained from the softmax of the cosine similarities between
+the text features and the image feature scaled by temperature. We report the Top-1 classification
+accuracy. All values are averaged across three trainings.
+Text-image Retrieval
+We conduct image-to-text retrieval and text-to-image retrieval on the text
+split of MSCOCO, and report the Top-1 recall. All values are averaged across three trainings.
+Image-to-text retrieval aims to retrieve the most relevant text description given an input image by
+computing the similarities of image and text features, while text-to-image retrieval is performed the
+other way around.
+MMVP-VLM
+The MMVP-VLM benchmark is proposed by Tong et al. (2024), which can be viewed
+as a "difficult retrieval task". Given two image and text pairs (x1, y1) and (x2, y2) that only have
+differences concerning certain detailed visual pattern, the CLIP model is required to perfectly
+match the two pairs. They define 9 visual patterns: Orientation and Direction, Presence of Specific
+Features, State and Condition, Quantity and Count, Positional and Relational Context, Color and
+Appearance, Structural and Physical Characteristics, Text, and Viewpoint and Perspective. Each
+visual pattern contains several text-image pairs for constructing the matching task. We report the
+average accuracy across 9 visual pattern groups. All results are averaged across three trainings.
+26
+
+===== PAGE 27 =====
+Uniformity
+Modality Gap
+Zero Shot
+Linear Probe
+Image Retrieval
+Text Retrieval
+Baseline
+-1.165
+0.294
+13.65
+65.55
+68.23
+78.36
+1.00E-02
+-1.214
+0.669
+18.48
+69.44
+69.89
+80.68
+2.00E-02
+-1.138
+0.334
+18.83
+68.41
+70.54
+81.3
+4.00E-02
+-1.183
+0.122
+14.4
+61.98
+73.44
+82.66
+7.00E-02
+-1.246
+0.033
+11.76
+49.61
+75.53
+82.88
+1.00E-01
+-1.251
+0.019
+10.42
+48.29
+66.55
+73.58
+2.00E-01
+-1.255
+0.008
+10.55
+50.14
+23.97
+26.94
+3.00E-01
+-1.282
+0.007
+10.69
+42.09
+10.4
+12.8
+4.00E-01
+-1.296
+0.009
+13.83
+37.97
+6.9
+8.7
+Table 3: More results for fixed temperature (FLT).
+Uniformity
+Modality Gap
+Zero Shot
+Linear Probe
+Image Retrieval
+Text Retrieval
+Baseline
+-1.165
+0.294
+13.65
+65.55
+68.23
+78.36
+S0
+-1.120
+0.384
+18.40
+69.40
+72.55
+82.89
+S1
+-1.087
+0.198
+18.55
+69.26
+72.69
+83.05
+S2
+-1.092
+0.137
+16.80
+68.25
+73.98
+84.25
+S3
+-1.108
+0.088
+17.17
+67.50
+75.72
+85.31
+A0
+-1.151
+0.541
+19.50
+69.47
+72.51
+81.97
+A1
+-1.120
+0.261
+16.85
+67.46
+73.90
+83.65
+Table 4: More results for temperature scheduling (TS).
+F Additional Experimental Results
+In this section, we provide more detailed results on different methods that reduce (or enlarge) the
+modality gap. We introduce details of the results below.
+• More results for fixed temperature: we provide a more fine-grid temperature search from 1𝑒−2 to
+4𝑒−1, and present the results in Table 3.
+• More results for temperature scheduling: The three temperature schedules S1, S2, S3 presented
+in Table 1 in Section 4.1 have the following schedules. S1 corresponds to linearly increasing
+temperature from 1𝑒−2 to 3𝑒−2, S2 corresponds to corresponds to linearly increasing temperature
+from 1𝑒−2 to 4𝑒−2, and S3 corresponds to linearly increasing temperature from 1𝑒−2 to 5𝑒−2.
+Apart from the above scheduling, we additionally show results for S1, A0, and A1 in Table 4.
+Here, S0 corresponds to linearly increasing temperature from 1𝑒−2 to 2𝑒−2, A1 corresponds to
+the alternation of temperature between 1𝑒−2 and 2𝑒−2, and A2 corresponds to the alternation
+of temperature between 1𝑒−2 and 4𝑒−2. Temperature alternation follows a cosine function.
+• More results for other methods: More results for other methods are shown in Table 5. Here,
+Scale2 and Scale10 corresponding to temperature parameterization with 𝜏(𝜈) = exp( 𝜈
+𝑠), where
+𝑠= 2, 10, respectively. HS P* refers to Hard Swapping with 𝑝= ∗as discussed in Section D.
+Besides, Hard Swap Feature means swapping the entire row instead of independent entries. It
+can also break the modality boundary but with greater constraints. As we can see, Hard Swap
+Feature reduces the center distance as well, but the reduced amount is less than HS (swapping
+27
+
+===== PAGE 28 =====
+Uniformity
+Modality Gap
+Zero Shot
+Linear Probe
+Image Retrieval
+Text Retrieval
+Baseline
+-1.165
+0.294
+13.65
+65.55
+68.23
+78.36
+Softplus
+-1.153
+0.284
+14.86
+66.46
+70.06
+80.1
+Scale2
+-1.154
+0.287
+18.25
+66.3
+70.32
+80.6
+Scale10
+-1.153
+0.285
+14.36
+66.5
+70.15
+80.3
+HS P1
+-1.317
+0.028
+14.36
+39.72
+47.17
+53.22
+HS P1e-1
+-1.127
+0.046
+17.39
+56.88
+67.1
+75.8
+HS P1e-2
+-1.181
+0.095
+15.7
+64.29
+69.36
+79.4
+Hard Swap Feature
+-1.155
+0.289
+14.71
+65.91
+69.93
+80.6
+Remove Normalization
+-1.005
+0.468
+16.82
+65.4
+58.62
+74.16
+Table 5: More results for other methods.
+entries). Lastly, Remove Normalization means freezing the temperature while removing the
+normalization of features during training. This approach is equivalent to learning a "temperature
+parameter" for each feature, in the sense that the temperature parameter is a global scaling of
+feature norms. With more freedom in changing the "temperatures" to optimize losses, Remove
+Normalization results in a larger modality gap.
+28

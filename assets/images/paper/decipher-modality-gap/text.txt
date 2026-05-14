@@ -1,0 +1,7492 @@
+
+===== PAGE 1 =====
+Preprint — arXiv
+DECIPHER THE MODALITY GAP IN MULTIMODAL CON-
+TRASTIVE LEARNING: FROM CONVERGENT REPRESEN-
+TATIONS TO PAIRWISE ALIGNMENT
+Lingjie Yi1∗, Raphael Douady2, Chao Chen1
+1 Stony Brook University, 2 University Paris 1 Pantheon-Sorbonne
+ABSTRACT
+Multimodal contrastive learning (MCL) aims to embed data from different modali-
+ties in a shared embedding space. However, empirical evidence shows that represen-
+tations from different modalities occupy completely separate regions of embedding
+space, a phenomenon referred to as the modality gap. Moreover, experimental
+findings on how the size of the modality gap influences downstream performance
+are inconsistent. These observations raise two key questions: (1) What causes the
+modality gap? (2) How does it affect downstream tasks? To address these questions,
+we introduce the first theoretical framework for analyzing the convergent optimal
+representations of MCL and the modality alignment when training is optimized.
+Specifically, we prove that without any constraint or under the cone constraint, the
+modality gap converges to zero. Under the subspace constraint (i.e., representations
+of two modalities fall into two distinct hyperplanes due to dimension collapse), the
+modality gap converges to the smallest angle between the two hyperplanes. This
+result identifies dimension collapse as the fundamental origin of the modality gap.
+Furthermore, our theorems demonstrate that paired samples cannot be perfectly
+aligned under the subspace constraint. The modality gap influences downstream
+performance by affecting the alignment between sample pairs. We prove that, in
+this case, perfect alignment between two modalities can still be achieved via two
+ways: hyperplane rotation and shared space projection.
+1
+INTRODUCTION
+Pre-trained vision–language models (VLMs) (Radford et al., 2021; Mu et al., 2022; Li et al., 2022)
+have achieved remarkable success across a wide range of tasks, including zero-shot image classifi-
+cation, zero-shot cross-modal retrieval, and visual question answering. These models are typically
+trained with multimodal contrastive learning on large-scale image–text pairs. Despite their strong
+empirical performance, our theoretical understanding of how VLMs learn representations and how
+these representations relate to downstream performance remains limited. In this work, we provide a
+theoretical study of these issues.
+Our understanding of unimodal contrastive representation learning (Chen et al., 2020; Khosla et al.,
+2020) has advanced considerably. From a theoretical standpoint, when training is optimized (i.e., the
+training loss reaches its minimum), the learned representations converge to an optimal configuration.
+We refer to this process as representational convergence and to its limiting configuration as the con-
+vergent optimal representation (COR). Prior work has demonstrated that the COR of self-supervised
+learning (SSL) corresponds to a uniform distribution on the surface of an h-dimensional unit hy-
+persphere (Sh−1) (Wang & Isola, 2020). For supervised contrastive learning (SupCon), the COR
+forms a regular simplex inscribed in Sh−1 (Graf et al., 2021), and a skewed simplex when the data
+is imbalanced (Yi et al., 2025b). (See additional related work in Sec. A.1). These prior research on
+unimodal data demonstrate that examining the geometric and distributional properties of CORs yields
+critical insights into how pretraining with contrastive learning affects downstream performance.
+This motivates us to investigate the COR of multimodal contrastive learning (MCL). Intuitively, MCL
+intends to align representations from different modalities in a shared embedding space. However,
+this is not supported by empirical evidence. Instead, representations of different modalities cluster
+∗Email: chris.yi@stonybrook.edu
+arXiv:2510.03268v2  [cs.LG]  7 Oct 2025
+
+===== PAGE 2 =====
+Preprint — arXiv
+𝑿
+𝒀
+∆𝜽 
+(a)
+(b)
+𝑿
+𝒀
+𝒄𝒙 
+𝒄𝒚 
+(c)
+𝒀
+𝑿
+𝕊𝒀 
+𝕊𝑿 
+ℂ
+∆𝜽 
+𝝓
+𝔹
+𝔸
+(d)
+𝝓𝒎𝒊𝒏 
+𝒄𝒚
+𝒄𝒙 
+∆𝜽 
+𝕊𝒀 
+𝕊𝑿 
+ℂ
+(e)
+Figure 1: The COR of MCL. Orange and blue dots represent X and Y . Starts are centers of X and Y
+(i.e., cx, cy). ∆θ denotes the size of modality gap. (a): When a model is initialized, (X, Y ) lie within
+two distinct cones. (b): Without any constraint, (X, Y ) converge to a paired uniform distribution and
+∆θ →0. (c): Under the cone constraint, ∆θ →0. (d): (X, Y ) collapse into two distinct hyperplanes
+A and B, respectively. X ∈SX (orange circle) ∈A and Y ∈SY (blue circle) ∈B. ϕ is the angle
+between A and B. The green line represents the shared space C = A ∩B. See Definition 5 for details.
+(e): Under the subspace constraint, when training is optimized, cx, cy ⊥C and ∆θ →ϕmin.
+into disjoint cones in Sh−1, forming a geometric phenomenon called the modality gap (Liang et al.,
+2022). To explain the origin of this gap, several hypotheses have been proposed, including the
+cone effect (Liang et al., 2022), the contrastive learning object (Fahim et al., 2024), insufficient
+training (Shi et al., 2023) and information bias (Schrodi et al., 2025). The impact of the modality gap
+on downstream performance also remains unclear. Some studies (Liang et al., 2022; Schrodi et al.,
+2025) show that narrowing the modality gap pos hoc may lead to degraded downstream performance,
+indicating that such reduction is not always beneficial. (See Sec. A.1 for more details). Prior work
+have mostly focused on numerical analysis. None of them has offered a satisfactory theoretical
+explanation of what causes the modality gap and how it affects downstream performance.
+In this paper, we focus on the theoretical explanation of the modality gap. We establish the first
+theoretical framework to systematically analyze the COR of MCL. In particular, we prove (Theorem 1)
+that, without any distributional constraints, representations of two modalities converge to a paired
+uniform distribution on Sh−1 (Fig. 1b). As a result, the modality gap converges to zero. Meanwhile,
+the concentration degree (i.e., how tightly clustered a distribution is) of the learned representation
+becomes zero (Corollary 1). This shows that the contrastive learning objective tends to close the
+modality gap. However, we observe that concentration degrees of the learned representations always
+remain positive in practice. Therefore, representations of each modality fall into a cone in Sh−1
+(Fig. 1a), a phenomenon known as the cone effect. We prove (Theorem 2) that even under this cone
+constraint, the modality gap still converges to zero, regardless of the initial locations or sizes of the
+cones (Fig. 1c). This elucidates that the cone effect is not the cause of the modality gap.
+The preceding analysis prompts us to ask whether there are any other geometric or distributional
+constraints on representations that ultimately give rise to the modality gap. Jing et al. (2022) show
+that the SSL learned representations collapse into a lower-dimensional subspace rather than spanning
+the entire embedding space, a phenomenon referred to as dimension collapse. Inspired by this insight,
+we observe that dimension collapse also arises in the MCL learned representations. We then prove
+(Theorem 3) that if representations of two modalities collapse into distinct hyperplanes (Fig. 1d),
+the modality gap converges to the smallest angle between these hyperplanes (Fig. 1e). This finding
+demonstrates that the true origin of the modality gap is dimension collapse.
+That how modality gap influences downstream tasks still confuses researchers. We argue that
+downstream performance is determined by the alignment between all paired samples, i.e., modality
+alignment. First, we prove (Theorem 4 and Corollary 2) that when representations converge, the
+mutual information between two modalities in the shared space is maximized and in this case
+paired samples cannot be perfectly aligned. Next, we demonstrate that changes in the size of the
+modality gap alter the representation distribution, which in turn affects modality alignment. Then,
+we show that existing translation approaches, e.g., shifting image embeddings toward language
+embeddings by the average distance between image–language pairs, modify the representation
+distribution in arbitrary ways. This explains the worsen downstream performance observed when
+such methods are applied. Lastly, we prove derive two methods, hyperplane rotation (Corollary 3) and
+shared subspace projection (Corollary 4), that achieve perfect alignment and modality gap reduction
+without harming downstream performance. The major contributions of our work are listed below:
+
+===== PAGE 3 =====
+Preprint — arXiv
+• We theoretically show that the contrastive learning objective tends to close the modality gap
+regardless of the existence of the cone effect.
+• We reveal that the origin of the modality gap is dimension collapse. And under the subspace
+constraint, the modality gap converges to the smallest angle between two hyperplanes.
+• We prove that paired samples cannot be perfectly aligned under the subspace constraint.
+• We derive that perfect alignment can be achieved via hyperplane rotation or shared subspace
+projection.
+2
+PRELIMINARY
+Suppose we have a dataset D = {(In, Tn)}N
+n=1 of N image-text pairs, where I = (i1, . . . , iN) ∈
+(I)N and T
+= (t1, . . . , tN) ∈(T )N.
+The unit hypersphere in Rh is defined as Sh−1 =
+
+z ∈Rh : ∥z∥= 1
+	
+. An image encoder fI (·) : I →Rh and a text encoder fT (·) : T →Rh map
+image and text data, respectively, into a shared embedding space. The resulting representations are de-
+noted as X = (fI (i1) , . . . fI (iN)) = (x1, . . . , xN) ∈(Sh−1)N and Y = (fT (t1) , . . . fT (TN)) =
+(y1, . . . , yN) ∈(Sh−1)N.
+Multimodal Contrastive Learning (MCL). MCL aims to embed data from different modalities into
+a shared embedding space. This is achieved by minimizing the MCL loss, defined as:
+Definition 1 (Multimodal Contrastive Loss (MCL Loss)). Let (X, Y ) be an N-pair configuration,
+where X = (x1, . . . , xN) ∈(Sh−1)N and Y = (y1, . . . , yN) ∈(Sh−1)N. ∀τ > 0, the multimodal
+contrastive loss LMCL(·, ·) : (Sh−1)N × (Sh−1)N →R is defined as:
+LMCL = 1
+N
+N
+X
+i=1
+Li
+MCL, where Li
+MCL = LX→Y(xi; Y ) + LY→X (yi; X).
+(1)
+Here, LX→Y is the X-to-Y alignment and LY→X is the Y-to-X alignment, defined respectively as:
+LX→Y(xi; Y ) = −log
+exp (xi · yi/τ)
+PN
+j=1 exp (xi · yj/τ)
+, LY→X (yi; X) = −log
+exp (xi · yi/τ)
+PN
+j=1 exp (xj · yi/τ)
+.
+(2)
+In practice, contrastive learning is performed in a batch-wise manner due to memory limitations. For
+analytical simplicity, we assume unlimited memory to train on all samples in a single batch.
+Modality Gap. Define µx = 1
+N
+PN
+i=1 xi, cx =
+µx
+∥µx∥as the mean and the center representation of X,
+µy = 1
+N
+PN
+i=1 yi, cy =
+µy
+∥µy∥as the mean and the center representation of Y .
+Definition 2 (Modality Gap). Let (X, Y ) be an N-pair configuration, where X = (x1, . . . , xN) ∈
+(Sh−1)N and Y = (y1, . . . , yN) ∈(Sh−1)N. The modality gap between X and Y can be defined as
+the difference between their mean representations:
+∆µ = ∥µx −µy∥2 ,
+(3)
+or as the angle between their center representations:
+∆θ = cos−1(cx · cy).
+(4)
+In this study, we use Eq. (4) to define the modality gap.
+3
+REPRESENTATIONAL CONVERGENCE AND THE MODALITY GAP
+In this section, we study the relationship between MCL and the size of the modality gap. To
+understand this, we establish the first theoretical framework for analyzing the COR of (X, Y ). We
+prove that, with or without the cone constraint, as the MCL loss approaches its minimum, the modality
+gap converges to zero.
+Both cases implicitly assume that X and Y are embedded in the same space as Sh−1. Empirical
+evidence, however, shows that X and Y tend to collapse into different subspaces. We further
+demonstrate that if X and Y lie in two distinct hyperplanes, then when the MCL loss is minimized,
+the modality gap converges to the smallest angle between the two hyperplanes.
+
+===== PAGE 4 =====
+Preprint — arXiv
+3.1
+VON MISES-FISHER (VMF) DISTRIBUTIONS
+As shown in (Liang et al., 2022), when a model is initialized, the representations of each modality
+reside within a hypercone (Fig. 1a). During training, the representation distribution evolves as the
+size and shape of the hypercone change. The von Mises-Fisher (vMF) distribution (Mardia & Jupp,
+2009), a generalization of the normal distribution on the surface of a hypersphere, also concentrates
+its samples within a hypercone. Hence, this distribution provides as an effective proxy for studying
+the geometric and distributional properties of representations learned by MCL.
+Definition 3 (vMF Distribution). ∀c ∈Sh−1 and κ ≥0, the probability density of a random
+h-dimensional unit vector z ∼vMF(c, κ) is given by:
+fh(z; c, κ) = Dh(κ)eκc⊤z, where Dh(κ) =
+κν
+(2π)ν+1Iν(κ).
+(5)
+Let ν = h/2 −1, and Iν (·) : R →R is the modified Bessel function of the first kind of order ν, which
+is defined as:
+Iν(x) =
+∞
+X
+k=0
+1
+k!Γ(ν + k + 1)
+x
+2
+2k+ν
+.
+(6)
+Here, c denotes the center vector and 1
+κ denotes the concentration degree. When 1
+κ = ∞(κ = 0), the
+samples are maximally dispersed and uniformly distributed on Sh−1. As 1
+κ decreases, the samples
+become increasingly concentrated and cluster within a smaller hypercone. When 1
+κ = 0 (κ = ∞), the
+samples are fully concentrated and collapse to a single point. Throughout this work, we assume that
+(X, Y ) are iid samples from two vMF distributions, i.e., xi ∼vMF(cx, κx) and yi ∼vMF(cy, κy).
+3.2
+REPRESENTATIONAL CONVERGENCE WITHOUT DISTRIBUTIONAL CONSTRAINTS
+First, we assume that the encoders, fI and fT , are sufficiently powerful, capable of realizing any
+representation distribution without any constraint. Theorem 1 reveals that when the limit of LMCL
+attains its minimum, the representations of each paired sample (xi, yi) converge to the same point,
+while the representations of all pairs converge to the uniform distribution in Sh−1 (Fig. 1b).
+Theorem 1. Let (X, Y ) be an N-pair configuration, where X = (x1, . . . , xN) ∈(Sh−1)N are iid
+samples from µx and Y = (y1, . . . , yN) ∈(Sh−1)N are iid samples from µy. Let ν = h/2 −1, it
+holds that:
+lim
+N→∞LMCL −2 log(N) = Exi∼µx
+h
+−xi · yi
+τ
+i
++ Exi∼µx
+h
+log Eyi∼µy
+h
+exp
+xi · yi
+τ
+ii
++ Eyi∼µy
+h
+−xi · yi
+τ
+i
++ Eyi∼µy
+h
+log Exj∼µx
+h
+exp
+xi · yi
+τ
+ii
+≥−2/τ + 2 log (Γ (ν + 1) (2τ)νIν (1/τ)) ,
+(7)
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(A1) ∀i ∈[N], xi = yi.
+(A2) µx = σh−1 and µy = σh−1.
+Here, σh−1 denotes the uniform probability measure on Sh−1. The proof is provided in Sec. E.1.
+Under the assumption that X and Y are drawn from two vMF distributions, Corollary 1 implies that
+when the limit of LMCL attains its minimum, the modality gap converges to zero (∆θ →0), and both
+κx and κy converge to zero. This result follows directly from Theorem 1.
+Corollary 1. Let (X, Y ) be an N-pair configuration, where X = (x1, . . . , xN) ∈(Sh−1)N are iid
+samples from vMF(cx, κx), and Y = (y1, . . . , yN) ∈(Sh−1)N are iid samples from vMF(cy, κy).
+limN→∞LMCL −2 log(N) attains its minimum if and only if the following conditions hold:
+(A3) ∀i ∈[N], xi = yi (⇒∆θ = cos−1 (cx · cy) = 0).
+(A4) κx = κy = 0.
+Convergence 1: Without any distributional constraints, X and Y converge to a paired uniform
+distribution on Sh−1, and the modality gap converges to zero.
+
+===== PAGE 5 =====
+Preprint — arXiv
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Cosine Similarity
+0
+2
+4
+6
+8
+10
+12
+Sample Density
+T2T
+I2I
+P-I2T
+NP-I2T
+(a)
+UMAP 1
+UMAP 2
+Images (X)
+Texts (Y)
+(b)
+0
+100 200 300 400 500
+Singular Value Rank Index
+0
+1
+2
+3
+4
+5
+6
+Variance Ratio (%)
+Image (Centered X)
+Text (Centered Y)
+(c)
+0
+100
+200
+300
+400
+Principal Angle Index
+0
+20
+40
+60
+80
+Principal Angle ( )
+(d)
+Figure 2: Distributional constraints. CLIP ViT-B/32 representations of the MSCOCO validation set.
+(a): Density plot of cosine similarities between representations of image–image (I2I), text–text (T2T),
+paired image–text (P I2T), and unpaired image–text (NP-I2T). (b): UMAP plot of X and Y . (c):
+Explained variance ratio of singular values of X −µX and Y −µY . (d): Values of principal angles.
+3.3
+REPRESENTATIONAL CONVERGENCE UNDER THE CONE CONSTRAINT
+However, in practice, sufficiently powerful encoders are not available. Fig. 2a reveals that intra-modal
+similarities between two modalities are larger than inter-model similarities. Fig. 2b further shows that
+(X, Y ) separate into two clusters. Both indicate that X and Y lie in two hypercones on Sh−1.
+In this subsection, we assume that the encoders, fI and fT , are powerful to the extent that (X, Y ) are
+embedded in two hypercones spanning all dimensions of Sh−1, i.e., (X, Y ) are subject to the cone
+constraint. In this case, κx > 0 and κy > 0. Since the modality gap depends solely on the angle
+between the two center vectors, we focus on the configuration of (cx, cy) and their corresponding
+loss terms: Lc
+MCL = LX→Y(cx; Y ) + LY→X (cy; X). We first define a convergence function J .
+Definition 4. ∀κ, ν, τ > 0, a function J (·; κ, ν) : [−1, 1] →R is defined as:
+J (w; κ, ν) = −w
+τ + log
+Iν (Mκ (w))
+Mκ (w)ν
+
+−log
+Iν (κ)
+κν
+
+,
+(8)
+where the function Mκ (·) : [−1, 1] →R+
+0 is defined as:
+Mκ (w) =
+r
+κ2 + 2κw
+τ
++ 1
+τ 2 .
+(9)
+Then, Theorem 2 shows that when the limit of Lc
+MCL attains its minimum, the modality gap converges
+to zero (∆θ →0) (Fig. 1c).
+Theorem 2. Let (X, Y ) be an N-pair configuration, where X = (x1, . . . , xN) ∈(Sh−1)N are
+iid samples from µx = vMF(cx, κx), and Y = (y1, . . . , yN) ∈(Sh−1)N are iid samples from
+µy = vMF(cy, κy). Let ν = h/2 −1. Suppose there exists an index i = c such that xc = cx,
+yc = cy. Denote ∆θ = cos−1(cx · cy). For any fixed κx, κy > 0, it holds that:
+lim
+N→∞Lc
+MCL −2 log(N) = J (cos (∆θ) ; κy, ν) + J (cos (∆θ) ; κx, ν)
+≥J (1; κy, ν) + J (1; κx, ν),
+(10)
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(A5) ∆θ = cos−1 (cx · cy) = 0.
+The proof is provided in Sec. E.2. Since the distributions of X and Y are symmetric, non-center pairs
+(xi, yi)i̸=c do not affect the configuration of (cx, cy), as confirmed by Theorem 4.
+Convergence 2: Under the cone constraint, the modality gap still converges to zero.
+3.4
+REPRESENTATIONAL CONVERGENCE UNDER THE SUBSPACES CONSTRAINT
+In addition to the cone constraint, we observe that X and Y collapse into two overlapping subspaces
+of Sh−1. To demonstrate this, we plot the singular values σi of the centered X and the centered Y
+in Fig. 2c. Zero-valued σs confirm the dimensional collapse of X and Y . Fig. 2d shows the principal
+angles γi between the subspaces where X and Y collapse. Zero-valued γs indicate that the two
+
+===== PAGE 6 =====
+Preprint — arXiv
+subspaces share overlapping dimensions. Detailed explanations are provided in Sec. C.1 and Sec. C.2.
+In this subsection, we assume that the encoders, fI and fT , embed (X, Y ) into two partially overlap-
+ping subspaces of Sh−1 (Fig. 1d), i.e., (X, Y ) are subject to the subspace constraint. To simplify the
+analysis, we require that the two subspaces are hyperplanes, as described below:
+Definition 5. Let A and B be two distinct (h −1)-dimensional linear subspaces (i.e., hyperplanes
+through the origin) with normal vectors nA and nB, projection matrices PA and PB. Denote
+C = A ∩B, with PC as its projection matrix. Define ϕ = cos−1 
+nA·nB
+∥nA∥·∥nB∥
+
+as the angle between
+A and B, restricted to 0 < ϕmin ≤ϕ < π
+2 . Then, SX and SY can be represented as:
+SX = Sh−1 ∩A =
+
+x ∈Rh : ∥x∥= 1, nA · x = 0
+	 ∼= Sh−2 ∈Sh−1,
+SY = Sh−1 ∩B =
+
+y ∈Rh : ∥y∥= 1, nB · y = 0
+	 ∼= Sh−2 ∈Sh−1.
+(11)
+C is an (h −2) dimensional linear subspace (Strang, 2022). We now define a convergence function
+˜
+J . Note that function J in Definition 4 is a special case of ˜
+J with J (w; κ, ν) = ˜
+J (w, w, 1; κ, ν).
+Definition 6. ∀κ, ν, τ > 0, ˜
+J (·, ·, ·; κ, ν) : [−1, 1] × [−1, 1] × [0, 1] →R is defined as:
+˜
+J (w1, w2, t; κ, ν) = −w1
+τ + log
+
+
+Iν
+
+˜
+Mκ(w2, t)
+
+˜
+Mκ(w2, t)ν
+
+−log
+Iν (κ)
+κν
+
+,
+(12)
+where the function ˜
+Mκ(·, ·) : [−1, 1] × [0, 1] →R+
+0 is defined as:
+˜
+Mκ (w, t) =
+r
+κ2 + 2κw
+τ
++ t2
+τ 2 .
+(13)
+Theorem 3 shows that when the limit of Lc
+MCL attains its minimum, cx, cy are orthogonal to C, and
+the modality gap converges to the smallest angle between A and B (∆θ →ϕmin) (Fig. 1e).
+Theorem 3. Let (X, Y ) be an N-pair configuration, where X = (x1, . . . , xN) ∈(SX \ C)N are
+iid samples from µx = vMF(cx, κx), and Y = (y1, . . . , yN) ∈(SY \ C)N are iid samples from
+µy = vMF(cy, κy). Let ˜ν = (h −1)/2 −1. Suppose there exists an index i = c such that xc = cx,
+yc = cy. Denote ∆θ = cos−1(cx · cy) and assume that cx, cy /∈C with cx · cy > 0. For any fixed
+κx, κy > 0, it holds that:
+lim
+N→∞Lc
+MCL −2 log(N)
+= ˜
+J (cos (∆θ) , cos (∆θ) , ∥PBcx∥; κy, ˜ν) + ˜
+J (cos (∆θ) , cos (∆θ) , ∥PAcy∥; κx, ˜ν)
+≥˜
+J (cos (ϕmin) , cos (ϕmin) , cos (ϕmin) ; κy, ˜ν) + ˜
+J (cos (ϕmin) , cos (ϕmin) , cos (ϕmin) ; κx, ˜ν),
+(14)
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(A6) cx ⊥C and cy ⊥C (⇒∆θ = ϕ ).
+(A7) ∆θ = cos−1 (cx · cy) = ϕmin.
+The proof is provided in Sec. E.3. Condition (A6) shows the optimal configuration of (cx, cy) for
+any given ϕ. Condition (A7) establishes that the loss decreases monotonically as ϕ decreases to
+ϕmin. Since the distributions of X and Y are symmetric, non-center pairs (xi, yi)i̸=c do not affect
+Condition (A6). Moreover, optimizing of Li̸=c
+MCL also yields Condition (A7), as shown in Theorem 4.
+Convergence 3: Under the subspace constraint, the modality gap converges to the smallest
+angle between the two hyperplanes.
+4
+REPRESENTATIONAL CONVERGENCE AND MODALITY ALIGNMENT
+In Sec. 3.4, we identified the true origin of the modality gap by analyzing the configuration of the
+center pair. However, the relationship between the modality gap and downstream performance, which
+depends on the configuration of all pairs, remains unclear. In this section, we show that, under the
+subspace constraint, non-center pairs cannot be perfectly aligned when the MCL loss is minimized.
+
+===== PAGE 7 =====
+Preprint — arXiv
+𝝓𝒎𝒊𝒏 
+𝒄𝒚
+𝒄𝒙 
+𝒚𝟏 
+𝒙𝟐
+∆𝜽 
+𝒚𝟐 
+𝕊𝒀 
+𝒙𝟏 
+𝕊𝑿 
+ℂ
+(a)
+𝒄𝒚
+𝒄𝒙 
+𝒑𝟏 
+𝒑𝟐 
+𝕊𝒀 
+𝒙𝟐
+𝒙𝟏 
+𝒚𝟐 
+𝕊𝑿 
+𝒚𝟏 
+ℂ
+(b)
+𝒑𝒊 
+𝕊𝒀 
+𝕊𝑿 
+𝒙𝒊 
+𝒚𝒊 
+𝒚𝒋 
+ℂ
+(c)
+𝒄𝒙
+𝒄𝒚
+ℂ
+𝒙𝟐
+𝒙𝟏 
+𝒚𝟏 
+𝕊𝑿 
+𝒚𝟐 
+𝔹
+𝔸
+𝕊𝒀 
+(d)
+𝒑𝟏 
+𝒑𝟐 
+𝕊𝒀 
+ℂ
+𝒙𝟐
+𝒙𝟏 
+𝒚𝟏 
+𝕊𝑿 
+𝒚𝟐 
+𝒙𝟏
+∗/𝒚𝟏
+∗ 
+𝒙𝟐
+∗/𝒚𝟐
+∗ 
+(e)
+Figure 3: Modality alignment. Notations follow Fig. 1. (a): Condition (A6) (cx, cy ⊥C) and IMS
+(xi · cx = yi · cy) hold. (b): The projections of (xi, yi)i̸=c onto C converge to pi (green points),
+i.e., PCxi = PCyi = pi. (c): When Condition (A6) and (A8) (PCxi = PCyi) hold, PBxi ∦yi,
+PAyi ∦xi. Let yj =
+PBxi
+∥PBxi∥(purple dot). Then xi · yj > xi · yi, and (xi, yi)i̸=c are not perfectly
+aligned. (d): Rotating X with the hyperplane A towards B, X and Y can be aligned perfectly. (c):
+Project (xi, yi) onto C and re-normalize, then (x∗
+i , y∗
+i ) (yellow dots) are perfectly aligned.
+4.1
+INTRA-MODAL ISOMETRY AND PERFECT ALIGNMENT
+The Platonic Representation Hypothesis (Huh et al., 2024) suggests that contrastive learners are
+optimized by representations of X and Y whose intra-modal kernels (i.e., pairwise similarities) align.
+Building on this idea, we define the kernel alignment as Intra-Modal Isometry.
+Definition 7 (Intra-Modal Isometry (IMS)). Let (X, Y ) be an N-pair configuration in Rh, we say
+(X, Y ) achieves Intra-Modal Isometry if and only if ∀i, j ∈[N], i ̸= j, xi · xj = yi · yj.
+The Intra-Modal Isometry assumption implies that ∀i ∈[N], xi · cx = yi · cy, and thus κx = κy
+(Fig. 3a). However, knowledge of the intra-modal configuration alone is insufficient to determine
+how the modality gap affects downstream performance. In downstream tasks such as zero-shot image
+classification, given an input from one modality (e.g., xi), CLIP retrieves data from the other modality
+(e.g., yj) with the largest similarity to the input. Ideally, the output should be yj = yi. We therefore
+define an ideal inter-modal configuration as Perfect Alignment. And when Perfect Alignment is
+achieved, downstream performance is maximized.
+Definition 8 (Perfect Alignment). Let (X, Y ) be an N-pair configuration in Rh, we say (xi, yi) is
+perfectly aligned if and only if ∀j ̸= i, xi, ·yi > xi · yj and xi, ·yi > xj · yx If ∀i ∈[N], (xi, yi) is
+perfectly aligned, we say (X, Y ) achieves Perfect Alignment.
+4.2
+REPRESENTATIONAL CONVERGENCE OF NON-CENTER PAIRS
+To investigate the alignment between two modalities, we examine the optimal configuration of each
+data pair. Theorem 4 states that if Condition (A6) (in Theorem 3) is satisfied through the optimization
+of Li=c
+MCL, and if (X, Y ) achieves Intra-Modal Isometry (Fig. 3a), then when the limit of Li̸=c
+MCL attains
+its minimum, the projections of any non-center pair (xi, yi)i̸=c onto C converge to the same vector
+(Fig. 3b).
+Theorem 4. Let (X, Y ) be an N-pair configuration, where X = (x1, . . . , xN) ∈(SX \ C)N
+are iid samples from µx = vMF(cx, κx), and Y = (y1, . . . , yN) ∈(SY \ C)N are iid samples
+from µy = vMF(cy, κy). Let ˜ν = (h −1)/2 −1. Denote ∆θ = cos−1 (cx · cy) and assume
+cx, cy ⊥C with cx · cy > 0. Suppose (X, Y ) achieves Intra-Modal Isometry. Then ∀i ∈[N], denote
+θc
+i = cos−1 (xi · cx) = cos−1 (yi · cy), and κ = κx = κy. Let θc
+i ∈(0, π
+2 ) and κ > 0, it holds that:
+lim
+N→∞Li̸=c
+MCL −2 log(N)
+= ˜
+J (cos (∆θ) , cos (θc
+i ) , ∥PBxi∥; κ, ˜ν) + ˜
+J (cos (∆θ) , cos (θc
+i ) , ∥PAyi∥; κ, ˜ν)
+≥2 ˜
+J
+
+cos2 (θc
+i ) cos (ϕmin) + sin2 (θc
+i ) , cos (θc
+i ) ,
+q
+cos2 (θc
+i ) cos2 (ϕmin) + sin2 (θc
+i ); κ, ˜ν
+
+,
+(15)
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(A8) PCxi = PCyi.
+
+===== PAGE 8 =====
+Preprint — arXiv
+(A9) ∆θ = cos−1 (cx · cy) = ϕmin.
+The proof of Theorem 4 is provided in Sec. E.4. Condition (A8) characterizes the optimal configura-
+tion of (xi, yi)i̸=c for any given ϕ. Condition (A9) establishes that the loss decreases monotonically
+as ϕ decreases to ϕmin, consistent with Condition (A7) of Theorem 3. Moreover, Theorem 4 implies
+that MCL aims to maximize the mutual information between the two modalities in the shared
+space while preserving modality-specific information in the complementary space.
+4.3
+REPRESENTATIONAL CONVERGENCE DOES NOT ENSURE PERFECT ALIGNMENT
+In Lemma 12, we show that (xi, yi)i̸=c are perfectly aligned if and only if the projections of
+(xi, yi)i̸=c onto B and A are collinear, i.e., PBxi ∥yi and PAyi ∥xi. However, when training is
+optimized such that conditions (A6) and (A8) hold, PBxi ∦yi and PAyi ∦xi. This implies that
+(xi, yi)i̸=c are not perfectly aligned (Fig. 3c).
+Corollary 2. ∀i ∈[N], i ̸= c, if cx, cy ⊥C and PCxi = PCyi ̸= ⃗0 and ϕ > 0, then it holds:
+(A10) (xi, yi)i̸=c are not perfectly aligned.
+The proof of Corollary 2 is provided in Sec. E.4.3. Since the limit of LMCL attains its minimum
+when both Lc
+MCL and Li̸=c
+MCL attain their minima, and since all paired samples are non-center pairs
+almost surely (the ‘center’ forms a zero measure set in SX or SY ), then we conclude that:
+Convergence 4: Under the subspace constraint, paired samples cannot be perfectly aligned.
+5
+SHARED SUBSPACE PROJECTION IMPROVES MODALITY ALIGNMENT
+In Sec. 4, we prove that the representations of paired samples are not perfectly aligned. Despite
+this undesirable configuration, in this section we derive potential methods to improve the alignment
+between the two modalities.
+5.1
+HOW TO ACHIEVE PERFECT ALIGNMENT
+In downstream tasks, when (xi, yi)i̸=c are not perfectly aligned, xi can be misaligned to some
+yj̸=i (Fig. 3c). A straightforward way to address this is to manually shift (xi, yi) in Sh−1. For
+example, Liang et al. (2022) translate xi toward yi as xnew
+i
+= xi + ∆u, followed by renormalization.
+This operation clearly alters the distributions of X. Since downstream performance depends on the
+number of misaligned yj in the test set. A change in the distribution of X leads to a change in the
+proportion of misaligned yj, but in an unpredictable direction. Therefore, the impact of translating X
+on downstream performance can be arbitrary. An illustrative example is provided in Sec. B.1.
+As shown in Fig. 3d, if we rotate A to overlap with B, then A = B = C. In this case, Condition
+(A8) implies xi = yi, and thus xi and yj are perfectly aligned. Hence, modality alignment can be
+improved by rotating the hyperplanes A and B until A = B (∆θ = ϕ = 0).
+Corollary 3. ∀i ∈[N], i ̸= c, if cx, cy ⊥C, PCxi = PCyi and (xi, yi)i̸=c ∈Sh−1 \ C, then
+(xi, yi)i̸=c are perfectly aligned if the following condition holds:
+(A11) ∆θ = ϕ = 0.
+The proof of Corollary 3 is provided in Sec. E.4.3. Despite this theoretical guarantee, rotating a
+high-dimensional hyperplane can be complicated in practice. As illustrated in Fig. 3e, if we project
+xi and yi onto C and then renormalize, we obtain x∗
+i = y∗
+i . And (x∗
+i , y∗
+i ) are perfectly aligned.
+Corollary 4. ∀i ∈[N], i ̸= c, if cx, cy ⊥C and PCxi = PCyi, then the following holds:
+(A12) ( PCxi
+∥PCxi∥,
+PCyi
+∥PCyi∥)i̸=c are perfectly aligned
+The proof of Corollary 4 is provided in Sec. E.4.3. Note that in Fig. 3e, C is a 1D line, so all
+transformed paired samples overlap at y∗
+1 and y∗
+2. In practice, however, the dimension of C is typically
+greater than 1 (e.g., 212D for MSCOCO dataset). For instance, in the 4D example in Fig. 6 of Sec. B.2,
+C is a 2D plane, and the samples are distributed along a unit circle.
+
+===== PAGE 9 =====
+Preprint — arXiv
+Table 1: Size of θ∆and accuracies (%) of zero-shot image classification of ViT-B/32.
+Model
+CIFAR-10
+CIFAR-100
+ImageNet-1K
+∆θ
+R1
+R5
+∆θ
+R1
+R5
+∆θ
+R1
+R5
+CLIP
+74.69◦
+89.00
+99.36
+74.19◦
+65.23
+88.88
+71.02◦
+63.34
+88.82
+CLIP + Translation
+7.02◦
+80.97
+96.09
+30.50◦
+54.46
+77.25
+51.68◦
+60.37
+86.93
+CLIP + Removal
+72.50◦
+14.91
+56.22
+73.16◦
+6.44
+16.82
+69.71◦
+49.50
+78.55
+CLIP + SSP
+5.37◦
+86.43
+99.27
+30.39◦
+64.51
+88.79
+50.40◦
+62.45
+88.41
+5.2
+EXPERIMENT
+Theorem 4, Corollary 3 and Corollary 4 suggest that if projections of X and Y are aligned in the
+shared space, modality alignment can be improved. This also indicates that the modality gap can be
+reduced pos hoc without harming downstream performance.
+Method. Following Corollary 4, we apply the shared space projection (SSP) method pos hoc to
+improve the alignment of the modality. Detailed procedures are described in Sec. C.3.
+0.2
+0.6
+1.0
+Cosine Similarity
+0
+1
+2
+3
+4
+5
+6
+7
+Sample Density
+T2T
+I2I
+P-I2T
+NP-I2T
+(a)
+UMAP 1
+UMAP 2
+Images (X)
+Texts (Y)
+(b)
+Figure 4: Results. CLIP ViT-B/32 embeddings of
+MSCOCO validation set after applying SSP are
+used. (a): UMAP plot. (b): Density plot of cosine
+similarities.
+Modality Alignment. To validate the effective-
+ness of our method, we start by visualizing X
+and Y after applying SSP. We first project X
+and Y onto an estimated shared space of 212
+dimensions. Fig. 4a (vs. Fig. 2a) shows the co-
+sine similarities of the projected X and Y . It
+indicates that our method improves both inter-
+modal alignment (larger P-I2T) and and intra-
+modal uniformity (smaller T2T and I2I). Since
+the shared space is not estimated from the orig-
+inal training data, the estimation can be noisy.
+Hence, we select a 10 dimensional subspace of
+the estimated shared space to reduce the estima-
+tion error (details explained in Sec. C.3). We
+project X and Y onto this subspace. Fig. 4b (vs. Fig. 2b) shows that the projected X and Y are no
+longer in separate clusters.
+Zero-Shot Image Classification. We also test our method in the zero-shot image classification task
+on various datasets. Details of this experiment are provided in Sec. D.1. Our goal is to reduce the
+size of the modality gap as much as possible without harming downstream performance. In Tab. 1,
+we list results of the size of the modality gap (∆θ), the top-1 accuracy (R1), and the top-5 accuracy
+(R5). We include two baseline methods: a translation-based approach (Liang et al., 2022) and a
+dimension-removal approach (Schrodi et al., 2025). Our results show that our method outperforms
+these baselines by achieving a greater reduction in the modality gap while maintaining comparable
+downstream performance prior to the post hoc operation. Despite its advantages, our method does not
+lead to improved downstream performance, as indicated in Corollary 4. We argue that this limitation
+arises because the intra-model isometry assumption does not hold in CLIP. Prior work has shown that
+CLIP’s vision and text spaces exhibit different neighborhood structures (Udandarao, 2022; Schrodi
+et al., 2025). We provide additional experiments of Zero-Shot Cross-Modal Retrieval in Sec. D.2.
+6
+CONCLUSION
+Our work comprehensively investigates two key questions: (1) What causes the modality gap? (2)
+How does it affect downstream tasks? Our theorems identify dimension collapse as the fundamental
+origin of the modality gap. Our theorems also demonstrate that paired samples cannot be perfectly
+aligned under the subspace constraint. We further prove that two approaches, hyperplane rotation and
+shared space projection, can achieve perfect alignment between two modalities. We apply the latter
+approach post-hoc and validate its effectiveness in downstream tasks. Besides the pos hoc application,
+our method has potential to be applied to pretraining. It can directly optimize modality alignment in
+the shared space to achieve the intra-modal isometry. We will explore it in the next step.
+
+===== PAGE 10 =====
+Preprint — arXiv
+REFERENCES
+´Arp´ad Baricz. Tur´an type inequalities for modified bessel functions. Bulletin of the Australian
+Mathematical Society, 2010.
+Ting Chen, Simon Kornblith, Mohammad Norouzi, and Geoffrey Hinton. A simple framework for
+contrastive learning of visual representations. In ICML, 2020.
+Sanghyuk Chun. Multiplicity is an inevitable and inherent challenge in multimodal learning. arXiv,
+2025.
+Jia Deng, Wei Dong, Richard Socher, Li-Jia Li, Kai Li, and Li Fei-Fei. Imagenet: A large-scale
+hierarchical image database. In CVPR, 2009.
+Sedigheh Eslami and Gerard de Melo. Mitigate the gap: Improving cross-modal alignment in clip. In
+ICLR, 2025.
+Abrar Fahim, Alex Murphy, and Alona Fyshe. It’s not a modality gap: Characterizing and addressing
+the contrastive gap. arXiv, 2024.
+Florian Graf, Christoph Hofer, Marc Niethammer, and Roland Kwitt. Dissecting supervised con-
+trastive learning. In ICML, 2021.
+Minyoung Huh, Brian Cheung, Tongzhou Wang, and Phillip Isola. The platonic representation
+hypothesis. In ICML, 2024.
+Li Jing, Pascal Vincent, Yann LeCun, and Yuandong Tian. Understanding dimensional collapse in
+contrastive self-supervised learning. In ICLR, 2022.
+Prannay Khosla, Piotr Teterwak, Chen Wang, Aaron Sarna, Yonglong Tian, Phillip Isola, Aaron
+Maschinot, Ce Liu, and Dilip Krishnan. Supervised contrastive learning. In NeurIPS, 2020.
+Alex Krizhevsky, Geoffrey Hinton, et al. Learning multiple layers of features from tiny images, 2009.
+Junnan Li, Dongxu Li, Caiming Xiong, and Steven Hoi. Blip: Bootstrapping language-image
+pre-training for unified vision-language understanding and generation. In ICML, 2022.
+Victor Weixin Liang, Yuhui Zhang, Yongchan Kwon, Serena Yeung, and James Y Zou. Mind the gap:
+Understanding the modality gap in multi-modal contrastive representation learning. In NeurIPS,
+2022.
+Tsung-Yi Lin, Michael Maire, Serge Belongie, James Hays, Pietro Perona, Deva Ramanan, Piotr
+Doll´ar, and C Lawrence Zitnick. Microsoft coco: Common objects in context. In ECCV, 2014.
+Litian Liu and Yao Qin. Detecting out-of-distribution through the lens of neural collapse. In CVPR,
+2025.
+Kanti V Mardia and Peter E Jupp. Directional statistics. John Wiley & Sons, 2009.
+Norman Mu, Alexander Kirillov, David Wagner, and Saining Xie. Slip: Self-supervision meets
+language-image pre-training. In ECCV, 2022.
+Frank WJ Olver. NIST handbook of mathematical functions. Cambridge university press, 2010.
+Vardan Papyan, XY Han, and David L Donoho. Prevalence of neural collapse during the terminal
+phase of deep learning training. Proceedings of the National Academy of Sciences, 2020.
+Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal,
+Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, et al. Learning transferable visual
+models from natural language supervision. In ICML, 2021.
+Simon Schrodi, David T Hoffmann, Max Argus, Volker Fischer, and Thomas Brox. Two effects, one
+trigger: on the modality gap, object bias, and information imbalance in contrastive vision-language
+representation learning. In ICLR, 2025.
+
+===== PAGE 11 =====
+Preprint — arXiv
+PY Shi, M Welle, M Bjørkman, and D Kragic. Understanding the modality gap in clip. ICLR
+Workshop, 2023.
+Gilbert Strang. Introduction to linear algebra. SIAM, 2022.
+Vishaal Udandarao. Understanding and fixing the modality gap in vision-language models. Master’s
+thesis, University of Cambridge, 2022.
+Roman Vershynin. Introduction to the non-asymptotic analysis of random matrices. arXiv preprint
+arXiv:1011.3027, 2010.
+Tongzhou Wang and Phillip Isola. Understanding contrastive representation learning through align-
+ment and uniformity on the hypersphere. In ICML, 2020.
+Zhirong Wu, Yuanjun Xiong, Stella X. Yu, and Dahua Lin. Unsupervised Feature Learning via
+Non-parametric Instance Discrimination. In CVPR, 2018.
+Can Yaras, Siyi Chen, Peng Wang, and Qing Qu. Explaining and mitigating the modality gap in
+contrastive multimodal learning. arXiv, 2024.
+Lingjie Yi, Tao Sun, Yikai Zhang, Songzhu Zheng, Weimin Lyu, Haibin Ling, and Chao Chen.
+Pivotalign: Improve semi-supervised learning by learning intra-class heterogeneity and aligning
+with pivots. In WACV, 2025a.
+Lingjie Yi, Jiachen Yao, Weimin Lyu, Haibin Ling, Raphael Douady, and Chao Chen. Geometry
+of long-tailed representation learning: Rebalancing features for skewed distributions. In ICLR,
+2025b.
+
+===== PAGE 12 =====
+Preprint — arXiv
+A
+APPENDIX A: MORE DISCUSSIONS
+A.1
+RELATED WORK
+Due to the page limit of the initial submission (9 pages), we include the related work here. In the
+final version (10 pages), this section will be moved into the main text.
+A.1.1
+REPRESENTATION LEARNING AND REPRESENTATIONAL CONVERGENCE
+Unimodal representations can be learned in an unsupervised manner using self-supervised contrastive
+learning (SSL) (Chen et al., 2020). When the InfoNCE loss (Wu et al., 2018) reaches its minimum,
+the representations of differently augmented views of an image converge to a single point, and
+the representation of all images converge to a uniform distribution on Sh−1 (Wang & Isola, 2020).
+However, Jing et al. (2022) empirically shows that this theoretical optimum may not be realized in
+practice: the learned representations tend to collapse into a lower-dimensional subspace rather than
+spanning the entire embedding space.
+In the supervised setting, representations can be learned through a neural classifier. When the cross-
+entropy loss is minimized, representations of samples from different balanced classes converge to the
+vertices of a regular simplex inscribed in Sh−1, a phenomenon known as neural collapse (Papyan
+et al., 2020). Graf et al. (2021) provide a theoretical explanation of this phenomenon. Representations
+can also be learned with supervised contrastive learning (SupCon) (Khosla et al., 2020). Graf et al.
+(2021) prove that the COR of a balanced dataset of SupCon also forms a regular simplex. Yi et al.
+(2025b) provide a refined proof and further show that, for imbalanced datasets, representations
+converge to a skewed simplex or even collapse into two distinct points. Other works extend the
+concept of neural collapse to semi-supervised learning (Yi et al., 2025a) and OOD detection (Liu &
+Qin, 2025).
+Multimodal representations are learned through multimodal contrastive learning (MCL). However,
+the COR of MCL remains poorly understood. In this work, we address this gap by characterizing
+the COR of MCL. Our theorems suggest that MCL seeks to maximize the mutual information
+between the two modalities in the shared space while preserving modality-specific information in the
+complementary space.
+A.1.2
+MODALITY GAP
+Liang et al. (2022) first identified the modality gap, a geometric phenomenon characterized by
+the complete separation of representations of different modalities in the embedding space. They
+hypothesize that the gap arises from the cone effect due to random model initialization and is
+preserved by the contrastive learning objective. Fahim et al. (2024) argues that the modality gap is
+inherent to contrastive loss. Yaras et al. (2024); Udandarao (2022) examine the role of mismatch pairs
+and the temperature parameter. Shi et al. (2023) attribute the cause of the modality gap to insufficient
+training. Schrodi et al. (2025) suggests that problematic training data, which contain information bias,
+create the gap. Most of these works validate their hypotheses through numerical examples on a small
+number of data pairs. By contrast, we provide an analysis based on the entire distribution.
+In addition, several studies have proposed post-hoc methods to mitigate the modality gap. Liang
+et al. (2022) attempts to translate the representations of one modality toward those of another using a
+constant shift. Schrodi et al. (2025) explores removing the few dimensions that primarily drive the
+modality gap. However, experiments in both works reported that narrowing the modality gap pos hoc
+may lead to degraded downstream performance. Eslami & de Melo (2025) mitigates the modality gap
+by retraining CLIP from scratch. Our work focuses on training-free pos-hoc plug-and-play methods
+that can directly leverage existing pre-trained models.
+A.2
+LIMITATIONS
+While our work investigates the origin of the modality gap and attributes it to dimension collapse, we
+do not address the exact factors that lead to dimension collapse. (Jing et al., 2022) theoretically show
+that dimension collapse occurs whenever negative eigenvalues appear in the weight matrix of a neural
+network. (Schrodi et al., 2025) suggests that when training data with information bias are sufficiently
+
+===== PAGE 13 =====
+Preprint — arXiv
+aligned, ‘more dimensions’ are required to focus on objects and and ‘less dimensions’ to focus on
+attributes, ultimately resulting in dimension collapse. (Chun, 2025) provides a more comprehensive
+study of the inherent challenges within MCL, including intra-modal variability, asymmetries in
+information, and task-dependent alignment. We suspect that all these factors contribute to dimension
+collapse in the learned representations. Identifying the causes of dimension collapse thus constitutes
+a major open problem, parallel to understanding the origin of the modality gap, and represents an
+important direction for future research.
+A.3
+CONNECTIONS BETWEEN OUR THEOREMS AND PREVIOUS HYPOTHESES
+In this subsection, we examine the connection between empirical observations from prior studies and
+our theoretical conclusions.
+Cone Effect: The cone effect hypothesis (Liang et al., 2022) posits that the representations of X and
+Y fall into different cones on the hypersphere, thereby causing the modality gap. In our theoretical
+framework, as described in Sec. 3.1, the cone size of the representations is modeled by the parameter
+κ. However, in contrast to this hypothesis, Theorem 2 shows that the cone size has no effect on the
+convergence of the modality gap, even when the representations follow a uniform distribution (i.e.,
+κ →0).
+Temperature: It is hypothesized that the choice of temperature contributes to the emergence of
+the modality gap (Yaras et al., 2024; Udandarao, 2022). However, Theorem 2 suggests that the
+temperature parameter, τ, has no effect on the convergence of the modality gap. We suspect that if
+temperature has any impact, it operates indirectly by influencing dimension collapse.
+Information Bias: (Schrodi et al., 2025) argue that information bias, i.e., images containing more
+information than the corresponding text, leads to the modality gap. The unequal amount of information
+across modalities prevents Intra-Modal Isometry of the representations (see Definition 7), making it
+difficult for the model to align representations from the two modalities. This results in sub-optimal
+inter-modal alignment, which in turn imposes a lower bound on the alignment terms and ensures
+∆θ > 0. We posit that there is a strong connection between information bias and dimension collapse:
+information bias induces dimension collapse in the learned representations, thereby causing the
+modality gap.
+A.4
+DISCLOSURE OF LLM USAGE
+In the preparation of this paper, we used large language models (LLMs) as general-purpose assistive
+tools. Specifically, we used an LLM to help with grammar polishing, wording improvements, and
+proof-reading.
+Any text or content generated by the LLM have been reviewed and edited by the authors. We take
+full responsibility for the content of the submission. The LLM was not used to produce novel
+research claims, data analysis, results formulation, or conclusions. The research ideation, theoretical
+contributions, experiments, and all core technical work are entirely the work of the authors.
+B
+APPENDIX B: MORE SUPPORTING EXAMPLES
+In this subsection, we provide more examples and illustrations.
+B.1
+ILLUSTRATIVE EXAMPLE OF TRANSLATION-BASED METHOD
+In this subsection, we provide an illustrative example showing that the impact of translating X pos
+hoc on downstream performance can be arbitrary. Fig. 5a depicts a set of X and Y where Condition
+(A6) and Condition (A8) hold. Fig. 5b illustrates how Xs are going to be translated. Fig. 5c shows
+the positions of X∗s after translation. Fig. 5d illustrates how X∗s are going to be normalized. Fig. 5e
+shows the positions of X∗∗s after normalization. In Fig. 5f, we observe that the distribution of X∗∗s
+differs substantially from that of X: they no longer reside in the same shared space (the large circle
+in this example), and their projections onto the shared space diverge from those of Y s. The direction
+of these changes depends on the specific configuration of X and is therefore unpredictable. Hence,
+
+===== PAGE 14 =====
+Preprint — arXiv
+𝑺𝒀 
+𝑺𝑿 
+𝒙𝟐
+𝒙𝟏 
+𝒚𝟐 
+𝒚𝟏 
+𝒄𝒚 
+𝒄𝒙 𝒙𝟑
+𝒚𝟑 
+𝒙𝟒
+𝒚𝟒 
+𝑪
+(a)
+𝒙𝟐
+𝒙𝟏 
+𝒚𝟐 
+𝒚𝟏 
+𝒙𝟑
+𝒚𝟑 
+𝒙𝟒
+𝒚𝟒 
+(b)
+𝒚𝟐 
+𝒚𝟏 
+𝒚𝟑 𝒚𝟒 
+𝒙𝟏
+∗
+𝒙𝟐
+∗
+𝒙𝟑
+∗
+𝒙𝟒
+∗
+(c)
+𝒚𝟐 
+𝒚𝟏 
+𝒚𝟑 𝒚𝟒 
+𝒙𝟏
+∗
+𝒙𝟐
+∗
+𝒙𝟑
+∗
+𝒙𝟒
+∗
+(d)
+𝒚𝟐 
+𝒚𝟏 
+𝒚𝟑 𝒚𝟒 
+𝒙𝟑
+∗∗
+𝒙𝟐
+∗∗
+𝒙𝟏
+∗∗
+𝒙𝟒
+∗∗
+(e)
+𝒚𝟐 
+𝒚𝟏 
+𝒚𝟑 𝒚𝟒 
+𝒙𝟑
+∗∗
+𝒙𝟐
+∗∗
+𝒙𝟏
+∗∗
+𝒙𝟒
+∗∗
+(f)
+Figure 5: Translation-based method. Notations follow Fig. 1. (a): Condition (A6) (cx, cy ⊥C) and
+(A8) (PCxi = PCyi) hold. Orange and blue triangles represent µx and µy, respectively. Red arrows
+indicate the direction and magnitude of the constant translation (µy −µx). (b): Translate X. (c):
+X are translated to X∗. (d): Re-normalize X∗. Purple arrows indicate the direction and magnitude
+of the normalization. (e): X∗are re-normalized to X∗∗. (f): The distribution of X is altered after
+translation, such that PCx∗∗
+i
+̸= PCy∗∗
+i .
+the impact of translating X on downstream performance is unpredictable. In practice, the impact is
+often a negative one.
+B.2
+ADDITIONAL EXAMPLE OF MODALITY ALIGNMENT
+In Sec. 5, we discuss how the shared space projection approach can improve modality alignment.
+As an illustrative case, Fig. 3e presents an example in a 3D embedding space where C corresponds
+to a 1D line. However, this example may be misinterpreted as implying that all transformed paired
+samples (x∗
+i , y∗
+i ) perfectly overlap at y1∗and y2∗. To clarify this point, in this subsection we examine
+a more intricate example in a 4D embedding space.
+First, recall Definition 5 and set h = 4:
+Definition 5 [Restate with h = 4] Let A and B be two distinct (h −1)-dimensional linear subspaces
+(i.e., hyperplanes through the origin) with normal vectors nA and nB, projection matrices PA and
+PB. Denote C = A ∩B, with PC as its projection matrix. Define ϕ = cos−1 
+nA·nB
+∥nA∥·∥nB∥
+
+as the
+angle between A and B, restricted to 0 < ϕmin ≤ϕ < π
+2 . Then, SX and SY can be represented as:
+SX = S3 ∩A =
+
+x ∈R4 : ∥x∥= 1, nA · x = 0
+	 ∼= S2 ∈S3,
+SY = S3 ∩B =
+
+y ∈R4 : ∥y∥= 1, nB · y = 0
+	 ∼= S2 ∈S3.
+(16)
+Now, S3 denotes the 4D unit hypersphere. To analyze this case, we decompose the embedding space.
+Let {e1, e2, e3, e4} be an orthonormal basis of R4. Suppose that the shared space C lies within the
+span of e1 and e2:
+
+===== PAGE 15 =====
+Preprint — arXiv
+𝒙𝟐
+𝕊𝑿 
+ℂ
+𝒆𝑿
+𝒆𝟏
+𝒆𝟐
+𝒙𝟒
+𝒙𝟑 
+𝒙𝟏 
+(a)
+𝒚𝟐
+𝕊𝒀 
+ℂ
+𝒆𝒀
+𝒆𝟏
+𝒆𝟐
+𝒚𝟒
+𝒚𝟑 
+𝒚𝟏 
+(b)
+𝒑𝟏 
+𝒑𝟐 
+𝕊𝑿 
+ℂ
+𝒆𝑿
+𝒆𝟏
+𝒆𝟐
+𝒑𝟑 
+𝒙𝟒
+𝒙𝟑 
+𝒙𝟐
+𝒑𝟒 
+𝒙𝟏 
+(c)
+𝒑𝟏 
+𝒑𝟐 
+𝕊𝑿 
+ℂ
+𝒆𝟏
+𝒆𝟐
+𝒑𝟑 
+𝒚𝟒
+𝒚𝟑 
+𝒚𝟐
+𝒆𝒀
+𝒑𝟒 
+𝒚𝟏 
+(d)
+𝒑𝟏 
+𝒑𝟐 
+𝒙𝟏 
+𝒙𝟏
+∗ 
+𝒙𝟐
+∗
+𝒑𝟑 
+𝒙𝟒
+𝒙𝟑
+∗ 
+𝒑𝟒 
+𝒙𝟒
+∗ 
+𝒙𝟑 
+𝒙𝟐
+(e)
+𝒑𝟏 
+𝒑𝟐 
+𝒚𝟏
+∗ 
+𝒚𝟐
+∗
+𝒑𝟑 
+𝒚𝟒
+𝒚𝟑
+∗ 
+𝒑𝟒 
+𝒚𝟒
+∗ 
+𝒚𝟑 
+𝒚𝟐
+𝒚𝟏 
+(f)
+𝒑𝟏 
+𝒑𝟐 
+𝒙𝟏
+∗/𝒚𝟏
+∗ 
+𝒑𝟑 
+𝒑𝟒 
+𝒆𝟏
+𝒆𝟐
+𝒙𝟐
+∗/𝒚𝟐
+∗
+𝒙𝟑
+∗/𝒚𝟑
+∗ 
+𝒙𝟒
+∗/𝒚𝟒
+∗ 
+(g)
+Figure 6: Modality alignment in 4D space. SX (orange circle) and SY (blue circle) are two 3D
+unit spheres within S3 as described in Eq. (16) and Eq. (22). The shared space C is a 2D plane as
+described in Eq. (17). The intersection SX ∩C = SY ∩C forms a 2D circle (green circle). (a) Four
+samples from X (orange dots). (b) Four samples from Y (blue dots). (c), (d): The projections of
+(xi, yi)i̸=c onto the shared space C converge to pi (green points), i.e., PCxi = PCyi = pi. (e), (f):
+Re-normalize pi to get x∗
+i (purple dots) and y∗
+i (yellow dots) as described in Eq. (23). (g): (x∗
+i , y∗
+i )
+are perfectly aligned.
+C = span {e1} ⊕span {e2} .
+(17)
+Therefore, C⊥is a 2-dimensional orthogonal complement of C, and C⊥satisfies:
+C⊥= span {e3} ⊕span {e4} ,
+Rh = C ⊕C⊥.
+(18)
+Define two unit vectors eX and eY such that:
+
+===== PAGE 16 =====
+Preprint — arXiv
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Cosine Similarity
+0
+1
+2
+3
+4
+5
+6
+7
+Sample Density
+Text
+Image
+Figure 7: Density plot of θc
+i of CLIP ViT-B/32 representations of the MSCOCO validation set.
+eX ∈SX, and eX ⊥C,
+eY ∈SY , and eY ⊥C.
+(19)
+Since nA, nB ∈C⊥, nA ⊥eX and nB ⊥eY , we have:
+⟨eX, eY ⟩= ± ⟨nA, nB⟩,
+(20)
+and we choose a pair of eX and eY such that:
+⟨eX, eY ⟩= ⟨nA, nB⟩= cos (ϕ) ∈(0, 1).
+(21)
+Therefore, SX and SY can be represented by two orthonormal bases:
+SX ∈A = span {e1} ⊕span {e2} ⊕span {eX} ,
+SY ∈B = span {e1} ⊕span {e2} ⊕span {eY } .
+(22)
+In Theorem 3, we show that when Lc
+MCL is minimized, cx, cy ⊥C (Condition (A6)). Accordingly,
+we can set cx = eX and cy = eY . These settings are illustrated in Fig. 6a and Fig. 6b.
+In Theorem 4, we show that when Li̸=c
+MCL is minimized, PCxi = PCyi (Condition (A8)). This
+condition is illustrated in Fig. 6c and Fig. 6d.
+Re-normalize the projections to obtain the transformed pairs:
+x∗
+i =
+PCxi
+∥PCxi∥,
+y∗
+i = PCyi
+∥PCyi|,
+(23)
+We illustrate x∗
+i and y∗
+i in Fig. 6e and Fig. 6f. In Corollary 4, we show that (x∗
+i , y∗
+i ) are perfectly
+aligned, as illustrated in Fig. 6g.
+B.3
+JUSTIFICATION OF ASSUMPTION IN THEOREM 4
+In Theorem 4, we assume that the angle between a modality input and its center, θc
+i , satisfies
+θc
+i ∈
+ 0, π
+2
+
+. In Lemma 15, we provide a theoretical justification for this assumption. Furthermore,
+the density plot of θc
+i in Fig. 7 shows that almost all θc
+i indeed lie within
+ 0, π
+2
+
+.
+C
+APPENDIX C: DETAILS OF METHOD
+In this subsection, we describe in details about how to detect dimension collapse, how to detect the
+shared space of two subspaces, and how to conduct projection onto the shared space.
+
+===== PAGE 17 =====
+Preprint — arXiv
+0
+100 200 300 400 500
+Singular Value Rank Index
+0
+10
+20
+30
+40
+50
+Variance Ratio (%)
+Image (X)
+Text (Y)
+(a)
+0
+10
+20
+30
+40
+50
+Singular Value Rank Index
+0.5
+1.0
+1.5
+2.0
+2.5
+3.0
+Variance Ratio (%)
+Image (X)
+Text (Y)
+(b)
+0
+10
+20
+30
+40
+50
+Singular Value Rank Index
+1
+2
+3
+4
+5
+6
+Variance Ratio (%)
+Image (Centered X)
+Text (Centered Y)
+(c)
+Figure 8: Singular values. CLIP ViT-B/32 representations of the MSCOCO validation set are used.
+(a): All singular values of X and Y . (b): The 2nd to 50th singular values of X and Y . (c): The 1st to
+50th singular values of the centered X and the centered Y .
+C.1
+DETECT DIMENSION COLLAPSE
+Suppose that we have two point clouds, X and Y , each consisting of h-dimensional normalized
+vectors: X = (x1, . . . , xN) ∈(Sh−1)N and Y = (y1, . . . , yN) ∈(Sh−1)N. Then we have:
+A = span (X) ,
+dX = dim(A),
+B = span (Y ) ,
+dY = dim(B),
+C = A ∩B,
+doverlap = dim(C).
+(24)
+Apply the Singular Value Decomposition (SVD) to X and Y and we get:
+X = UXΣXV ⊤
+X ,
+Y = UY ΣY V ⊤
+Y .
+(25)
+If X and Y collapse into subspaces of Sh−1, then ΣX and ΣY have dX < h and dY < h significant
+singular values, respectively.
+In the discussion in Sec. 3.4, X and Y represent the image and text embeddings of the MSCOCO
+dataset. Since X and Y are not centered at zero, the first singular values, σx
+1 and σy
+1, dominate
+when SVD is applied. Correspondingly, the first right singular vectors of X and Y are cx and cy,
+respectively. As shown in Fig. 8a, these first right singular vectors account for approximately 50%
+of the explained variance. Therefore, in Fig. 2c, we plot the singular values of the centered X and
+Y , which better capture the patterns of variation. In Fig. 8b, we present the 2nd to the 50th singular
+values of X and Y , while in Fig. 8c, we show the 1st to the 50th singular values of the centered X
+and the centered Y .
+And dimension collapse in X and Y occurs when zero values appear on the diagonals of ΣX and ΣY .
+C.2
+FIND THE SHARED SPACE
+We then select the first dX columns from VX and the first dY columns from VY whose cumulative
+explained variance exceeds a predefined threshold c (e.g., c = 99%). We obtain:
+BX = VX[:, : dX] ∈Rh×dX : orthonormal basis for A,
+BY = VY [:, : dY ] ∈Rh×dY : orthonormal basis for B.
+(26)
+To investigate whether A and B have overlap dimensions, we need to check the principal angles
+between A and B, which are defined as:
+Definition 9. The principal angles γ1 ≤γ2 ≤· · · ≤γk between A and B are recursively defined as:
+cos (γi) =
+max
+u∈A,v∈B u⊤v,
+∥u∥= ∥v∥= 1,
+u⊤uj = v⊤vj = 0 (j < i),
+(27)
+
+===== PAGE 18 =====
+Preprint — arXiv
+where k = min (dX, dY ).
+The principal angles quantify the alignment between these subspaces:
+• The smallest principal angle θ1 measures how close the two subspaces are: if γ1 = 0, there is at
+least one common direction.
+• If multiple principal angles are zero, then the intersection of the subspaces has a larger dimension.
+The principal angles between subspaces A and B can be computed as follows:
+1. Compute the singular values of the matrix G = B⊤
+XBY ∈RdX×dY .
+2. The singular values σp
+i ∈[0, 1]
+3. Then the principal angles are γi = arccos (σp
+i )
+The number of principal angles equal to zero gives the dimension of the intersection:
+doverlap = # {i : γi = 0} .
+(28)
+In practice, due to noise or finite precision, we use a threshold: count how many σp
+i > 1 −ϵ (e.g.,
+ϵ = 10−3). Thus:
+doverlap = # {i : σp
+i > 1 −ϵ} .
+(29)
+The empirical result of MSCOCO dataset is provided in Fig. 2d.
+C.3
+PROCEDURES OF SSP METHOD
+In this subsection, we provide the details of the Shared Space Projection (SSP) algorithm.
+Step 1: Apply the SVD decomposition to X and Y to get VX and VY as Eq. (25).
+Step 2: Select the first dX and dY right singular vectors of X and Y whose cumulative explained
+variance are great than 99%. The resulting vectors, BX and BY , form the bases for A and B, as
+indicated by Eq. (26).
+Step 3: Apply the SVD decomposition G = B⊤
+XBY ∈RdX×dY .
+G = UGΣGV ⊤
+G
+(30)
+Step 4: Compute doverlap according to Eq. (29) while setting ϵ = 10−3. Compute the basis of the
+shared space BS by:
+BS = BXUG[:, : doverlap] = BY VG[:, : doverlap].
+(31)
+Explain: Since the shared space is estimated from the available data rather than the original training
+data (assumed inaccessible), the estimation may be noisy. To mitigate this, we can select k < doverlap
+columns from BS to form Bk
+S. The columns of Bk
+S constitute an orthonormal basis for a k-dimensional
+subspace of the estimated shared space. By removing dimensions that carry minimal information,
+the estimation error can be reduced. The following optional step explains how to select these k
+dimensions.
+Step 5 (Optional): Project X and Y onto each column of BS:
+P = BT
+S XT ,
+X′ = einsum(’hk, kn- > knh’)(BS, P),
+X′′ = Normalize(X′) by the last dimension.
+(32)
+
+===== PAGE 19 =====
+Preprint — arXiv
+Table 2: Size of θ∆and accuracies (%) of zero-shot image classification of ViT-L/14 on various
+datasets.
+Model
+CIFAR-10
+CIFAR-100
+ImageNet-1K
+∆θ
+R1
+R5
+∆θ
+R1
+R5
+∆θ
+R1
+R5
+CLIP
+77.63◦
+95.12
+99.46
+77.13◦
+78.44
+94.02
+77.29◦
+75.56
+94.58
+CLIP + Translation
+14.73◦
+92.39
+98.97
+38.68◦
+71.13
+87.56
+62.61◦
+74.05
+94.10
+CLIP + Removal
+79.36◦
+12.23
+62.33
+80.71◦
+9.57
+23.64
+76.84◦
+67.04
+89.76
+CLIP + SSP
+13.27◦
+95.12
+99.46
+37.73◦
+77.72
+93.99
+62.40◦
+75.26
+94.51
+Here, einsum denotes Einstein summation notation. Compute the variance of X′′ along the last two
+dimensions to obtain an array S of length doverlap. Each entry of S is actually the singular value of
+projections onto the corresponding column of BS. S quantifies the amount of information contained
+in each column of BS. By ranking S in descending order, select the top k columns from BS to form
+BK
+S .
+Step 6: Project X and Y onto the column space of Bk
+S and get X∗and Y ∗.
+X∗=
+
+Bk
+SBk
+S
+T XT T
+,
+Y ∗=
+
+Bk
+SBk
+S
+T Y T T
+.
+(33)
+Step 7: Normalize X∗and Y ∗to get X∗∗and Y ∗∗. Use X∗∗and Y ∗∗for downstream tasks.
+Notably, Fig. 8b indicates that fewer than 10 dimensions account for more than 1% of the explained
+variance, suggesting that the essential information of X and Y can be effectively captured using only
+10 dimensions. Consequently, in Fig. 4b, we project X and Y onto a 10-dimensional subspace that
+preserves the most information.
+D
+APPENDIX D: DETAILS OF EXPERIMENTS
+In this section, we describe in details about the set up of our experiments.
+D.1
+ZERO-SHOT IMAGE CLASSIFICATION.
+Datasets. We first evaluate our method on the zero-shot image classification task using three widely
+adopted datasets: two small-scale image dataset CIFAR-10/100 Krizhevsky et al. (2009) and one
+large scale image dataset. ImageNet-1k Deng et al. (2009). For CIFAR-10/100, we adopt the small
+set of prompts provided by OpenAI for CLIP Radford et al. (2021) (https://github.com/
+openai/CLIP.com). For ImageNet-1k, we adopt the large set of prompts provided by OpenAI for
+CLIP Radford et al. (2021) (https://colab.research.google.com/github/openai/
+CLIP/blob/main/notebooks/Prompt_Engineering_for_ImageNet.ipynb).
+Implementation Setup. Our implementation refers to Eslami & de Melo (2025). For model
+backbone, we adopt CLIP’s ViT-B/32 and ViT-L/14 models. For the implementation of baseline
+models, we remove the same number of dimensions in the removal method Schrodi et al. (2025) with
+that of our SSP method. For translation Liang et al. (2022), the hyperparameter λ controls the scale
+of translation. We choose the smallest value of λ, rounded to two decimal places, that yields an angle
+reduction larger than SSP.
+Additional Results. We report the results using the CLIP ViT-L/14 model as the backbone in Tab. 2.
+Similar patterns to those in Tab. 1 can be observed, indicating that our conclusions hold across
+different model backbones.
+As shown in both Tab. 1 and Tab. 2, reducing the modality gap becomes more challenging as the
+number of classes in the test set increases. This is because a larger number of classes introduces
+
+===== PAGE 20 =====
+Preprint — arXiv
+Table 3: Size of θ∆and accuracies (%) of zero-shot cross-modal retrieval of ViT-L/14 on MSCOCO.
+Model
+MSCOCO
+∆θ
+I →T
+T →I
+R@1
+R@5
+R@10
+R@1
+R@5
+R@10
+CLIP
+78.16◦
+56.06
+79.56
+86.84
+35.33
+59.96
+70.21
+CLIP + Translation
+68.49◦
+54.14
+78.32
+86.30
+35.13
+59.79
+69.85
+CLIP + Removal
+76.03◦
+49.56
+73.42
+82.18
+31.23
+54.29
+65.00
+CLIP + SSP
+68.06◦
+55.54
+78.94
+86.64
+35.22
+59.86
+70.22
+a more complex data distribution, thereby enlarging the discrepancy between the test and training
+distributions. Consequently, our shared space estimation incurs greater estimation error, which limits
+the capacity of our method to further reduce the modality gap.
+D.2
+ZERO-SHOT CROSS-MODAL RETRIEVAL.
+Dataset. In addition to zero-shot image classification, we evaluate our method on zero-shot image-to-
+text and text-to-image retrieval using the MSCOCO (Lin et al., 2014). Unlike the common practice
+of appending a prompt such as ‘a photo of the caption’, we directly use the raw captions to generate
+text embeddings. This approach aims to align the text space more closely with its natural form rather
+than introducing distortion through artificial prompts.
+Implementation Setup. This implementation setup follows Sec. D.1. The only difference is that we
+only use CLIP ViT-L/14 as the model backbone.
+Results
+The goal of this experiment is to reduce the size of the modality gap as much as possible without
+harming downstream performance. In Tab. 3, we list results of the size of the modality gap (∆θ), the
+top-1 accuracy (R@1), the top-5 accuracy (R@5), and the top-10 accuracy (R@10). Similar patterns
+to those in Tab. 1 can be observed, indicating that our conclusions hold across different downstream
+tasks.
+
+===== PAGE 21 =====
+Preprint — arXiv
+E
+APPENDIX E: PROOFS
+E.1
+DETAILS OF THEOREM 1
+In this section, we provide proofs of Theorem 1 that is proposed in Sec. 3.2. We also provide details
+of the auxiliary theorems (Theorem S1 and Theorem S2) and technical lemmas (Lemma 1, Lemma 2,
+Lemma 3, Lemma 4) that support the proof of Theorem 1. For convenience in reading, let us recall
+some related notions and definitions.
+• h, N ∈N.
+• Sh−1 =
+
+z ∈Rh : ∥z∥= 1
+	
+.
+• σh−1: the uniform probability measure of Sh−1.
+Definition (Multimodal Contrastive Loss (MCL Loss)). Let (X, Y ) be an N-pair configuration,
+where X = (x1, . . . , xN) ∈(Sh−1)N and Y = (y1, . . . , yN) ∈(Sh−1)N. ∀τ > 0, the multimodal
+contrastive loss LMCL(·, ·) : (Sh−1)N × (Sh−1)N →R is defined as:
+LMCL = 1
+N
+N
+X
+i=1
+Li
+MCL, where Li
+MCL = LX→Y(xi; Y ) + LY→X (yi; X).
+Here, LX→Y is the X-to-Y alignment and LY→X is the Y-to-X alignment, which are defined
+respectively as:
+LX→Y(xi; Y ) = −log
+exp (xi · yi/τ)
+PN
+j=1 exp (xi · yj/τ)
+, LY→X (yi; X) = −log
+exp (xi · yi/τ)
+PN
+j=1 exp (xj · yi/τ)
+.
+E.1.1
+PROOF OF THEOREM 1
+In this subsection, we provide the proof of Theorem 1. For convenience in reading, we first restate
+Theorem 1 here.
+Theorem 1. [Restate] Let (X, Y ) be an N-pair configuration, where X = (x1, . . . , xN) ∈(Sh−1)N
+are iid samples from µx and Y = (y1, . . . , yN) ∈(Sh−1)N are iid samples from µy. Let ν =
+h/2 −1, it holds that:
+lim
+N→∞LMCL −2 log(N) = Exi∼µx
+h
+−xi · yi
+τ
+i
++ Exi∼µx
+h
+log Eyi∼µy
+h
+exp
+xi · yi
+τ
+ii
++ Eyi∼µy
+h
+−xi · yi
+τ
+i
++ Eyi∼µy
+h
+log Exj∼µx
+h
+exp
+xi · yi
+τ
+ii
+≥−2
+τ + 2 log
+
+Γ (ν + 1) (2τ)νIν
+1
+τ
+
+,
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(A1) ∀i ∈[N], xi = yi.
+(A2) µx = σh−1 and µy = σh−1.
+Proof. We first decompose limN→∞Lc
+MCL −2 log(N) into two parts:
+lim
+N→∞(LMCL −2 log(N)) = lim
+N→∞
+ 
+1
+N
+N
+X
+i=1
+LX→Y(xi; Y ) −log(N)
+!
++ lim
+N→∞
+ 
+1
+N
+N
+X
+i=1
+LY→X (yi; X) −log(N)
+!
+.
+(34)
+
+===== PAGE 22 =====
+Preprint — arXiv
+According to Theorem S2, the convergent function and its lower bound of LX→Y are:
+lim
+N→∞
+1
+N
+N
+X
+i=1
+LX→Y(xi; Y ) −log(N)
+= Exi∼µx
+h
+−xi · yi
+τ
+i
++ Exi∼µx
+h
+log Eyi∼µy
+h
+exp
+xi · yj
+τ
+ii
+≥−1
+τ + log
+
+Γ
+h
+2
+
+(2τ)
+h
+2 −1I h
+2 −1
+1
+τ
+
+,
+(35)
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(i) ∀i ∈[N], xi = yi.
+(ii) µx = σh−1 and µy = σh−1.
+This Theorem also holds for LY→X :
+lim
+N→∞
+1
+N
+N
+X
+i=1
+LY→X (yi; X) −log(N)
+= Eyi∼µx
+h
+−xi · yi
+τ
+i
++ Eyi∼µy
+h
+log Exi∼µx
+h
+exp
+xi · yj
+τ
+ii
+≥−1
+τ + log
+
+Γ
+h
+2
+
+(2τ)
+h
+2 −1I h
+2 −1
+1
+τ
+
+,
+(36)
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(iii) ∀i ∈[N], xi = yi.
+(iv) µx = σh−1 and µy = σh−1.
+Combining Eq. (34), Eq. (35) and Eq. (36), we conclude that:
+lim
+N→∞LMCL −2 log(N) = Exi∼µx
+h
+−xi · yi
+τ
+i
++ Exi∼µx
+h
+log Eyi∼µy
+h
+exp
+xi · yi
+τ
+ii
++ Eyi∼µy
+h
+−xi · yi
+τ
+i
++ Eyi∼µy
+h
+log Exj∼µx
+h
+exp
+xi · yi
+τ
+ii
+≥−2
+τ + 2 log
+
+Γ
+h
+2
+
+(2τ)
+h
+2 −1I h
+2 −1
+1
+τ
+
+,
+(37)
+where equality is attained if and only if the following conditions hold:
+(A1) ∀i ∈[N], xi = yi.
+(A2) µx = σh−1 and µy = σh−1.
+E.1.2
+AUXILIARY THEOREMS PART 1
+In this subsection, we provide details and proofs of the auxiliary theorems (Theorem S1 and Theo-
+rem S2) that support the proof of Theorem 1.
+
+===== PAGE 23 =====
+Preprint — arXiv
+Theorem S1. Let (X, Y ) be an N-pair configuration, where X = (x1, . . . , xN) ∈(Sh−1)N are iid
+samples from µx and Y = (y1, . . . , yN) ∈(Sh−1)N are iid samples from µy. It holds that:
+lim
+N→∞
+1
+N
+N
+X
+i=1
+LX→Y(xi; Y ) −log(N) = lim
+N→∞
+1
+N
+N
+X
+i=1
+−log
+exp (xi · yi/τ)
+PN
+j=1 exp (xi · yj/τ)
+−log(N)
+= Exi·yi
+h
+−xi · yi
+τ
+i
++ Exi∼µx
+h
+log Eyi∼µy
+h
+exp
+xi · yj
+τ
+ii
+(38)
+Proof. ∀xi ∈X, the X-to-Y alignment of xi can be rewritten as:
+LX→Y(xi; Y ) = −log
+exp (xi · yi/τ)
+P
+j exp (xi · yj/τ)
+= −xi · yi
+τ
++ log
+
+N 1
+N
+N
+X
+j=1
+exp
+xi · yj
+τ
+
+
+
+= −xi · yi
+τ
++ log
+
+1
+N
+N
+X
+j=1
+exp
+xi · yj
+τ
+
+
++ log (N) .
+(39)
+Denote hN(x) and h(x) as:
+hN(x) = log
+
+1
+N
+N
+X
+j=1
+exp
+x · yj
+τ
+
+
+,
+and h(x) = log
+
+Ey∼µy
+h
+exp
+x · y
+τ
+i
+.
+(40)
+Lemma 2 reveals that hN(x) uniformly converges to h(x) almost surely. Thus, we have:
+sup
+x∈Sh−1 |hN(x) −h(x)|
+a.s.
+−−−−→
+N→∞0.
+(41)
+According to the Strong Law of Large Numbers (SLLN), we have:
+1
+N
+N
+X
+i=1
+h (xi)
+a.s.
+−−−−→
+N→∞Ex∼µx[h(x)].
+(42)
+Combining Eq. (41) and Eq. (42), we get:
+1
+N
+N
+X
+i=1
+hN (xi) = 1
+N
+N
+X
+i=1
+h (xi) + 1
+N
+N
+X
+i=1
+(hN (xi) −h (xi))
+a.s.
+−−−−→
+N→∞Ex∼µx[h(x)].
+(43)
+Similarly, by the Strong Law of Large Numbers (SLLN), we have:
+1
+N
+N
+X
+i=1
+−xi · yi
+τ
+a.s.
+−−−−→
+N→∞Exi∼µx[−xi · yi
+τ
+].
+(44)
+Putting Eq. (39), Eq. (43) and Eq. (44) together, the convergent function of 1
+N
+PN
+i=1 LX→Y(xi; Y )
+can be derived as:
+
+===== PAGE 24 =====
+Preprint — arXiv
+lim
+N→∞
+1
+N
+N
+X
+i=1
+LX→Y(xi; Y ) −log(N) = lim
+N→∞
+1
+N
+N
+X
+i=1
+
+−xi · yi
+τ
++ hN(xi)
+
+= Exi·yi
+h
+−xi · yi
+τ
+i
++ Exi∼µx [h(xi)]
+= Exi·yi
+h
+−xi · yi
+τ
+i
++ Exi∼µx
+h
+log Eyj∼µy
+h
+exp
+xi · yj
+τ
+ii
+.
+(45)
+Theorem S2. Let (X, Y ) be an N-pair configuration, where X = (x1, . . . , xN) ∈(Sh−1)N are iid
+samples from µx and Y = (y1, . . . , yN) ∈(Sh−1)N are iid samples from µy. Let ν = h/2 −1, it
+holds that:
+lim
+N→∞
+1
+N
+N
+X
+i=1
+LX→Y(xi; Y ) −log(N)
+= Exi∼µx
+h
+−xi · yi
+τ
+i
++ Exi∼µx
+h
+log Eyi∼µy
+h
+exp
+xi · yj
+τ
+ii
+≥log
+
+Γ (ν + 1) (2τ)νIν
+1
+τ
+
+(46)
+where equality is attained if and only if the following conditions hold:
+(B1) ∀i ∈[N], xi = yi.
+(B2) µx = σh−1 and µy = σh−1.
+Proof. Step 1: We start the proof by find the convergent function of
+1
+N
+PN
+i=1 LX→Y(xi; Y ) as
+N →∞. ∀xi ∈X, as prove in Theorem S1:
+lim
+N→∞
+1
+N
+N
+X
+i=1
+LX→Y(xi; Y ) −log(N) = lim
+N→∞
+1
+N
+N
+X
+i=1
+−log
+exp (xi · yi/τ)
+PN
+j=1 exp (xi · yj/τ)
+−log(N)
+= Exi·yi
+h
+−xi · yi
+τ
+i
++ Exi∼µx
+h
+log Eyi∼µy
+h
+exp
+xi · yj
+τ
+ii
+.
+(47)
+Step 2: Next, we find the minimal value and the optimal condition of convergent function.
+According to the Cauchy-Schwarz inequality, the first term in Eq. (47) can be bounded below:
+Exi·yi
+h
+−xi · yi
+τ
+i
+≥Exi·yi
+
+−∥xi∥∥yi∥
+τ
+
+= −1
+τ .
+(48)
+where equality is attained if and only if there exists a configuration of (X, Y ) such that :
+(B1) ∀i ∈[N], xi = yi.
+Note that condition (B1) implies µx = µy. Applying this condition to the second term in Eq. (47),
+we can transform it as:
+Ex∼µx
+h
+log
+
+Ey∼µy
+h
+exp
+x · y
+τ
+ii
+= Ex∼µ
+h
+log
+
+Ey∼µ
+h
+exp
+x · y
+τ
+ii
+.
+(49)
+Let M(Sh−1) be the set of Borel probability measures in Sh−1. The RHS of Eq. (49) is then a
+functional F[·] : M(Sh−1) →R:
+
+===== PAGE 25 =====
+Preprint — arXiv
+F[µ] = Ex∼µ
+h
+log
+
+Ey∼µ
+h
+exp
+x · y
+τ
+ii
+.
+(50)
+According to Lemma 3, F[µ] is minimized when µ = σh−1 where σh−1 is the uniform measure of
+Sh−1:
+σh−1 = arg min
+µ∈M(Sh−1)
+F[µ].
+(51)
+Therefore, we have:
+F[µ] ≥F[σh−1].
+(52)
+where equality is attained if and only if there exists a configuration of (X, Y ) such that :
+(B2) µx = µy = σh−1
+Let Γ (·) be the Gamma function, Lemma 4 derives that:
+F[σh−1] = Ex∼σh−1
+h
+Ey∼σh−1
+h
+exp
+x · y
+τ
+ii
+= log
+
+Γ
+h
+2
+
+(2τ)
+h
+2 −1I h
+2 −1
+1
+τ
+
+(53)
+Combining Eq. (47), Eq. (48), Eq. (49), Eq. (53), we conclude that:
+lim
+N→∞
+1
+N
+N
+X
+i=1
+LX→Y(xi; Y ) −log(N)
+= Exi∼µx
+h
+−xi · yi
+τ
+i
++ Exi∼µx
+h
+log Eyi∼µy
+h
+exp
+xi · yj
+τ
+ii
+≥−1
+τ + log
+
+Γ
+h
+2
+
+(2τ)
+h
+2 −1I h
+2 −1
+1
+τ
+
+,
+(54)
+where equality is attained if and only if the following conditions hold:
+(B1) ∀i ∈[N], xi = yi.
+(B2) µx = σd−1 and µy = σd−1.
+
+===== PAGE 26 =====
+Preprint — arXiv
+E.1.3
+TECHNICAL LEMMAS PART 1
+In this section, we provide details and proofs of the technical lemmas (technical lemmas (Lemma 1,
+Lemma 2, Lemma 3, Lemma 4) that support the proof of Theorem 1, Theorem S1 and Theorem S2.
+Lemma 1. Let x ∈Sh−1 and Y be an N-point configuration, where Y = (y1, . . . , yN) ∈(Sh−1)N
+are iid samples from µy. ∀τ > 0, define a sequence of functions {gN} : Sh−1 →R as:
+gN(x) = 1
+N
+N
+X
+j=1
+exp
+x · yj
+τ
+
+.
+(55)
+Define a function g : Sh−1 →R as:
+g(x) = Ey∼µy
+h
+exp
+x · y
+τ
+i
+.
+(56)
+It holds that {gN} converges uniformly to g:
+gN(x)
+unif.
+−−−−→
+N→∞g(x).
+(57)
+Proof. Step 1 Boundedness and Lipschitz Property:
+Consider a function class F =
+
+fx(y) = exp
+  x·y
+τ
+
+: x, y ∈Sh−1	
+. Since ∥x∥= ∥y∥= 1, x · y ∈
+[−1, 1], hence ∀fx ∈F, we have:
+|fx(y)| ≤e1/τ.
+(58)
+Therefore, fx(y) is uniformly bounded in y, so is its derivative:
+∥∇xfx(y)∥=
+y
+τ fx(y)
+ ≤1
+τ e1/τ.
+(59)
+Then ∀xk ∈Sh−1,
+|fx(y) −fxk(y)| ≤1
+τ e1/τ =: L.
+(60)
+Thus, fx(y) is Lipschitz in x with constant L = e1/τ
+τ , uniformly in y.
+Step 2 η-Net:
+According to Lemma 5.2 in (Vershynin, 2010), ∀ε > 0 and η =
+ε
+4L, there exists a finite η-net,
+Nη = {x1, x2, . . . , xK} ⊂Sh−1, with cardinality:
+K = |Nη| ≤
+
+1 + 2
+η
+h
+<
+3
+η
+h
+.
+(61)
+∀x ∈Sh−1, ∃xk ∈Nη such that ∥x −xk∥< η. Because fx(y) is L-Lipschitz in x, we have:
+|fx(y) −fxk(y)| ≤L ∥x −xk∥= Lη.
+(62)
+And we also have:
+|gN(x) −gN (xk)| ≤Lη,
+|g(x) −g (xk)| ≤Lη.
+(63)
+
+===== PAGE 27 =====
+Preprint — arXiv
+Step 3 Probability Bound:
+∀xk ∈Nη, the random variables Zj := fxk (yj) are iid and lie in
+
+e−1/τ, e1/τ
+. According to the
+Hoeffding’s inequality:
+P
+
+|gN(xk) −g(xk)| > ε
+2
+
+≤2 exp
+
+−2N(ε/2)2
+(2e1/τ)2
+
+= 2e−cNε2,
+(64)
+where c =
+1
+8e2/τ > 0. Taking a union bound over the η-net:
+P
+
+max
+xk∈Nη |gN(xk) −g(xk)| > ε
+2
+
+≤2Ke−cNε2.
+(65)
+Step 4 Uniform Convergence:
+Since ∀x ∈Sh−1, |gN(x) −g(x)| can be decomposed as:
+|gN(x) −g(x)| ≤|gN(x) −gN (xk)| + |gN (xk) −g (xk)| + |g (xk) −g(x)|
+≤2Lη + max
+xk∈Nη |gN (xk) −g (xk)|
+= ε
+2 + max
+xk∈Nη |gN (xk) −g (xk)| .
+(66)
+Plugging Eq. (65) into Eq. (66), we have:
+P
+
+sup
+x∈Sh−1 |gN(x) −g(x)| > ε
+
+≤P
+
+max
+xk∈Nη |gN(xk) −g(xk)| > ε
+2
+
+≤2Ke−cNε2,
+(67)
+and therefore:
+sup
+x∈Sh−1 |gN(x) −g(x)|
+P
+−−−−→
+N→∞0.
+(68)
+Eq. (67) justifies that:
+∞
+X
+N=1
+P
+
+sup
+x∈Sh−1 |gN(x) −g(x)| > ε
+
+≤2K
+∞
+X
+N=1
+e−cNε2 < ∞.
+(69)
+According to the Borel–Cantelli lemma:
+P
+
+lim sup
+N→∞
+sup
+x∈Sh−1 |gN(x) −g(x)| > ε
+
+= 0.
+(70)
+Therefore:
+sup
+x∈Sh−1 |gN(x) −g(x)|
+a.s.
+−−−−→
+N→∞0.
+(71)
+We conclude now the empirical averages gN (·) converge uniformly in Sh−1 to g (·):
+gN(x)
+unif.
+−−−−→
+N→∞g(x).
+(72)
+
+===== PAGE 28 =====
+Preprint — arXiv
+Lemma 2. Let x ∈Sh−1 and Y be an N-point configuration, where Y = (y1, . . . , yN) ∈(Sh−1)N
+are iid samples from µy. ∀τ > 0, define a sequence of functions {hN} : Sh−1 →R as:
+hN(x) = log
+
+1
+N
+N
+X
+j=1
+exp
+x · yj
+τ
+
+
+.
+(73)
+Define a function h : Sh−1 →R as:
+h(x) = log
+
+Ey∼µy
+h
+exp
+x · y
+τ
+i
+.
+(74)
+It holds that {hN} converges uniformly to h:
+lim
+N→∞hN(x)
+unif.
+−−−−→
+N→∞h(x).
+(75)
+Proof. According to Lemma 1:
+N
+X
+j=1
+exp
+x · yj
+τ
+
+= gN(x)
+unif.
+−−−−→
+N→∞g(x) = Ey∼µy
+h
+exp
+x · y
+τ
+i
+,
+(76)
+and
+sup
+x∈Sh−1 |gN(x) −g(x)|
+a.s.
+−−−−→
+N→∞0.
+(77)
+Because ⟨x, y⟩∈[−1, 1] for unit vectors, exp (x · y/τ) satisfies:
+e−1/τ ≤exp
+x · y
+τ
+
+≤e1/τ.
+(78)
+Hence ∀x, gN(x), g(x) ∈[a, b] with a = e−1/τ > 0, b = e1/τ > 0. In the compact interval [a, b],
+by the mean value theorem, ∀u < v ∈[a, b], ∃u < ξ < v such that:
+| log u −log v| = |u −v|
+ξ
+≤1
+a|u −v| = e1/τ|u −v|.
+(79)
+Thus, the function log (·) is Lipschitz . Therefore:
+sup
+x∈Sh−1 |hN(x) −h(x)| =
+sup
+x∈Sh−1 |log gN(x) −log g(x)| ≤1
+a
+sup
+x∈Sh−1 |gN(x) −g(x)|
+a.s.
+−−−−→
+N→∞0
+(80)
+We conclude now hN (·) converge uniformly in Sh−1 to h (·):
+lim
+N→∞hN(x)
+unif.
+−−−→h(x)
+(81)
+
+===== PAGE 29 =====
+Preprint — arXiv
+Lemma 3. Let M
+ Sh−1
+be the set of Borel probability measures in Sh−1. Let σh−1 ∈M
+ Sh−1
+be the uniform probability measure in Sh−1. ∀x, y ∈Sh−1 and τ > 0, a function f : Sh−1×Sh−1 →
+R+ is defined as:
+f(x, y) = exp
+x · y
+τ
+
+.
+(82)
+∀µ ∈M
+ Sh−1
+, a functional F : M
+ Sh−1
+→R+ is defined as:
+Ff[µ] =
+Z
+Sh−1 log
+Z
+Sh−1 f(x, y)dµ(y)
+
+dµ(x).
+(83)
+It holds that σh−1 is the unique minimizer of F:
+min
+µ∈M(Sh−1) Ff[µ] =
+min
+µ∈M(Sh−1)
+Z
+Sh−1 log
+Z
+Sh−1 f(x, y)dµ(y)
+
+dµ(x).
+(84)
+Proof. Step 1: A change of probability measure.
+Let σ := σh−1 be the uniform probability in Sh−1. By rotational invariance there is a constant c such
+that:
+c := ch,τ(x) =
+Z
+y∈Sh−1 f(x, y)dσ(y),
+(85)
+which is independent of x. ∀x ∈Sh−1. Define a kernel K as:
+K(x, dy) : = f(x, y)
+c
+dσ(y),
+(86)
+so that:
+Z
+y∈Sh−1 K(x, dy) = 1.
+(87)
+Since f(x, y) = f(y, x), exchanging x and y, the following holds:
+σ(dx)K(x, dy) = σ(dy)K(y, dx).
+(88)
+For any measurable A ⊂Sh−1, we have:
+K(x, A) : =
+Z
+y∈A
+f(x, y)
+c
+dσ(y).
+(89)
+Consider a probability distribution µ in Sh−1, define:
+(µK)(A) :=
+Z
+x∈Sh−1 K(x, A)dµ(x)
+=
+Z
+x∈Sh−1
+Z
+y∈A
+f(x, y)
+c
+dσ(y)dµ(x)
+=
+Z
+y∈A
+Z
+x∈Sh−1
+f(x, y)
+c
+dµ(x)dσ(y).
+(90)
+Therefore, µK ≪σ, i.e., µK is absolutely continuous with respect to σ. By Radon–Nikodym
+theorem, we have:
+
+===== PAGE 30 =====
+Preprint — arXiv
+d(µK)
+dσ
+(y) = 1
+c
+Z
+x∈Sh−1 f(x, y)dµ(x).
+(91)
+Note that:
+(σK)(A) =
+Z
+x∈Sh−1 K(x, A)dσ(x)
+=
+Z
+x∈Sh−1
+Z
+y∈A
+f(x, y)
+c
+dσ(y)dσ(x)
+=
+Z
+y∈A
+Z
+x∈Sh−1
+f(x, y)
+c
+dσ(x)dσ(y)
+=
+Z
+y∈A
+dσ(y)
+= σ(A)
+(92)
+According to Eq. (88), exchanging x and y in Eq. (91), we get:
+d(µK)
+dσ
+(x) = 1
+c
+Z
+y∈Sh−1 f(y, x)dµ(y).
+(93)
+And since f(y, x) = f(x, y), then:
+d(µK)
+dσ
+(x) = 1
+c
+Z
+y∈Sh−1 f(x, y)dµ(y).
+(94)
+Step 2: An exact identity for Ff
+Define a (normalized) zonal integral operator T on L2(σ) as:
+(Tρ)(x) = 1
+c
+Z
+Sh−1 f(x, y)ρ(y)dσ(y),
+(95)
+where:
+ρ(x) = dµ
+dσ (x)
+T = ρdµK
+dσ ,
+(96)
+with ρ ≥0 and
+R
+ρdσ = 1. Here, L2(σ) is the Hilbert space of (equivalence classes of) square-
+integrable functions on the sphere with respect to the measure σ. Then Ff[µ] can be rewritten
+as:
+Ff[µ] = log c +
+Z
+ρ log(Tρ)dσ.
+(97)
+Denote:
+F[ρ] :=
+Z
+Sh−1 ρ(x) log(Tρ(x))dσ(x),
+(98)
+then we have:
+Ff[µ] = log c + F[ρ].
+(99)
+
+===== PAGE 31 =====
+Preprint — arXiv
+Step 3: Minimize F[ρ].
+We will minimize F[ρ] over the probability simplex
+
+ρ ≥0,
+R
+ρ = 1
+	
+. Basic facts about T : the
+kernel f(x, y) = e(x·y)/τ is smooth, symmetric, strictly positive and depends only on x · y. Hence:
+• T is a positive, self-adjoint, compact operator on L2(σ);
+• T1 = 1 (since c normalizes it);
+• By the Funk-Hecke theorem/Jentzsch-Perron-Frobenius, the eigensystem of T is constituted
+of the spherical harmonics {Yℓm} with eigenvalues λ0 = 1 > λ1 ≥λ2 ≥· · · > 0. The
+eigenspace corresponding to λ0 has dimension 1 and contains only constant functions.
+• In particular, on the mean-zero subspace L2
+0(σ) =
+
+f :
+R
+fdσ = 0
+	
+all the eigenvalues
+λℓ, ℓ≥1 are strictly positive and bounded from above by λ1 < 1.
+• As a consequence, for any η ∈L2
+0(σ) we have ∥Tη∥L2 ≤λ1∥η∥L2.
+(3.1) First order variation and Euler-Lagrange equation
+Consider a mass-preserving perturbation ρε = ρ + εη with
+R
+ηdσ = 0. Because T is linear,
+d
+dεF [ρε]
+
+ε=0
+=
+Z
+η log(Tρ)dσ +
+Z
+ρTη
+Tρdσ =
+Z
+η
+
+log(Tρ) + T
+ ρ
+Tρ
+
+dσ,
+(100)
+where we used self-adjointness:
+R
+ρ T η
+T ρ =
+R
+ηT(ρ/Tρ). Introduce a Lagrange multiplier λ for the
+constraint
+R
+ρ = 1.
+The stationarity δ
+ F −λ
+R
+ρ
+
+= 0 for all mean-zero η yields the Euler-Lagrange (EL) equation:
+log(Tρ)(x) + T
+ ρ
+Tρ
+
+(x) = λ
+for σ-a.e. x.
+(101)
+We easily check that ρ ≡1 is a critical point.
+If ρ ≡1, then Tρ ≡1, hence log(Tρ) ≡0 and T(ρ/Tρ) = T1 = 1. Thus Eq. (101) holds with
+λ = 1.
+(3.2) Second order variation at the uniform density
+Let ρ ≡1 and perturb ρε = 1 + εη with
+R
+η = 0.
+Differentiate the first-variation formula once more in the same direction η :
+• The directional derivative of log(Tρ) is (Tη)/(Tρ), so at ρ = 1 it is Tη.
+• The map ρ 7→T(ρ/Tρ) has derivative at ρ = 1 :
+D[T(ρ/Tρ)]|ρ=1 [η] = T(η −Tη) = Tη −T(Tη).
+(102)
+Hence the (constrained) second variation is
+δ2F[1; η] =
+Z
+η(Tη + Tη −T(Tη))dσ = 2⟨η, Tη⟩−⟨Tη, Tη⟩.
+(103)
+Use the spectral decomposition η = P
+ℓ≥1,m aℓmYℓm (no ℓ= 0 term because
+R
+η = 0 ). Since
+TYℓm = λℓYℓm,
+δ2F[1; η] =
+X
+ℓ≥1,m
+ 2λℓ−λ2
+ℓ
+
+a2
+ℓm =
+X
+ℓ≥1,m
+λℓ(2 −λℓ) a2
+ℓm.
+(104)
+
+===== PAGE 32 =====
+Preprint — arXiv
+Because 0 < λℓ< 1 for ℓ≥1, each factor λℓ(2 −λℓ) is strictly positive. Therefore:
+δ2F[1; η] > 0
+for every η ∈L2
+0(σ), η ̸= 0.
+(105)
+So ρ ≡1 is a strict local minimizer of F under the mass constraint
+R
+ρdσ = 1.
+(3.3) Uniqueness of the critical point
+Suppose ρ satisfies Eq. (101). Expand ρ in spherical harmonics: ρ = 1 + P
+ℓ≥1,m aℓmYℓm. Since
+Tρ = 1 + P
+ℓ≥1,m λℓaℓmYℓm with 0 < λℓ< 1, the left side of Eq. (101) has a constant term 1 and
+non-constant part
+
+log
+
+1 +
+X
+λℓaℓmYℓm
+
+non-const
+|
+{z
+}
+all harmonics ℓ≥1
++
+X
+λℓaℓmYℓm
+|
+{z
+}
+T (ρ/T ρ) to first order
+.
+(106)
+Project Eq. (101) onto each harmonic Yℓm with ℓ≥1. A standard contraction/implicit-function
+argument (or just comparing coefficients to first order and using that higher-order terms can’t cancel
+all modes simultaneously because |λℓ| < 1 ) forces all aℓm = 0. Thus any solution of (EL) is
+constant; with mass 1 , the only solution is ρ ≡1.
+So ρ ≡1 is the unique critical point of F on the simplex of probability measures on Sh−1.
+(3.4) Global minimality
+Since F is lower semi-continuous for the weak topology on the set M
+ Sh−1
+of probability measures
+on the sphere, a global minimizer exists by compactness. Since any minimizer must satisfy (EL) and
+the only critical point is ρ ≡1, the global minimizer is ρ ≡1, i.e. µ = σ.
+Lemma 4. Let M
+ Sh−1
+be the set of Borel probability measures in Sh−1. Let σh−1 ∈M
+ Sh−1
+be the uniform probability measure in Sh−1. ∀x, y ∈Sh−1 and τ > 0, a function f : Sh−1×Sh−1 →
+R+ is defined as:
+f(x, y) = exp
+x · y
+τ
+
+.
+(107)
+∀µ ∈M
+ Sh−1
+, a functional F : M
+ Sh−1
+→R+ is defined as:
+Ff[µ] =
+Z
+Sh−1 log
+Z
+Sh−1 f(x, y)dµ(y)
+
+dµ(x).
+(108)
+Let Γ (·) be the Gamma function and ν = h/2 −1, it holds that:
+Ff[σh−1] = log
+
+Γ (ν + 1) (2τ)νIν
+1
+τ
+
+.
+(109)
+Proof. Step 1: Rotational Invariance
+Since the measure σh−1 is invariant under orthogonal transformations. For any fixed x ∈Sh−1, the
+inner integral:
+Z
+Sh−1 exp
+x · y
+τ
+
+dσh−1(y),
+(110)
+depends only on the distribution of (x · y), and by rotational symmetry, this integral is independent of
+x. Thus, define:
+
+===== PAGE 33 =====
+Preprint — arXiv
+Zτ :=
+Z
+Sh−1 exp
+x · y
+τ
+
+dσh−1(y),
+(111)
+and Zτ is constant for all x. Since log Zτ is constant and σh−1 is a probability measure, we have:
+Ff [σh−1] =
+Z
+Sh−1 log Zτdσh−1(x) = log Zτ,
+(112)
+Step 2: Compute Zτ
+Without the loss of generality, we assume the coordinate of x as:
+x = eh = (0, . . . , 0, 1).
+(113)
+Then x · y = yh, the last coordinate of y. So:
+Zτ =
+Z
+Sh−1 exp
+yh
+τ
+
+dσh−1(y).
+(114)
+Let t = yh = x · y ∈[−1, 1]. The pushforward of σh−1 under the map y 7→x · y has probability
+density:
+ph (t) =
+Γ
+  h
+2
+
+Γ
+  h−1
+2
+ √π
+ 1 −t2 h−3
+2
+,
+t ∈[−1, 1].
+(115)
+Then:
+Zτ =
+Z 1
+−1
+exp
+ t
+τ
+
+ph (t) dt =
+Γ
+  h
+2
+
+Γ
+  h−1
+2
+ √π
+Z 1
+−1
+et/τ  1 −t2 h−3
+2
+dt.
+(116)
+A classical integral (equivalently, an integral representation of the modified Bessel Iν ) is:
+Z 1
+−1
+eκt  1 −t2ν−1
+2 dt = √πΓ
+
+ν + 1
+2
+  2
+κ
+ν
+Iν(κ),
+κ > 0, ν > −1
+2.
+(117)
+Set: κ = 1
+τ and ν = h−2
+2 , so that ν −1
+2 = h−3
+2 . Then:
+Z 1
+−1
+et/τ  1 −t2 h−3
+2
+dt = √πΓ
+h −1
+2
+
+(2τ)
+h
+2 −1I h
+2 −1
+1
+τ
+
+.
+(118)
+Substitute into Zτ :
+Zτ =
+Γ
+  h
+2
+
+Γ
+  h−1
+2
+ √π · √πΓ
+h −1
+2
+
+(2τ)
+h
+2 −1I h
+2 −1
+1
+τ
+
+.
+(119)
+Simplify:
+Zτ = Γ
+h
+2
+
+(2τ)
+h
+2 −1I h
+2 −1
+1
+τ
+
+.
+(120)
+Step 3: Compute Ff [σh−1]
+
+===== PAGE 34 =====
+Preprint — arXiv
+Ff [σh−1] = log Zτ
+= log
+
+Γ
+h
+2
+
+(2τ)
+h
+2 −1I h
+2 −1
+1
+τ
+
+= log
+
+Γ (ν + 1) (2τ)νIν
+1
+τ
+
+.
+(121)
+
+===== PAGE 35 =====
+Preprint — arXiv
+E.2
+DETAILS OF THEOREM 2
+In this section, we provide proofs of Theorem 2 that is proposed in Sec. 3.3. We also provide
+details and proofs of the auxiliary theorems (Theorem S3 and Theorem S4) and the technical lemmas
+(Lemma 5, Lemma 6, Lemma 7, Lemma 8 and Lemma 9) that support the proof Theorem 2. For
+convenience in reading, let us recall some related notions and definitions.
+• h, N ∈N.
+• Sh−1 =
+
+z ∈Rh : ∥z∥= 1
+	
+.
+• X = (x1, . . . , xN) ∈(Sh−1)N.
+• Y = (y1, . . . , yN) ∈(Sh−1)N.
+• µx = 1
+N
+PN
+i=1 xi.
+• µy = 1
+N
+PN
+i=1 yi.
+• cx =
+µx
+∥µx∥.
+• cy =
+µy
+∥µy∥.
+Definition (Multimodal Contrastive Loss (MCL Loss)). Let (X, Y ) be an N-pair configuration,
+where X = (x1, . . . , xN) ∈(Sh−1)N and Y = (y1, . . . , yN) ∈(Sh−1)N. ∀τ > 0, the multimodal
+contrastive loss LMCL(·, ·) : (Sh−1)N × (Sh−1)N →R is defined as:
+LMCL = 1
+N
+N
+X
+i=1
+Li
+MCL, where Li
+MCL = LX→Y(xi; Y ) + LY→X (yi; X).
+Here, LX→Y is the X-to-Y alignment and LY→X is the Y-to-X alignment, which are defined
+respectively as:
+LX→Y(xi; Y ) = −log
+exp (xi · yi/τ)
+PN
+j=1 exp (xi · yj/τ)
+, LY→X (yi; X) = −log
+exp (xi · yi/τ)
+PN
+j=1 exp (xj · yi/τ)
+.
+Definition(Modality Gap) Let (X, Y ) be an N-pair configuration, where X = (x1, . . . , xN) ∈
+(Sh−1)N and Y = (y1, . . . , yN) ∈(Sh−1)N. The modality gap between X and Y can be expressed
+as the angle between the center representations:
+∆θ = cos−1(cx · cy).
+Definition (vMF Distribution). ∀c ∈Sh−1 and κ ≥0, the probability density of a random h-
+dimensional unit vector z ∼vMF(c, κ) is given by:
+fh(z; c, κ) = Dh(κ)eκc⊤z, where Dh(κ) =
+κν
+(2π)ν+1Iν(κ).
+Let ν = h/2 −1, and Iν (·) : R →R is the modified Bessel function of the first kind of order ν,
+which is defined as:
+Iν(x) =
+∞
+X
+k=0
+1
+k!Γ(ν + k + 1)
+x
+2
+2k+ν
+.
+Definition (Function ˜
+M). ∀κ, τ > 0, a function ˜
+Mκ(·, ·) : [−1, 1] × [0, 1] →R+
+0 is defined as:
+˜
+Mκ (w, t) =
+r
+κ2 + 2κw
+τ
++ t2
+τ 2 .
+
+===== PAGE 36 =====
+Preprint — arXiv
+Definition (Function ˜
+J ). ∀κ, ν, τ > 0, ˜
+J (·, ·, ·; κ, ν) : [−1, 1] × [−1, 1] × [0, 1] →R is defined as:
+˜
+J (w1, w2, t; κ, ν) = −w1
+τ + log
+
+
+Iν
+
+˜
+Mκ(w2, t)
+
+˜
+Mκ(w2, t)ν
+
+−log
+Iν (κ)
+κν
+
+.
+Definition (Function M). ∀κ, τ > 0, a function Mκ (·) : [−1, 1] →R+
+0 is defined as:
+Mκ (w) =
+r
+κ2 + 2κw
+τ
++ 1
+τ 2
+= ˜
+Mκ(w, 1).
+Definition (Function J ). ∀κ, ν, τ > 0, a function J (·; κ, ν) : [−1, 1] →R is defined as:
+J (w; κ, ν) = −w
+τ + log
+Iν (Mκ (w))
+Mκ (w)ν
+
+−log
+Iν (κ)
+κν
+
+= ˜
+J (w, w, 1; κ, ν) .
+Definition (Function ˆ
+J ). ∀κ, ν, τ > 0, a function ˆ
+J (·, ·; κ, ν) : [−1, 1] × [0, 1] →R is defined as:
+ˆ
+J (w, t; κ, ν) = −w
+τ + log
+
+
+Iν
+
+˜
+Mκ(w, t)
+
+˜
+Mκ(w, t)ν
+
+−log
+Iν (κ)
+κν
+
+= ˜
+J (w, w, t; κ, ν) .
+E.2.1
+PROOF OF THEOREM 2
+In this subsection, we provide the proof of Theorem 2. For convenience in reading, we first restate
+Theorem 2 here.
+Theorem 2. [Restate] Let (X, Y ) be an N-pair configuration, where X = (x1, . . . , xN) ∈(Sh−1)N
+are iid samples from µx = vMF(cx, κx), and Y = (y1, . . . , yN) ∈(Sh−1)N are iid samples from
+µy = vMF(cy, κy). Let ν = h/2 −1. Suppose there exists an index i = c such that xc = cx,
+yc = cy. Denote ∆θ = cos−1(cx · cy). For any fixed κx, κy > 0, it holds that:
+lim
+N→∞Lc
+MCL −2 log(N) = J (cos (∆θ) ; κy, ν) + J (cos (∆θ) ; κx, ν)
+= ˜
+J (cos (∆θ) , cos (∆θ) , 1; κy, ν) + ˜
+J (cos (∆θ) , cos (∆θ) , 1; κx, ν)
+≥J (1; κy, ν) + J (1; κx, ν)
+= ˜
+J (1, 1, 1; κy, ν) + ˜
+J (1, 1, 1; κx, ν),
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(A5) ∆θ = cos−1 (cx · cy) = 0.
+Proof. We first decompose limN→∞Lc
+MCL −2 log(N) into two parts:
+lim
+N→∞Lc
+MCL −2 log(N) = lim
+N→∞LX→Y(cx; Y ) −log(N)
++ lim
+N→∞LY→X (cy; X) −log(N).
+(122)
+According to Theorem S4, the convergent function and its lower bound of LX→Y are:
+
+===== PAGE 37 =====
+Preprint — arXiv
+lim
+N→∞LX→Y(cx; Y ) −log(N) = J (cos (∆θ) ; κy, ν) ≥J (1; κy, ν),
+(123)
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(i) ∆θ = cos−1 (cx · cy) = 0.
+This Theorem also holds for LY→X :
+lim
+N→∞LY→X (cy; X) −log(N) = J (cos (∆θ) ; κx, ν) ≥J (1; κx, ν),
+(124)
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(ii) ∆θ = cos−1 (cx · cy) = 0.
+Combining Eq. (123), Eq. (124), and consider J (w; κ, ν) = ˜
+J (w, w, 1; κ, ν), we reach the conclu-
+sion that:
+lim
+N→∞Lc
+MCL −2 log(N) = J (cos (∆θ) ; κy, ν) + J (cos (∆θ) ; κx, ν)
+= ˜
+J (cos (∆θ) , cos (∆θ) , 1; κy, ν) + ˜
+J (cos (∆θ) , cos (∆θ) , 1; κx, ν)
+≥J (1; κy, ν) + J (1; κx, ν)
+= ˜
+J (1, 1, 1; κy, ν) + ˜
+J (1, 1, 1; κx, ν),
+(125)
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(A5) ∆θ = cos−1 (cx · cy) = 0.
+E.2.2
+AUXILIARY THEOREMS PART 2
+In this subsection, we provide details and proofs of the auxiliary theorems (Theorem S3 and Theo-
+rem S4) that support the proof of Theorem 2.
+Theorem S3. Let (X, Y ) be an N-pair configuration, where X = (x1, . . . , xN) ∈(Sh−1)N are
+iid samples from µx = vMF(cx, κx), and Y = (y1, . . . , yN) ∈(Sh−1)N are iid samples from
+µy = vMF(cy, κy). Let ν = h/2 −1 and κy > 0. ∀xi ∈X, denote wi = xi · yi and wxi,cyxi · cy.
+It holds that:
+lim
+N→∞LX→Y(xi; Y ) −log(N) = lim
+N→∞−log
+exp (xi · yi/τ)
+PN
+j=1 exp (xi · yj/τ)
+−log(N)
+= −wi
+τ + log
+ 
+Iν
+ Mκy
+ wxi,cy
+
+Mκy
+ wxi,cy
+ν
+!
+−log
+Iν (κy)
+κνy
+
+= ˜
+J (wi, wxi,cy, 1; κy, ν),
+(126)
+where ∀κ ≥0, τ > 0, Mκ (·) : [−1, 1] →R+
+0 is defined as:
+Mκ (w) =
+r
+κ2 + 2κw
+τ
++ 1
+τ 2 .
+(127)
+and Iν is the modified Bessel function of the first kind of order ν, which is defined as:
+
+===== PAGE 38 =====
+Preprint — arXiv
+Iν (m) =
+∞
+X
+k=0
+1
+k!Γ(ν + k + 1)
+m
+2
+2k+ν
+.
+(128)
+Suppose there exists an index i = c such that xc = cx, yc = cy. Denote wc = cx · cy. It holds that:
+lim
+N→∞LX→Y(cx; Y ) −log(N) = −wc
+τ + log
+ 
+Iν
+ Mκy (wc)
+
+Mκy (wc)ν
+!
+−log
+Iν (κy)
+κνy
+
+= J (wc; κy, ν) = ˜
+J (wc, wc, 1; κy, ν).
+(129)
+Proof. Step 1: We start the proof by find the convergent function of LX→Y(xi; Y ) as N →∞.
+Same with Eq. (39) of Theorem S1, ∀xi ∈X, the X-to-Y alignment of xi can be rewritten as:
+LX→Y(xi; Y ) = −log
+exp (xi · yi/τ)
+P
+j exp (xi · yj/τ)
+= −xi · yi
+τ
++ log
+
+N 1
+N
+N
+X
+j=1
+exp
+xi · yj
+τ
+
+
+
+= −xi · yi
+τ
++ log
+
+1
+N
+N
+X
+j=1
+exp
+xi · yj
+τ
+
+
++ log (N) .
+(130)
+Lemma 2 shows that:
+lim
+N→∞log
+
+1
+N
+N
+X
+j=1
+exp
+xi · yj
+τ
+
+
+= log
+
+Ey∼µy
+h
+exp
+xi · y
+τ
+i
+.
+(131)
+According to the moment-generating function of the vMF distribution:
+Ey∼µy[exp
+xi · y
+τ
+
+] = Ey∼µy
+h
+exp
+xi
+τ · y
+i
+= Iν
+ κ′
+y
+
+Iν (κy)
+κy
+κ′y
+ν
+,
+where κ′
+y = ∥κycy + xi
+τ ∥2.
+(132)
+Then we have:
+lim
+N→∞LX→Y(xi; Y ) −log(N) = −xi · yi
+τ
++ log
+ 
+Iν
+ κ′
+y
+
+κ′ν
+y
+!
+−log
+Iν (κy)
+κνy
+
+.
+(133)
+Step 2: we will transform LX→Y from a function of vectors to a function of angles between vectors.
+Without loss of generality, we assume the coordinate of cy as
+cy = (1, 0, · · · , 0).
+(134)
+Denote cos
+ θxi,cy
+
+= xi · cy. Then xi can be represented as:
+xi =
+ cos
+ θxi,cy
+
+, u sin
+ θxi,cy
+
+=
+ cos
+ θxi,cy
+
+, u2 sin
+ θxi,cy
+
+, u3 sin
+ θxi,cy
+
+, . . . , uh sin
+ θxi,cy
+
+,
+(135)
+where u = (0, u2, u3, . . . , uh) ∼= Sh−2 ∈Sh−1 is a unit vector orthogonal to the first axis with:
+
+===== PAGE 39 =====
+Preprint — arXiv
+∥u∥= 0 + u2
+2 + u2
+3 + · · · + u2
+h = 1.
+(136)
+According to Eq. (134), Eq. (135) and Eq. (136), κ′
+y (in Eq. (132)) can re-rewritten as:
+κ′
+y =
+κycy + xi
+τ
+
+2
+=
+v
+u
+u
+t
+ 
+κy + cos
+ θxi,cy
+
+τ
+!2
++
+h
+X
+i=2
+ 
+sin
+ θxi,cy
+
+ui
+τ
+!2
+=
+v
+u
+u
+t
+ 
+κy + cos
+ θxi,cy
+
+τ
+!2
++ sin2  θxi,cy
+
+τ 2
+=
+s
+κ2y + 2κy cos
+ θxi,cy
+
+τ
++ 1
+τ 2
+= Mκy
+ cos
+ θxi,cy
+
+.
+(137)
+Consider that wi = xi · yi, wxi,cy = cos
+ θxi,cy
+
+= xi · cy, putting Eq. (133) and Eq. (137) together,
+we have:
+lim
+N→∞LX→Y(xi; Y ) −log(N) = −xi · yi
+τ
++ log
+ 
+Iν
+ κ′
+y
+
+κ′ν
+y
+!
+−log
+Iν (κy)
+κνy
+
+= −wi
+τ + log
+ 
+Iν
+ Mκy
+ wxi,cy
+
+Mκy
+ wxi,cy
+ν
+!
+−log
+Iν (κy)
+κνy
+
+= ˜
+J (wi, wxi,cy, 1; κy, ν).
+(138)
+When there exists a data pair i = c such that xc = cx, yc = cy, wi = wxi,cy = wc, then we have:
+lim
+N→∞LX→Y(cx; Y ) −log(N) = −wc
+τ + log
+ 
+Iν
+ Mκy (wc)
+
+Mκy (wc)ν
+!
+−log
+Iν (κy)
+κνy
+
+= J (wc; κy, ν) = ˜
+J (wc, wc, 1; κy, ν).
+(139)
+Theorem S4. Let (X, Y ) be an N-pair configuration, where X = (x1, . . . , xN) ∈(Sh−1)N are
+iid samples from µx = vMF(cx, κx), and Y = (y1, . . . , yN) ∈(Sh−1)N are iid samples from
+µy = vMF(cy, κy). Let ν = h/2 −1. Suppose there exists an index i = c such that xc = cx,
+yc = cy. Denote ∆θ = cos−1(cx · cy). For any fixed κy > 0, it holds that:
+lim
+N→∞LX→Y(cx; Y ) −log(N) = J (cos (∆θ) ; κy, ν) ≥J (1; κy, ν),
+(140)
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(B3) ∆θ = cos−1 (cx · cy) = 0.
+Proof. Step 1: We start the proof by find the convergent function of LX→Y(cx; Y ) as N →∞.
+Denote wc = cx · cy. ∀κy > 0, as prove in Theorem S3:
+
+===== PAGE 40 =====
+Preprint — arXiv
+lim
+N→∞LX→Y(cx; Y ) −log(N) = lim
+N→∞−log
+exp (cx · cy/τ)
+PN
+j=1 exp (cx · yj/τ)
+−log(N)
+= −wc
+τ + log
+ 
+Iν
+ Mκy (wc)
+
+Mκy (wc)ν
+!
+−log
+Iν (κy)
+κνy
+
+= J (wc; κy, ν).
+(141)
+where ∀κ ≥0, τ > 0, J (·; κ, ν) is a function on [−1, 1] and Mκ (·) : [−1, 1] →R+
+0 is defined as:
+Mκ (w) =
+r
+κ2 + 2κw
+τ
++ 1
+τ 2 ,
+(142)
+and Iν is the modified Bessel function of the first kind of order ν, which is defined as:
+Iν (m) =
+∞
+X
+k=0
+1
+k!Γ(ν + k + 1)
+m
+2
+2k+ν
+.
+(143)
+Step 2: Next, we find the minimal value and the optimal condition of convergent function.
+As shown in Lemma 5 (set s = 1), J (w; κ, ν) = ˜J(w, w, 1; κ, ν) is a concave function of w. When
+a function is concave, its minimal value occurs at the endpoints of its domain. Therefore :
+J (wc; κy, ν) ≥min{J (−1; κy, ν), J (1; κy, ν)}.
+(144)
+According to Lemma 6:
+J (−1; κy, ν) ≥J (1; κy, ν).
+(145)
+Therefore, we conclude:
+lim
+N→∞LX→Y(cx; Y ) −log(N) = J (cos (∆θ) ; κy, ν) ≥J (1; κy, ν),
+(146)
+where equality is attained if and only if the following conditions hold:
+(B3) ∆θ = cos−1 (cx · cy) = 0.
+E.2.3
+TECHNICAL LEMMAS PART 2
+In this subsection, we provide details and proofs of technical lemmas (Lemma 5, Lemma 6, Lemma 7,
+Lemma 8 and Lemma 9) that support the proof of Theorem 2, Theorem S3 and Theorem S4.
+Lemma 5. ∀κ, ν, τ > 0 and s ∈[0, 1], a function ˆ
+Jt=s (·; κ, ν) : (−1, 1] →R is defined as:
+ˆ
+Jt=s (w; κ, ν) = −w
+τ + log
+
+
+Iν
+
+˜
+Mt=s (w)
+
+˜
+Mt=s (w)ν
+
+−log
+Iν (κ)
+κν
+
+= ˆ
+J (w, t = s; κ, ν) = ˜J (w, w, t = s; κ, ν) ,
+(147)
+where ˜
+Mt=s (·) : (−1, 1] →R+ is defined as:
+˜
+Mt=s (w) =
+r
+κ2 + 2κw
+τ
++ s2
+τ 2 = ˜
+Mκ (w, t = s) ,
+(148)
+
+===== PAGE 41 =====
+Preprint — arXiv
+and Iν is the modified Bessel function of the first kind of order ν, which is defined as:
+Iν (m) =
+∞
+X
+k=0
+1
+k!Γ(ν + k + 1)
+m
+2
+2k+ν
+.
+(149)
+It holds that, for any fixed s, ˆ
+Jt=s (·) is a strictly decreasing function when w ∈[0, s] and a concave
+function w ∈(−1, 1].
+Proof. Let us first decompose the function ˆ
+Jt=s. Denote two functions G1 (w) and G2 (w) as:
+G1 (w) = −w
+τ ,
+G3 (m) = log (Iν (m)) −ν log (m) ,
+G2 (w) = G3
+
+˜
+Mt=s (w)
+
+= log
+
+Iν
+
+˜
+Mt=s (w)
+
+−ν log
+
+˜
+Mt=s (w)
+
+.
+(150)
+Denote the function G (w) and the constant C as:
+G (w) = G1 (w) + G2 (w) ,
+C = −log
+Iν (κ)
+κν
+
+.
+(151)
+Then the function ˆ
+Jt=s can be written as:
+ˆ
+Jt=s (w; κ, ν) = −w
+τ + log
+
+
+Iν
+
+˜
+Mt=s (w)
+
+˜
+Mt=s (w)ν
+
+−log
+Iν (κ)
+κν
+
+= G (w) + C.
+(152)
+Now, we investigate derivatives of ˆ
+Jt=s.
+The first derivative of G1 is:
+G′
+1 (w) = −1
+τ < 0.
+(153)
+The second derivative of G1 is:
+G′′
+1 (w) = 0.
+(154)
+According to Lemma 7, the first derivative of G3 (m) is:
+G′
+3 (m) = Iν+1 (m)
+Iν (m)
+∈(0, 1).
+(155)
+The derivative of ˜
+Mt=s is:
+
+===== PAGE 42 =====
+Preprint — arXiv
+˜
+M ′
+t=s (w) = d
+dw
+
+κ2
+y + s2
+τ 2 + 2κ
+τ w
+1/2
+= 1
+2
+
+κ2
+y + s2
+τ 2 + 2κ
+τ w
+−1/2
+· 2κ
+τ
+= κ
+τ
+1
+˜
+Mt=s (w)
+> 0.
+(156)
+Then, the first derivative of G2 is:
+G′
+2 (w) = G′
+3
+
+˜
+Mt=s (w)
+
+˜
+M ′
+t=s (w)
+=
+Iν+1
+
+˜
+Mt=s (w)
+
+Iν
+
+˜
+Mt=s (w)
+
+˜
+M ′
+t=s (w)
+= κ
+τ
+1
+˜
+Mt=s (w)
+Iν+1
+
+˜
+Mt=s (w)
+
+Iν
+
+˜
+Mt=s (w)
+ .
+(157)
+Combining Eq. (153) and Eq. (157), we have:
+ˆ
+J ′
+t=s (w; κ, ν) = G′ (w)
+= −1
+τ + κ
+τ
+1
+˜
+Mt=s (w)
+Iν+1
+
+˜
+Mt=s (w)
+
+Iν
+
+˜
+Mt=s (w)
+ .
+(158)
+Since:
+˜
+Mt=s (w) ≥κ ⇔2κw
+τ
++ s2
+τ 2 ≥0
+⇔w ≥−s2
+2κτ
+⇐w ≥0.
+(159)
+thus, when w ∈[0, 1], ˜
+Mt=s (w) ≥κ holds. Combining this and Eq. (155), we have:
+G′ (w) ≤−1
+τ + κ
+τ
+1
+κ
+Iν+1
+
+˜
+Mt=s (w)
+
+Iν
+
+˜
+Mt=s (w)
+
+< −1
+τ + 1
+τ
+= 0.
+(160)
+So we can conclude that, for any fixed s, ˆ
+Jt=s (·) is a strictly decreasing function on [0, s].
+Denote:
+H (m) = 1
+m
+Iν+1 (m)
+Iν (m) ,
+(161)
+according to Lemma 8,
+
+===== PAGE 43 =====
+Preprint — arXiv
+H′ (m) < 0.
+(162)
+Since G′
+2 (w) can be written as:
+G′
+2 (w) = κ
+τ H
+
+˜
+Mt=s (w)
+
+,
+(163)
+combining Eq. (156) and Eq. (163), we have
+G′′
+2 (w) = κ
+τ H′ 
+˜
+Mt=s (w)
+
+˜
+M ′
+t=s (w)
+< 0.
+(164)
+Given Eq. (157) and Eq. (164), we can conclude that G2 is an increasing and concave function.
+Combining Eq. (154) and Eq. (164), we have:
+ˆ
+J ′′
+t=s (w; κ, ν) = G′′ (w)
+= 0 + G′′
+2 (w)
+< 0.
+(165)
+So we can conclude that, for any fixed s, ˆ
+Jt=s (·) is a concave function on (−1, 1].
+Lemma 6. ∀κ, ν, τ > 0, a function J (·) : [−1, 1] →R is defined as:
+J (w) = −w
+τ + log
+Iν (M (w))
+M (w)ν
+
+−log
+Iν (κ)
+κν
+
++ log(N),
+(166)
+where Mκ (·) : [−1, 1] →R is defined as:
+Mκ (w) =
+r
+κ2 + 2κw
+τ
++ 1
+τ 2 ,
+(167)
+and Iν is the modified Bessel function of the first kind of order ν, which is defined as:
+Iν (m) =
+∞
+X
+k=0
+1
+k!Γ(ν + k + 1)
+m
+2
+2k+ν
+.
+(168)
+∀0 < w ≤1, it holds that:
+J (w) < J (−w).
+(169)
+Proof. Let us first re-write Eq. (169) as:
+J (w) < J (−w) ⇔J (−w) −J (w) > 0,
+(170)
+and we will prove the inequality on RHS. Denote:
+a = M(−w) =
+r
+κ2 + 1
+τ 2 −2κw
+τ
+,
+b = M (w) =
+r
+κ2 + 1
+τ 2 + 2κw
+τ
+.
+(171)
+
+===== PAGE 44 =====
+Preprint — arXiv
+In (Eq. (155) of) Lemma 5, it is shown that M (·) is a strictly increasing function. Then, we have:
+0 < a < b,
+(172)
+and then we have:
+J (−w) −J (w) = w
+τ −
+
+−w
+τ
+
++ log
+Iν(a)
+Iν(b)
+
+−ν log
+a
+b
+
+= 2w
+τ
++ log Iν(a)
+Iν(b) −ν log
+a
+b
+
+.
+(173)
+According to Lemma 9:
+log
+Iν(a)
+Iν(b)
+
+−ν log
+a
+b
+
+> (a −b).
+(174)
+Plugging Eq. (174) into Eq. (173), we get:
+J (−w) −J (w) > 2w
+τ
++ (a −b) = f (w) .
+(175)
+Combining Eq. (170) and Eq. (175), we have:
+J (w) ≤J (−w) ⇔f (w) ≥0.
+(176)
+Denote:
+A = κ2 + 1
+τ 2 ,
+B = 2κ
+τ ,
+(177)
+then we have:
+a = M(−w) =
+√
+A −Bw,
+b = M (w) =
+√
+A + Bw.
+(178)
+Observe that:
+b −a = M (w) −M(−w) = (A + Bw) −(A −Bw)
+√
+A + Bw +
+√
+A −Bw
+=
+2Bw
+√
+A + Bw +
+√
+A −Bw,
+(179)
+and then:
+f (w) = 2w
+τ
+
+1 −
+2κ
+√
+A + Bw +
+√
+A −Bw
+
+.
+(180)
+Therefore, we have:
+
+===== PAGE 45 =====
+Preprint — arXiv
+f (w) ≥0 ⇔
+√
+A + Bw +
+√
+A −Bw ≥2κ
+⇔
+√
+A + Bw +
+√
+A −Bw
+2
+≥4κ2
+⇔2A + 2
+p
+A2 −B2w2 ≥4κ2
+⇔
+p
+A2 −B2w2 ≥2κ2 −A
+⇔
+p
+A2 −B2w2 ≥κ2 −1
+τ 2
+(181)
+Case 1: 0 < κ < 1
+τ .
+κ2 −
+1
+τ 2 < 0 and the last equation in Eq. (181) holds.
+Case 2: 0 < 1
+τ ≤κ.
+The Eq. (181) becomes:
+f (w) ≥0 ⇔A2 −B2w2 ≥
+
+κ2 −1
+τ 2
+2
+⇔4κ2
+τ 2 (1 −w2) ≥0
+⇔|w| ≤1.
+(182)
+Since 0 < w ≤1, f (w) ≥0 holds. According to Eq. (176), we conclude that:
+0 < w ≤1 ⇒J (w) ≤J (−w).
+(183)
+Lemma 7. ∀ν > 0, a function G3 : R+
+0 →R is defined as:
+G3 (m) = log (Iν (m)) −ν log (m) .
+(184)
+where Iν is the modified Bessel function of the first kind of order ν, which is defined as:
+Iν (m) =
+∞
+X
+k=0
+1
+k!Γ(ν + k + 1)
+m
+2
+2k+ν
+.
+(185)
+It holds that G3 (·) is a strictly increasing function with G′
+3 (·) ∈(0, 1)
+Proof. The first derivative of G3 is:
+G′
+3 (m) = I′
+ν (m)
+Iν (m) −ν
+m.
+(186)
+According to (Olver, 2010):
+I′
+ν (m) = Iν+1 (m) + ν
+mIν (m) ,
+(187)
+then we have:
+I′
+ν (m)
+Iν (m) −ν
+m = Iν+1 (m)
+Iν (m) .
+(188)
+Plugging Eq. (188) into Eq. (186), we get:
+
+===== PAGE 46 =====
+Preprint — arXiv
+G′
+3 (m) = Iν+1 (m)
+Iν (m) .
+(189)
+Since:
+0 < Iν+1 (m) < Iν (m) ,
+(190)
+therefore:
+G′
+3 (m) = Iν+1 (m)
+Iν (m)
+∈(0, 1).
+(191)
+This shows that G3 (·) is a strictly increasing function with G′
+3 (·) ∈(0, 1).
+Lemma 8. ∀ν > 0, a function H (·) : R+ →R is defined as:
+H (m) = 1
+m
+Iν+1 (m)
+Iν (m) ,
+(192)
+where Iν is the modified Bessel function of the first kind of order ν, which is defined as:
+Iν (m) =
+∞
+X
+k=0
+1
+k!Γ(ν + k + 1)
+m
+2
+2k+ν
+.
+(193)
+It holds that H (m) is a strictly decreasing function.
+Proof. ∀ν, m ∈R+, denote Rν (m) as:
+Rν (m) = Iν+1 (m)
+Iν (m) .
+(194)
+According to (Olver, 2010), we have:
+I′
+ν (m) = Iν+1 (m) + ν
+mIν (m) ,
+(195)
+then:
+R′
+ν (m) = I′
+ν+1 (m) Iν (m) −Iν+1 (m) I′
+ν (m)
+Iν (m)2
+=
+ Iν+2 (m) + ν+1
+m Iν+1 (m)
+
+Iν (m) −Iν+1 (m)
+ Iν+1 (m) + ν
+mIν (m)
+
+Iν (m)2
+= Iν+2 (m) Iν (m) −I2
+ν+1 (m) + 1
+mIν+1 (m) Iν (m)
+Iν (m)2
+= Iν+2 (m) Iν (m) −I2
+ν+1 (m)
+Iν (m)2
++ 1
+mRν (m) .
+(196)
+Since H (m) can be rewritten as:
+H (m) = Rν (m)
+m
+,
+(197)
+
+===== PAGE 47 =====
+Preprint — arXiv
+then:
+H′ (m) = R′
+ν (m) m −Rν (m)
+m2
+= 1
+m
+
+R′
+ν (m) −1
+mRν (m)
+
+= 1
+m
+ 
+Iν+2 (m) Iν (m) −I2
+ν+1 (m)
+Iν (m)2
+!
+.
+(198)
+According to the Tur´an type inequalities for modified Bessel functions (Baricz, 2010), when m > 0:
+Iν+2 (m) Iν (m) −I2
+ν+1 (m)
+Iν (m)2
+< 0,
+(199)
+so
+H′ (m) < 0.
+(200)
+Then we can conclude that H (m) is a strictly decreasing function.
+Lemma 9. ∀ν > 0 and 0 < a < b, it holds that:
+log
+Iν(a)
+Iν(b)
+
+> ν log
+a
+b
+
++ (a −b),
+(201)
+where Iν is the modified Bessel function of the first kind of order ν, which is defined as:
+Iν (m) =
+∞
+X
+k=0
+1
+k!Γ(ν + k + 1)
+m
+2
+2k+ν
+.
+(202)
+Proof. According to (Olver, 2010), ∀x > 0 and 0 < ν1 < ν2 < ∞, we have:
+Iν1(x) > Iν2(x).
+(203)
+Denote a function L as:
+L(x) = log Iν(x) −ν log(x) −x.
+(204)
+According to (Olver, 2010):
+I′
+ν (m) = Iν+1 (m) + ν
+mIν (m) ,
+(205)
+then we have:
+I′
+ν (m)
+Iν (m) −ν
+m = Iν+1 (m)
+Iν (m) .
+(206)
+Taking Eq. (203) and Eq. (206) into account, the derivative of L is:
+L′(x) = I′
+ν(x)
+Iν(x) −ν
+x −1
+= Iν+1(x)
+Iν(x)
+−1
+< 0.
+(207)
+
+===== PAGE 48 =====
+Preprint — arXiv
+Therefore, ∀ν > 0, 0 < b < a, it holds that:
+log(Iν(a)) −ν log(a) −a = L(a)
+> L(a)
+= log(Iν(b)) −ν log(b) −b,
+(208)
+then we have:
+log
+Iν(a)
+Iν(b)
+
+> ν log
+a
+b
+
++ (a −b).
+(209)
+
+===== PAGE 49 =====
+Preprint — arXiv
+E.3
+DETAILS OF THEOREM 3
+In this section, we provide proofs of Theorem 3 that is proposed in Sec. 3.4. We also provide
+details and proofs of the auxiliary theorems (Theorem S5 and Theorem S6) and the technical
+lemmas (Lemma 10, Lemma 11, Lemma 12 and Lemma 13) that support the proof Theorem 3. For
+convenience in reading, let us recall some related notions and definitions.
+• h, N ∈N.
+• Sh−1 =
+
+z ∈Rh : ∥z∥= 1
+	
+.
+• A =
+
+x ∈Rh : nA · x = 0
+	
+where nA is the normal vector of A.
+• B =
+
+y ∈Rh : nB · y = 0
+	
+where nA is the normal vector of B.
+• ϕ = cos−1 
+nx·ny
+∥nx∥·∥ny∥
+
+and 0 < ϕmin ≤ϕ < π
+2 .
+• SX = Sh−1 ∩A =
+
+x ∈Rh : ∥x∥= 1, nA · x = 0
+	 ∼= Sh−2 ∈Sh−1.
+• SY = Sh−1 ∩B =
+
+y ∈Rh : ∥y∥= 1, nB · y = 0
+	 ∼= Sh−2 ∈Sh−1.
+• C = A ∩B.
+• hX = hY = h −1.
+• hC = h −2.
+• PA: the projection matrix of A.
+• PB: the projection matrix of B.
+• PC: the projection matrix of C.
+• eA = {z ∈SX : z ⊥C}.
+• eB = {z ∈SY : z ⊥C}.
+• C⊥= span {eA} ⊕span {eB}
+• Rh = C ⊕C⊥.
+• X = (x1, . . . , xN) ∈(SX)N.
+• Y = (y1, . . . , yN) ∈(SY )N.
+• µx = 1
+N
+PN
+i=1 xi.
+• µy = 1
+N
+PN
+i=1 yi.
+• cx =
+µx
+∥µx∥.
+• cy =
+µy
+∥µy∥.
+Definition (Multimodal Contrastive Loss (MCL Loss)). Let (X, Y ) be an N-pair configuration,
+where X = (x1, . . . , xN) ∈(Sh−1)N and Y = (y1, . . . , yN) ∈(Sh−1)N. ∀τ > 0, the multimodal
+contrastive loss LMCL(·, ·) : (Sh−1)N × (Sh−1)N →R is defined as:
+LMCL = 1
+N
+N
+X
+i=1
+Li
+MCL, where Li
+MCL = LX→Y(xi; Y ) + LY→X (yi; X).
+Here, LX→Y is the X-to-Y alignment and LY→X is the Y-to-X alignment, which are defined
+respectively as:
+LX→Y(xi; Y ) = −log
+exp (xi · yi/τ)
+PN
+j=1 exp (xi · yj/τ)
+, LY→X (yi; X) = −log
+exp (xi · yi/τ)
+PN
+j=1 exp (xj · yi/τ)
+.
+Definition(Modality Gap) Let (X, Y ) be an N-pair configuration, where X = (x1, . . . , xN) ∈
+(Sh−1)N and Y = (y1, . . . , yN) ∈(Sh−1)N. The modality gap between X and Y can be expressed
+as the angle between the center representations:
+
+===== PAGE 50 =====
+Preprint — arXiv
+∆θ = cos−1(cx · cy).
+Definition (vMF Distribution). ∀c ∈Sh−1 and κ ≥0, the probability density of a random h-
+dimensional unit vector z ∼vMF(c, κ) is given by:
+fh(z; c, κ) = Dh(κ)eκc⊤z, where Dh(κ) =
+κν
+(2π)ν+1Iν(κ).
+Let ν = h/2 −1, and Iν (·) : R →R is the modified Bessel function of the first kind of order ν,
+which is defined as:
+Iν(x) =
+∞
+X
+k=0
+1
+k!Γ(ν + k + 1)
+x
+2
+2k+ν
+.
+Definition (Function ˜
+M). ∀κ, τ > 0, a function ˜
+Mκ(·, ·) : [−1, 1] × [0, 1] →R+
+0 is defined as:
+˜
+Mκ (w, t) =
+r
+κ2 + 2κw
+τ
++ t2
+τ 2 .
+Definition (Function ˜
+J ). ∀κ, ν, τ > 0, ˜
+J (·, ·, ·; κ, ν) : [−1, 1] × [−1, 1] × [0, 1] →R is defined as:
+˜
+J (w1, w2, t; κ, ν) = −w1
+τ + log
+
+
+Iν
+
+˜
+Mκ(w2, t)
+
+˜
+Mκ(w2, t)ν
+
+−log
+Iν (κ)
+κν
+
+.
+Definition (Function M). ∀κ, τ > 0, a function Mκ (·) : [−1, 1] →R+
+0 is defined as:
+Mκ (w) =
+r
+κ2 + 2κw
+τ
++ 1
+τ 2
+= ˜
+Mκ(w, 1).
+Definition (Function J ). ∀κ, ν, τ > 0, a function J (·; κ, ν) : [−1, 1] →R is defined as:
+J (w; κ, ν) = −w
+τ + log
+Iν (Mκ (w))
+Mκ (w)ν
+
+−log
+Iν (κ)
+κν
+
+= ˜
+J (w, w, 1; κ, ν) .
+Definition (Function ˜
+M). ∀κ, τ > 0, a function ˜
+Mκ(·, ·) : [−1, 1] × [0, 1] →R+
+0 is defined as:
+˜
+Mκ (w, t) = ˜
+Mκ (w, t) .
+Definition (Function ˆ
+J ). ∀κ, ν, τ > 0, a function ˆ
+J (·, ·; κ, ν) : [−1, 1] × [0, 1] →R is defined as:
+ˆ
+J (w, t; κ, ν) = −w
+τ + log
+
+
+Iν
+
+˜
+Mκ(w, t)
+
+˜
+Mκ(w, t)ν
+
+−log
+Iν (κ)
+κν
+
+= ˜
+J (w, w, t; κ, ν) .
+
+===== PAGE 51 =====
+Preprint — arXiv
+E.3.1
+PROOF OF THEOREM 3
+In this subsection, we provide the proof of Theorem 3. For convenience in reading, we first restate
+Theorem 3 here.
+Theorem 3. [Restate] Let (X, Y ) be an N-pair configuration, where X = (x1, . . . , xN) ∈(SX\C)N
+are iid samples from µx = vMF(cx, κx), and Y = (y1, . . . , yN) ∈(SY \ C)N are iid samples from
+µy = vMF(cy, κy). Let ˜ν = (h −1)/2 −1. Suppose there exists an index i = c such that xc = cx,
+yc = cy. Denote ∆θ = cos−1(cx · cy) and assume that cx, cy /∈C with cx · cy > 0. For any fixed
+κx, κy > 0, it holds that:
+lim
+N→∞Lc
+MCL −2 log(N)
+= ˜
+J (cos (∆θ) , cos (∆θ) , ∥PBcx∥; κy, ˜ν) + ˜
+J (cos (∆θ) , cos (∆θ) , ∥PAcy∥; κx, ˜ν)
+≥˜
+J (cos (ϕmin) , cos (ϕmin) , cos (ϕmin) ; κy, ˜ν) + ˜
+J (cos (ϕmin) , cos (ϕmin) , cos (ϕmin) ; κx, ˜ν),
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(A6) cx ⊥C and cy ⊥C.
+(A7) ∆θ = cos−1 (cx · cy) = ϕmin.
+Proof. We first decompose limN→∞Lc
+MCL −2 log(N) into two parts:
+lim
+N→∞Lc
+MCL −2 log(N) = lim
+N→∞LX→Y(cx; Y ) −log(N)
++ lim
+N→∞LY→X (cy; X) −log(N).
+(210)
+Set:
+ˆ
+J (w, t; κ, ν) = ˜
+J (w, w, t; κ, ν),
+˜ν = ˜ν,
+(211)
+According to Theorem S6, the convergent function and its lower bound of LX→Y are:
+lim
+N→∞LX→Y(cx; Y ) −log(N) = ˆ
+J (cos (∆θ) , ∥PBcx∥; κy, ˜ν)
+≥ˆ
+J (∥PAcy∥, ∥PAcy∥, cos (ϕ) ; κy, ˜ν).
+(212)
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(i) cx ⊥C.
+(ii) cx =
+PAcy
+∥PAcy∥.
+This Theorem also holds for LY→X :
+lim
+N→∞LY→X (cy; X) −log(N) = ˆ
+J (cos (∆θ) , ∥PAcy∥; κx, ˜ν)
+≥ˆ
+J (∥PBcx∥, ∥PBcx∥, cos (ϕ) ; κx, ˜ν).
+(213)
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(iii) cy ⊥C.
+(iv) cy =
+PBcx
+∥PBcx∥.
+
+===== PAGE 52 =====
+Preprint — arXiv
+According to Lemma 13, for some λx, λy > 0 such that the projections of x and y are collinear with
+the other vector:
+(1) The orthogonal projection of x on B is a scalar multiple of y:
+PBx = λxy,
+λx ̸= 0,
+(2) The orthogonal projection of y on A is a scalar multiple of x:
+PAy = λyx,
+λy ̸= 0,
+if and only if the following condition holds:
+(v) Either x ⊥C and y ⊥C, or x = ±y ∈C.
+Since cx, cy /∈C, there is only one configuration in (v) that satisfies (ii) + (iv), that is cx ⊥C and
+cy ⊥C. In this case, Lemma 13 shows that:
+cos (∆θ) = cos (ϕ) ≥cos (ϕmin) ,
+∥PAcy∥= ∥PBcx∥= cos (ϕ) ,
+PBcx = cos (ϕ) cy,
+PAcy = cos (ϕ) cx.
+(214)
+Combining Eq. (212), Eq. (213) and Eq. (214), we have:
+lim
+N→∞Lc
+MCL −2 log(N) = ˆ
+J (cos (∆θ) , ∥PBcx∥; κy, ˜ν) + ˆ
+J (cos (∆θ) , ∥PAcy∥; κx, ˜ν)
+≥ˆ
+J (cos (ϕ) , cos (ϕ) ; κy, ˜ν) + ˆ
+J (cos (ϕ) , cos (ϕ) ; κx, ˜ν).
+(215)
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(A6) cx ⊥C and cy ⊥C.
+Since Lemma 11 shows that ˆ
+J (cos (ϕ) , cos (ϕ) ; κ, ˜ν) is a strictly decreasing function of cos (ϕ), we
+have:
+lim
+N→∞Lc
+MCL −2 log(N) = ˆ
+J (cos (∆θ) , ∥PBcx∥; κy, ˜ν) + ˆ
+J (cos (∆θ) , ∥PAcy∥; κx, ˜ν)
+≥ˆ
+J (cos (ϕ) , cos (ϕ) ; κy, ˜ν) + ˆ
+J (cos (ϕ) , cos (ϕ) ; κx, ˜ν)
+≥ˆ
+J (cos (ϕmin) , cos (ϕmin) ; κy, ˜ν) + ˆ
+J (cos (ϕmin) , cos (ϕmin) ; κx, ˜ν),
+(216)
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(A7) ∆θ = cos−1 (cx · cy) = ϕmin.
+Replacing ˆ
+J (w, t; κ, ν) with ˜
+J (w, w, t; κ, ν), we conclude that:
+lim
+N→∞Lc
+MCL −2 log(N)
+= ˜
+J (cos (∆θ) , cos (∆θ) , ∥PBcx∥; κy, ˜ν) + ˜
+J (cos (∆θ) , cos (∆θ) , ∥PAcy∥; κx, ˜ν)
+≥˜
+J (cos (∆θ) , cos (∆θ) , cos (∆θ) ; κy, ˜ν) + ˜
+J (cos (∆θ) , cos (∆θ) , cos (∆θ) ; κx, ˜ν)
+≥˜
+J (cos (ϕmin) , cos (ϕmin) , cos (ϕmin) ; κy, ˜ν) + ˜
+J (cos (ϕmin) , cos (ϕmin) , cos (ϕmin) ; κx, ˜ν),
+(217)
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+
+===== PAGE 53 =====
+Preprint — arXiv
+(A6) cx ⊥C and cy ⊥C.
+(A7) ∆θ = cos−1 (cx · cy) = ϕmin.
+E.3.2
+AUXILIARY THEOREMS PART 3
+In this subsection, we provide details and proofs of the auxiliary theorems (Theorem S5 and Theo-
+rem S6) that support the proof of Theorem 3.
+Theorem S5. Let (X, Y ) be an N-pair configuration, where X = (x1, . . . , xN) ∈(SX \ C)N
+are iid samples from µx = vMF(cx, κx), and Y = (y1, . . . , yN) ∈(SY \ C)N are iid samples
+from µy = vMF(cy, κy). Let ˜ν = (h −1)/2 −1 and κy > 0. ∀xi ∈X, denote wi = xi · yi and
+wxi,cy = xi · cy. It holds that:
+lim
+N→∞LX→Y(xi; Y ) −log(N) = lim
+N→∞−log
+exp (xi · yi/τ)
+PN
+j=1 exp (xi · yj/τ)
+−log(N)
+= −wi
+τ + log
+
+
+I˜ν
+
+˜
+Mκy
+ wxi,cy, ∥PBxi∥
+
+˜
+Mκy
+ wxi,cy, ∥PBxi∥
+˜ν
+
+−log
+I˜ν (κy)
+κ˜νy
+
+= ˜
+J
+ wi, wxi,cy, ∥PBxi∥; κ, ˜ν
+
+,
+(218)
+where ∀κ, τ > 0, ˜
+Mκ(·, ·) : [−1, 1] × [0, 1] →R+
+0 is defined as:
+˜
+Mκ (w, t) =
+r
+κ2 + 2κw
+τ
++ t2
+τ 2 ,
+(219)
+and Iν is the modified Bessel function of the first kind of order ν, which is defined as:
+Iν (m) =
+∞
+X
+k=0
+1
+k!Γ(ν + k + 1)
+m
+2
+2k+ν
+.
+(220)
+Suppose there exists an index i = c such that xc = cx, yc = cy. Denote wc = cx · cy. It holds that:
+lim
+N→∞LX→Y(cx; Y ) −log(N) = −wc
+τ + log
+
+
+I˜ν
+
+˜
+Mκy (wc, ∥PBcx∥)
+
+˜
+Mκy (wc, ∥PBcx∥)˜ν
+
+−log
+I˜ν (κy)
+κ˜νy
+
+= ˆ
+J (wc, ∥PBcx∥; κy, ˜ν) = ˜
+J (wc, wc, ∥PBxi∥; κ, ˜ν) .
+(221)
+Proof. Step 1: We start the proof by find the convergent function of LX→Y(xi; Y ) as N →∞.
+Same with Eq. (39) of Theorem S1, ∀xi ∈X, the X-to-Y alignment of xi can be rewritten as:
+LX→Y(xi; Y ) = −log
+exp (xi · yi/τ)
+P
+j exp (xi · yj/τ)
+= −xi · yi
+τ
++ log
+
+N 1
+N
+N
+X
+j=1
+exp
+xi · yj
+τ
+
+
+
+= −xi · yi
+τ
++ log
+
+1
+N
+N
+X
+j=1
+exp
+xi · yj
+τ
+
+
++ log (N) .
+(222)
+
+===== PAGE 54 =====
+Preprint — arXiv
+Lemma 2 shows that:
+lim
+N→∞log
+
+1
+N
+N
+X
+j=1
+exp
+xi · yj
+τ
+
+
+= log
+
+Ey∼µy
+h
+exp
+xi · y
+τ
+i
+.
+(223)
+According to the moment-generating function of the vMF distribution:
+Ey∼µy[exp
+xi · y
+τ
+
+] = Ey∼µy
+h
+exp
+xi
+τ · y
+i
+= I˜ν
+ ˜κ′
+y
+
+I˜ν (κy)
+κy
+˜κ′y
+˜ν
+,
+where ˜κ′
+y = ∥κycy + PBxi
+τ
+∥2.
+(224)
+Then we have:
+lim
+N→∞LX→Y(xi; Y ) −log(N) = −xi · yi
+τ
++ log
+ 
+I˜ν
+ ˜κ′
+y
+
+˜κ
+′˜ν
+y
+!
+−log
+I˜ν (κy)
+κ˜νy
+
+.
+(225)
+Step 2: we will transform LX→Y from a function of vectors to a function of angles between vectors.
+Without loss of generality, we assume the coordinate of cy as
+cy = (1, 0, · · · , 0),
+(226)
+the hyperplane B as:
+B =
+
+x ∈Rh : nA · x = 0
+	
+,
+where nB = (0, 0, · · · , 1).
+(227)
+Let ˆxi = PBxi, then we have:
+cos
+ θxi,cy
+
+= xi · cy = PBxi · cy = ˆxi · cy.
+(228)
+Define:
+cos
+
+ˆθxi,cy
+
+=
+ˆxi
+∥ˆxi∥· cy =
+PBxi
+∥PBxi∥· cy,
+(229)
+then we have:
+∥PBxi∥cos
+
+ˆθxi,cy
+
+= PBxi · cy = cos
+ θxi,cy
+
+.
+(230)
+And ˆxi can be represented as:
+ˆxi = ∥PBxi∥
+
+cos
+
+ˆθxi,cy
+
+, u sin
+
+ˆθxi,cy
+
+= ∥PBxi∥
+
+cos
+
+ˆθxi,cy
+
+, u2 sin
+
+ˆθxi,cy
+
+, u3 sin
+
+ˆθxi,cy
+
+, . . . , uh−1 sin
+
+ˆθxi,cy
+
+, 0
+
+,
+(231)
+where u = (0, u2, u3, . . . , uh−1, 0) ∼= Sh−3 ∈Sh−1 is a unit vector orthogonal to the first and the
+last axes with:
+∥u∥= 0 + u2
+2 + u2
+3 + · · · + u2
+h−1 + 0 = 1.
+(232)
+
+===== PAGE 55 =====
+Preprint — arXiv
+According to Eq. (226), Eq. (231) and Eq. (232), ˜κ′
+y (in Eq. (224)) can re-rewritten as:
+˜κ′
+y =
+κycy + xi
+τ
+
+2
+=
+v
+u
+u
+u
+t
+
+κy +
+∥PBxi∥cos
+
+ˆθxi,cy
+
+τ
+
+
+2
++
+h−1
+X
+i=2
+
+
+∥PBxi∥sin
+
+ˆθxi,cy
+
+ui
+τ
+
+
+2
+=
+v
+u
+u
+u
+t
+
+κy +
+∥PBxi∥cos
+
+ˆθxi,cy
+
+τ
+
+
+2
++
+∥PBxi∥2 sin2 
+ˆθxi,cy
+
+τ 2
+=
+v
+u
+u
+t
+κ2y +
+2κy∥PBxi∥cos
+
+ˆθxi,cy
+
+τ
++ ∥PBxi∥2
+τ 2
+=
+s
+κ2y + 2κy cos
+ θxi,cy
+
+τ
++ ∥PBxi∥2
+τ 2
+= ˜
+Mκy
+ cos
+ θxi,cy
+
+, ∥PBxi∥
+
+.
+(233)
+Consider that wi = xi · yi, wxi,cy = cos
+ θxi,cy
+
+= xi · cy, putting Eq. (225) and Eq. (233) together,
+we have:
+lim
+N→∞LX→Y(xi; Y ) −log(N) = −xi · yi
+τ
++ log
+ 
+I˜ν
+ ˜κ′
+y
+
+˜κ
+′˜ν
+y
+!
+−log
+I˜ν (κy)
+κ˜νy
+
+= −wi
+τ + log
+
+
+I˜ν
+
+˜
+Mκy
+ wxi,cy, ∥PBxi∥
+
+˜
+Mκy
+ wxi,cy, ∥PBxi∥
+˜ν
+
+−log
+I˜ν (κy)
+κ˜νy
+
+= ˜
+J
+ wi, wxi,cy, ∥PBxi∥; κ, ˜ν
+
+.
+(234)
+When there exists a data pair i = c such that xc = cx, yc = cy, wi = wxi,cy = wc, then we have:
+lim
+N→∞LX→Y(cx; Y ) −log(N) = −wc
+τ + log
+
+
+I˜ν
+
+˜
+Mκy (wc, ∥PBcx∥)
+
+˜
+Mκy (wc, ∥PBcx∥)˜ν
+
+−log
+I˜ν (κy)
+κ˜νy
+
+= ˆ
+J (wc, ∥PBcx∥; κy, ˜ν) = ˜
+J (wc, wc, ∥PBxi∥; κ, ˜ν) .
+(235)
+Theorem S6. Let (X, Y ) be an N-pair configuration, where X = (x1, . . . , xN) ∈(SX \ C)N are
+iid samples from µx = vMF(cx, κx), and Y = (y1, . . . , yN) ∈(SY \ C)N are iid samples from
+µy = vMF(cy, κy). Let ˜ν = (h −1)/2 −1. Suppose there exists an index i = c such that xc = cx,
+yc = cy. Denote ∆θ = cos−1(cx · cy) and assume that cx, cy /∈C with cx · cy > 0. For any fixed
+κx, κy > 0 and ∀ϕ ∈[0, π
+2 ], it holds that:
+lim
+N→∞LX→Y(cx; Y ) −log(N) = ˆ
+J (wc, ∥PBcx∥; κy, ˜ν) ≥ˆ
+J (∥PAcy∥, cos (ϕ) ; κy, ˜ν),
+(236)
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(B4) cx ⊥C.
+
+===== PAGE 56 =====
+Preprint — arXiv
+(B5) cx =
+PAcy
+∥PAcy∥.
+Proof. Step 1: Similarly to the proof of Theorem S4 in Sec. E.2.2, we start the proof by finding
+the convergent function of LX→Y(cx; Y ) as N →∞. Denote wc = cx · cy. ∀κy > 0, as proven
+in Theorem S5:
+lim
+N→∞LX→Y(cx; Y ) −log(N) = lim
+N→∞−log
+exp (cx · cy/τ)
+PN
+j=1 exp (cx · yj/τ)
+−log(N)
+= −wc
+τ + log
+
+
+I˜ν
+
+˜
+Mκy (wc, ∥PBcx∥)
+
+˜
+Mκy (wc, ∥PBcx∥)˜ν
+
+−log
+I˜ν (κy)
+κ˜νy
+
+= ˆ
+J (wc, ∥PBcx∥; κy, ˜ν),
+(237)
+where ∀κ, τ > 0, ˆ
+J (·, ·; κ, ˜ν) is a function on [−1, 1] × [0, 1] and ˜
+Mκ(·, ·) : [−1, 1] × [0, 1] →R+
+0
+is defined as:
+˜
+Mκ (w, t) =
+r
+κ2 + 2κw
+τ
++ t2
+τ 2 .
+(238)
+and Iν is the modified Bessel function of the first kind of order ν, which is defined as:
+Iν (m) =
+∞
+X
+k=0
+1
+k!Γ(ν + k + 1)
+m
+2
+2k+ν
+.
+(239)
+Step 2: Next, we find the minimal value and the optimal condition of convergent function.
+∀cx ∈SX, ϕ ∈[0, π
+2 ] it holds that:
+0 ≤cos (ϕ) ≤∥PBcx∥≤1.
+(240)
+As shown in Lemma 10, ∀wc ∈[0, 1], ˆ
+J (w = wc, t; κy, ˜ν) is a strictly increasing function of t on
+(0, 1]. Therefore, it holds that:
+ˆ
+J (wc, cos (ϕ) ; κy, ˜ν) ≤ˆ
+J (wc, ∥PBcx∥; κy, ˜ν) ≤ˆ
+J (wc, 1; κy, ˜ν).
+(241)
+where equality in the above chain holds if and only if the following conditions are satisfied:
+(i) The first inequality becomes equality: cx ⊥C.
+(ii) The second inequality becomes equality: cx ∈C.
+According to Lemma 5 (set s = cos (ϕ)), ˆ
+J (wc, cos (ϕ) ; κy, ˜ν) is a strictly decreasing function on
+wc when wc ≥0. Also, Lemma 12 shows that:
+−∥PAcy∥≤wc ≤∥PAcy∥,
+(242)
+where
+0 ≤cos (ϕ) < ∥PAcy∥< 1.
+(243)
+Therefore, when 0 ≤wc ≤∥PAcy∥, it holds that:
+
+===== PAGE 57 =====
+Preprint — arXiv
+ˆ
+J (wc, cos (ϕ) ; κy, ˜ν) ≥ˆ
+J (∥PAcy∥, cos (ϕ) ; κy, ˜ν),
+(244)
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(iii) cx =
+PAcy
+∥PAcy∥.
+Combining Eq. (237), Eq. (241) and Eq. (244), we conclude:
+lim
+N→∞LX→Y(cx; Y ) −log(N) = ˆ
+J (wc, ∥PBcx∥; κy, ˜ν) ≥ˆ
+J (∥PAcy∥, cos (ϕ) ; κy, ˜ν),
+(245)
+and equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(B4) cx ⊥C.
+(B5) cx =
+PAcy
+∥PAcy∥.
+E.3.3
+TECHNICAL LEMMAS PART 3
+In this subsection, we provide details and proofs of technical lemmas (Lemma 10, Lemma 11,
+Lemma 12 and Lemma 13) that support the proof of Theorem 3, Theorem S5 and Theorem S6.
+Lemma 10. ∀κ, ν, τ > 0 and wc ∈[0, 1], a function ˆ
+Jt=s (·; κ, ν) : (0, 1] →R is defined as:
+ˆ
+Jw=ws (t; κ, ν) = −ws
+τ + log
+
+
+Iν
+
+˜
+Mw=ws (t)
+
+˜
+Mκ (t)ν
+
+−log
+Iν (κ)
+κν
+
+= ˆ
+J (w = ws, t; κ, ν) = ˜J (w = ws, w = ws, t; κ, ν) ,
+(246)
+where ˜
+Mκ (·) : (0, 1] →R+ is defined as:
+˜
+Mw=ws (t) =
+r
+κ2 + 2κws
+τ
++ t2
+τ 2 = ˜
+Mκ (w = ws, t) ,
+(247)
+and Iν is the modified Bessel function of the first kind of order ν, which is defined as:
+Iν (m) =
+∞
+X
+k=0
+1
+k!Γ(ν + k + 1)
+m
+2
+2k+ν
+.
+(248)
+It holds that, for any fixed ws, ˆ
+Jw=ws (·) is a strictly increasing function on (0, 1].
+Proof. Let us first decompose the function J . Denote a constant and a function C1 and G2 (t) as:
+C1 = −ws
+τ ,
+G3 (m) = log (Iν (m)) −ν log (m) ,
+G2 (t) = G3
+
+˜
+Mw=ws (t)
+
+= log
+
+Iν
+
+˜
+Mw=ws (t)
+
+−ν log
+
+˜
+Mw=ws (t)
+
+.
+(249)
+
+===== PAGE 58 =====
+Preprint — arXiv
+Denote the function G (t) and the constant C as:
+G (t) = C1 + G2 (t) ,
+C = −log
+Iν (κ)
+κν
+
+.
+(250)
+Then the function ˆ
+Jw=ws can be written as:
+ˆ
+Jw=ws (t; κ, ν) = −ws
+τ + log
+
+
+Iν
+
+˜
+Mw=ws (t)
+
+˜
+Mw=ws (t)ν
+
+−log
+Iν (κ)
+κν
+
+= G (t) + C.
+(251)
+Now, we investigate derivatives of ˆ
+Jw=ws.
+According to Lemma 7, the first derivative of G3 (m) is:
+G′
+3 (m) = Iν+1 (m)
+Iν (m)
+∈(0, 1).
+(252)
+The derivative of ˜
+Mw=ws is:
+˜
+M ′
+w=ws (t) = d
+dt
+
+κ2 + 2κws
+τ
++ t2
+τ 2
+1/2
+= 1
+2
+
+κ2 + 2κws
+τ
++ t2
+τ 2
+−1/2
+· 2 t
+τ 2
+= t
+τ 2
+1
+˜
+Mw=ws (t)
+> 0.
+(253)
+Then, the first derivative of G2 is:
+G′
+2 (t) = G′
+3
+
+˜
+Mw=ws (t)
+
+˜
+M ′
+w=ws (t)
+=
+Iν+1
+
+˜
+Mw=ws (t)
+
+Iν
+
+˜
+Mw=ws (t)
+
+˜
+M ′
+w=ws (t)
+= t
+τ 2
+1
+˜
+Mw=ws (t)
+Iν+1
+
+˜
+Mw=ws (t)
+
+Iν
+
+˜
+Mw=ws (t)
+
+> 0.
+(254)
+Therefore, we have:
+ˆ
+J ′
+w=ws (t; κ, ν) = G′ (t) = G′
+2 (t)
+= t
+τ 2
+1
+˜
+Mw=ws (t)
+Iν+1
+
+˜
+Mw=ws (t)
+
+Iν
+
+˜
+Mw=ws (t)
+
+> 0.
+(255)
+So we can conclude that, for any fixed ws, ˆ
+Jw=ws (·) is a strictly increasing function on (0, 1].
+
+===== PAGE 59 =====
+Preprint — arXiv
+Lemma 11. ∀κ, ν, τ > 0, a function ˆ
+J (·; κ, ν) : [−1, 1] →R is defined as:
+ˆ
+Jt=w (w; κ, ν) = −w
+τ + log
+
+
+Iν
+
+˜
+Mt=w (w)
+
+˜
+Mt=w (w)ν
+
+−log
+Iν (κ)
+κν
+
+= ˆ
+J (w, t = w; κ, ν) = ˜J (w, w, t = w; κ, ν) ,
+(256)
+where ˜
+Mt=w (·) : [−1, 1] →R+ is defined as:
+˜
+Mt=w (w) =
+r
+κ2 + 2κw
+τ
++ w2
+τ 2 = |κ + w
+τ | = ˜
+Mκ (w, t = w) ,
+(257)
+and Iν is the modified Bessel function of the first kind of order ν, which is defined as:
+Iν (m) =
+∞
+X
+k=0
+1
+k!Γ(ν + k + 1)
+m
+2
+2k+ν
+.
+(258)
+It holds that ˆ
+Jt=w (·) is a strictly decreasing function when w ∈[0, 1].
+Proof. Let us first decompose the function ˆ
+Jt=w. Denote the functions G1 (w) and G2 (w) as:
+G1 (w) = −w
+τ ,
+G3 (m) = log (Iν (m)) −ν log (m) ,
+G2 (w) = G3
+
+˜
+Mt=w (w)
+
+= log
+
+Iν
+
+˜
+Mt=w (w)
+
+−ν log
+
+˜
+Mt=w (w)
+
+.
+(259)
+Denote the function G (w) and the constant C as:
+G (w) = G1 (w) + G2 (w) ,
+C = −log
+Iν (κ)
+κν
+
+.
+(260)
+Then the function ˆ
+Jt=w can be written as:
+ˆ
+Jt=w (w; κ, ν) = −w
+τ + log
+
+
+Iν
+
+˜
+Mt=w (w)
+
+˜
+Mt=w (w)ν
+
+−log
+Iν (κ)
+κν
+
+= G (w) + C.
+(261)
+Now, we investigate derivatives of ˆ
+Jt=w.
+The first derivative of G1 is:
+G′
+1 (w) = −1
+τ < 0.
+(262)
+According to Lemma 7, the first derivative of G3 (m) is:
+
+===== PAGE 60 =====
+Preprint — arXiv
+G′
+3 (m) = Iν+1 (m)
+Iν (m)
+∈(0, 1).
+(263)
+When w ∈[0, 1], the derivative of ˜
+Mt=w is:
+˜
+M ′
+t=w (w) = 1
+τ .
+(264)
+Then, the first derivative of G2 is:
+G′
+2 (w) = G′
+3
+
+˜
+Mt=w (w)
+
+˜
+M ′
+t=w (w)
+=
+Iν+1
+
+˜
+Mt=w (w)
+
+Iν
+
+˜
+Mt=w (w)
+
+˜
+M ′
+t=w (w)
+= 1
+τ
+Iν+1
+
+˜
+Mt=w (w)
+
+Iν
+
+˜
+Mt=w (w)
+ .
+(265)
+Combining Eq. (262), Eq. (263) and Eq. (265), we have:
+ˆ
+J ′
+t=w (w; κ, ν) = G′ (w)
+= −1
+τ + 1
+τ
+Iν+1
+
+˜
+Mt=w (w)
+
+Iν
+
+˜
+Mt=w (w)
+
+= 1
+τ
+
+−1 +
+Iν+1
+
+˜
+Mt=w (w)
+
+Iν
+
+˜
+Mt=w (w)
+
+
+
+< 0.
+(266)
+So we can conclude that ˆ
+Jt=w (·) is a strictly decreasing function on [0, 1].
+Lemma 12. Let h ≥3 and A, B ∈Rh be two distinct (h −1)-dimensional linear subspaces, with
+nA, nB being normal vectors and PA, PB being the orthogonal projectors on A and B, respectively.
+Denote ϕ = cos−1 
+nA·nB
+∥nA∥·∥nB∥
+
+∈
+ 0, π
+2
+
+as the angle between A and B. Let C = A ∩B be an
+(h −2)-dimensional linear subspaces. For each fixed x ∈SX = A ∩Sh−1, ∀y ∈SY = B ∩Sh−1,
+set w = x · y, it holds that:
+−∥PB · x∥≤w ≤∥PB · x∥,
+(267)
+and equalities (extreme values) are attained if and only if the following conditions hold:
+(C1) w = ∥PB · x∥⇔y =
+PB·x
+∥PB·x∥.
+(C2) w = −∥PB · x∥⇔y = −PB·x
+∥PB·x∥.
+Proof. Step 1: First, let us decompose the embedding space. Define two vectors eA and eB such
+that:
+eA ∈SX, and eA ⊥C,
+eB ∈SY , and eB ⊥C.
+(268)
+Let C⊥be the 2-dimensional orthogonal complement of C, and C⊥satisfies:
+
+===== PAGE 61 =====
+Preprint — arXiv
+C⊥= span {eA} ⊕span {eB} ,
+Rh = C ⊕C⊥.
+(269)
+Since nA, nB ∈C⊥, nA ⊥eA and nB ⊥eB, we have:
+⟨eA, eB⟩= ± ⟨nA, nB⟩,
+(270)
+and we choose a pair of eA and eB such that:
+⟨eA, eB⟩= ⟨nA, nB⟩= cos (ϕ) ∈(0, 1).
+(271)
+Therefore, ∀x ∈SX = A ∩Sh−1 and ∀y ∈SY = B ∩Sh−1, ∃uA, uB ∈C ∩Sh−1, such that
+cos (θA) = x · eA and cos (θB) = y · eB. And then x and y can be represented as:
+x = cos(θA)eA + sin(θA)uA,
+y = cos(θB)eB + sin(θB)uB.
+(272)
+Using orthogonality, we have:
+PB · eA = ⟨eA, eB⟩eB = cos (ϕ) eB,
+PB · uA = uA,
+(273)
+and
+PA · eB = ⟨eA, eB⟩eA = cos (ϕ) eA,
+PA · uB = uB.
+(274)
+Then the projections of (xi, yi) are:
+PB · x = cos(θA) cos (ϕ) eB + sin(θA)uA,
+PA · y = cos(θB) cos (ϕ) eA + sin(θB)uB.
+(275)
+Step 2: Next, we can investigate the range of w.
+w = x · y
+= cos(θA) cos(θB)eAeB + sin(θA) sin(θB)uAuB
+= cos(θA) cos(θB) cos (ϕ) + sin(θA) sin(θB)uAuB.
+(276)
+Since uA, uB ∈C and ∥uA∥= ∥uB∥= 1, then ∥uA · uB∥≤1. Denote f (·)± as:
+f±(θB) = cos(θA) cos(θB) cos (ϕ) ± sin(θA) sin(θB),
+(277)
+then :
+f−(θB) ≤w ≤f+(θB).
+(278)
+Now, let us check the extreme values of f± (w). First, we find the derivative of f± (w):
+f ′
+±(θB) = −cos(θA) sin(θB) cos (ϕ) ± sin(θA) cos(θB),
+(279)
+then:
+
+===== PAGE 62 =====
+Preprint — arXiv
+f ′
+±(θB) = 0 ⇒tan(θB) = ±
+sin(θA)
+cos(θA) cos (ϕ),
+(280)
+and
+w ≥f−
+
+arctan
+
+−
+sin(θA)
+cos(θA) cos (ϕ)
+
+= −
+q
+sin2(θA) + cos2(θA) cos2(ϕ),
+w ≤f+
+
+arctan
+
+sin(θA)
+cos(θA) cos (ϕ)
+
+=
+q
+sin2(θA) + cos2(θA) cos2(ϕ).
+(281)
+Denote:
+r(x) =
+q
+sin2(θA) + cos2(θA) cos2(ϕ) ∈(0, 1).
+(282)
+and therefore:
+|w| ≤r(x) < 1.
+(283)
+Step 3: Last, we find the optimal condition of w. When θB = arctan
+
+sin(θA)
+cos(θA) cos(ϕ)
+
+and uA = uB,
+w reaches its maximum. At this time:
+cos(θB) = cos(θA) cos(ϕ)
+r
+,
+sin(θB) = sin(θA)
+r
+.
+(284)
+Plugging Eq. (284) into Eq. (275), we get:
+PB · x = cos(θA) cos (ϕ) eB + sin(θA)uA
+= r cos(θB) cos (ϕ) eB + r sin(θB)uB
+= ry,
+(285)
+and
+∥PB · x∥= ∥ry∥= r.
+(286)
+Therefore, w reaches its maximum if and only if the following condition holds:
+(C1) y =
+PB·x
+∥PB·x∥.
+When θB = arctan
+
+−
+sin(θA)
+cos(θA) cos(ϕ)
+
+and uA = −uB, w reaches its minimum. At this time:
+cos(θB) = −cos(θA) cos(ϕ)
+r
+,
+sin(θB) = sin(θA)
+r
+.
+(287)
+Plugging Eq. (287) into Eq. (275), we get:
+PB · x = cos(θA) cos (ϕ) eB + sin(θA)uA
+= −r cos(θB) cos (ϕ) eB −r sin(θB)uB
+= −ry.
+(288)
+
+===== PAGE 63 =====
+Preprint — arXiv
+and
+∥PB · x∥= ∥−ry∥= r.
+(289)
+Therefore, w reaches its minimum if and only if the following condition holds:
+(C2) y = −PB·x
+∥PB·x∥.
+Lemma 13. Let h ≥3 and A, B ∈Rh be two distinct (h −1)-dimensional linear subspaces, with
+nA, nB being normal vectors and PA, PB being the orthogonal projectors on A and B, respectively.
+Denote ϕ = cos−1 
+nA·nB
+∥nA∥·∥nB∥
+
+∈
+ 0, π
+2
+
+as the angle between A and B. Let C = A ∩B be an
+(h−2)-dimensional linear subspaces. For x ∈SX = A∩Sh−1, y ∈SY = B∩Sh−1, the projections
+of x and y are collinear with the other vector:
+(i) The orthogonal projection of x on B is a scalar multiple of y:
+PBx = λxy,
+λx ̸= 0,
+(ii) The orthogonal projection of y on A is a scalar multiple of x:
+PAy = λyx,
+λy ̸= 0,
+if and only if the following conditions holds:
+(C3) Either x ⊥C and y ⊥C, or x = ±y ∈C.
+Moreover, in the first case (x ⊥C, y ⊥C), it holds that:
+⟨x, y⟩= cos (ϕ) ,
+PBx = (cos (ϕ)) y,
+PAy = (cos (ϕ)) x,
+while in the second case (x = ±y ∈C), it holds that:
+PBx = x = (±1) y,
+PAy = y = (±1) x.
+Proof. Step 1: First, we need to decompose the embedding space. This step is the same with Step 1
+of Sec. E.3.3. For convenience in reading, we repeat this step here.
+Define two vectors eA and eB such that:
+eA ∈SX, and eA ⊥C,
+eB ∈SY , and eB ⊥C.
+(290)
+Let C⊥be the 2-dimensional orthogonal complement of C, and C⊥satisfies:
+C⊥= span {eA} ⊕span {eB} ,
+Rh = C ⊕C⊥.
+(291)
+Since nA, nB ∈C⊥, nA ⊥eA and nB ⊥eB, we have:
+⟨eA, eB⟩= ± ⟨nA, nB⟩,
+(292)
+and we choose a pair of eA and eB such that:
+⟨eA, eB⟩= ⟨nA, nB⟩= cos (ϕ) ∈(0, 1).
+(293)
+
+===== PAGE 64 =====
+Preprint — arXiv
+Therefore, ∀x ∈SX = A ∩Sh−1 and ∀y ∈SY = B ∩Sh−1, ∃uA, uB ∈C ∩Sh−1, such that
+cos (θA) = x · eA and cos (θB) = y · eB. And then x and y can be represented as:
+x = cos(θA)eA + sin(θA)uA,
+y = cos(θB)eB + sin(θB)uB.
+(294)
+Using orthogonality, we have:
+PB · eA = ⟨eA, eB⟩eB = cos (ϕ) eB,
+PB · uA = uA,
+(295)
+and
+PA · eB = ⟨eA, eB⟩eA = cos (ϕ) eA,
+PA · uB = uB.
+(296)
+Then the projections of (xi, yi) are:
+PB · x = cos(θA) cos (ϕ) eB + sin(θA)uA,
+PA · y = cos(θB) cos (ϕ) eA + sin(θB)uB.
+(297)
+Step 2: ⇒Next, we prove the sufficiency. If conditions (i) and (ii) hold, then:
+cos(θA) cos (ϕ) eB + sin(θA)uA = λx cos(θB)eB + λx sin(θB)uB,
+cos(θB) cos (ϕ) eA + sin(θB)uB = λy cos(θA)eA + λy sin(θA)uA.
+(298)
+Decompose both equations into C and C⊥. In C, we get:
+sin(θA)uA = λx sin(θB)uB,
+sin(θB)uB = λy sin(θA)uA.
+(299)
+and in C⊥we get:
+cos(θA) cos (ϕ) eB = λx cos(θB)eB,
+cos(θB) cos (ϕ) eA = λy cos(θA)eA.
+(300)
+Then it can be concluded from Eq. (299) that:
+sin(θA)uA = λxλy sin(θA)uA,
+sin(θB)uB = λxλy sin(θB)uB.
+(301)
+Eq. (301) leads to two scenarios:
+(S1) λxλy = 1.
+(S2) sin(θA) = sin(θB) = 0.
+When (S1) holds, multiply two equations in Eq. (300) and we get:
+cos(θA) cos(θB) cos2(ϕ) = cos(θA) cos(θB).
+(302)
+And since:
+0 < cos2(ϕ) < 1,
+(303)
+
+===== PAGE 65 =====
+Preprint — arXiv
+we can conclude that:
+cos(θA) = cos(θB) = 0,
+sin(θA) = sin(θB) = ±1.
+(304)
+Plugging Eq. (304) into Eq. (299), we get:
+uA = λxuB,
+uB = λyuA.
+(305)
+Since ∥uA∥= ∥uB∥= 1, Eq. (305) ⇒λx = λy = ±1 ⇒uA = ±uB. And according to Eq. (294)
+and we have:
+x = ±y ∈C.
+(306)
+We conclude that (S1) ⇒x = ±y ∈C.
+When (S2) holds, we have:
+sin(θA) = sin(θB) = 0,
+cos(θA) = cos(θB) = ±1.
+(307)
+Plugging Eq. (307) into Eq. (294), we have:
+x = ±eA ⊥C,
+y = ±eB ⊥C.
+(308)
+We conclude that (S2) ⇒x ⊥C and y ⊥C.
+So the sufficiency is confirmed.
+Step 3: ⇐Last, we prove the necessity. If x = ±y ∈C, then
+cos(θA) = cos(θB) = 0,
+sin(θA) = sin(θB) = ±1.
+(309)
+and
+x = uA,
+y = uB,
+(310)
+According to Eq. (297) and Eq. (310), we have:
+PB · x = uA = x = ±y,
+PA · y = uB = y = ±x.
+(311)
+Let λx = λy = ±1, conditions (i) and (ii) hold.
+If x ⊥C and y ⊥C, then:
+sin(θA) = sin(θB) = 0,
+cos(θA) = cos(θB) = ±1.
+(312)
+and
+
+===== PAGE 66 =====
+Preprint — arXiv
+x = ±eA,
+y = ±eB.
+(313)
+According to Eq. (297) and Eq. (313), we have:
+PB · x = ± cos (ϕ) eB = ± cos (ϕ) y,
+PA · y = ± cos (ϕ) eA = ± cos (ϕ) x.
+(314)
+Let λx = λy = ± cos (ϕ), conditions (i) and (ii) hold.
+Therefore, the necessity is confirmed.
+
+===== PAGE 67 =====
+Preprint — arXiv
+E.4
+DETAILS OF THEOREM 4
+In this section, we provide proofs of Theorem 4 that is proposed in Sec. 4.2. We also provide
+details and proofs of the auxiliary theorems (Theorem S7 and Theorem S8) and the technical lemmas
+(Lemma 14 and Lemma 15) that support the proof Theorem 4. For convenience in reading, let us
+recall some related notions and definitions.
+• h, N ∈N.
+• Sh−1 =
+
+z ∈Rh : ∥z∥= 1
+	
+.
+• A =
+
+x ∈Rh : nA · x = 0
+	
+where nA is the normal vector of A.
+• B =
+
+y ∈Rh : nB · y = 0
+	
+where nA is the normal vector of B.
+• ϕ = cos−1 
+nx·ny
+∥nx∥·∥ny∥
+
+and 0 < ϕmin ≤ϕ < π
+2 .
+• SX = Sh−1 ∩A =
+
+x ∈Rh : ∥x∥= 1, nA · x = 0
+	 ∼= Sh−2 ∈Sh−1.
+• SY = Sh−1 ∩B =
+
+y ∈Rh : ∥y∥= 1, nB · y = 0
+	 ∼= Sh−2 ∈Sh−1.
+• C = A ∩B.
+• hX = hY = h −1.
+• hC = h −2.
+• PA: the projection matrix of A.
+• PB: the projection matrix of B.
+• PC: the projection matrix of C.
+• eA = {z ∈SX : z ⊥C}.
+• eB = {z ∈SY : z ⊥C}.
+• C⊥= span {eA} ⊕span {eB}
+• Rh = C ⊕C⊥.
+• X = (x1, . . . , xN) ∈(SX)N.
+• Y = (y1, . . . , yN) ∈(SY )N.
+• µx = 1
+N
+PN
+i=1 xi.
+• µy = 1
+N
+PN
+i=1 yi.
+• cx =
+µx
+∥µx∥.
+• cy =
+µy
+∥µy∥.
+Definition (Multimodal Contrastive Loss (MCL Loss)). Let (X, Y ) be an N-pair configuration,
+where X = (x1, . . . , xN) ∈(Sh−1)N and Y = (y1, . . . , yN) ∈(Sh−1)N. ∀τ > 0, the multimodal
+contrastive loss LMCL(·, ·) : (Sh−1)N × (Sh−1)N →R is defined as:
+LMCL = 1
+N
+N
+X
+i=1
+Li
+MCL, where Li
+MCL = LX→Y(xi; Y ) + LY→X (yi; X).
+Here, LX→Y is the X-to-Y alignment and LY→X is the Y-to-X alignment, which are defined
+respectively as:
+LX→Y(xi; Y ) = −log
+exp (xi · yi/τ)
+PN
+j=1 exp (xi · yj/τ)
+, LY→X (yi; X) = −log
+exp (xi · yi/τ)
+PN
+j=1 exp (xj · yi/τ)
+.
+Definition(Modality Gap) Let (X, Y ) be an N-pair configuration, where X = (x1, . . . , xN) ∈
+(Sh−1)N and Y = (y1, . . . , yN) ∈(Sh−1)N. The modality gap between X and Y can be expressed
+as the angle between the center representations:
+
+===== PAGE 68 =====
+Preprint — arXiv
+∆θ = cos−1(cx · cy).
+Definition (vMF Distribution). ∀c ∈Sh−1 and κ ≥0, the probability density of a random h-
+dimensional unit vector z ∼vMF(c, κ) is given by:
+fh(z; c, κ) = Dh(κ)eκc⊤z, where Dh(κ) =
+κν
+(2π)ν+1Iν(κ).
+Let ν = h/2 −1, and Iν (·) : R →R is the modified Bessel function of the first kind of order ν,
+which is defined as:
+Iν(x) =
+∞
+X
+k=0
+1
+k!Γ(ν + k + 1)
+x
+2
+2k+ν
+.
+Definition (Function ˜
+M). ∀κ, τ > 0, a function ˜
+Mκ(·, ·) : [−1, 1] × [0, 1] →R+
+0 is defined as:
+˜
+Mκ (w, t) =
+r
+κ2 + 2κw
+τ
++ t2
+τ 2 .
+Definition (Function ˜
+J ). ∀κ, ν, τ > 0, ˜
+J (·, ·, ·; κ, ν) : [−1, 1] × [−1, 1] × [0, 1] →R is defined as:
+˜
+J (w1, w2, t; κ, ν) = −w1
+τ + log
+
+
+Iν
+
+˜
+Mκ(w2, t)
+
+˜
+Mκ(w2, t)ν
+
+−log
+Iν (κ)
+κν
+
+.
+Definition (Function M). ∀κ, τ > 0, a function Mκ (·) : [−1, 1] →R+
+0 is defined as:
+Mκ (w) =
+r
+κ2 + 2κw
+τ
++ 1
+τ 2
+= ˜
+Mκ(w, 1).
+Definition (Function J ). ∀κ, ν, τ > 0, a function J (·; κ, ν) : [−1, 1] →R is defined as:
+J (w; κ, ν) = −w
+τ + log
+Iν (Mκ (w))
+Mκ (w)ν
+
+−log
+Iν (κ)
+κν
+
+= ˜
+J (w, w, 1; κ, ν) .
+Definition (Function ˜
+M). ∀κ, τ > 0, a function ˜
+Mκ(·, ·) : [−1, 1] × [0, 1] →R+
+0 is defined as:
+˜
+Mκ (w, t) = ˜
+Mκ (w, t) .
+Definition (Function ˆ
+J ). ∀κ, ν, τ > 0, a function ˆ
+J (·, ·; κ, ν) : [−1, 1] × [0, 1] →R is defined as:
+ˆ
+J (w, t; κ, ν) = −w
+τ + log
+
+
+Iν
+
+˜
+Mκ(w, t)
+
+˜
+Mκ(w, t)ν
+
+−log
+Iν (κ)
+κν
+
+= ˜
+J (w, w, t; κ, ν) .
+
+===== PAGE 69 =====
+Preprint — arXiv
+E.4.1
+PROOF OF THEOREM 4
+In this subsection, we provide the proof of Theorem 4. For convenience in reading, we first restate
+Theorem 4 here.
+Theorem 4. [Restate] Let (X, Y ) be an N-pair configuration, where X = (x1, . . . , xN) ∈(SX\C)N
+are iid samples from µx = vMF(cx, κx), and Y = (y1, . . . , yN) ∈(SY \ C)N are iid samples
+from µy = vMF(cy, κy). Let ˜ν = (h −1)/2 −1. Denote ∆θ = cos−1 (cx · cy) and assume
+cx, cy ⊥C with cx · cy > 0. Suppose (X, Y ) achieves Intra-Modal Isometry. Then ∀i ∈[N], denote
+θc
+i = cos−1 (xi · cx) = cos−1 (yi · cy), and κ = κx = κy. Let θc
+i ∈(0, π
+2 ) and κ > 0, it holds that:
+lim
+N→∞Li̸=c
+MCL −2 log(N)
+= ˜
+J (cos (∆θ) , cos (θc
+i ) , ∥PBxi∥; κ, ˜ν) + ˜
+J (cos (∆θ) , cos (θc
+i ) , ∥PAyi∥; κ, ˜ν)
+≥2 ˜
+J
+
+cos2 (θc
+i ) cos (ϕmin) + sin2 (θc
+i ) , cos (θc
+i ) ,
+q
+cos2 (θc
+i ) cos2 (ϕmin) + sin2 (θc
+i ); κ, ˜ν
+
+,
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(A8) PCxi = PCyi ̸= ⃗0.
+(A9) ∆θ = cos−1 (cx · cy) = ϕmin.
+Proof. According to Theorem S7, the convergent function of limN→∞Li̸=c
+MCL −2 log(N) is:
+lim
+N→∞Li̸=c
+MCL −2 log(N) = lim
+N→∞(LX→Y(xi̸=c; Y ) −log(N) + LY→X (yi̸=c; X) −log(N))
+= ˜
+J (wi, wc
+i , ∥PBxi∥; κy, ˜ν) + ˜
+J (wi, wc
+i , ∥PAyi∥; κx, ˜ν)
+= 2 ˜
+J (wi, wc
+i , t; κ, ˜ν) ,
+(315)
+where
+wi = cos2 (θc
+i ) cos (∆θ) + (θc
+i ) (PC · xi) · (PC · yi) ,
+wc
+i = cos (θc
+i ) ,
+t =
+q
+cos2 (θc
+i ) cos2 (∆θ) + sin2 (θc
+i ).
+(316)
+And Theorem S8 shows the lower bound of the convergent function is:
+2 ˜
+J (wi, wc
+i , t; κ, ˜ν) ≥2 ˜
+J (wi,min, wc
+i , tmin; κ, ˜ν) ,
+(317)
+where
+wi,min = cos2 (θc
+i ) cos (ϕmin) + sin2 (θc
+i ) ,
+tmin =
+q
+cos2 (θc
+i ) cos2 (ϕmin) + sin2 (θc
+i ),
+(318)
+and equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(i) PC · xi = PC · yi.
+(ii) ∆θ = ϕmin.
+
+===== PAGE 70 =====
+Preprint — arXiv
+Combining Eq. (315) and Eq. (318), we conclude that:
+lim
+N→∞Li̸=c
+MCL −2 log(N)
+= ˜
+J (cos (∆θ) , cos (θc
+i ) , ∥PBxi∥; κ, ˜ν) + ˜
+J (cos (∆θ) , cos (θc
+i ) , ∥PAyi∥; κ, ˜ν)
+≥2 ˜
+J
+
+cos2 (θc
+i ) cos (ϕmin) + sin2 (θc
+i ) , cos (θc
+i ) ,
+q
+cos2 (θc
+i ) cos2 (ϕmin) + sin2 (θc
+i ); κ, ˜ν
+
+,
+(319)
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(A8) PCxi = PCyi ̸= ⃗0.
+(A9) ∆θ = cos−1 (cx · cy) = ϕmin.
+E.4.2
+AUXILIARY THEOREMS PART 4
+In this subsection, we provide details and proofs of the auxiliary theorems (Theorem S5 and Theo-
+rem S7) that support the proof of Theorem 4.
+Theorem S7. Let (X, Y ) be an N-pair configuration, where X = (x1, . . . , xN) ∈(SX \ C)N
+are iid samples from µx = vMF(cx, κx), and Y = (y1, . . . , yN) ∈(SY \ C)N are iid samples
+from µy = vMF(cy, κy). Let ˜ν = (h −1)/2 −1. Denote ∆θ = cos−1 (cx · cy) and assume
+cx, cy ⊥C with cx · cy > 0. Suppose (X, Y ) achieves Intra-Modal Isometry. Then ∀i ∈[N], denote
+θc
+i = cos−1 (xi · cx) = cos−1 (yi · cy), and κ = κx = κy. Let κ > 0, it holds that:
+lim
+N→∞Li̸=c
+MCL −2 log(N) = lim
+N→∞(LX→Y(xi̸=c; Y ) −log(N) + LY→X (yi̸=c; X) −log(N))
+= ˜
+J (wi, wc
+i , ∥PBxi∥; κy, ˜ν) + ˜
+J (wi, wc
+i , ∥PAyi∥; κx, ˜ν)
+= 2 ˜
+J (wi, wc
+i , t; κ, ˜ν) ,
+(320)
+where
+wi = cos2 (θc
+i ) cos (∆θ) + (θc
+i ) (PC · xi) · (PC · yi) ,
+wc
+i = cos (θc
+i ) ,
+t =
+q
+cos2 (θc
+i ) cos2 (∆θ) + sin2 (θc
+i ).
+(321)
+Proof. Step 1: We first decompose limN→∞Li̸=c
+MCL −2 log(N) into two parts:
+lim
+N→∞Li̸=c
+MCL −2 log(N) = lim
+N→∞LX→Y(xi̸=c; Y ) −log(N)
++ lim
+N→∞LY→X (yi̸=c; X) −log(N).
+(322)
+The convergent function of LX→Y(xi̸=c; Y ) as N →∞. ∀i ∈[N], i ̸= c, xi ∈X, denote
+wi = xi · yi, wxi,cy = xi · cy and wyi,cx = yi · cx. ∀κy > 0, as prove in Theorem S5:
+
+===== PAGE 71 =====
+Preprint — arXiv
+lim
+N→∞LX→Y(xi; Y ) −log(N) = lim
+N→∞−log
+exp (xi · yi/τ)
+PN
+j=1 exp (xi · yj/τ)
+−log(N)
+= −wi
+τ + log
+
+
+I˜ν
+
+˜
+Mκy
+ wxi,cy, ∥PBxi∥
+
+˜
+Mκy
+ wxi,cy, ∥PBxi∥
+˜ν
+
+−log
+I˜ν (κy)
+κ˜νy
+
+= ˜
+J
+ wi, wxi,cy, ∥PBcx∥; κy, ˜ν
+
+,
+(323)
+where ∀κ, τ > 0, ˜
+J (·, ·, ·; κ, ˜ν) is a function on [−1, 1] × [−1, 1] × [0, 1] and ˜
+Mκ(·, ·) : [−1, 1] ×
+[0, 1] →R+
+0 is defined as:
+˜
+Mκ (w, t) =
+r
+κ2 + 2κw
+τ
++ t2
+τ 2 ,
+(324)
+and Iν is the modified Bessel function of the first kind of order ν, which is defined as:
+Iν (m) =
+∞
+X
+k=0
+1
+k!Γ(ν + k + 1)
+m
+2
+2k+ν
+.
+(325)
+When (X, Y ) achieves Intra-Modal Isometry, we have wxi,cy = xi · cx = yi · cx = wyi,cx Denote
+wc
+i = wxi,cy = wyi,cx = cos (θc
+i ). This implies κx = κy = κ.
+Then, Eq. (323) can be re-written as:
+lim
+N→∞LX→Y(xi; Y ) −log(N) = −wi
+τ + log
+
+
+I˜ν
+
+˜
+Mκ (wc
+i , ∥PBxi∥)
+
+˜
+Mκ (wc
+i , ∥PBxi∥)˜ν
+
+−log
+I˜ν (κ)
+κ˜ν
+
+= ˜
+J (wi, wc
+i , ∥PBcx∥; κ, ˜ν) .
+(326)
+Similarly, the convergent function of LY→X (yi̸=c; X) as N →∞can be written as:
+lim
+N→∞LY→X (yi; X) −log(N) = lim
+N→∞−log
+exp (xi · yi/τ)
+PN
+j=1 exp (xi · yj/τ)
+−log(N)
+= −wi
+τ + log
+
+
+I˜ν
+
+˜
+Mκx (wyi,cx, ∥PAyi∥)
+
+˜
+Mκx (wyi,cx, ∥PAyi∥)˜ν
+
+−log
+I˜ν (κx)
+κ˜νx
+
+= −wi
+τ + log
+
+
+I˜ν
+
+˜
+Mκ (wc
+i , ∥PAyi∥)
+
+˜
+Mκ (wc
+i , ∥PAyi∥)˜ν
+
+−log
+I˜ν (κ)
+κ˜ν
+
+= ˜
+J (wi, wc
+i , ∥PAyi∥; κ, ˜ν) .
+(327)
+Step 2 Now, let us decompose the embedding space. Define two vectors eA and eB such that:
+eA ∈SX, and eA ⊥C,
+eB ∈SY , and eB ⊥C.
+(328)
+Let C⊥be the 2-dimensional orthogonal complement of C, and C⊥satisfies:
+
+===== PAGE 72 =====
+Preprint — arXiv
+C⊥= span {eA} ⊕span {eB} ,
+Rh = C ⊕C⊥.
+(329)
+Since nA, nB ∈C⊥, nA ⊥eA and nB ⊥eB, we have:
+⟨eA, eB⟩= ± ⟨nA, nB⟩,
+(330)
+and we choose a pair of eA and eB such that:
+⟨eA, eB⟩= ⟨nA, nB⟩= cos (ϕ) ∈(0, 1).
+(331)
+Denote θi = cos−1 (wi). When cx, cy ⊥C, ∆θ = ϕ. And without loss of generality, we can set the
+coordinate as:
+nA = (sin
+∆θ
+2
+
+, −cos
+∆θ
+2
+
+, 0, 0, · · · , 0),
+nB = (−sin
+∆θ
+2
+
+, −cos
+∆θ
+2
+
+, 0, 0, · · · , 0),
+cx = eA = (cos
+∆θ
+2
+
+, sin
+∆θ
+2
+
+, 0, 0, · · · , 0),
+cy = eB = (cos
+∆θ
+2
+
+, −sin
+∆θ
+2
+
+, 0, 0, · · · , 0),
+C = span{e3} ⊕span{e3} ⊕· · · , ⊕span{eh}.
+(332)
+Therefore, ∀xi ∈SX = A ∩Sh−1 and ∀yi ∈SY = B ∩Sh−1, ∃ux
+i , uy
+i ∈C ∩Sh−1, such that:
+xi = cos (θc
+i ) eA + sin (θc
+i ) ux
+i = cos (θc
+i ) cx + sin (θc
+i ) ux
+i ,
+yi = cos (θc
+i ) eB + sin (θc
+i ) uy
+i = cos (θc
+i ) cy + sin (θc
+i ) uy
+i .
+(333)
+Using orthogonality, we have:
+PB · eA = ⟨eA, eB⟩eB = cos (∆θ) eB,
+PB · ux
+i = ux
+i ,
+(334)
+and
+PA · eB = ⟨eA, eB⟩eA = cos (∆θ) eA,
+PA · uy
+i = uy
+i ,
+(335)
+and
+PC · eA = PC · eB = 0,
+PC · ux
+i = ux
+i ,
+PC · uy
+i = uy
+i .
+(336)
+Then the projections of (xi, yi) are:
+PB · xi = cos (θc
+i ) cos (∆θ) eB + sin (θc
+i ) ux
+i = cos (θc
+i ) cos (∆θ) cy + sin (θc
+i ) ux
+i ,
+PA · yi = cos (θc
+i ) cos (∆θ) eA + sin (θc
+i ) uy
+i = cos (θc
+i ) cos (∆θ) cx + sin (θc
+i ) uy
+i ,
+(337)
+and
+
+===== PAGE 73 =====
+Preprint — arXiv
+PC · xi = sin (θc
+i ) ux
+i ,
+PC · yi = sin (θc
+i ) uy
+i .
+(338)
+Therefore, we get:
+wi = xi · yi = cos2 (θc
+i ) cx · cy + sin2 (θc
+i ) ux
+i · uy
+i
+= cos2 (θc
+i ) cos (∆θ) + sin2 (θc
+i ) ux
+i · uy
+i
+= cos2 (θc
+i ) cos (∆θ) + (PC · xi) · (PC · yi) ,
+(339)
+∥PBxi∥=
+q
+cos2 (θc
+i ) cos2 (∆θ) cy · cy + 2 cos (θc
+i ) cos (∆θ) sin (θc
+i ) cy · ux
+i + sin2 (θc
+i ) ux
+i · ux
+i
+=
+q
+cos2 (θc
+i ) cos2 (∆θ) + 2 cos (θc
+i ) cos (∆θ) sin (θc
+i ) cy · ux
+i + sin2 (θc
+i )
+=
+q
+cos2 (θc
+i ) cos2 (∆θ) + sin2 (θc
+i ),
+(340)
+and
+∥PAyi∥=
+q
+cos2 (θc
+i ) cos2 (∆θ) cx · cx + 2 cos (θc
+i ) cos (∆θ) sin (θc
+i ) cx · uy
+i + sin2 (θc
+i ) uy
+i · uy
+i
+=
+q
+cos2 (θc
+i ) cos2 (∆θ) + 2 cos (θc
+i ) cos (∆θ) sin (θc
+i ) cy · uy
+i + sin2 (θc
+i )
+=
+q
+cos2 (θc
+i ) cos2 (∆θ) + sin2 (θc
+i ),
+= ∥PBxi∥.
+(341)
+Let t = ∥PBxi∥= ∥PAyi∥. Plugging Eq. (339), Eq. (340) and Eq. (341) into Eq. (322), Eq. (326)
+and Eq. (327), we conclude that:
+lim
+N→∞Li̸=c
+MCL −2 log(N) = lim
+N→∞LX→Y(xi̸=c; Y ) −log(N)
++ lim
+N→∞LY→X (yi̸=c; X) −log(N)
+= ˜
+J (wi, wc
+i , ∥PBxi∥; κ, ˜ν) + ˜
+J (wi, wc
+i , ∥PAyi∥; κ, ˜ν)
+= 2 ˜
+J (wi, wc
+i , t; κ, ˜ν) ,
+(342)
+where
+wi = xi · yi = cos2 (θc
+i ) cos (∆θ) + (PC · xi) · (PC · yi) ,
+wc
+i = xi · cy = yi · cx = cos (θc
+i ) ,
+t =
+q
+cos2 (θc
+i ) cos2 (∆θ) + sin2 (θc
+i ).
+(343)
+Theorem S8. Let (X, Y ) be an N-pair configuration, where X = (x1, . . . , xN) ∈(SX \ C)N are
+iid samples from µx = vMF(cx, κx), and Y = (y1, . . . , yN) ∈(SY \ C)N are iid samples from
+µy = vMF(cy, κy). Let ˜ν = (h −1)/2 −1. Denote ∆θ = cos−1 (cx · cy) and assume cx, cy ⊥C
+with cx · cy > 0. ∀i ∈[N], suppose θc
+i = cos−1 (xi · cx) = cos−1 (yi · cy) ∈(0, π
+2 ) and κ > 0, it
+holds that:
+˜
+J (wi, wc
+i , t; κ, ˜ν) ≥˜
+J (wi,min, wc
+i , tmin; κ, ˜ν) ,
+(344)
+
+===== PAGE 74 =====
+Preprint — arXiv
+where
+wi = cos2 (θc
+i ) cos (∆θ) + (PC · xi) · (PC · yi) ,
+wc
+i = cos (θc
+i ) ,
+t =
+q
+cos2 (θc
+i ) cos2 (∆θ) + sin2 (θc
+i ),
+wi,min = cos2 (θc
+i ) cos (ϕmin) + sin2 (θc
+i ) ,
+tmin =
+q
+cos2 (θc
+i ) cos2 (ϕmin) + sin2 (θc
+i ),
+(345)
+and equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(B6) PC · xi = PC · yi.
+(B7) ∆θ = ϕmin.
+Proof. Step 1: Similarly to the proof of Theorem S6 in Sec. E.3.2, we start the proof by finding the
+convergent function of limN→∞Li̸=c
+MCL −2 log(N) as N →∞. Let wi =
+As proven in Theorem S7:
+lim
+N→∞Li̸=c
+MCL −2 log(N) = lim
+N→∞(LX→Y(xi̸=c; Y ) −log(N) + LY→X (yi̸=c; X) −log(N))
+= ˜
+J (wi, wc
+i , ∥PBxi∥; κ, ˜ν) + ˜
+J (wi, wc
+i , ∥PAyi∥; κ, ˜ν)
+= 2 ˜
+J (wi, wc
+i , t; κ, ˜ν) .
+(346)
+∀κ, ν, τ > 0, ˜
+J (·, ·, ·; κ, ν) : [−1, 1] × [−1, 1] × [0, 1] →R is defined as:
+˜
+J (w1, w2, t; κ, ν) = −w1
+τ + log
+
+
+Iν
+
+˜
+Mκ(w2, t)
+
+˜
+Mκ(w2, t)ν
+
+−log
+Iν (κ)
+κν
+
+,
+(347)
+and ˜
+Mκ(·, ·) : [−1, 1] × [0, 1] →R+
+0 is defined as:
+˜
+Mκ (w, t) =
+r
+κ2 + 2κw
+τ
++ t2
+τ 2 .
+(348)
+and Iν is the modified Bessel function of the first kind of order ν, which is defined as:
+Iν (m) =
+∞
+X
+k=0
+1
+k!Γ(ν + k + 1)
+m
+2
+2k+ν
+,
+(349)
+and
+wi = cos2 (θc
+i ) cos (∆θ) + sin2 (θc
+i ) (PC · xi) · (PC · yi) ,
+wc
+i = cos (θc
+i ) ,
+t =
+q
+cos2 (θc
+i ) cos2 (∆θ) + sin2 (θc
+i ).
+(350)
+Step 2:
+According to the Cauchy-Schwarz inequality and Eq. (338):
+(PC · xi) · (PC · yi) ≤sin2 (θc
+i ) ,
+(351)
+
+===== PAGE 75 =====
+Preprint — arXiv
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(B6) PC · xi = PC · yi.
+And therefore:
+wi = cos2 (θc
+i ) cos (∆θ) + (PC · xi) · (PC · yi)
+≤cos2 (θc
+i ) cos (∆θ) + ≤sin2 (θc
+i ) ,
+(352)
+and then ˜
+J (wi, wc
+i , t; κ, ˜ν) in Eq. (346) can be bounded below by:
+˜
+J (wi, wc
+i , t; κ, ˜ν) ≥˜
+J ( cos2 (θc
+i ) cos (∆θ) + sin2 (θc
+i ) ,
+cos (θc
+i ) ,
+q
+cos2 (θc
+i ) cos2 (∆θ) + sin2 (θc
+i ); κ, ˜ν).
+(353)
+Here, for any given non-center pair (xi, yi)i̸=c, θc
+i is fixed, then the RHS of Eq. (353) becomes a
+function of cos (∆θ).
+Denote:
+f1 (cos (∆θ)) := cos2 (θc
+i ) cos (∆θ) + sin2 (θc
+i ) ,
+f2 (cos (∆θ)) :=
+q
+cos2 (θc
+i ) cos2 (∆θ) + sin2 (θc
+i ),
+(354)
+then the Eq. (346) can be re-written as:
+˜
+J (wi, wc
+i , t; κ, ˜ν) ≥˜
+J (f1 (cos (∆θ)) , cos (θc
+i ) , f2 (cos (∆θ)) ; κ, ˜ν) .
+(355)
+According to Lemma 14, ˜
+J (f1 (cos (∆θ)) , cos (θc
+i ) , f2 (cos (∆θ)) ; κ, ˜ν) is a decreasing function
+of cos (∆θ) when θc
+i ∈[0, π
+2 ], we have:
+˜
+J (f1 (cos (∆θ)) , cos (θc
+i ) , f2 (cos (∆θ))) ≥˜
+J (f1 (cos (ϕmin)) , cos (θc
+i ) , f2 (cos (ϕmin))) .
+(356)
+where equality is attained if and only if there exists a configuration of (X, Y ) such that:
+(B7) ∆θ = ϕmin.
+Combining Eq. (351) and Eq. (356), we conclude that:
+˜
+J (wi, wc
+i , t; κ, ˜ν) ≥˜
+J (wi,min, wc
+i , tmin; κ, ˜ν) ,
+(357)
+where
+wi = cos2 (θc
+i ) cos (∆θ) + (PC · xi) · (PC · yi) ,
+wc
+i = cos (θc
+i ) ,
+t =
+q
+cos2 (θc
+i ) cos2 (∆θ) + sin2 (θc
+i ),
+wi,min = cos2 (θc
+i ) cos (ϕmin) + sin2 (θc
+i ) ,
+tmin =
+q
+cos2 (θc
+i ) cos2 (ϕmin) + sin2 (θc
+i ).
+(358)
+and equality is attained if and only if there exists a configuration of (X, Y ) such that:
+
+===== PAGE 76 =====
+Preprint — arXiv
+(B6) PC · xi = PC · yi.
+(B7) ∆θ = ϕmin.
+E.4.3
+PROOFS COROLLARY 2,3,4
+In this subsection, we provide the proofs of Corollary 2, Corollary 3 and Corollary 4. Note that these
+corollaries all follow the conditions described in Theorem 3 and Theorem 4. For convenience in
+reading, we restate Corollary 2,3 4 before the proofs.
+Corollary 2. ∀i ∈[N], i ̸= c, if cx, cy ⊥C and PCxi = PCyi ̸= ⃗0 and ϕ > 0, then the following
+holds:
+(A10) (xi, yi)i̸=c are not perfectly aligned.
+Proof. ∀(xi, yi)i̸=c, denote wi = xi · yi. (xi, yi) are perfectly aligned when wi reach its maximum.
+According to Lemma 12, when xi is fixed wi is maximized if and only if:
+(i) yi =
+PB·xi
+∥PB·xi∥.
+And when yi is fixed wi is maximized if and only if:
+(ii) xi =
+PA·yi
+∥PA·yi∥.
+According to Lemma 13, when ϕ > 0, xi, yi ̸⊥C and xi, yi /∈C, we have:
+yi ̸=
+PB · xi
+∥PB · xi∥,
+xi ̸=
+PA · yi
+∥PA · yi∥.
+(359)
+Therefore, (xi, yi)i̸=c are not perfectly aligned.
+Corollary 3. ∀i ∈[N], i ̸= c, if cx, cy ⊥C, PCxi = PCyi and (xi, yi)i̸=c ∈Sh−1 \ C, then
+(xi, yi)i̸=c are perfectly aligned if the following condition holds:
+(A11) ∆θ = ϕ = 0.
+Proof. According to Eq. (337) and Eq. (338) in the proof of Theorem S7, the projections of (xi, yi)
+are:
+PB · xi = cos (θc
+i ) cos (∆θ) eB + sin (θc
+i ) ux
+i = cos (θc
+i ) cos (∆θ) cy + sin (θc
+i ) ux
+i ,
+PA · yi = cos (θc
+i ) cos (∆θ) eA + sin (θc
+i ) uy
+i = cos (θc
+i ) cos (∆θ) cx + sin (θc
+i ) uy
+i ,
+(360)
+and
+PC · xi = sin (θc
+i ) ux
+i ,
+PC · yi = sin (θc
+i ) uy
+i .
+(361)
+Then, when ϕ = ∆θ = 0
+
+===== PAGE 77 =====
+Preprint — arXiv
+PB · xi = PC · xi = PC · yi = PA · yi,
+(362)
+and
+xi = PB · xi = PA · yi = yi.
+(363)
+In this case, (xi, yi)i̸=c are not perfectly aligned.
+Corollary 4. ∀i ∈[N], i ̸= c, if cx, cy ⊥C and PCxi = PCyi, then the following holds:
+(A12) ( PCxi
+∥PCxi∥,
+PCyi
+∥PCyi∥)i̸=c are perfectly aligned
+Proof. Denote:
+x∗
+i =
+PCxi
+∥PCxi∥,
+y∗
+i =
+PCyi
+∥PCyi∥.
+(364)
+Since PCxi = PCyi, then:
+x∗
+i = y∗
+i .
+(365)
+In this case, (x∗
+i , y∗
+i )i̸=c are not perfectly aligned.
+E.4.4
+TECHNICAL LEMMAS PART 4
+In this subsection, we provide details and proofs of technical lemmas (Lemma 14 and Lemma 15)
+that support the proof of Theorem 4, Theorem S7 and Theorem S8.
+Lemma 14. ∀κ, ν, τ > 0, a function ¯
+J (·; κ, ν) : (0, 1] →R is defined as:
+¯
+J (wc; κ, ν) = ˜
+J (f1 (wc) , cos (θc
+i ) , f2 (wc) ; κ, ˜ν) ,
+(366)
+where f1 (·) : (0, 1] →R+
+0 and f2 (·) : [0, 1] →R+
+0 are defined as:
+f1 (wc) := cos2 (θc
+i ) wc + sin2 (θc
+i ) ,
+f2 (wc) :=
+q
+cos2 (θc
+i ) w2c + sin2 (θc
+i ).
+(367)
+and ˜
+J (·, ·, ·; κ, ν) : [−1, 1] × [−1, 1] × [0, 1] →R is defined as:
+˜
+J (w1, w2, t; κ, ν) = −w1
+τ + log
+
+
+Iν
+
+˜
+Mκ(w2, t)
+
+˜
+Mκ(w2, t)ν
+
+−log
+Iν (κ)
+κν
+
+,
+(368)
+and ˜
+Mκ(·, ·) : [−1, 1] × [0, 1] →R+
+0 is defined as:
+˜
+Mκ (w, t) =
+r
+κ2 + 2κw
+τ
++ t2
+τ 2 ,
+(369)
+
+===== PAGE 78 =====
+Preprint — arXiv
+and Iν is the modified Bessel function of the first kind of order ν, which is defined as:
+Iν (m) =
+∞
+X
+k=0
+1
+k!Γ(ν + k + 1)
+m
+2
+2k+ν
+,
+(370)
+It holds that, for any fixed θc
+i ∈[0, π
+2 ], ¯
+J (·) is a strictly decreasing function on (0, 1].
+Proof. Let us first decompose the function J . Denote a constant and a function C1 and G2 (t) as:
+G1 (wc) = −cos2 (θc
+i ) wc
+τ
+,
+G3 (m) = log (Iν (m)) −ν log (m) ,
+G2 (wc) = G3
+
+˜
+Mκ (cos (θc
+i ) , f2 (wc))
+
+= log
+
+Iν
+
+˜
+Mκ (cos (θc
+i ) , f2 (wc))
+
+−ν log
+
+˜
+Mκ (cos (θc
+i ) , f2 (wc))
+
+.
+(371)
+Denote the function G (wc) and the constant C as:
+G (wc) = G2 (wc) + G2 (wc) ,
+C = −log
+Iν (κ)
+κν
+
+.
+(372)
+Then the function ¯
+J can be written as:
+¯
+J (wc; κ, ν) = −cos2 (θc
+i ) wc
+τ
++ log
+
+
+Iν
+
+˜
+Mκ (cos (θc
+i ) , f2 (wc))
+
+˜
+Mκ (cos (θc
+i ) , f2 (wc))ν
+
+−log
+Iν (κ)
+κν
+
+= G (wc) + C.
+(373)
+Now, we investigate derivatives of G (wc).
+The first derivative of G1 is:
+G′
+1 (wc) = −cos2 (θc
+i )
+τ
+< 0.
+(374)
+According to Lemma 7, the first derivative of G3 (m) is:
+G′
+3 (m) = Iν+1 (m)
+Iν (m)
+∈(0, 1).
+(375)
+The derivative of ˜
+Mκ with respect to is f 2
+2 (wc):
+˜
+M ′
+κ (cos (θc
+i ) , f2 (wc)) =
+∂
+∂f 2
+2 (wc)
+˜
+Mκ (cos (θc
+i ) , f2 (wc))
+=
+∂
+∂f 2
+2 (wc)
+
+κ2 + 2κ cos (θc
+i )
+τ
++ f 2
+2 (wc)
+τ 2
+1/2
+= 1
+2
+
+κ2 + 2κ cos (θc
+i )
+τ
++ f 2
+2 (wc)
+τ 2
+−1/2
+· 1
+τ 2
+=
+1
+2τ 2
+1
+˜
+Mκ (cos (θc
+i ) , f2 (wc))
+> 0.
+(376)
+
+===== PAGE 79 =====
+Preprint — arXiv
+The derivative of f 2
+2 is:
+f 2′
+2 (wc) =
+d
+dwc
+ cos2 (θc
+i ) w2
+c + sin2 (θc
+i )
+
+= 2 cos2 (θc
+i ) wc
+≥0.
+(377)
+Let m = ˜
+Mκ (cos (θc
+i ) , f2 (wc)). Then, the first derivative of G2 is:
+G′
+2 (wc) = G′
+3 (m) ˜
+M ′
+κ (cos (θc
+i ) , f2 (wc)) f 2′
+2 (wc)
+= Iν+1 (m)
+Iν (m)
+1
+2τ 2m2 cos2 (θc
+i ) wc
+= cos2 (θc
+i ) wc
+τ 2
+1
+m
+Iν+1 (m)
+Iν (m)
+> 0.
+(378)
+Combining Eq. (374) and Eq. (378), we have:
+¯
+J ′ (wc; κ, ν) = G′ (wc) = G′
+1 (t) + G′
+2 (t)
+= cos2 (θc
+i )
+τ
+
+−1 + wc
+τ
+1
+m
+Iν+1 (m)
+Iν (m)
+
+.
+(379)
+Since 0 < wc < 1, then:
+0 ≤w2
+c ≤1 ⇔sin2 (θc
+i ) ≥sin2 (θc
+i ) w2
+c
+⇔sin2 (θc
+i ) ≥w2
+c −cos2 (θc
+i ) w2
+c
+⇔cos2 (θc
+i ) w2
+c + sin2 (θc
+i ) ≥w2
+c
+⇔f 2
+2 (wc) ≥w2
+c.
+(380)
+Therefore, consider θc
+i ∈[0, π
+2 ], we have:
+m2 = ˜
+M 2
+κ (cos (θc
+i ) , f2 (wc))
+= κ2 + 2κ cos (θc
+i )
+τ
++ f 2
+2 (wc)
+τ 2
+≥κ2 + 2κ cos (θc
+i )
+τ
++ w2
+c
+τ 2
+≥w2
+c
+τ 2
+≥0,
+(381)
+which implies:
+m ≥wc
+τ ⇔wc
+τ
+1
+m ≤1.
+(382)
+Plugging Eq. (375) and Eq. (382) into Eq. (379), we have:
+¯
+J (wc; κ, ν) = cos2 (θc
+i )
+τ
+
+−1 + wc
+τ
+1
+m
+Iν+1 (m)
+Iν (m)
+
+< 0.
+(383)
+So we can conclude that, for any fixed θc
+i ∈[0, π
+2 ], ¯
+J (·) is a strictly decreasing function on (0, 1].
+
+===== PAGE 80 =====
+Preprint — arXiv
+Lemma 15. Let X be an N-point configuration, where X = (x1, . . . , xN) ∈(Sh−1)N are iid
+samples from µ = vMF(c, κ). When κ is sufficiently large, ∀i, j ∈[K], i ̸= j, it holds that:
+P(xi · xj ≥0) ≈1.
+(384)
+Proof. Let X ∼vMF(c, κ) on Sh−1 and set U = c⊤X = cos Θ ∈[−1, 1]. Then:
+P(X · c ≥0) =
+R 1
+0 eκu  1 −u2 p−3
+2 du
+R 1
+−1 eκu (1 −u2)
+p−3
+2 du
+.
+(385)
+Using standard integral representations of the modified Bessel and modified Struve functions,
+Iν(z) =
+(z/2)ν
+√πΓ
+ ν + 1
+2
+
+Z 1
+−1
+ezt  1 −t2ν−1
+2 dt,
+ν(z) =
+(z/2)ν
+√πΓ
+ ν + 1
+2
+
+Z 1
+0
+2 sinh(zt)
+ 1 −t2ν−1
+2 dt,
+(386)
+with ν = h/2 −1, the ratio simplifies to the neat closed form
+P(X · c ≥0) = 1
+2
+
+1 + Lν(κ)
+Iν
+
+(387)
+where Lν the modified Struve function. And we list numerical values of this probability:
+• h = 128:
+κ
+1
+5
+10
+20
+30
+50
+100
+200
+P
+0.5353
+0.6710
+0.8117
+0.9609
+0.9956
+1.0000
+1.0000
+1.0000
+• h = 512:
+κ
+1
+5
+10
+20
+30
+50
+100
+200
+P
+0.5176
+0.5875
+0.6708
+0.8116
+0.9075
+0.9863
+1.0000
+1.0000
+• h = 1024:
+κ
+1
+5
+10
+20
+30
+50
+100
+200
+P
+0.5125
+0.5621
+0.6227
+0.7340
+0.8258
+0.9409
+0.9991
+1.0000

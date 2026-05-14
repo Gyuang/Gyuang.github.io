@@ -1,0 +1,913 @@
+
+===== PAGE 1 =====
+It’s Not a Modality Gap: Characterizing and
+Addressing the Contrastive Gap
+Abrar Fahim
+University of Alberta
+afahim2@ualberta.ca
+Alex Murphy
+University of Alberta
+amurphy3@ualberta.ca
+Alona Fyshe
+University of Alberta
+alona@ualberta.ca
+Abstract
+Multi-modal contrastive models such as CLIP (Radford et al. (2021)) achieve state-
+of-the-art performance in zero-shot classification by embedding input images and
+texts on a joint representational space. Recently, a modality gap has been reported
+in two-encoder contrastive models like CLIP, meaning that the image and text
+embeddings reside in disjoint areas of the latent space. Previous studies suggest
+that this gap exists due to 1) the cone effect, 2) mismatched pairs in the dataset, and
+3) insufficient training. We show that, even when accounting for all these factors,
+and even when using the same modality, the contrastive loss actually creates a gap
+during training. As a result, We propose that the modality gap is inherent to the two-
+encoder contrastive loss and rename it the contrastive gap. We present evidence
+that attributes this contrastive gap to low uniformity in CLIP space, resulting in
+embeddings that occupy only a small portion of the latent space. To close the gap,
+we adapt the uniformity and alignment properties of unimodal contrastive loss to
+the multi-modal setting and show that simply adding these terms to the CLIP loss
+distributes the embeddings more uniformly in the representational space, closing
+the gap. In our experiments, we show that the modified representational space
+achieves better performance than default CLIP loss in downstream tasks such as
+zero-shot image classification and multi-modal arithmetic.
+1
+Introduction
+Multi-modal models map inputs from different modalities into a unified representational space, such
+that semantically similar inputs from different modalities map to nearby points in the representational
+space. This can be practically useful because it allows transfer between modalities, but it is also more
+consistent with the human sensory experience, which collects information across many modalities to
+better understand the world. In the context of learning from paired images and text, CLIP (Contrastive
+Language Image Pre-training) (Radford et al., 2021) establishes a strong proof-of-concept for this
+reasoning. CLIP’s multi-modal contrastive loss allows the model to predict the text associated with an
+image and vice versa. CLIP scales this approach to a very large dataset of 400M image-caption pairs,
+learning embeddings that cover a wide variety of visual concepts applicable to many downstream
+tasks.
+But, while CLIP is powerful, it suffers from a modality gap (Liang et al., 2022), wherein image
+embeddings reside in a space disjoint from that of the text embeddings. This phenomenon is also
+seen in multi-modal contrastive models in other domains such as medical images (Zhang et al.,
+2021), videos (Xu et al., 2021), amino acid sequencing (https://github.com/MicPie/clasp)
+and brain decoding (Luo et al., 2023). Prior work has shown that performance on downstream tasks
+improves when we minimize this gap, which can be achieved by simply shifting one modality’s
+embeddings in CLIP space to change the size of the gap (Liang et al., 2022) through projection
+(transforming the embeddings through some projection operation) (Zhou et al., 2023), or through
+Preprint. Under review.
+arXiv:2405.18570v3  [cs.CV]  6 Jun 2024
+
+===== PAGE 2 =====
+fine-tuning (Oh et al., 2023). Recent work has additionally shown that learning latent spaces of visual
+embeddings via alignment with human similarity judgments improves downstream task performance
+(Muttenthaler et al., 2023). Similarly, work relating CLIP embeddings to human brain data found that
+representations that had reduced the gap between modalities also led to improved downstream model
+performance (Luo et al., 2023). Therefore, analyzing and closing this gap is a promising direction to
+improve upon the strong representational capacity of CLIP and its variants.
+In this paper, we conducted a comprehensive study of what causes the modality gap and simple ways
+to close it. We make the following contributions:
+• It’s not a modality gap. After summarizing the common purported causes of the modality
+gap, we perform comprehensive experiments that show that accounting for these factors
+does not close the gap, suggesting that the present understanding of modality gap may be
+flawed.
+• It’s a contrastive gap. We present experiments that demonstrate that the gap is a byproduct
+of a high dimensional CLIP space, combined with contrastive loss that encourages CLIP
+embeddings to occupy a lower dimensional manifold relative to the latent space.
+• The contrastive gap can be closed. We show that simply fine-tuning CLIP by adding
+a factor for uniformity and alignment can reduce the size of the gap by distributing the
+embeddings more uniformly throughout CLIP’s latent space.
+• Closing the contrastive gap improves downstream performance. Finally, we present
+experiments to show that closing the contrastive gap, and thereby creating more aligned and
+uniformly distributed representations, creates a representational space that is better for most
+downstream tasks, including zero-shot image classification and multi-modal embedding
+arithmetic.
+2
+Background
+A multi-modal contrastive model learns a representational space in which semantically paired samples
+from different modalities (positive pairs, e.g., an image and its associated caption) are closer together
+in the latent space compared to other randomly chosen pairs (negative pairs, e.g., an image and
+the caption associated with another randomly chosen image). Contrastive learning was originally
+developed for the unimodal setting to learn self-supervised representations. One such popular model
+is SimCLR (Chen et al., 2020), which uses the NT-Xent (Normalized Temperature-scaled Cross
+entropy) loss to efficiently learn robust image representations. The NT-Xent loss is different from
+previous contrastive learning methods as it does not need explicit negative samples. The NT-Xent
+loss works by treating samples other than the positive pair in a training mini-batch as soft-negatives,
+pushing them away from the positives. Unlike previous contrastive methods, the NT-Xent loss also
+normalizes the embeddings to lie on a unit hypersphere in the representational space.
+Wang and Isola (2020) introduced uniformity and alignment factors as desirable properties of the
+representational space and showed that the NT-Xent loss optimizes the uniformity and alignment
+properties in the limit of infinite negative samples, which is equivalent to infinite batch size for
+NT-Xent loss.
+Multiple models generalize the contrastive loss to the multi-modal setting (Zhang et al., 2021; Jia
+et al., 2021; Radford et al., 2021). Notably, Radford et al. (2021) scaled up vision-language contrastive
+learning to larger datasets to achieve impressive zero-shot classification results.
+Liang et al. (2022) observed that a modality gap appears in many models that use multi-modal
+contrastive learning. There have since been several attempts to close the gap while monitoring
+its effects on downstream task performance. Liang et al. (2022) show that altering the gap by
+simply translating the embeddings of one modality onto the other can positively impact zero-shot
+classification performance. Further, Oh et al. (2023) attribute the modality gap to the absence of
+hard-negatives in a training mini-batch and synthetically generated hard-negative samples from
+existing data points, showing that training with the hard-negatives improves representational quality.
+In this work, we frame the gap between the multi-modal embeddings as a problem of low uniformity
+and show that by simply optimizing for more alignment and uniformity (properties known to be
+desirable in uni-modal contrastive learning), we can significantly reduce the size of the gap, while
+increasing the quality of the representations learned.
+2
+
+===== PAGE 3 =====
+2.1
+Contrasting Images and Text using CLIP Loss
+CLIP is an example of a contrastive model that learns image and text embeddings. CLIP loss (LCLIP
+) is based on NT-Xent loss. While NT-Xent loss is designed to work on data points from a single
+modality, LCLIP is adapted to work on two different modalities of data.
+In our scenario, the multi-modal dataset contains N images and corresponding captions. We obtain
+image embeddings EI
+j ∈Rd by passing image Ij through the image encoder. Similarly, we produce
+the text embedding ET
+j ∈Rd by passing caption Tj through the text encoder. CLIP aims to bring
+image embeddings and their corresponding caption embeddings closer together in the CLIP latent
+space (CLIP space) by increasing the similarity (inner product ⟨., .⟩) between the corresponding
+embeddings. The image and text embeddings are normalized to lie on a unit hypersphere in Rd.
+The full CLIP loss is:
+LCLIP = −1
+2N
+N
+X
+j=1
+log
+"
+exp (⟨EI
+j , ET
+j ⟩/τ)
+PN
+k=1 exp (⟨EI
+j , ET
+k ⟩/τ)
+#
+−1
+2N
+N
+X
+k=1
+log
+"
+exp (⟨EI
+k, ET
+k ⟩/τ)
+PN
+j=1 exp (⟨EI
+j , ET
+k ⟩/τ)
+#
+(1)
+where the left term contrasts images with the texts (PN
+k=1 in the denominator loops over text
+embeddings as negatives for the jth image) and the right term contrasts texts to images (PN
+j=1
+in the denominator loops over image embeddings as negatives for the kth text). τ represents the
+temperature parameter (τ = 0.01 at the end of CLIP pre-training)
+3
+The Gap in Multi-modal Contrastive Learning
+Though CLIP effectively associates images with related texts, it also creates representational spaces
+with a modality gap, a phenomenon that has generated some interest. Liang et al. (2022) attributes
+this modality gap to two independent factors. First, they describe the cone effect of deep neural
+networks, in which different random initializations cause the embeddings of two encoders occupy
+two non-overlapping narrow cones in CLIP space. Second, they note the existence of mismatched
+pairs in the dataset, where the pairing of images and captions is incorrect for some data points. Welle
+(2023) studied the gap in three dimensions and attributed it to conflicting uniformity and alignment
+terms in the contrastive loss, claiming that this leads to the existence of local minima that encourage
+the gap. Further, (Oh et al., 2023; Liang et al., 2022) show that the modality gap persists even after
+fine-tuning. In our first experiment in Section 3.2, we will show that these factors cannot fully account
+for the modality gap by simulating an ideal scenario where all of the above factors are eliminated, but
+the gap still exists at the end of training. The goal of this work is to suggest that the \emph{modality
+gap} is not caused by trying to align different modalities in a unified representational space, but
+instead arises as a consequence of the contrastive training that is used to align both modalities. We
+therefore suggest that the term \emph{contrastive gap} better captures the underlying phenomenon.
+3.1
+Measuring the gap
+To show that we have closed the gap between the embeddings of the two encoders, we must first find
+a way to quantify the gap. We introduce the following two metrics to measure the size and severity of
+the gap:
+Distance between modality centroids (from Liang et al. (2022)) Given N images and N captions,
+we denote the centroid of the image embeddings as CI = 1/N PN
+j=1 EI
+j , and similarly for the
+centroid of the text embeddings. We compute the distance between centroids as ∥CI −CT ∥2, and
+note that the centroid distance can vary from 0 to 2.
+Linear Separability (from Welle (2023)) is the percentage of image and text embeddings that can
+be distinguished by a linear classifier operating in CLIP space. We used 80% of the dataset to train
+a linear model to classify CLIP embeddings as originating from either "image" or "text" input. We
+then tested the performance of the classifier on the remaining 20% of the dataset and reported the
+accuracy. If a set of embeddings are 100% linearly separable, this means that the space occupied by
+3
+
+===== PAGE 4 =====
+At initialization
+After 1200 epochs
+Centroid distance
+0.00
+0.06
+Linear separability acc.
+0.50
+1.00
+Contrastive loss
+4.83
+0.00
+Table 1: Modality gap persists even when all factors are accounted for: Modality gap metrics
+and CLIP loss values before and after training CLIP from scratch in ideal dataset conditions. At
+initialization: Distance between image and text centroids is zero and the embeddings are not linearly
+separable, meaning that there is no modality gap. After training:
+Centroid distance increases
+slightly, but the text and image embeddings are perfectly linearly separable. Thus, the modality gap is
+created by the contrastive loss.
+each modality is completely disjoint. Conversely, 50% linear separability means that the image and
+text embeddings are overlapping in CLIP space, meaning that they occupy the same region of the
+latent space; i.e. there is no gap between the embeddings. To summarize, if we can effectively close
+the gap we will find that the distance between centroids is small and linear separability is close to
+50%.
+3.2
+The Modality Gap Persists Even When All Factors Are Accounted For
+We now systematically remove the factors commonly known to contribute to the modality gap. We
+started with the default CLIP architecture, and used the MSCOCO (Lin et al., 2014) dataset. We
+created an idealized scenario where:
+1. There is only one modality. We replaced the text encoder in CLIP with another copy of the
+image encoder and trained the model on pairs of images instead of text-image pairs. Thus,
+for this experiment the CLIP encoders are identical image encoders with different random
+initializations.
+2. Embeddings from the two image encoders occupy the same cone at initialization. In our
+setup, after we initialize the two image encoders, we computed a fixed transformation matrix
+that translates the embeddings of the second image encoder to overlap with those of the first
+image encoder (following Liang et al. (2022)). Thus, the second encoder’s embeddings are
+translated to occupy the same narrow cone as the first encoder’s embeddings at initialization.
+This way, there is no modality gap at initialization.
+3. There are no mismatched pairs. The positive pairs in our constructed dataset are actually
+identical images. This eliminated the possibility that there would be mismatched pairs in the
+dataset.
+We ran this experiment with a dataset of 2048 randomly selected images from the MS COCO training
+set. We used a batch size of 64, and the default CLIP dimensionality of 512D (i.e. Image embeddings,
+EI ∈R512). Since the dataset is very small, we could run the model training to completion (train
+loss = 0) fairly quickly (about 20k steps, or 1200 epochs).
+We observe in Table 1 that even when the dataset is idealized and almost trivial to optimize on, and
+the model is initialized without a gap, after training to zero loss, the CLIP embeddings are perfectly
+linearly separable. Thus, there is a contrastive gap that is created as a byproduct of the contrastive
+loss, even when the two encoders learn to align the same modality.
+3.3
+Visualizing the gap in 3D CLIP
+We showed in the previous experiment that the gap was created during training when training on
+512-dimensional CLIP. However, Welle (2023) shows that it is possible for CLIP loss to close the
+gap between embeddings by optimizing synthetically generated 3-dimensional points in Euclidean
+space without using a neural network.
+We study the effects of CLIP loss on 3D data by optimizing a set of 1000 images and texts from
+MS COCO train set data using CLIP loss and the default CLIP model. In Figure 1 we see that after
+training for 275 epochs, CLIP loss is able to close the contrastive gap in 3D even on real-world data.
+We report the Text-retrieval accuracies in Figure 1 as the accuracy with which we can retrieve an
+4
+
+===== PAGE 5 =====
+(a) Epoch 0
+I →T accuracy: 0.0
+(b) Epoch 37
+I →T accuracy: 0.0
+(c) Epoch 150
+I →T accuracy: 0.1
+(d) Epoch 275
+I →T accuracy: 0.87
+Figure 1: Visualizing the training stages of 3D CLIP on 1000 image-text pairs from MS COCO. Red
+points are image embeddings, and blue points are text embeddings. I →T accuracy represents the
+text retrieval accuracies: Higher I →T accuracies mean that positive pairs are well contrasted in the
+latent space relative to the negative pairs. The embeddings of each modality are initialized to reside
+in separate cones due to the cone effect, before they form arcs and then eventually merge together as
+rings. Finally, they spread out to fill the sphere.
+input image’s caption given the input image’s embedding and the embeddings of all the captions in
+the dataset.
+We see that points on the 3D sphere are best aligned when they are evenly distributed on the sphere
+(as evidenced by the very high text-retrieval accuracy when Figure 1d). Therefore, we speculate
+that it is desirable close the contrastive gap and to distribute the embeddings more uniformly on
+the unit sphere in Rd to improve the quality of representations. However, simply reducing CLIP
+dimensionality to close the contrastive gap may not be desirable, as representations retain lesser
+information in lower dimensions. Therefore, we propose explicitly optimizing for more uniformly
+distributed embeddings in high-dimensional CLIP space. We will see that when the embeddings are
+more uniform, the contrastive gap decreases, and in turn, the quality of the learned representations
+increases.
+4
+Optimizing Alignment and Uniformity of CLIP Representations
+We now introduce the concepts of uniformity and alignment in the representational space. Uniformity
+refers to the property of the embeddings being uniformly distributed throughout the contrastive
+latent space. Alignment refers to the positive pairs being close together (aligned) in the latent space.
+Wang and Isola (2020) introduce uniformity and alignment as desirable properties in the unimodal
+contrastive representational space. i.e., image models that had higher uniformity and alignment
+values in their representational spaces learned better representations that led to consistent higher
+downstream task performance. They also showed that the unimodal contrastive loss asymptotically
+optimizes for uniformity and alignment with infinite negative examples. Finally, they empirically
+showed that, with finite negative examples, explicitly optimizing for alignment and uniformity can
+lead to better learned representations.
+To study the effects of closing the contrastive gap, we adapt the uniformity and alignment properties
+from Wang and Isola (2020) to the multi-modal contrastive space as follows:
+Uniformity for Image space : LI
+Uniform = log
+
+1
+N
+N
+X
+j=1
+N
+X
+k=1
+exp (−2∥EI
+j −EI
+k∥2)
+
+
+(2)
+We define the uniformity for text space (LT
+Uniform) similarly. Finally, the total LUniform term is:
+LUniform = 1
+2(LT
+Uniform + LI
+Uniform)
+(3)
+LI
+Uniform and LT
+Uniform each encourage the uniformity within the image and text embeddings respectively.
+i.e., LUniform
+only encourages in-modal uniformity. The original multi-modal contrastive loss
+(Equation 1) does not have any such term that constrains embeddings within each modality to be far
+5
+
+===== PAGE 6 =====
+apart. Instead, the denominators in Equation 1 only push negative text samples away from positive
+image sample and vice versa .
+To enforce a stronger constraint on the uniformity between negative image and text samples, we also
+introduce a cross-modal uniformity term:
+Cross-modal uniformity : LXUniform = log
+
+1
+N
+N
+X
+j=1
+N
+X
+k=1,k̸=j
+exp (−2∥EI
+j −ET
+k ∥2)
+
+
+(4)
+Finally, to better align positive image-text pairs in CLIP space, we adapt the alignment term
+from Wang and Isola (2020) to the multi-modal setting:
+LAlign = 1
+N
+N
+X
+j=1
+(∥EI
+j −ET
+j ∥2)
+(5)
+Uniformity and alignment properties have been shown to be desirable properties in the uni-modal
+contrastive space. We validate the desirability of these two properties in the multi-modal setting.
+In prior works evaluating the multi-modal contrastive representational space using alignment and
+uniformity properties, Goel et al. (2022) and Oh et al. (2023) used cross-modality uniformity to
+measure uniformity in the latent space. Meanwhile Al-Jaff (2023) explored explicitly training multi-
+modal models using LUniform (i.e., only the in-modal uniformity term) and LAlign . In our work, we
+combine both the in-modal and cross-modal uniformity terms to encourage more uniformity in the
+latent space and reduce the size of the contrastive gap.
+5
+Experiments
+We studied the effects of reducing the contrastive gap in CLIP space by optimizing for uniformity
+and alignment of the latent space. We fine-tuned a pre-trained CLIP model by adding the LUniform
+, LXUniform , and LAlign terms to the original CLIP loss (LCLIP , Equation 1). We demonstrate the
+effects of fine-tuning pre-trained CLIP on the following losses
+• LCLIP : The default CLIP loss
+• LCLIP+Uniform+Align (LCUA ): LCLIP + LUniform + LAlign
+• LCLIP+Uniform+Align+XUniform (LCUAXU ): LCLIP + LUniform + LAlign + LXUniform
+Hyperparameters Overview
+For our experiments, we fine-tuned the CLIP model made available
+by Radford et al. (2021). We used the ViT-B/32 variant of the image encoder and a transformer (from
+OpenAI’s official implementation1) as the text encoder. We studied the effects of fine-tuning over
+various sizes of CLIP space (Rd, d ∈[32, 64, 128]). When fine-tuning, we reduced the dimensionality
+of CLIP by randomly re-initializing the final linear projection layer of CLIP. For all our experiments,
+we fixed the temperature (τ) parameter to 0.01, as τ converges to this value after CLIP pre-training.
+We fine-tuned on the MS COCO (Lin et al., 2014) for 9 epochs. We list all hyperparameter settings
+in the Appendix B.3
+Experiments Structure
+We first show the effects the new loss functions have on the representational
+space by measuring the size of contrastive gap on the MS COCO validation dataset. Then, we analyze
+the effects of reducing the gap by measuring image-text retreival accuracies on the MS COCO
+validation dataset. We then experiment to see if the same results hold for off-distribution datasets by
+evaluating zero-shot image classification performance on five standard datasets. Finally, we explore
+finer differences in the representational spaces learned by the different loss functions by reporting
+performance on multi-modal arithmetic.
+5.1
+Effects of Reducing the Contrastive Gap on MS COCO
+First we explore the contrastive gap metrics on the MS COCO validation dataset (5k image-caption
+pairs) for models with different losses. Though the MS COCO dataset has 5 captions per image, we
+1https://github.com/openai/CLIP
+6
+
+===== PAGE 7 =====
+Linear Sep.
+Centroid
+Accuracy (↓)
+Distance (↓)
+LCLIP
+1.00
+0.66
+LCUA
+0.73
+0.08
+LCUAXU
+0.83
+0.14
+Table 2: Gap metrics on MS COCO validation
+dataset. Recall: the gap closes when linear sepa-
+rability ∼0.5 and centroid distance is small. The
+size of the gap is much smaller with uniformity
+and alignment terms included.
+LUniform
+LXUniform
+LAlign
+LCLIP
+-2.02
+-2.79
+0.82
+LCUA
+-3.64
+-3.68
+0.54
+LCUAXU
+-3.76
+-3.81
+0.69
+Table 3: Final loss values for in-modality unifor-
+mity, cross-modality uniformity, and alignment
+on the MS COCO validation set.
+Figure 2: Explained variances for all principle
+components of the 128D latent space for several
+losses.
+Figure 3: Average zero-shot classification accu-
+racies for fine-tuned CLIP on the different losses.
+CLIP losses with uniformity and alignment terms
+added consistently get better zero-shot accuracies
+than default fine-tuned CLIP on the same dimen-
+sionality.
+used only the first caption. We show the results for d = 128, (other dimensionalities appear in the
+Appendix A.1). The results in Table 2 show that all the new modified CLIP losses shrink the gap.
+This supports our claim that increasing uniformity in CLIP space reduces the size of the contrastive
+gap.
+Next, we look at the distribution of the image and text embeddings in CLIP space using PCA and
+explained variance ratios (Holland (2008)). PCA (Principle Component Analysis) is a technique used
+to reduce the dimensionality of a feature space by summarizing the data in a smaller set of principle
+components (PCs). The PCA explained variance is the amount of variance from the original data
+captured or "explained" by each PC.
+Figure 2 shows the cumulative explained variance of CLIP spaces learned using various losses.
+Compared to LCLIP and LCLIP+Align+Uniform , LCLIP+Align+Uniform+XUniform has the the lowest cumulative
+variance across all the principle components, indicating that cross-modal uniformity encourages the
+embeddings to be distributed throughout the hypersphere more effectively. This is further shown in
+Table 3, where we see that the LUniform , LXUniform , and LAlign terms are lower (i.e., embeddings are
+more aligned/distributed) when we add alignment and uniformity terms to the CLIP loss.
+Finally, we evaluated the quality of the representational space after reducing the contrastive gap. We
+used the image-text retrieval task on the MS COCO validation dataset, a standard representative
+task in the vision-language domain. We present the results in Table 4. For both the image-retrieval
+(T →I) and the text-retrieval (I →T) tasks, we see that models fine-tuned with all the loss
+functions perform comparably. These results suggest that it is possible to shrink the gap between the
+embeddings, while maintaining similar image-text retrieval performance after fine-tuning.
+7
+
+===== PAGE 8 =====
+I →T(↑)
+T →I(↑)
+Top1
+Top5
+Top10
+Top1
+Top5
+Top10
+LCLIP
+0.28
+0.57
+0.70
+0.27
+0.56
+0.69
+LCUA
+0.26
+0.54
+0.68
+0.25
+0.54
+0.66
+LCUAXU
+0.27
+0.56
+0.69
+0.27
+0.56
+0.69
+Table 4: Image to text (I →T) and text to image (T →I) retrieval accuracies for MS COCO.
+Training with uniformity/alignment maintains image-text retrieval accuracies compared to default
+CLIP. We report 1-standard error confidence intervals in Table 10 (Appendix A.2).
+Centroid Dist.
+LI
+Uniform
+LCLIP
+0.71
+-1.41
+LCUA
+0.532
+-2.59
+LCUAXU
+0.59
+-2.75
+Table 5: Average contrastive gap size and image-uniformity values for 128D CLIP across all of the 5
+datasets
+5.2
+Zero-Shot Transfer
+Previously, we saw that optimizing for uniformity and alignment reduces the size of the contrastive
+gap by encouraging the image and text embeddings to lie on higher dimensional manifolds in the unit
+hypersphere in Rd. Now, we analyze the effects this has zero-shot image classification, a common
+downstream task associated with assessing the quality of CLIP embeddings.
+We evaluate our fine-tuned CLIP models on five standard image-classification datasets: ImageNet1k
+(Russakovsky et al. (2015)), CIFAR 10, CIFAR 100 (Krizhevsky et al. (2009)), Caltech101 (Li et al.
+(2022)), and Describable Textures Dataset (DTD) (Cimpoi et al. (2014)). We adopt the evaluation
+strategy of Goel et al. (2022) and recommended by Radford et al. (2021): We generate prompts using
+the class names to form sentences like "a photo of a class name", "A sketch of a "class name", etc.
+We then pass these sentences through the text encoder to get prompt embeddings. We average all
+prompt embeddings to a class embedding. We then pass the image through the image encoder and
+classify the image by finding the closest class via cosine similarity between the embeddings.
+Figure 3 shows the average zero-shot accuracies across the five datasets for each of the losses and
+dimensionalities. CLIP losses with alignment/uniformity consistently outperform the default CLIP
+loss, and XUniform adds additional benefit. In Table 5, we present centroid distances between class
+and image embeddings, as well as uniformity loss values for image embeddings. We observe that
+LCUA and LCUAXU are able to learn representations with higher uniformity and smaller contrastive
+gap. LCUAXU performs the best on average across all the datasets and dimensionalities in the zero-
+shot classification task, suggesting that lower LI
+Uniform and lower values for centroid distance (lower
+contrastive gap) may lead to better representations learned.
+5.3
+Multimodal Arithmetic
+A high quality multi-modal representational space should have consistent structural representations
+across the learned modalities. We used SIMAT (for Semantic IMage Transformation) (Couairon et al.,
+2021) to evaluate such relationship consistencies between CLIP image and text ebeddings. SIMAT
+computes a new image representation after transforming it with text delta vectors, and retrieves the
+closest image to the transformed embedding. (i.e., EI
+target = EI
+input + λ˙(ET
+target −ET
+input), where λ is a
+hyperparameter controlling the strength of the transformation).
+Table 6 shows SIMAT scores across the different loss functions. Adding uniformity and loss terms to
+the CLIP loss leads to increased SIMAT scores, indicating that the representational space learned
+with uniform / alignment terms is more consistent with arithmetic operations between modalities.
+This suggests that closing the contrastive gap by fine-tuning with added uniformity/alignment terms
+could benefit applications that rely on the geometric structure and consistent arithmetic properties in
+the latent space.
+8
+
+===== PAGE 9 =====
+SIMAT Score (↑)
+LCLIP
+36.02
+LCLIP+Uniform+Align
+42.18
+LCLIP+Uniform+XUniform+Align
+42.47
+Table 6: SIMAT evaluation scores (λ = 1) for the different finetuning losses. Loss functions that
+reduce the contrastive gap produce higher SIMAT scores (18% improvement over LCLIP ).
+6
+Conclusions
+In this paper, we studied the representations learned by multi-modal contrastive learning algorithms
+and analyzed the contrastive gap phenomenon. We showed that eliminating all reasons commonly
+thought to cause the gap does not close it. Thus, this is not a modality gap. We instead propose the
+term contrastive gap to describe this phenomenon. By studying the behaviour of the contrastive loss
+in 3D, we deduced that the most important factor behind the gap is low uniformity of the embeddings
+in the unit hypersphere. We additionally demonstrated that the contrastive gap is symptomatic of the
+representations lying on a lower dimensional manifold in the latent space.
+Motivated by the fact that the gap stems from low uniformity, we suggest adding explicit uniformity
+and alignment terms to the CLIP loss. We show that directly optimizing for uniformity and alignment
+in the latent space significantly reduces the gap, while forcing the image and text embeddings to lie on
+higher dimensional manifold on the CLIP hypersphere. This supports our claim that low uniformity
+in the representational space is the primary factor behind the contrastive gap.
+We further show that closing the gap by simply fine-tuning CLIP with added uniformity and align-
+ment terms improves zero-shot image classification and multi-modal arithmetic performance, while
+maintaining or slightly improving image-text retrieval performance.
+In this work we explored the contrastive gap in the context of limited data (fine-tuning CLIP on
+MS COCO). In the future we would like to expand our scope and include larger datasets. Training
+on larger datasets could lead to more insights into the extent to which the contrastive gap closes
+by optimizing uniformity and alignment at scale. Finally, in our experiments, we saw that the
+performance in the MS COCO image-retrieval task was similar for all the losses, while the uniformity
+and alignment in the MS COCO space was better with the new loss factors. This suggests that there
+may be other measures of quality in the embedding space besides uniformity and alignment more
+indicative of representational quality for this task. Research into such metrics could help design more
+efficient loss functions while enabling better understanding of the multi-modal contrastive latent
+space.
+7
+Broader Impacts
+The work we have presented here is quite theoretical so the broader impacts are less clear. However,
+any model that learns from text and images has the ability to incorporate or enhance biases that exist
+in the training data. For example, if some captions are harmful, creating a better model to represent
+them may also be harmful. The images included in MS COCO also represent a biased sample of what
+occurs in the real world. For example, scenes from certain countries are underrepresented. This will
+impact any model trained on this data and could impact the utility of the model in certain deployment
+scenarios.x
+9
+
+===== PAGE 10 =====
+References
+Mohammad Al-Jaff. 2023. Messing With The Gap: On The Modality Gap Phenomenon In Multimodal
+Contrastive Representation Learning. Ph. D. Dissertation. Uppsala University.
+Ting Chen, Simon Kornblith, Mohammad Norouzi, and Geoffrey Hinton. 2020. A Simple Framework
+for Contrastive Learning of Visual Representations.
+http://arxiv.org/abs/2002.05709
+arXiv:2002.05709 [cs, stat].
+M. Cimpoi, S. Maji, I. Kokkinos, S. Mohamed, , and A. Vedaldi. 2014. Describing Textures in the
+Wild. In Proceedings of the IEEE Conf. on Computer Vision and Pattern Recognition (CVPR).
+Guillaume Couairon, Matthieu Cord, Matthijs Douze, and Holger Schwenk. 2021. Embedding
+Arithmetic for text-driven Image Transformation. arXiv preprint arXiv:2112.03162 (2021).
+Shashank Goel, Hritik Bansal, Sumit Bhatia, Ryan A. Rossi, Vishwa Vinay, and Aditya Grover.
+2022. CyCLIP: Cyclic Contrastive Language-Image Pretraining.
+http://arxiv.org/abs/
+2205.14459 arXiv:2205.14459 [cs].
+Steven M Holland. 2008. Principal components analysis (PCA). Department of Geology, University
+of Georgia, Athens, GA 30602 (2008), 2501.
+Chao Jia, Yinfei Yang, Ye Xia, Yi-Ting Chen, Zarana Parekh, Hieu Pham, Quoc V. Le, Yunhsuan
+Sung, Zhen Li, and Tom Duerig. 2021. Scaling Up Visual and Vision-Language Representation
+Learning With Noisy Text Supervision. arXiv:2102.05918 [cs.CV]
+Alex Krizhevsky, Geoffrey Hinton, et al. 2009. Learning multiple layers of features from tiny images.
+(2009).
+Fei-Fei Li, Marco Andreeto, Marc’Aurelio Ranzato, and Pietro Perona. 2022. Caltech 101. https:
+//doi.org/10.22002/D1.20086
+Weixin Liang, Yuhui Zhang, Yongchan Kwon, Serena Yeung, and James Zou. 2022. Mind the
+Gap: Understanding the Modality Gap in Multi-modal Contrastive Representation Learning.
+http://arxiv.org/abs/2203.02053 arXiv:2203.02053 [cs].
+Tsung-Yi Lin, Michael Maire, Serge Belongie, James Hays, Pietro Perona, Deva Ramanan, Piotr
+Dollár, and C. Lawrence Zitnick. 2014. Microsoft COCO: Common Objects in Context. In
+Computer Vision – ECCV 2014, David Fleet, Tomas Pajdla, Bernt Schiele, and Tinne Tuytelaars
+(Eds.). Springer International Publishing, Cham, 740–755.
+Andrew F. Luo, Margaret M. Henderson, Michael J. Tarr, and Leila Wehbe. 2023. BrainSCUBA:
+Fine-Grained Natural Language Captions of Visual Cortex Selectivity. CoRR abs/2310.04420
+(2023). https://doi.org/10.48550/ARXIV.2310.04420 arXiv:2310.04420
+Lukas Muttenthaler, Lorenz Linhardt, Jonas Dippel, Robert A. Vandermeulen, Katherine L. Hermann,
+Andrew K. Lampinen, and Simon Kornblith. 2023. Improving neural network representations
+using human similarity judgments. In Advances in Neural Information Processing Systems 36:
+Annual Conference on Neural Information Processing Systems 2023, NeurIPS 2023, New Orleans,
+LA, USA, December 10 - 16, 2023, Alice Oh, Tristan Naumann, Amir Globerson, Kate Saenko,
+Moritz Hardt, and Sergey Levine (Eds.).
+http://papers.nips.cc/paper_files/paper/
+2023/hash/9febda1c8344cc5f2d51713964864e93-Abstract-Conference.html
+Changdae Oh, Junhyuk So, Hoyoon Byun, YongTaek Lim, Minchul Shin, Jong-June Jeon, and
+Kyungwoo Song. 2023. Geodesic Multi-Modal Mixup for Robust Fine-Tuning. In Thirty-seventh
+Conference on Neural Information Processing Systems. https://openreview.net/forum?
+id=iAAXq60Bw1
+Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal,
+Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, Gretchen Krueger, and Ilya Sutskever.
+2021. Learning Transferable Visual Models From Natural Language Supervision. (2021).
+Olga Russakovsky, Jia Deng, Hao Su, Jonathan Krause, Sanjeev Satheesh, Sean Ma, Zhiheng Huang,
+Andrej Karpathy, Aditya Khosla, Michael Bernstein, et al. 2015. Imagenet large scale visual
+recognition challenge. International journal of computer vision 115 (2015), 211–252.
+10
+
+===== PAGE 11 =====
+Tongzhou Wang and Phillip Isola. 2020. Understanding Contrastive Representation Learning through
+Alignment and Uniformity on the Hypersphere. (2020).
+Michael Welle. 2023. UNDERSTANDING THE MODALITY GAP IN CLIP. (2023).
+Thomas Wolf, Lysandre Debut, Victor Sanh, Julien Chaumond, Clement Delangue, Anthony Moi,
+Pierric Cistac, Tim Rault, Rémi Louf, Morgan Funtowicz, Joe Davison, Sam Shleifer, Patrick
+von Platen, Clara Ma, Yacine Jernite, Julien Plu, Canwen Xu, Teven Le Scao, Sylvain Gugger,
+Mariama Drame, Quentin Lhoest, and Alexander M. Rush. 2020. HuggingFace’s Transformers:
+State-of-the-art Natural Language Processing. arXiv:1910.03771 [cs.CL]
+Hu Xu, Gargi Ghosh, Po-Yao Huang, Dmytro Okhonko, Armen Aghajanyan, Florian Metze, Luke
+Zettlemoyer, and Christoph Feichtenhofer. 2021. VideoCLIP: Contrastive Pre-training for Zero-
+shot Video-Text Understanding. In Proceedings of the 2021 Conference on Empirical Methods
+in Natural Language Processing, Marie-Francine Moens, Xuanjing Huang, Lucia Specia, and
+Scott Wen-tau Yih (Eds.). Association for Computational Linguistics, Online and Punta Cana,
+Dominican Republic, 6787–6800. https://doi.org/10.18653/v1/2021.emnlp-main.544
+Yuhao Zhang, Hang Jiang, Yasuhide Miura, Christopher D Manning, and Curtis Langlotz. 2021.
+Contrastive Learning of Medical Visual Representations from Paired Images and Text. https:
+//openreview.net/forum?id=T4gXBOXoIUr
+Chenliang Zhou, Fangcheng Zhong, and Cengiz Oztireli. 2023. CLIP-PAE: Projection-Augmentation
+Embedding to Extract Relevant Features for a Disentangled, Interpretable, and Controllable Text-
+Guided Face Manipulation. arXiv:2210.03919 [cs.CV]
+11
+
+===== PAGE 12 =====
+A
+Additional Results
+A.1
+Gap Metrics on MS COCO after fine-tuning
+We present the sizes of the contrastive gap as measured by centroid distance and linear separability
+accuracy on the validation dataset of MS COCO (5k image-text pairs) for each of the loss variants.
+Table 2 shows the size of the gap for 128-dimensional CLIP (i.e., CLIP latent space in Rd, d = 128).
+Here, we extend those results to include gap sizes for d ∈[32, 64, 128]. We use a fixed batch size
+of 64 for fine-tuning CLIP in all cases. We report 1-standard error sized confidence intervals for all
+values, averaged over 3 different seeds.
+Linear Separability Acc.
+Centroid Distance
+LCLIP
+0.78 ± 0.05
+0.10 ± 0.01
+LCUA
+0.59 ± 0.02
+0.07 ± 0.01
+LCUAXU
+0.68 ± 0.05
+0.12 ± 0.03
+Table 7: Gap metrics on MS COCO validation dataset for CLIP in R32.
+Linear Separability Acc.
+Centroid Distance
+LCLIP
+1.00 ± 0.00
+0.31 ± 0.03
+LCUA
+0.65 ± 0.01
+0.07 ± 0.01
+LCUAXU
+0.78 ± 0.00
+0.14 ± 0.00
+Table 8: Gap metrics on MS COCO validation dataset for CLIP in R64.
+Linear Separability Acc.
+Centroid Distance
+LCLIP
+1.00 ± 0.00
+0.66 ± 0.03
+LCUA
+0.73 ± 0.01
+0.08 ± 0.02
+LCUAXU
+0.83 ± 0.02
+0.13 ± 0.01
+Table 9: Gap metrics on MS COCO validation dataset for CLIP in R128.
+Tables 7, 8, and 9 all show that the LCUA has the least gap between the embeddings (least centroid
+distances, and lower linear separability accuracies) across all the CLIP dimensionalities tested. The
+results show that increased uniformity and alignment in the representational space can reduce the
+size of the contrastive gap across a range of CLIP dimensionalities. Further, as the dimensionalities
+increase, the size of the gap also increases. For example, linear separability accuracies increase for
+LCUA after 9 epochs of fine-tuning as dimensionality increases from 32D to 128D.
+Next, we look at the distribution of image and text embeddings in CLIP space using PCA and
+explained variance ratios. Figure 2 in the main text shows cumulative explained variance of CLIP
+spaces ( in R128) learned using the various losses. Here, we extend that figure to present the explained
+variance ratios for CLIP spaces in Rd, d ∈[32, 64, 128]. We show the results in Figure 4.
+From the figure, we see that LCUAXU has the lowest cumulative variance across all the principle
+components for all the three dimensionalities of CLIP space tested. This indicates that the the
+uniformity terms help to distribute the embeddings along more dimensions in the contrastive latent
+space in Rd, across a wide range of d’s
+A.2
+Image-text retrieval for MS COCO
+Here, we present the results for the image-text retrieval task on MS COCO validation dataset for
+CLIP space in R128. We see that the image-text retrieval performance is very similar for all the three
+losses (within one standard error). This implies that the increased uniformity and alignment (and
+decreased size of contrastive gap) in the MS COCO validation space does not correlate to better
+image-text retrieval performance.
+12
+
+===== PAGE 13 =====
+(a) 32D CLIP
+(b) 64D CLIP
+(c) 128D CLIP
+Figure 4: PCA explained variances for each CLIP dimensionality after fine-tuning
+I →T(↑)
+T →I(↑)
+Top1
+Top5
+Top10
+Top1
+Top5
+Top10
+LCLIP
+0.28 ± 0.00
+0.57 ± 0.00
+0.70 ± 0.00
+0.27 ± 0.00
+0.56 ± 0.00
+0.69 ± 0.00
+LCUA
+0.26 ± 0.00
+0.54 ± 0.00
+0.68 ± 0.00
+0.25 ± 0.00
+0.54 ± 0.00
+0.66 ± 0.00
+LCUAXU
+0.27 ± 0.00
+0.56 ± 0.01
+0.69 ± 0.00
+0.27 ± 0.00
+0.56 ± 0.00
+0.69 ± 0.00
+Table 10: Image to text (I →T) and text to image (T →I) retrieval accuracies for MS COCO
+for CLIP spaces in R128. Fine-tuning with added uniformity and alignment terms on MS COCO
+maintains similar levels of image-text retrieval accuracies (all values within 1 standard error of each
+other).
+A.3
+Zero-shot transfer
+CIFAR-10
+CIFAR-100
+ImageNet
+DTD
+Caltech101
+LCLIP
+0.76 ± 0.02
+0.32 ± 0.01
+0.13 ± 0.00
+0.10 ± 0.01
+0.42 ± 0.01
+LCUA
+0.78 ± 0.01
+0.33 ± 0.00
+0.14 ± 0.00
+0.10 ± 0.01
+0.48 ± 0.00
+LCUAXU
+0.77 ± 0.02
+0.35 ± 0.01
+0.15 ± 0.00
+0.09 ± 0.01
+0.49 ± 0.01
+Table 11: Zero shot classification accuracies for CLIP in R128. Error bars represent one standard
+error.
+For measuring off-distribution performance after fine-tuning on MS COCO dataset with the different
+CLIP loss variants, we measure the zero-shot image-classification performance on five standard
+image-classification datasets. We present the statistics for the validation splits of each of the datasets
+below (we use only the validation set for measuring zero-shot accuracies):
+We extend the results in Figure 3 by including individual zero-shot accuracy numbers for each of the
+five datasets in Table 11.
+B
+Experimental Setup
+B.1
+Dataset
+We fine-tune on the MS COCO dataset downloaded from (Lin et al., 2014) 2. We use the 2017 split,
+with 118k training images, and 5k validation images. Each image has 5 human-generated captions
+associated with it. In our experiments, we only take the first caption for each image.
+2https://cocodataset.org
+13
+
+===== PAGE 14 =====
+Dataset
+Test samples
+Number of Classes
+CIFAR-10
+10000
+10
+CIFAR-100
+10000
+100
+ImageNet1k
+50000
+1000
+DTD
+1880
+47
+Caltech101
+6084
+102
+Table 12: Number of test samples, and number of classes for each of the five datasets used to measure
+zero-shot accuracies.
+Hyperparameter
+Value
+Image encoder
+ViT/B-32
+Text Encoder
+Transformer (same as in 3)
+Embedding dimensions
+[32, 64 ,128]
+Temperature
+0.01
+Epochs
+9
+Batch size
+64
+Learning rate
+1e-6
+Adam beta1
+0.9
+Adam beta2
+0.99
+Adam weight decay
+0.1
+Scheduler
+None
+Table 13: Hyperparameters used for fine-tuning the CLIP models
+B.2
+Computational Resources Used
+training runs, we use NVIDIA RTX A5000 GPUs, and Intel(R) Xeon(R) Silver 4210 CPUs @
+2.20GHz. One run for fine-tuning CLIP from pre-trained weights on MS COCO for 9 epochs needed
+about 7GB GPU memory, and needed about 3.5 hours to complete (on a single GPU).
+B.3
+Model Architecture and Hyperparameters
+We fine-tune the pre-trained CLIP model made available by OpenAI from Huggingface (Wolf et al.,
+2020)3. We list the model hyperparameters that we use below:
+C
+Limitations
+In this work, we explore the properties of uniformity and alignment in the multi-modal setting,
+showing that added uniformity and alignment terms help to reduce the contrastive gap. One limitation
+of our work is that we show this at a relatively small scale by fine-tuning CLIP on the MS COCO
+dataset. Training CLIP from scratch on a significantly larger dataset might help gain more insights
+into how the contrastive loss emerges during training at a larger scale, which is important as the
+success of CLIP was dependent on pre-training it on a massive dataset. Another limitation is that even
+after optimizing for uniformity and alignment in the MS COCO space, we see that the image-text
+retrieval accuracies do not change significantly from that of default CLIP fine-tuning. While we argue
+in this work that uniformity and alignment are desirable properties in the multi-modal representational
+space (and directly optimize for them with our losses), the image-text retrieval accuracy numbers
+in the MS COCO validation set indicate that there might be other properties of the latent space that
+correlate to performance in this task.
+3https://huggingface.co/docs/transformers/en/model_doc/clip
+14
