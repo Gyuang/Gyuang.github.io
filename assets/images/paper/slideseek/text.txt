@@ -1,0 +1,2164 @@
+
+===== PAGE 1 =====
+Evidence-based diagnostic reasoning with multi-agent copilot
+for human pathology
+Luca L. Weishaupt1,2,‡, Chengkuan Chen1,‡, Drew F. K. Williamson1,3,∗, Richard J. Chen1,2,3,∗, Guillaume
+Jaume1,3,4,∗, Tong Ding1,5,∗, Bowen Chen1,2,∗, Anurag Vaidya1,2, Long Phi Le2, Ming Y. Lu1,2,3,6+, and Faisal
+Mahmood1,3,4,7,+
+1Department of Pathology, Brigham and Women’s Hospital, Harvard Medical School, Boston, MA
+2Health Sciences and Technology, Harvard-MIT, Cambridge, MA
+3Department of Pathology, Massachusetts General Hospital, Harvard Medical School, Boston, MA
+4Cancer Program, Broad Institute of Harvard and MIT, Cambridge, MA
+5Harvard John A. Paulson School of Engineering and Applied Sciences, Harvard University, Cambridge, MA
+6Electrical Engineering and Computer Science, Massachusetts Institute of Technology (MIT), Cambridge, MA
+7Harvard Data Science Initiative, Harvard University, Cambridge, MA
+‡ Co-1st authors, ∗Co-2nd authors, + Co-senior authors
+Lead contact: Faisal Mahmood (faisalmahmood@bwh.harvard.edu)
+Abstract
+Pathology is undergoing rapid transformation through whole-slide imaging and artificial intelligence (AI)1–5.
+While advances in multimodal large language models (LLMs) have shown promise in classifying histology
+images and answering questions, they remain constrained to small regions of interest (ROIs) and lack the
+ability to autonomously reason across gigapixel tissue slides or draft pathology-style reports6–9. Here, we
+present SlideSeek, a multi-agent copilot that autonomously explores whole-slide images through iterative,
+hierarchical reasoning. A supervisor agent generates diagnostic hypotheses and adaptively assigns tasks to
+explorer agents, which examine regions and return findings that the supervisor synthesizes into a visually-
+grounded report. At the foundation of SlideSeek lies PathChat+, a pathology-specific multimodal LLM trained
+on 1.1M instructions and 5.5M Q&A turns, which achieves state-of-the-art captioning capabilities across ten
+ROI-level benchmarks. On DDxBench, a differential diagnosis benchmark spanning 55 diseases, SlideSeek
+achieved 86.0% top-1 accuracy and 92.7% top-3 accuracy, outperforming general-purpose multimodal LLMs
+by up to 42% and maintaining strong performance on 41 rare diseases. Ablation studies confirmed the need
+for multi-agent reasoning and a strong morphological captioner such as PathChat+. Analysis of SlideSeek’s
+failure modes revealed challenges in fine-grained grading and the detection of small lesions. By combining
+autonomous navigation, interpretable reasoning, and domain-specific captioning with PathChat+, SlideSeek
+establishes a generalizable framework for agentic copilots in diagnostic pathology.
+1
+arXiv:2506.20964v2  [cs.CV]  26 Mar 2026
+
+===== PAGE 2 =====
+Introduction
+Pathology is undergoing rapid digital transformation, driven by the adoption of whole-slide imaging and ad-
+vances in artificial intelligence (AI)1–5. AI methods in pathology have achieved success in cancer subtyping and
+grading10–16, biomarker discovery17–20, outcome prediction21–31, among other tasks32–42. Yet these systems are
+typically developed under narrow, task-specific supervision, where models are optimized to recognize prede-
+fined categories, such as breast cancer subtypes43 or Gleason grades12. Such close-context training constrains
+their ability to generalize across organs, disease spectra, and laboratory settings, and prevents them from in-
+corporating broader clinical context or reasoning across the gigapixel scale of whole-slide images. This stands
+in contrast to human pathologists, who integrate slide-wide morphology with clinical context when making
+diagnostic decisions11,12,14,15.
+Foundation models44–48 and multimodal large language models (LLMs) have begun to address this gap by
+extending beyond purely supervised visual analysis and enabling “zero-shot” classification from written text
+prompts6–9,31,49–54. However, their utility in pathology remains narrowly explored. Most evaluations focus
+on isolated regions of interest (ROIs), leaving their ability to integrate findings across regions or to provide
+slide-level diagnostic reasoning untested. Moreover, these systems remain reactive and are designed to ad-
+dress queries without explicit mechanisms for proactive planning or exploration55–63. This limits their clinical
+applicability, where diagnoses often hinge on detecting subtle, spatially localized features and synthesizing ev-
+idence across large tissue areas. Early attempts at learned navigation and zooming64–67 represent progress, but
+they lack explicit architectures for multi-step reasoning and often continue to rely on task-specific supervision,
+limiting their generalization across organs and diseases.
+To address these gaps, we introduce SlideSeek, a reasoning-enabled multi-agent system for autonomous assess-
+ment of gigapixel whole-slide images. As illustrated in Figure 1A, given a diagnostic task, SlideSeek executes
+a supervisor–explorer loop that plans, hierarchically queries, and iteratively inspects candidate regions, inte-
+grating multi-scale evidence into a slide-level diagnosis and structured pathology report. At its core, SlideSeek
+builds on PathChat+, a powerful pathology image analysis copilot tool. PathChat+ is a pathology-specific
+multimodal LLM, trained on over one million visual–language instruction samples, five million question-
+and-answer turns spanning 624 thousand images across diverse organs, tissues, and diseases (Figure 1B-C).
+PathChat+ builds upon its predecessor, PathChat 16, with additional support for high-resolution multi-ROI
+analysis, enabling it to provide detailed morphological interpretation of larger tissue regions.
+To evaluate our approach, we designed complementary experiments at two levels of analysis. First, we assess
+SlideSeek on DDxBench, a benchmark of 150 whole-slide images covering 55 neoplastic diseases, including
+41 classified as rare, to test its ability to generate open-ended differential diagnoses. Second, we benchmark
+PathChat+ independently across ten ROI-level benchmarks spanning visual question answering, classification,
+and captioning tasks. This large-scale evaluation enables direct comparison against state-of-the-art multimodal
+LLMs, including closed-weight frontier models such as GPT-5, open-weight models such as Qwen3-VL, and
+specialized medical models such as Quilt-LLaVA8. These evaluations allow us to establish both the feasibil-
+ity of autonomous slide-level reasoning with SlideSeek and the importance of pathology-specific multimodal
+pretraining for high-fidelity morphological interpretation with PathChat+.
+2
+
+===== PAGE 3 =====
+Other  
+(6.4%)
+Query: Describe the morphology 
+of these ROIs from the esophagus.
+     PathChat Caption 
+The images feature nests of 
+squamous cells … abundant 
+eosinophilic cytoplasm and distinct 
+cell borders … multiple areas of 
+keratin pearl formation.
+Supervisor Task:  
+Review this 
+esophagus tissue 
+slide. Provide the 
+most likely diagnosis.
+Neoplastic (64.5%)
+Other (18.5%)
+Inflammatory / Infectious (17%)
+H&E (75.7%)
+IHC / Sp. Stains (9.7%)
+Cytology 
+ (9.2%)
+A
+B
+Supervisor Agent
+Explorer Agents
+Tools
+PathChat
+Slide Navigation
+Delegate Tasks
+Microscopic findings: 
+Malignant squamous cells 
+(<Image 1>) and… keratin 
+pearl formation (<Image 2>) …
+Diagnosis: 
+Esophageal Squamous Cell Carcinoma
+Human-interpretable Report
+C
+Users
+Write Report
+User-Defined Input:
+Multi-Agentic Slide Exploration:
+Output:
+Users
+Figure 1: Overview of SlideSeek and PathChat+ for slide-level diagnosis and report generation. A. Our
+multi-agent-based AI system, SlideSeek, starts with a standardized task description to reach a slide diagnosis
+autonomously. A reasoning large language model (LLM) serves as supervisor, continually tracking progress,
+refining diagnostic plans, and choosing additional regions for morphological examination. During each plan-
+ning iteration, the supervisor instructs a team of specialized pathologist agents, each of which interacts with
+PathChat+ to analyze specific regions and report findings back to the supervisor. This iterative, hierarchical
+workflow continues until the supervisor agent determines sufficient evidence has been collected to establish
+a well-supported differential diagnosis. A separate report agent synthesizes the morphological evidence from
+critical ROIs into an interpretable, visually grounded diagnostic summary report. See Extended Data Fig-
+ure 1 for a step-by-step view of the supervisor–explorer workflow. B. Example of PathChat+ that can intake
+one or multiple regions of interest (ROIs) with text instructions to provide morphologically-grounded tissue
+description. C. PathChat+ is trained with instruction finetuning on 1.13 million instructions and 5.49 million
+question-answer turns, based on 624 thousand unique images. A distribution of images is provided by tissue
+site, staining, and disease category.
+Results
+ROI-level benchmarking across diverse tasks
+We first evaluated the standalone capabilities of PathChat+ across three core pathology tasks: visual question
+answering (VQA), image classification, and image captioning (Figure 2A). For VQA, we used the five expert-
+validated benchmarks from PathMMU68, which span multiple organ types and pathology subspecialties, as well
+as PathBenchQA MCQ6, which focuses on diagnostic reasoning from ROI images paired with clinical context.
+For classification, we included three datasets, BRACS (breast neoplasm subtyping), UniToPatho (colorectal
+polyp assessment), and HiCervix (cervical cytology), reformatted into a multiple-choice setting. For caption-
+ing, we designed a captioning variant of the existing PathBenchQA6 dataset, where board-certified pathologists
+annotated each image with a reference morphological description. Performance was compared against a set
+of 12 multimodal LLMs, including closed-weight frontier models (GPT-51, GPT-5-mini5, Claude Sonnet 42,
+1https://cdn.openai.com/pdf/8124a3ce-ab78-4f06-96eb-49ea29ffb52f/gpt5-system-card-aug7.pdf
+2https://www-cdn.anthropic.com/07b2a3f9902ee19fe39a36ca638e5ae987bc64dd.pdf
+3
+
+===== PAGE 4 =====
+Gemini 2.5 pro3), open-weight general models (Qwen3-VL69, Llama 3.270 and LLaVA-OneVision71), and
+specialized medical/pathology models (HuatuoGPT-Vision72, LLaVA-Med 1.57, PA-LLaVA9, Quilt-LLaVA8,
+and the first iteration of PathChat)6. For clarity, Figure 2B reports the strongest model from each category.
+Per-subset results are summarized in Extended Data Table 1 with detailed breakdowns in Extended Data Ta-
+bles 2–6, PathQABench MCQ results in Extended Data Table 7, classification results in Extended Data Ta-
+ble 8 and captioning results in Extended Data Table 9.
+In visual question answering, PathChat+ achieved the highest performance across all six benchmarks (Figure
+2B), surpassing both frontier general-purpose models and specialized medical multimodal LLMs, as well as
+its predecessor PathChat 16. On the combined PathMMU test set, PathChat+ improved absolute accuracy by
+an average of 10.6% over frontier models (p < 0.001), with gains ranging from +2.3% to +18.7% across in-
+dividual sources. On PathQABench MCQ (Extended Data Table 7), which emphasizes diagnostic reasoning,
+PathChat+ outperformed Gemini 2.5 Pro by 6.7% (p = 0.099). When compared to the best domain-specific
+models (i.e., HuatuoGPT-Vision), the margins were even larger, with an absolute performance gain of 18.7%
+on PathMMU and 37.2% on PathQABench MCQ (p < 0.001). A similar trend held for image classification,
+where PathChat+ consistently outperformed all other types of models (Extended Data Table 8). For exam-
+ple, it outperformed Gemini 2.5 Pro by 26.1% and HuatuoGPT-Vision by 43.5% on the BRACS benchmark
+(p < 0.001). In captioning, PathChat+ also set a new state of the art, achieving the highest METEOR73 score on
+PathQABench Caption relative to expert-annotated ground truth. Overall, PathChat+ statistically outperforms
+its predecessor, PathChat 1 in 7/10 tasks (p < 0.05), and is statistically better than all other models in 10/10
+tasks (p < 0.05, except comparing to Gemini 2.5 pro on PathQABench MCQ where p = 0.099). Examples of
+generated morphological descriptions are included in Extended Data Figure 2.
+Taken together, these results establish PathChat+ as the strongest model across ten ROI-level benchmarks,
+significantly outperforming its predecessor PathChat 16, general-purpose frontier models, and other domain-
+specific multimodal LLMs. Among the frontier models, none demonstrated consistent superiority, a notable
+difference from other fields like coding or mathematics, where new model releases typically push the state-of-
+the-art. This suggests that for highly specialized applications in pathology, improvements from general-purpose
+tuning alone are showing diminishing returns. While these findings position PathChat+ as a state-of-the-art
+foundation for ROI-level analysis, diagnostic practice extends beyond individual ROIs. Pathologists routinely
+integrate morphological cues across entire gigapixel slides in conjunction with clinical context to formulate
+differential diagnoses, a setting we aim to address with SlideSeek, and which is not captured by existing ROI-
+level evaluations of multimodal LLMs.
+Slide-level differential diagnosis on DDxBench
+To better reflect the clinical reality of diagnostic assessment of pathology slide images, we evaluate SlideSeek
+on DDxBench, a benchmark designed for open-ended slide-level diagnosis. DDxBench comprises 150 diag-
+nostic H&E slides representing 55 neoplastic diseases from 19 major organ sites, including 14 common and
+41 rare diseases (defined as diseases with an incidence rate of less than 6 cases in 100,000 according to ESMO
+guidelines4, Extended Data Table 10 and Figure 3A). For each slide, we feed SlideSeek with a system prompt
+that includes contextual information such as tissue site and patient sex, and request SlideSeek to generate a pri-
+mary diagnosis together with two differential diagnoses (Figure 4A). Each prediction is then reviewed by a
+board-certified anatomic pathologist, who assigns correctness against the ground truth diagnosis and the full
+pathology report in ambiguous cases.
+3https://storage.googleapis.com/model-cards/documents/gemini-2.5-pro.pdf
+4https://www.esmo.org/policy/rare-cancers-working-group/what-are-rare-cancers/definition-of-rare-cancers
+4
+
+===== PAGE 5 =====
+The image shows back-to-
+back irregularly shaped 
+glands lined with tumor cells 
+that are generally oriented 
+perpendicular to the lumina. 
+The tumor cells have large, 
+hyperchromatic nuclei. The 
+stroma demonstrates marked 
+desmoplasia and contains 
+inflammatory cells.
+Visual question answering
+What pattern is primarily 
+exhibited by the spindle cells 
+in this microscopic image? 
+A) Rosette pattern 
+B) Alveolar pattern 
+C) Storiform pattern 
+D) Fascicular pattern
+C) Storiform pattern
+Question
+Answer
+Shown is a breast tissue 
+biopsy image. What is the 
+most likely diagnosis? 
+A. Normal Tissue 
+B. Usual Ductal  
+C. Invasive Carcinoma 
+D. Ductal Carcinoma in Situ 
+E. …
+Question
+D. Ductal Carcinoma in Situ
+Answer
+Classification
+Captioning
+Answer
+A
+C
+E
+B
+D
+F
+"
+"!
+"
+#""
+"
+"
+"
+"
+"
+#
+"
+
+
+	
+
+
+
+# $
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+***
+***
+***
+***
+***
+***
+***
+***
+*
+***
+**
+***
+Figure 2: ROI-level benchmarking of PathChat+ versus multimodal LLM baselines. A.-B. Visual ques-
+tion answering (VQA): A. example ROI with prompt and answer; B. accuracy on PathMMU subsets (Atlas,
+EduContent, PathCLS, SocialPath, PubMed) and PathQABench MCQ. C.-D. Image classification: C. example
+multiple-choice prompt and ground truth; D. accuracy on BRACS, UniToPatho, and HiCervix. E.-F. Caption-
+ing: E. example model-generated morphological description; F. METEOR score on PathQABench-Caption.
+Bars report, for each family, the strongest closed-source general model (“Best General (Closed)”), strongest
+open-source general model (“Best General (Open)”), and strongest medical-specialized model (“Best Specific
+(Open)”), alongside PathChat 1 and PathChat+ (legend). Full per-model results are in Extended Data Ta-
+bles 1–9. Error bars denote 95% confidence intervals from non-parametric bootstrapping. In B., D., and F.,
+statistical significance was determined between PathChat+ compared to all other models using a paired two-
+sided permutation test (n = 1000). The p-values are indicated as p < 0.05: *, p < 0.01: **, p < 0.001: ***.
+Statistical
+On DDxBench, our system achieved a top-1 accuracy of 0.860 (N=150, 95% CI [0.800–0.907]) and a top-3
+accuracy of 0.927 (N=150, 95% CI [0.880–0.967], Figure 3B). When stratifying performance by disease rar-
+ity, we observed a drop in accuracy as incidence decreased. For primary (top-1) accuracy, common diseases
+were predicted with an accuracy of 0.941 (N=99, [95% CI: 0.882–1.000]), and rare diseases with an accuracy
+of 0.818 (N=51, [95% CI: 0.737–0.889]). Comparisons using a unpaired two-sided permutation test confirmed
+significant differences between common and rare diseases (p < 0.05). This underscores the challenge of diag-
+nosing very rare diseases for which gathering sufficient pretraining data is challenging. When evaluating top-3
+accuracy, the system demonstrates a more robust performance for common (0.980 [95% CI: 0.941–1.000])
+and rare diseases (0.899 [95% CI: 0.838–0.949]). Statistical testing did not show significant differences in
+SlideSeek’s ability to predict the correct disease in the top-3 differential (p = 0.095).
+Ablations of SlideSeek
+To further understand the capabilities of SlideSeek, we systematically ablated three components: (i) the rea-
+soning supervisor, (ii) the hierarchical multi-agent design, and (iii) the captioner (PathChat+ vs. alternatives).
+Holding the captioner (PathChat+) and multi-agent architecture fixed, a reasoning-enabled supervisor (GPT-5-
+mini) outperformed a non-reasoning supervisor on top-1 accuracy (Figure 3D-E; Extended Data Table 11)
+with performance dropping from 0.860 to 0.813 (absolute performance difference of 4.66%, p = 0.142). Top-
+5
+
+===== PAGE 6 =====
+***
+E
+A
+G
+B
+***
+** ***
+*
+C
+Pre-Selected ROIs
+DDx
+Supervisor
+Explorer
+PathChat
+…
+Tools
+DDx
+Slide & 
+Prompt
+F
+D
+Explorer 
+(GPT-4.1)
+Supervisor 
+(GPT-4.1)
+PathChat
+…
+Tools
+Slide & 
+Prompt
+DDx
+Explorer
+Supervisor
+PathChat
+…
+Tools
+Slide & 
+Prompt
+DDx
+Ablate Reasoning
+Ablate Supervisor
+Explorer
+Supervisor
+PathChat 1
+…
+Tools
+Slide & 
+Prompt
+DDx
+Use PathChat 1 
+Captioner
+Use Generic LLM 
+Captioner
+Explorer
+Supervisor
+GPT-5-mini
+…
+Tools
+Slide & 
+Prompt
+DDx
+PathChat
+Prompt
+*
+*
+***
+1
+Figure 3: Performance of SlideSeek and PathChat+ on DDxBench for open-ended differential diagnosis
+from whole-slide images. Each prediction was manually assessed by a board-certified anatomic pathologist
+who compared the model’s predictions against the assigned ground truth diagnosis and report. Model perfor-
+mance is measured based on using top-1 (Primary Diagnosis) and top-3 (Primary + Differential diagnoses). A.
+Distribution of cases in DDxBench (N=150 cases) based on the tissue they were sampled from and the disease
+rarity based on incidence (rare: < 6/105/year, common otherwise). B. SlideSeek performance stratified by dis-
+ease rarity. C. Multimodal LLM performance on DDxBench with pre-selected ROIs. 10 expert-curated ROIs
+from each slide and a prompt to provide a primary and two additional differential diagnoses were provided to
+various multimodal LLMs. Extended Data Figure 3 illustrates this experiment and the exact prompt used.
+D.-E. Ablation study varying the agentic configuration of SlideSeek, where the reasoning agent (GPT-5-mini)
+is swapped by a non-reasoning agent (GPT-4.1), and removing the agent supervisor that is replaced by a single
+agent. F.-G. Ablation study varying the captioning model used in SlideSeek, replacing PathChat+ by PathChat
+1 or using a general-purpose multimodal LLM (GPT-5-mini). Error bars represent 95% confidence intervals
+using non-parametric bootstrapping. Statistical significance was obtained in B. using an unpaired two-sided
+permutation test, doing pairwise comparison across the three sets. In C,E and G statistical significance was
+determined between our model (PathChat+ or SlideSeek) compared to all other models and ablations using a
+paired two-sided permutation test (n = 1000). P-values are indicated as p < 0.05: *, p < 0.01: **, p < 0.001:
+***.
+3 accuracy was comparable (0.927 vs. 0.927; p = 1.0), suggesting that reasoning models primarily sharpen
+the top diagnosis choice rather than broadening the differential. Finally, holding other components fixed, col-
+lapsing the supervisor–explorer hierarchy into a single explorer agent reduced performance (Figure 3D-E;
+Extended Data Table 11). The top-1 accuracy dropped from 0.860 to 0.780 (absolute difference of 8.00%,
+p < 0.05), while top-3 decreased from 0.927 to 0.880 (absolute difference of 4.7%, p = 0.081).
+Substituting PathChat+ with earlier or generic multimodal LLMs markedly reduced diagnostic performance
+(Figure 3F-G). On DDxBench, SlideSeek powered by PathChat+ achieved a top-1 accuracy of 0.860 and a
+6
+
+===== PAGE 7 =====
+top-3 accuracy of 0.927. Replacing PathChat+ with PathChat 1 dropped performance to 0.640 (top-1) and
+0.807 (top-3), an absolute drop of 22.0% and 12.0% respectively (p < 0.001). Using a non-specialized cap-
+tioner (GPT-5-mini) further degraded accuracy to 0.427 (top-1) and 0.627 (top-3), corresponding to drops of
+43.3% and 30.0% (p < 0.001). These findings establish PathChat+ as essential for enabling effective agentic
+navigation and slide-level diagnostic reasoning in WSIs. Complete ablation metrics are tabulated in Extended
+Data Table 11.
+To further assess the performance of PathChat+ on DDxBench, we annotated each slide with ten ROIs (size
+of 896×896-pixel at 20×) from tumor-containing regions, which were directly fed to PathChat+ without
+SlideSeek agentic layer (see Extended Data Figure 3 for the task schematic and prompt; results in Fig-
+ure 3C and Extended Data Table 12). PathChat+ achieves a top-1 accuracy of 0.800 on DDxBench, surpass-
+ing PathChat 1 by 8.0% (p < 0.05) and the next best model, Gemini 2.5 pro by a large margin of 28.7%
+(p < 0.001). When considering the entire set of differentials (top-3), PathChat+ reaches 0.920 (+3.33%
+against PathChat 1, p = 0.290) and +20.7% against the next best model (Gemini 2.5 pro, p < 0.001). Rela-
+tive to SlideSeek, restricting diagnosis to expert-curated ROIs with PathChat+ reduced performance by 6.0%
+(p = 0.059), underscoring the benefit of SlideSeek’s navigation and the value of multi-magnification analysis.
+Interpretable slide assessment
+A key advantage of SlideSeek is its interpretable reasoning chain, in which each diagnostic conclusion is
+explicitly grounded in region-specific morphological findings. During exploration, SlideSeek examined an
+average of 194.5 ± 102.8 regions across magnification levels (156.4 ± 90.3 high-power, 31.1 ± 23.8 medium-
+power, and 6.9 ± 4.8 low-power fields), yielding a multi-scale assessment comparable to the workflow of
+human pathologists (Figure 4). By first identifying clinically significant areas at low magnification and then
+reasoning through them at higher magnifications, SlideSeek reduced the computational burden of exhaustive
+high magnification analysis. For instance, in DDxBench, slides contain an average of 1020 ± 783 tissue ROIs
+at 20×, but only ∼156 required high-power inspection. The number of regions examined was not significantly
+correlated with diagnostic accuracy, suggesting that performance was driven by the quality of reasoning rather
+than simply the extent of the search.
+Beyond interpretable reasoning traces, SlideSeek also demonstrated an awareness of its own diagnostic confi-
+dence by assigning a “Low” and “High” confidence as part of the generated report. The diagnostic accuracy
+reached 0.906 (95% CI: [0.844-0.958]) in the 96 cases where the agent expressed high confidence, compared
+to 0.778 (95% CI: [0.667-0.889]) in the 54 cases where it acknowledged uncertainty (p < 0.05). This form
+of calibrated self-assessment is important for responsible clinical deployment and potential triaging for down-
+stream human review. Examples of low- and high-confidence predictions, together with their visually grounded
+reasoning, are shown in Extended Data Figure 4.
+Failure modes and limitations
+Despite strong overall performance on DDxBench, we observed a recurring failure pattern in tumor grading.
+In five misclassified cases (45% of all failures), the slides were correctly identified as astrocytoma but were
+graded incorrectly, with overcalls in 3/5 and undercalls in 2/5. This suggests that while SlideSeek reliably rec-
+ognizes tumor identity, it may remain sensitive to the subtle histological cues that distinguish grades. Second,
+the navigation strategy occasionally failed to capture small, morphologically discriminatory regions. For ex-
+ample, in one case (1/150), small foci of Merkel Cell Carcinoma were missed, while surrounding benign tissue
+was accurately reported by explorers. This underscores a limitation in region prioritization, where small but
+7
+
+===== PAGE 8 =====
+Supervisor Working Context
+Report 2
+Report 2
+Report 2
+Report 3
+Report 1
+Report 1
+Report 1
+Task 2
+Task 1
+Task 3
+Task 2
+Task 1
+Task 2
+Task 1
+Explorer 
+Agents
+Supervisor 
+Agent
+Explorer 
+Agents
+Supervisor 
+Agent
+Supervisor 
+Agent
+Explorer 
+Agents
+Supervisor 
+Agent
+Supervisor Hypothesis and Plan 
+At this early stage, differential diagnoses for this thyroid lesion 
+include papillary thyroid carcinoma, follicular carcinoma, 
+medullary carcinoma, and benign entities like nodular goiter; we 
+require architectural assessment to narrow these possibilities.
+Examine Tissue Region 0 at 1.25x magnification. Note any areas showing 
+nodularity, papillary architecture, or irregular follicular structures.
+Supervisor Hypothesis and Plan 
+Low-power review showed encapsulated nodules with uniform follicular 
+growth; differential includes follicular adenoma, nodular hyperplasia, and 
+follicular carcinoma if invasion is found.
+Examine around (x=38234, y=27000) and (x=38234, y=5434) at 5x. Pay 
+attention to the capsule’s interface with surrounding parenchyma. Assess 
+cellular uniformity and any signs of hemorrhage or necrosis.
+Supervisor Hypothesis and Plan 
+Although most regions previously examined showed features consistent 
+with benign follicular neoplasms, rare foci of invasion may exist. 
+Confirming or excluding capsular or vascular invasion is essential for 
+differentiating follicular adenoma from follicular carcinoma.
+Examine region around (x=25000, y=10000) at 20x to confirm capsule 
+integrity. Assess follicular cell uniformity, colloid appearance, and 
+absence of mitotic activity. Document suspicious changes in stroma or 
+vasculature.
+At 1.25x, Region 0 demonstrates 
+multiple well-encapsulated nodules 
+with dense, uniform cellularity and 
+minimal pleomorphism, favoring 
+benign follicular lesions. Selected 
+areas warrant higher-magnification 
+review.
+Key ROIs
+ROI1: (24949,19719) @1.25x
+ROI2: (38234,27000) @1.25x
+Supervisor Response 
+“sufficient_evidence”: True
+Selected ROIs show distinct morphologies of a thyroid carcinoma.
+Selected ROIs for PathChat Diagnosis Prompt 
+PathChat Diagnosis 
+Primary: follicular thyroid carcinoma.  
+Differentials: follicular adenoma, papillary thyroid carcinoma
+PathChat
+Supervisor Report 
+Report: Microscopic examination revealed well-encapsulated follicular nodules with uniform epithelium and evidence of vascular invasion in one 
+region, without papillary nuclear features. The primary diagnosis is Follicular Thyroid Carcinoma (FTC), confidently established by the presence 
+of vascular invasion in a follicular-patterned tumor. Differential diagnoses include Follicular Adenoma (ruled out by vascular invasion) and Papillary 
+Thyroid Carcinoma (excluded due to lack of characteristic nuclear features). Additional testing is not required for diagnosis confirmation.
+Supervisor
+Agent
+At 5x magnification, the examined 
+nodules are well-circumscribed and 
+encapsulated, comprising variable-
+sized follicles lined by uniform 
+epithelial cells, with intact capsules 
+and no signs of invasion, supporting 
+a benign follicular process.
+Key ROIs
+ROI1: (38234,27000) @5x
+ROI2: (38234, 5434) @5x
+At 20x magnification, tumor cells 
+exhibiting nuclear enlargement and 
+clearing were identified invading a 
+vessel lined by endothelium, in the 
+context of a follicular architecture, 
+confirming the diagnosis of follicular 
+thyroid carcinoma (FTC).
+Key ROIs
+ROI1: (25000,10000) @20x
+ROI2: (35000,35000) @20x
+Generate 
+report
+[…]
+SlideSeek Input 
+Thyroid resection from a male patient. 
+No other clinical context provided. 
+Task: Make a diagnosis for the disease 
+present in this whole-slide image.
+WSI Information
+   
+Dimensions: […]
+Magnification: 20
+Tissue bbox: […]
+Delegate 
+tasks
+Update 
+plan
+Delegate 
+tasks
+Update 
+plan
+Delegate 
+tasks
+Explore
+Report 
+Explore
+Report 
+Explore
+Report 
+Finalize
+Request 
+diagnosis
+Plan
+Integrate 
+findings
+Figure 4: Example of SlideSeek on DDxBench. Diagnosis trace of a follicular thyroid carcinoma case illus-
+trating the interaction between the supervisor and explorer agents. The supervisor receives a system prompt
+containing a low-resolution thumbnail, clinical information, and task instructions. Based on successive ob-
+servations, the supervisor generates focused tasks (e.g., “Task 1”, “Task 2”) for explorer agents. Explorer
+agents then examine designated regions at specified magnifications and describe tissue morphology with the
+assistance of PathChat+. Their individual findings (e.g., “Report 1”, “Report 2”) are submitted back to the
+supervisor. In this example, although most tissue appears benign, explorer agents identify invasive carcinoma
+cells at high magnification. Ten regions of interest (ROIs) are evaluated with PathChat+ to support the primary
+and differential diagnosis, which the supervisor synthesizes into a final report.
+clinically decisive foci may be overlooked. Finally, in 1/150 cases, we observed hallucination of immunohis-
+tochemistry (IHC) testing, where the supervisor agent erroneously designed a task requesting IHC, which was
+then executed by an explorer that hallucinated tissue-level IHC results from an H&E slide. Such failures illus-
+trate the risks of unconstrained task generation and emphasize the importance of modality grounding to prevent
+clinically implausible reasoning. Together, this analysis reveals that SlideSeek is robust in coarse diagnostic
+recognition but can be vulnerable to finer-grained grading tasks, detection of small lesions, and hallucination
+of unavailable diagnostic modalities.
+8
+
+===== PAGE 9 =====
+Discussion
+Our results establish the feasibility of autonomous, planning-based diagnosis of whole-slide images.
+On
+DDxBench, a benchmark spanning 55 neoplastic diseases of which 41 are classified as rare, SlideSeek powered
+by PathChat+ achieved 0.860 top-1 and 0.927 top-3 accuracy while generating visually grounded pathology
+reports. This shows that agentic navigation combined with domain-specific captioning can support slide-level
+diagnostic reasoning beyond ROI-bound workflows. At the same time, PathChat+ itself achieved state-of-the-
+art performance across ten ROI-level benchmarks, surpassing both frontier open- and closed-weight models74,
+as well as specialized medical multimodal LLMs6,7.
+In developing SlideSeek, we identified two critical design choices. First, we attribute PathChat+’s high-quality
+captions to (i) large-scale, pathology-specific instruction data (> 1M samples), (ii) human-in-the-loop refine-
+ment of prompts and exemplars, and (iii) extensive Q&A-style supervision that improved instruction following
+and caption brevity and precision. Second, SlideSeek explicitly requests short, morphology-focused captions
+and decomposes the task via a supervisor-explorer architecture that accumulates evidence across scales be-
+fore committing to a diagnosis. Ablations supported these mechanisms: reasoning supervisors improved top-1
+selection (4.67% absolute gain, p = 0.142); the supervisor-explorer hierarchy outperformed a single-agent
+variant (8.0% absolute gain, p < 0.05); and replacing PathChat+ with non-specialized captioners substantially
+reduced accuracy (43.3% absolute gain, p < 0.001). SlideSeek’s iterative process links each finding to spe-
+cific regions, facilitating pathologist verification and auditability. The exploration strategy reduced ROI burden
+relative to an exhaustive exploration of each region at high magnification.
+Beyond benchmarks, the impact of SlideSeek lies in its potential to reshape pathology workflows. By au-
+tonomously identifying salient regions in tissue, linking key morphologies to localized evidence, and synthe-
+sizing them into interpretable reports, SlideSeek moves automation from pattern recognition toward emulating
+the holistic, iterative reasoning of clinical pathology. The same transparent reasoning chains that support au-
+ditability also provide educational value by providing an interface that not only reports a diagnosis but also
+explains why. This dual role, as a workflow aid for practicing pathologists and as a training resource, under-
+scores the broader applicability of agentic systems beyond retrospective evaluation.
+Despite strong overall performance, our analysis revealed limitations. In astrocytoma cases, for example,
+the agent reliably recognized the tumor type but frequently erred in assigning the correct grade. These er-
+rors reflected difficulty with subtle morphologies such as mitotic activity, microvascular proliferation, or focal
+necrosis. We also observed one clinically significant navigation failure, where a malignant focus was over-
+looked amidst predominantly benign tissue. Finally, on occasion, the supervisor agent produced tasks that
+went beyond the available input, such as requesting immunohistochemistry, which led an explorer to hal-
+lucinate IHC-like results from H&E images. Together, these challenges in interpreting subtle morphology,
+ensuring comprehensive navigation, and grounding agent tasks in available data define a clear roadmap for
+future improvements.
+Building on these insights, several natural extensions of SlideSeek can be envisioned. One direction will be the
+ability to reason jointly across multiple slides and multiple stains, for instance, by integrating serial sections and
+complementary assays such as immunohistochemistry or special stains. This is critical for clinical integration,
+which routinely relies on findings across H&E sections and ancillary tests to reach a final diagnosis. Another
+avenue involves expanding beyond histology alone and moving toward multimodal fusion of molecular and
+imaging data, as well as patient history, to support guideline-aligned diagnostic suggestions. In the longer
+term, such multi-agent frameworks could be extended to emulate tumor boards59,61,63, coordinating agents
+9
+
+===== PAGE 10 =====
+tasked with representing the perspectives of surgery, oncology, radiology, and molecular pathology, and then
+synthesizing their viewpoints into a consensus or documenting disagreements. As these advanced systems
+are developed, a parallel emphasis on safety engineering will be essential to ensure reliability and calibrated
+confidence for meaningful improvements in diagnostic clinical practice.
+In summary, SlideSeek and PathChat+ together illustrate that domain-tuned multimodal language models,
+when coupled with explicit planning and evidence aggregation, can deliver interpretable, slide-level diagnostic
+reasoning. The approach narrows the gap between ROI-centric automation and the holistic, context-aware
+practice of pathology, and outlines a practical route to prospective, clinically integrated evaluation.
+Online Methods
+SlideSeek architecture design
+SlideSeek is a multi-agent system capable of autonomously analyzing gigapixel WSIs via planning and self-
+guided hierarchical exploration. We outline the key components below, illustrate the workflow in Algorithm
+1 and present a visualization in Extended Data Figure 1. Exact prompt templates, tool calls, and example I/O
+for supervisor and explorer agents are illustrated in Extended Data Figure 5.
+The supervisor agent is central to the SlideSeek architecture, managing high-level strategy, task orchestration,
+and systematic exploration of WSIs. It receives the initial analytical task description, contextual patient and
+specimen information (e.g., tissue type, patient sex), and preliminary visual information of the slide in the form
+of a prompt (Extended Data Figure 2). Visual data include slide dimensions, coordinates of bounding boxes
+surrounding each tissue region, and a low-resolution thumbnail overview. Tissue bounding boxes are identified
+via the TRIDENT WSI preprocessing library 75, specifying each region through upper-left and lower-right
+corner coordinates (e.g., top-left corner: (637, 4467), bottom-right corner: (10612, 13034)).
+Upon initiation with the above information, the supervisor formulates initial hypotheses about the slide pathol-
+ogy and then develops a comprehensive and structured exploration plan, prioritizing regions for detailed ex-
+amination, identifying specific pathological features of interest, and designating required magnifications. To
+operationalize this plan, the supervisor agent defines specific tasks for subordinate explorer agents. Tasks ex-
+plicitly indicate precise spatial coordinates and extents for examination (e.g., “Examine tissue region #3 from
+x=1000-2000, y=3000-4000”), required magnification levels (e.g., 1.25x for architectural assessment, 20×
+for cellular details), specific pathological features to document, and relevant context derived from the current
+hypotheses. After subordinate explorer agents complete their tasks, the supervisor evaluates their findings,
+updating its hypotheses and modifying the exploration plan as necessary. Justifications for each change are
+clearly articulated, reflecting insights derived from cumulative observations. The iterative cycle of planning,
+task assignment, review, and hypothesis updating continues until the supervisor agent determines that sufficient
+evidence has been gathered to support a definitive diagnosis. Upon completion, the supervisor signals readiness
+to finalize the analysis by setting a completion flag, collating key findings into selected ROIs, and forwarding
+these to a specialized diagnostic AI (PathChat+) for differential diagnosis. In SlideSeek, we use OpenAI GPT-
+5-mini74 as backbone for both the supervisor and explorer agents due to its state-of-the-art instruction following
+and advanced reasoning capabilities. Preliminary experiments showed no statistically significant difference in
+performance between GPT-5-mini and GPT-5, making the former a more efficient and cost-effective solution.
+Explorer agents perform tasks assigned by the supervisor in parallel. Explorer agents systematically navigate
+these regions by referencing the thumbnail image of the slide and making navigation requests to a slide-
+10
+
+===== PAGE 11 =====
+viewer API, which uses the OpenSlide library to retrieve regions from the WSI at the specified location and
+magnification. The ROIs are forwarded to PathChat+ to identify morphologies observed in each image, helping
+the explorer agent identify diagnostically relevant ROIs in reference to the overall task context and hypotheses
+provided by the supervisor agent. Once an explorer agent deems its exploration sufficient to complete the task
+assigned by the supervisor agent, it submits a detailed report back to the supervisor that includes key ROIs
+identified in the region and its findings.
+The iterative analysis between the supervisor agent and explorer agents continues until the supervisor agent
+determines that all diagnostically relevant regions have been explored and there is sufficient morphological
+evidence to render a diagnostic recommendation, ending further exploration. At this point, the supervisor
+selects up to 10 diagnostically relevant ROIs discovered during exploration, and submits them to PathChat+
+for differential diagnosis. Finally, the supervisor agent is called upon to draft a report summarizing micro-
+scopic findings, the recommended primary diagnosis, and two differential diagnoses, along with a confidence
+assessment in their diagnosis. The resulting report constitutes an interpretable summary of SlideSeek’s output,
+explicitly linking morphological features to specific ROIs identified by the explorer agents and supervisor.
+Algorithm 1 Iterative multi-agent exploration
+1: Initialize supervisor agent with slide description and context information.
+2: Supervisor formulates initial hypotheses.
+3: analysisComplete ←false
+4: while analysisComplete == false do
+5:
+Supervisor creates an exploration plan based on current hypotheses.
+6:
+currentTasks ←Supervisor creates tasks for explorer agents.
+7:
+for task in currentTasks do
+▷The tasks are completed in parallel by independent Explorer agents
+8:
+taskComplete ←false
+9:
+while taskComplete == false do
+10:
+Explorer agent chooses ROI coordinates and magnifications and provides a rationale.
+11:
+Explorer agent documents morphological features.
+12:
+taskComplete ←Explorer agent decides if it has completed its task
+13:
+end while
+14:
+Explorer agent returns findings to supervisor.
+15:
+end for
+16:
+Supervisor reviews explorer agents’ findings.
+17:
+Supervisor updates hypotheses.
+18:
+sufficientEvidence ←check if sufficient evidence collected
+19:
+if sufficientEvidence == true then
+20:
+analysisComplete ←true
+21:
+else
+22:
+Supervisor modifies exploration plan.
+23:
+end if
+24: end while
+25: Supervisor collates final ROIs.
+26: Supervisor submits findings to diagnostic AI (PathChat+).
+27: Supervisor assesses the confidence in its diagnosis
+28: Supervisor drafts summary report with explicit references to ROIs and their supporting morphological
+evidence
+11
+
+===== PAGE 12 =====
+PathChat+ architecture and training
+PathChat+ is a multimodal large language model (multimodal LLM) designed and trained to understand both
+visual (i.e. pathology images) and textual inputs (e.g., an instruction prompt to describe the key morphology
+observed in a histopathology image, and suggest a diagnosis). We follow the general architectural design
+of PathChat 16 and popular state-of-the-art multimodal LLMs, consisting of a vision encoder for encoding
+images from RGB pixels into feature representations, a decoder-only, autoregressive LLM for converting to-
+kenized visual and textual representations into natural language outputs, a multimodal projector for bridging
+the representation space of the vision encoder, and the LLM. We chose CONCH v1.5 as the vision encoder,
+based on the standard (ViT-L) architecture76,77, as it has been demonstrated to produce robust baseline perfor-
+mance in diverse computational pathology tasks78, and serves as a strong starting point for further integration
+and multimodal foundation model development. Similarly, the multimodal projector consists of an attention
+pooling layer that reduces the dense feature map produced by the vision encoder into a sequence of 128 tokens,
+followed by a 2-layer MLP with GeLU activation to project them into the same dimension as the embedding
+layer of the LLM. Finally, for the LLM backbone, we adopt Qwen2.5, which is a widely used state-of-the-art
+open-source LLM. Specifically, similar to PathChat 1, we chose the 14 billion parameter instruction-following
+variant, which offers a good trade-off between computational cost and performance79.
+Compared to the previous PathChat 1 model, we take inspiration from the AnyRes strategy80 for processing
+high-resolution images by dividing each input image into a grid of 448 × 448 tiles, first padding to the nearest
+supported grid size as needed. Each tile is then independently processed by the vision encoder before being
+concatenated into a combined token sequence. If more than one tile is present in the grid, a thumbnail of
+the original image (resized to 448 × 448), serving as a low-resolution, global view, is also encoded, and its
+token sequence is prepended to the rest of the sequence representing the particular image. We use a maximum
+grid size of 4 tiles, supporting image sizes of up to 896 × 896 (represented as a 2 × 2 grid of tiles + the
+image thumbnail), while larger images are rescaled down to the nearest grid size. Our strategy, therefore,
+represents each image by a variable number of tokens, between 128 tokens (448 × 448 image or smaller) and
+640 tokens (e.g. 896 × 896 image). During both training and inference, images are represented initially by
+special placeholder token ids in the input token sequence. After passing through the LLM’s embedding layer,
+these placeholder tokens are replaced by the actual token representations generated by the vision encoder and
+multimodal projector for the corresponding images, forming the complete embedded token sequence that is
+processed by all subsequent layers in the LLM. When there are multiple images in a given instruction, we
+mark their boundary in the sequence using the newline (“\n”) token.
+For model training, we follow the widely-used two-stage approach, where in the first pretraining stage, we
+freeze the LLM backbone, and use a sampled subset of five hundred thousand images and annotated captions
+to train the multimodal adapter, which has been found to be beneficial to downstream performance81 compared
+to without pretraining. In the second, instruction finetuning stage, both the LLM and projector are unfrozen
+and are trained to model the likelihood of the ground truth reference answer turns in the training instruction
+sequences (no loss is applied to image tokens or text tokens in the question turns). Pretraining was completed
+using an 8 × NVIDIA A100 80GB GPU node while finetuning was performed using 24 A100 GPUs in a
+multi-node distributed training setup. Full pretraining and finetuning hyperparameters are listed in Extended
+Data Tables 13 and 14.
+PathChat+ dataset curation
+For instruction tuning of PathChat+, we curated a new dataset of diverse instruction formats and topics from
+12
+
+===== PAGE 13 =====
+images and notes from internal case reports, teaching materials, presentations, as well as annotated regions of
+interest from in-house WSIs. To begin, we remove images of size smaller than 336×336 pixels. We then devel-
+oped an image-based classifier by finetuning the image encoder of the lightweight foundation model CONCH76
+on a small set of manually labeled examples to identify pathology images from non-pathology-related images
+(e.g. photos of lab equipment or people) for quality control and similarly used lightweight local LLMs such
+as Qwen2-7B79 for filtering out low-quality source materials that are overly concise (e.g. image caption that
+simply reads “This is an H&E stained slide”) or ambiguous (e.g. images associated with text that describes
+findings from medical literature without clear reference to the image or specific features observed). Similar to
+previous multimodal LLM works such as LLaVA71,82, for some instruction formats, we use general purpose
+LLMs70,79 to automatically structure the original source text into a question / answer format (e.g. rephrasing
+an image caption into a natural-sounding response to the question “Can you provide a morphological descrip-
+tion for this lung biopsy image.” or converting representative regions paired with a case report into a multiple
+choice question with the ground truth diagnosis and other mentioned differential diagnoses or morphologically
+distinct entities as choices). In those scenarios, we design text prompts specifically for each data source and
+iteratively refine the generated instructions with the help of pathologists until we get a satisfactory number
+of high-quality manually verified examples as shown in Extended Data Figure 6. This curated subset then
+serves as the few-shot demonstration set for generating the remainder of the instruction-tuning data. Finally,
+similar to previous work6, we combine non-pathology images with sampled natural images from publicly
+available data sources such as MS COCO83 to construct guardrail examples to instruct the model to refuse
+queries not related to pathology image analysis with a programmed message: “Sorry I can only assist you
+with queries related to pathology.” In total, our dataset consists of 1,133,241 instruction examples, with 5.49
+million question / answer turns for 624 thousand unique images (median width: 759 pixels, median height:
+607 pixels) after excluding 8,034 guardrail images. The instruction formats can be roughly characterized by
+“conversation” (n = 238, 983), “description” (n = 163, 342), “multiple choice” (n = 78, 443), “free response”
+(n = 354, 558), “text-only” (n = 289, 881) and “guardrail” (n = 8, 034).
+Mulitmodal LLM evaluation
+We compare PathChat+ against fifteen state-of-the-art multimodal LLMs including (1) general-purpose closed
+frontier models (GPT-55, GPT-5-mini5, Claude Sonnet 46, and Gemini 2.5 pro7), (2) general-purpose open
+models (LLaVA-OneVision71, Llama 3.270, and Qwen3-VL69), and (3) medical and pathology-specific open
+models (Quilt-LLaVA8, PA-LLaVA9 and HuatuoGPT-Vision72, and LLaVA-Med 1.57).
+General purpose closed models. For closed-weight, general-purpose multimodal frontier models, we con-
+ducted evaluations via their official APIs. At the time of our study, this included models from OpenAI (e.g.,
+GPT-5 and GPT-5-mini), Claude Sonnet 4 from Anthropic, and Gemini 2.5 Pro from Google, representing the
+flagship offerings from each provider.
+General purpose open models. For general-purpose multimodal LLMs with open weights that can be down-
+loaded and deployed locally, we access their weights from their respective official HuggingFace repositories.
+We included the following representative models: LLaVA-OneVision, Llama 3.2, and Qwen3-VL. We use their
+default generation parameters and image processors for all tasks.
+Medical purpose open model. Similar to general-purpose open models, we select biomedical-specialized
+5https://cdn.openai.com/gpt-5-system-card.pdf
+6https://www-cdn.anthropic.com/07b2a3f9902ee19fe39a36ca638e5ae987bc64dd.pdf
+7https://storage.googleapis.com/model-cards/documents/gemini-2.5-pro.pdf
+13
+
+===== PAGE 14 =====
+multimodal LLMs that include some pathology image data in their training, including: LLaVA-Med 1.5,
+HuatuoGPT-Vision, Quilt-LLaVA, and PA-LLaVA. We access their weights from their respective Hugging-
+Face repositories linked from their official GitHub pages at the time of study and use their default general
+parameters and image processors for all of our evaluation tasks. Note we only include LLaVA-Med in the
+image captioning task and exclude PA-LLaVA, since the former is not trained on multiple-choice instruction-
+following data8, while the latter is neither fine-tuned nor evaluated on image caption instruction-following
+data
+Evaluation datasets of SlideSeek and PathChat+
+DDxBench is a diagnostic benchmark comprising 150 hematoxylin and eosin (H&E)–stained whole-slide
+images drawn from the Brigham and Women’s Hospital pathology archives. Each case was associated with the
+original pathology report, and diagnostic labels were taken directly from the report and subsequently verified by
+a board-certified anatomic pathologist. Diagnoses were standardized by mapping to oncotree codes, ensuring
+consistency across tissue sites and tumor types. The dataset spans 55 unique diagnostic categories across 19
+different tissues. To assess performance under varying levels of disease prevalence, diagnoses were stratified as
+common and rare. Rarity categories were defined according to population incidence, with “rare” corresponding
+to an incidence of fewer than 6 cases per 100,000 persons per year. This distribution results in 14 common
+and 41 rare diagnoses. We present the individual diagnoses and their categorization as common or rare, along
+with sources used for incidence rates in Extended Data Table 10. The benchmark is structured as a test-only
+resource. All 150 slides are reserved exclusively for evaluation, with no official training split, in order to
+minimize the risk of overfitting.
+PathMMU68 is a ROI-level expert-validated pathology benchmark. We use the validation and test splits to
+evaluate all models. Originally, there are 710 Q&A pairs with 510 images in the validation set and 9,677 Q&A
+pairs with 7,213 images in the test set. Within the test set, a small subset (test-tiny) comprising 1,156 Q&A
+pairs was selected to establish expert-level performance, which was assessed by two groups of pathologists. We
+follow the paper68 to split the data into five categories: PubMed, SocialPath, EduContent, Atlas and PathCLS.
+In SocialPath, we removed 47 image links that are no longer available, resulting in 699, 1,156, and 9,618 Q&A
+pairs in our final validation, test-tiny and test subset. Note that the Atlas subset is not the same as reported
+in the original paper although the number of Q&A pair is the same8. To facilitate evaluation, we append the
+instruction “Answer with the option’s letter from the given choices directly.” to each question.
+UniToPatho84 is an annotated dataset for colorectal polyps classification and adenomas grading. The dataset
+contains six types of tissues from colorectal polyps (i.e., Normal, hyperplastic polyp, tubular adenoma high-
+grade dysplasia, tubular adenoma low-grade dysplasia, tubulo-villous adenoma high-grade dysplasia, and tubulo-
+villous adenoma low-grade dysplasia). We used 2,799 ROIs from the test split of this dataset. For each ROI,
+we created a closed-ended multiple-choice question that asks: “Shown is a colorectal tissue biopsy image.
+What is the most likely diagnosis? Answer with the option’s letter from the given choices directly.”
+BRACS85 contains six subtypes of lesions and normal tissue sectioned from the breast. We used 570 ROIs
+from the test split. For each ROI, we create a closed-ended multiple-choice question based on fine-grained
+labels (i.e., normal tissue, pathological benign, unusual ductal hyperplasia, flat epithelial atypia, atypical ductal
+hyperplasia, ductal carcinoma in situ, and invasive carcinoma) that asks: “Shown is a breast tissue biopsy
+image. What is the most likely diagnosis? Answer with the option’s letter from the given choices directly.”
+8https://github.com/PathMMU-Benchmark/PathMMU/blob/main/data/instructions.md#atlas-subset
+14
+
+===== PAGE 15 =====
+HiCervix86 contains twenty-nine classes of cervical cytological cells organized into three hierarchies. We use
+8,051 ROIs from the test split. For each ROI, we create a closed-ended multiple-choice question based on
+the labels in the first hierarchy (i.e., atypical squamous cell, negative for intraepithelial lesion or malignancy,
+atypical glandular cell, and organism) that asks: “Shown is an image of cervical cytological cells. Which
+category do the cells most likely belong to? Answer with the option’s letter from the given choices directly.”
+PathQABench6 contains 150 ROIs paired with clinical context, and asks to select the most likely diagnosis
+from a set of plausible options, as described in the original study6 for multiple-choice-style question answering
+(PathQABench MCQ). To curate PathQABench Caption, we ask a board-certified pathologist to provide a
+detailed caption per ROI. We append “Answer with the option’s letter from the given choices directly.” and
+“Generate a detailed caption for this image that describes the key morphological features observed. Do not
+suggest any diagnosis or further testing.” at the end of each question for PathQABench MCQ and PathQABench
+Caption, respectively.
+Computing hardware and software
+All experiments and analyses in the study were performed using Python (version 3.10). For model training,
+we adapted the official LLaVA-OV82 code repository by incorporating our custom vision encoder and multi-
+modal projector implemented using Timm (version 0.9.8). We used up to 24 ×80GB NVIDIA A100 GPUs
+configured for multi-node multi-GPU distributed training using PyTorch (version 2.4.1, CUDA 11.8) as the
+deep learning framework. DeepSpeed (version 0.14.4) was used to enable accelerated training of PathChat+
+MLLM. All inference jobs were performed using 24GB NVIDIA 3090 GPUs. Pillow (version 10.2.0) is used
+for image processing. Matplotlib (version 3.7.1) and Seaborn (version 0.12.2) were used to create plots and
+figures. SlideSeek was implemented using LangChain (version 0.3.22). All whole slide operations, including
+tissue delineation and slide navigation, were implemented using Trident (version 0.1.1)75. Other miscellaneous
+libraries used are listed in the Reporting Summary. In total, training the combined system of PathChat+ (in-
+cluding the vision encoder, the multimodal projector, and the large language model) took approximately 1,275
+A100 GPU hours.
+Statistical analysis
+We estimated 95% confidence intervals for all reported metrics using nonparametric bootstrapping (1,000 repli-
+cates). To assess the statistical significance of observed differences in performance between model pairs, we
+performed two-sided paired permutation tests (1,000 permutations). The null hypothesis was that no difference
+exists between the performances of the two models. For each permutation, we randomly swapped pairs of pre-
+dictions between the two models to generate a new set of performance differences. We computed the p-value
+as the proportion of permuted differences whose absolute values exceeded the observed difference. In the case
+of comparing the performance on non-overlapping sets of data, e.g., rare diseases versus common diseases, we
+use an unpaired, but otherwise identical, permutation test to determine statistical significance.
+Data availability.
+The public data used in our evaluation can be accessed via the official repository: PathMMU, UniToPatho,
+BRACS, and HiCervix. PathQABench data was curated using a combination of WSIs from TCGA and in-
+house pathology database at the Brigham and Women’s Hospital. The original TCGA WSIs and associated
+clinical metadata are available from the NIH genomic data commons (portal.gdc.cancer.gov). The in-house
+subset was curated with institutional permission through IRB approval for the current study and thus cannot
+15
+
+===== PAGE 16 =====
+be made publicly available. Similarly, the DDxbench data is also curated from in-house database. All requests
+for data collected or curated in-house will be evaluated based on institutional and departmental policies to de-
+termine whether the data requested is subject to intellectual property or patient privacy obligations. Instruction
+data was curated from image captions, notes, reports from in-house educational resources and patient data.
+Code availability
+The general open MLLMs used in comparisons can be accessed via their official APIs or repository: Ope-
+nAI GPT-5-mini (model id: gpt-5-mini-2025-08-07), OpenAI GPT-5 (model id: gpt-5-2025-08-07), Ope-
+nAI 4.1 (model id: gpt-4.1-2025-04-14), Anthropic Claude Sonnet 4 (model id: claude-sonnet-4-20250514),
+Gemini 2.5 pro (model id: gemini-2.5-pro). Models evaluated in this study can be accessed via their offi-
+cial GitHub repositories: LLaVA-OneVision, Llama 3.2, Qwen3-VL, LLaVA-Med, Quilt-LLaVA, PA-LLaVA,
+and Huatuo-GPT-Vision. Similarly, the weights can be accessed through Hugging Face: LLaVA-OneVision
+(model id: llava-onevision-qwen2-7b-ov-hf), Llama 3.2 (model id: Llama-3.2-11B-Vision-Instruct), Qwen3-
+VL (model id: Qwen3-VL-8B-Instruct ), LLaVA-Med (model id: llava-med-v1.5-mistral-7b), Quilt-LLaVA
+(model id: Quilt-Llava-v1.5-7b), PA-LLaVA (model id: Pathology-LLaVA), and HuatuoGPT-Vision (model
+id: HuatuoGPT-Vision-7B).
+Author contributions
+M.Y.L. and F.M. conceived the study and designed the experiments. C.C., M.Y.L., R.J.C., B.C., T.D. and
+D.F.K.W performed data collection and processing. C.C., L.W. and M.Y.L. performed model development.
+L.W., C.C., M.Y.L., T.D., D.F.K.W., R.J.C., G.J. performed experimental analysis and interpreted the results.
+R.J.C., D.F.K.W., A.V., G.J., L.P.L. provided feedback on the analysis. L.W., C.C., G.J., M.Y.L., and F.M.
+prepared the manuscript with input from all co-authors. M.Y.L. and F.M. supervised the research.
+Acknowledgements
+This work was supported in part by the BWH president’s fund, BWH & MGH Pathology. We thank Timo-
+thy Janicki, Richard Kenny, Abe Ahmed and the system administration staff at the MGB Enterprise Research
+Infrastructure & Services (ERIS) Research Computing Core for their dedicated support in providing and main-
+taining access to NVIDIA A100 computing resources.
+16
+
+===== PAGE 17 =====
+Hypothesis & Plan
+Explorer
+Findings
+Tasks
+Plan
+PathChat
+Report
+Supervisor
+Prompt
+Slide
+Findings
+(             )
+Hypotheses
+Task
+Explorer
+Done?
+Slide Viewer
+Requests:
+{x=5235, y=5262, @20x}
+{x=5984, y=3614, @5x}
+Response:
+Regions 
+captured 
+successfully!
+PathChat
+Requests:
+Images from esophagus tissue. 
+Describe the key morphology…
+Response:
+1. Image shows prominent 
+keratin pearl formation …
+2. Well differentiated cells... 
+Supervisor
+ROIs
+PathChat
+Differential
+Supervisor
+Report
+ Confidence
+Findings
+Annotated Thumbnail
+ROI Descriptions
+Task Complete?
+Navigation Requests
+ROIs
+A
+B
+C
+D
+User Input
+Done?
+Supervisor
+Supervisor
+Mutli-Agentic Slide Exploration
+Output
+Extended Data Figure 1: Overview of the SlideSeek. A, High-level workflow. A user provides a whole-
+slide image (WSI) with a prompt that includes clinical context along with instructions. The supervisor agent
+proposes diagnostic hypotheses, drafts a plan, and delegates tasks to explorer agents. Explorers return struc-
+tured findings; the supervisor revises its hypotheses and plan until it judges the slide sufficiently explored, then
+produces the final PathChat+-assisted diagnosis and a written report. B, Supervisor agent workflow. The
+supervisor’s inputs comprise a task prompt, slide context/thumbnail, and the accumulated findings from all
+previous explorer tasks. It uses these to update its hypotheses about the differential and its plan for further
+narrowing the differential through additional slide exploration. At each step, the supervisor decides whether
+the plan is complete, in which case it proceeds to create the final diagnosis and report, or whether additional
+exploration is warranted, in which case it creates new tasks for the explorer agents. C, Explorer agent work-
+flow. For each assigned Task, an explorer agent is created, which iteratively investigates regions of the slide
+by choosing coordinates and magnifications to navigate to. The corresponding regions of interest (ROIs) are
+then extracted and described by PathChat+. The ROI descriptions and an annotated thumbnail showing which
+regions of the slide have been visited are returned to the explorer. At each step, the explorer decides whether
+it has completed the supervisor’s assigned task, in which case it summarizes its findings in a written report, or
+whether additional areas of the slide still need investigation. D, Diagnosis and report generation. Once slide
+exploration is complete, the supervisor forms its final differential by passing the most diagnostically relevant
+ROIs to PathChat+. All findings from the slide exploration are then incorporated by the supervisor to assess its
+confidence in the final diagnosis and to write a human-interpretable report that states the primary and differen-
+tial diagnoses supported by specific ROIs from the slide navigation.
+17
+
+===== PAGE 18 =====
+Extended Data Figure 2: Qualitative comparison of captions generated by PathChat+ and baselines on
+PathQABench Caption. In addition to PathChat+, we randomly select one other model on PathQABench
+Caption on two tissue regions (A and B) for illustrative comparison. Text highlighted in green by a pathologist
+illustrates key morphological features.
+…
+ROIs
+Task description: Tissue site: ovary, patient sex: female; no additional clinical 
+context is provided. Review these ROIs from a histology slide and provide the most 
+likely primary diagnosis. Please also suggest 2 other possibilities to consider. Your 
+response should have these sections: 'Primary Diagnosis' and 'Other Possibilities'.
+Inference
+Primary Diagnosis:
+High Grade Serous Ovarian Cancer
+Other Possibilities:
+1. Endometrioid Ovarian Cancer
+2. Clear Cell Ovarian Cancer
+Ground truth:  
+High Grade Serous Ovarian Cancer
+Expert  
+evaluation
+Input
+Output / Eval
+Extended Data Figure 3: Slide-level multimodal LLM evaluation on DDxBench. To evaluate multimodal
+LLMs for open-ended slide-level diagnosis on DDxBench, we build an input that includes ten expert-curated
+ROIs along with instructions and context (see Online Methods, Evaluation datasets). Each model is tasked
+with generating a primary diagnosis and two additional possible diagnoses in an open-ended manner. All
+diagnoses were evaluated against the original diagnosis by a pathologist.
+18
+
+===== PAGE 19 =====
+True Dx: Merkel Cell Carcinoma 
+Predicted Dx: Small Cell Carcinoma
+Predicted Confidence: Low
+Rationale: While the regions surveyed at 
+high magnification (for example, region-
+ROI#1 and ROI#2) consistently show sheets 
+and nests of small, round blue cells with high 
+nuclear-to-cytoplasmic ratios, hyperchromatic 
+nuclei, and focal necrosis, these features are 
+more in keeping with a primary cutaneous 
+neuroendocrine carcinoma, in other words, 
+Merkel cell carcinoma, rather than what is 
+typically termed 'small cell carcinoma of the 
+skin.' Moreover, in ROI#3, the tumor 
+architecture raised the possibility of a 
+lymphoid neoplasm, necessitating careful 
+exclusion of cutaneous lymphoma. The 
+overall morphology lacks evidence of 
+glandular or squamous differentiation that 
+might support an aggressive epithelial 
+carcinoma. Thus, I have low confidence that 
+the primary diagnosis should be stated as 
+small cell carcinoma of the skin. More 
+appropriately, the findings lean toward Merkel 
+cell carcinoma as the primary diagnosis with 
+cutaneous lymphoma remaining a 
+consideration, and additional 
+immunohistochemical studies would be 
+required for conclusive classification.
+True Dx: Anaplastic Thyroid Cancer
+Predicted Dx: Anaplastic Thyroid Cancer
+Predicted Confidence: High
+Rationale: The integrated high-power and 
+medium-power evaluations across multiple 
+regions strongly support an undifferentiated 
+(anaplastic) thyroid carcinoma. In Region 0, 
+the 20x views from ROIs such as ROI#1 
+reveals marked nuclear pleomorphism, 
+hyperchromasia, irregular nuclear contours 
+and disorganized spindle cell and giant cell 
+patterns with areas of necrosis and 
+hemorrhage. Additionally, the high-
+magnification examination in Tissue 
+Region 1 (ROI#2) confirms similar 
+anaplastic features in giant cells, further 
+corroborating a unifying aggressive, high-
+grade process. Although one high-power 
+view from Tissue Region 1 (ROI#3) 
+suggested some reactive features, the 
+overall preponderance of malignant 
+cytological abnormalities strongly aligns 
+with the PathChat prediction. The findings 
+do not favor metastatic carcinoma or 
+thyroid sarcoma as the primary process 
+given the consistent thyroid tissue 
+background in many ROIs, making 
+undifferentiated (anaplastic) thyroid 
+carcinoma the most plausible diagnosis.
+1
+1
+2
+3
+3
+2
+A
+B
+Extended Data Figure 4: Example of SlideSeek classifying a high-confidence (A) and low-confidence
+(B) case. SlideSeek iteratively identifies morphological features that support or refute the predicted diagnosis
+and supports its argument with specific references to regions of interest (ROIs). A. The supervisor selects
+ROIs that appropriately showcase the morphology present in the WSI and which demonstrate morphologies
+that are consistent with Anaplastic Thyroid Cancer along with accurate image descriptions. B. The supervisor
+rightly describes how the morphology on display in the ROIs is consistent with Merkel Cell Carcinoma or a
+cutaneous lymphoma. As small cell carcinoma of the skin is exceedingly rare, the supervisor is correct in that
+the diagnosis is much more likely to be one of the aforementioned options.
+19
+
+===== PAGE 20 =====
+Supervisor System Message
+# ROLE: SUPERVISING PATHOLOGIST
+You are supervising a team of expert pathologists examining histopathology 
+slides. Your goal is to coordinate their exploration systematically to 
+accurately complete your diagnostic task.
+## TASK
+Your task is to diagnose the disease in this whole-slide image. Provide the 
+most likely primary diagnosis. Please also suggest two other possible 
+diagnoses to consider.
+## SLIDE OVERVIEW
+{dynamically generated description of tissue, including tissue site and 
+bounding boxes of tissue regions in x, y coordinates}
+## GUIDANCE
+- Review the provided slide thumbnail carefully.
+- Identify tissue regions and prioritize based on relevance. Avoid artifacts 
+like pen marks.
+- Define a clear, sequential exploration strategy.
+- Break the strategy into focused tasks, specifying:
+  - Exact regions to explore (reference numbered regions).
+  - Precise magnifications: low (1.25–2.5×), medium (5–10×), high (20–40×).
+  - Key morphological features to assess.
+- Continually update your hypothesis as findings arrive.
+- Conclude only when confident the slide has been sufficiently explored.
+- You must extensively explore regions with diagnostically relevant 
+morphologies at high magnification (20× or higher).
+Coordinate exploration iteratively until ready to finalize the diagnosis.
+Supervisor Response Fields
+-
+hypotheses: Summarize your current hypotheses, including observed key 
+features, broad differential diagnoses, and supporting evidence 
+referencing specific ROIs with coordinates and magnifications.
+-
+plan: Detailed and stepwise exploration plan outlining regions to examine 
+(with specific coordinates), magnifications needed, and sequential tasks 
+for comprehensive slide analysis.
+-
+current_step: Clearly state the current step of your exploration plan, 
+specifying which regions and features are under examination, and the 
+criteria for confirming or refuting your hypotheses.
+-
+tasks: Specific, actionable tasks for pathologists clearly defined by 
+region, exact coordinates (e.g., 'x=1000-2000, y=3000-4000'), 
+magnification level(s), detailed instructions, and necessary contextual 
+rationale. The pathologists performing these tasks will only have access 
+to the same slide image and the context you provide.
+-
+justifications: Detailed reasoning behind the task selection, explaining 
+how these tasks align with your current exploration step, how findings 
+informed your choices, and clearly noting any modifications to the 
+hypotheses or plan.
+-
+finished: TRUE when you have completed all planned steps and are prepared 
+for a final diagnostic decision with an abundance of high magnification 
+regions of diagnostically relevant morphologies to support your 
+conclusions. Setting TRUE prevents further task assignment.
+20
+
+===== PAGE 21 =====
+Supervisor ROI Selection Prompt
+Based on your exploration of the slide, identify up to 10 regions of 
+interest (ROIs) that contain morphological features relevant to diagnosis. 
+These ROIs will be sent to PathChat, an expert AI pathologist, who will make 
+a differential diagnosis solely based on these regions. Avoid selecting 
+tissue regions with normal morphology or overlapping regions. Use the most 
+relevant ROIs mentioned in the explorer pathologists' findings.
+PathChat Differential Diagnosis Prompt
+"Tissue site: {organ}, patient sex: {sex}; no additional clinical context is 
+provided. Review these ROIs from a histology slide and provide the most 
+likely primary diagnosis. Please also suggest 2 other possibilities to 
+consider. Your response should have these sections: 'Primary Diagnosis' and 
+'Other Possibilities'."
+Supervisor Report Generation Prompt
+# COMPREHENSIVE PATHOLOGY REPORT GENERATION
+Based on your exploration of the slide and the PathChat differential 
+diagnosis, generate a structured pathology report with the following three 
+sections:
+## 1. MICROSCOPIC FINDINGS
+- Summarize the key morphological features observed across the slide
+- Focus specifically on the ROIs that were sent to PathChat for differential 
+diagnosis
+- For each significant finding, reference specific ROIs by name (e.g., 
+'region-mag_20-x_1000-y_2000')
+- Include architectural patterns, cellular characteristics, and any abnormal 
+features
+## 2. DIFFERENTIAL DIAGNOSIS
+- Present the primary diagnosis provided by PathChat
+- Include the secondary differential diagnoses from PathChat
+- For each diagnosis, summarize the key supporting evidence from the ROIs
+- Maintain consistency with the specific ROIs that were selected for the 
+final diagnosis
+## 3. CRITICAL ASSESSMENT
+- Evaluate whether PathChat's differential diagnosis is well-supported by 
+the observed morphological features
+- Assess if there are any inconsistencies between the diagnosis and the 
+microscopic findings
+- Identify any features that might suggest alternative diagnoses not 
+considered by PathChat
+- Recommend any additional testing (IHC, molecular studies) or clinical 
+correlation that would be helpful
+- Provide a confidence rating as either:
+  * HIGH CONFIDENCE: Morphological evidence strongly supports the diagnosis 
+with minimal ambiguity
+  * LOW CONFIDENCE: Features are ambiguous or contradictory, or the 
+diagnosis is not fully supported by morphology
+- Justify your confidence rating with specific references to morphological 
+features
+21
+
+===== PAGE 22 =====
+Explorer System Message
+# YOUR ROLE: EXPERT PATHOLOGIST
+You have been assigned the following task: {supervisor-provided task name}
+## CONTEXT
+{supervisor-provided task context}
+## YOUR INSTRUCTIONS
+{supervisor-provided task description}
+## SLIDE INFORMATION
+{dynamically generated description of tissue, including tissue site and 
+bounding boxes of tissue regions in x, y coordinates}
+## GUIDANCE
+- Be thorough and systematic in your investigation
+- Navigate to all relevant regions specified in the task at the appropriate 
+magnification(s)
+- Submit a comprehensive report ONLY when you have FULLY completed the task
+- Be efficient in your exploration and try to submit your report as soon as 
+you are confident in your findings.
+- You may submit up to 10 navigation requests to non-overlapping regions of 
+interest at once on each turn using the navigation tool.
+Explorer Tools
+-
+navigate(x, y, magnification, rationale) -> pathchat-roi-description: Use 
+this tool to navigate to and examine specific regions of the whole slide 
+image. Include a rationale in your request to explain why you selected 
+this region based on your task and what you see in the thumbnail.
+-
+submit_report(findings) -> <END>: Once you are confident that you have 
+explored enough of the slide to complete your task, provide a 
+comprehensive, organized summary of your findings that you observed in 
+order to complete the task. This will end your navigation. Include the 
+following:
+A. Systematic description of the most informative examined regions with 
+specific references. These regions MUST be referenced by name (e.g., 
+'region-mag_20-x_1000-y_2000')
+B. Key morphological features and patterns observed
+C. Any abnormalities or diagnostic features identified
+D. Integration of findings across different magnifications
+E. Your overall impression and assessment
+Extended Data Figure 5: Prompts, outputs, and tools used by SlideSeek. The supervisor receives a task
+prompt, slide thumbnail, and auto-generated slide description (dimensions and tissue bounding boxes), then
+iteratively updates hypotheses, a plan, current step, explorer tasks, justifications, and a finished flag. Explorers
+receive the same slide context, plus an assigned task, and navigate around in specified regions and magnifica-
+tions. They iteratively choose coordinates to obtain morphological descriptions of regions of interest (ROIs)
+using PathChat+ or submit a concise report to the supervisor, ending their exploration. The supervisor-explorer
+loop continues until the supervisor deems sufficient evidence is collected, after which the supervisor selects up
+to 10 diagnostically relevant ROIs, requests a PathChat+ differential, and composes a visually grounded report
+with primary and two differential diagnoses and a confidence assessment.
+22
+
+===== PAGE 23 =====
+Extended Data Figure 6: LLM-assisted data-curation workflow for PathChat+. Raw pathology images
+and accompanying text reports are first parsed by a pretrained LLM to produce structured metadata (e.g., stain,
+clinical data, site, diagnosis, and an annotated caption). The LLM then drafts task-specific instructions using
+the image + metadata together with a pool of pathologist-annotated exemplars; formats include multiple-
+choice, free-response, descriptive prompts, and short conversations. A board-certified pathologist reviews and
+edits all outputs; approved instructions are included in the manually verified examples for large-scale curation
+of task-specific, clinically grounded instructions, with periodic auditing by the pathologist.
+23
+
+===== PAGE 24 =====
+Model
+All-val
+All-test-tiny
+All-test
+Claude Sonnet 4
+0.548 (0.514, 0.584)
+0.610 (0.581, 0.637)
+0.577 (0.567, 0.587)
+GPT-5
+0.648 (0.612, 0.684)
+0.719 (0.692, 0.743)
+0.679 (0.670, 0.688)
+GPT-5-mini
+0.617 (0.579, 0.652)
+0.683 (0.656, 0.711)
+0.648 (0.638, 0.657)
+Gemini 2.5 pro
+0.668 (0.634, 0.702)
+0.714 (0.690, 0.738)
+0.679 (0.669, 0.688)
+HuatuoGPT-Vision
+0.575 (0.536, 0.609)
+0.587 (0.561, 0.617)
+0.564 (0.554, 0.573)
+LLaVA-OneVision
+0.428 (0.391, 0.465)
+0.489 (0.459, 0.518)
+0.452 (0.442, 0.463)
+Llama-3.2
+0.489 (0.449, 0.528)
+0.530 (0.501, 0.558)
+0.491 (0.481, 0.501)
+PA-LLaVA
+0.376 (0.340, 0.415)
+0.422 (0.396, 0.451)
+0.389 (0.380, 0.399)
+PathChat 1
+0.579 (0.541, 0.617)
+0.640 (0.613, 0.668)
+0.609 (0.599, 0.619)
+PathChat+
+0.720 (0.685, 0.754)
+0.771 (0.747, 0.796)
+0.751 (0.742, 0.760)
+Quilt-LLaVA
+0.416 (0.381, 0.454)
+0.441 (0.413, 0.470)
+0.406 (0.397, 0.416)
+Qwen3-VL
+0.502 (0.466, 0.539)
+0.571 (0.543, 0.598)
+0.533 (0.522, 0.543)
+Expert performance∗
+-
+0.718
+-
+Extended Data Table 1: Performance on PathMMU multiple-choice questions, validation, test-tiny and
+test subset. Accuracy is reported on subset of all validation (All-val, n = 699), all test tiny (All-test-tiny,
+n = 1, 150) and all test (All-test, n = 9, 618). 95% confidence intervals from bootstrapping are included in
+parentheses. For more details see MLLM evaluation in Methods. ∗: The expert performance is quoted from
+the PathMMU paper68. Note that the quoted expert performance is not directly comparable to all the evaluated
+model performance numbers since the Atlas subset has been updated by the PathMMU authors and is not the
+same as reported in the original paper.
+24
+
+===== PAGE 25 =====
+Model
+Atlas (test-tiny)
+Atlas (test-all)
+Claude Sonnet 4
+0.591 (0.529, 0.659)
+0.630 (0.600, 0.660)
+GPT-5
+0.769 (0.707, 0.827)
+0.740 (0.711, 0.766)
+GPT-5-mini
+0.716 (0.654, 0.779)
+0.712 (0.683, 0.741)
+Gemini 2.5 pro
+0.798 (0.740, 0.856)
+0.752 (0.724, 0.779)
+HuatuoGPT-Vision
+0.678 (0.611, 0.745)
+0.637 (0.607, 0.667)
+LLaVA-OneVision
+0.601 (0.538, 0.668)
+0.541 (0.511, 0.573)
+Llama-3.2
+0.615 (0.553, 0.683)
+0.608 (0.578, 0.637)
+PA-LLaVA
+0.476 (0.409, 0.548)
+0.441 (0.409, 0.473)
+PathChat 1
+0.788 (0.731, 0.841)
+0.753 (0.727, 0.779)
+PathChat+
+0.827 (0.774, 0.875)
+0.840 (0.816, 0.862)
+Quilt-LLaVA
+0.495 (0.428, 0.567)
+0.476 (0.443, 0.506)
+Qwen3-VL
+0.534 (0.462, 0.606)
+0.571 (0.540, 0.602)
+Expert performance∗
+0.683
+-
+Extended Data Table 2: Performance on PathMMU multiple-choice questions, Atlas subset. Accuracy
+is reported on test tiny subset (n = 208) and test subset (n = 1, 007). 95% confidence intervals from boot-
+strapping are included in parentheses. For more details see MLLM evaluation in Methods. ∗: The expert
+performance is quoted from the PathMMU study68. Note that the quoted expert performance is not directly
+comparable to all the evaluated model performance numbers since the Atlas subset has been updated by the
+PathMMU authors and is not the same as reported in the original paper.
+Model
+EduContent (test-tiny)
+EduContent (test-all)
+Claude Sonnet 4
+0.667 (0.612, 0.718)
+0.633 (0.611, 0.654)
+GPT-5
+0.757 (0.706, 0.812)
+0.689 (0.669, 0.709)
+GPT-5-mini
+0.757 (0.706, 0.812)
+0.669 (0.646, 0.691)
+Gemini 2.5 pro
+0.718 (0.659, 0.773)
+0.693 (0.672, 0.712)
+HuatuoGPT-Vision
+0.620 (0.557, 0.682)
+0.570 (0.548, 0.591)
+LLaVA-OneVision
+0.573 (0.514, 0.631)
+0.512 (0.489, 0.535)
+Llama-3.2
+0.565 (0.506, 0.627)
+0.507 (0.488, 0.530)
+PA-LLaVA
+0.424 (0.361, 0.490)
+0.421 (0.399, 0.444)
+PathChat 1
+0.678 (0.616, 0.737)
+0.631 (0.609, 0.651)
+PathChat+
+0.769 (0.718, 0.820)
+0.735 (0.716, 0.755)
+Quilt-LLaVA
+0.498 (0.431, 0.557)
+0.437 (0.413, 0.460)
+Qwen3-VL
+0.612 (0.553, 0.671)
+0.561 (0.539, 0.583)
+Expert performance∗
+0.690
+-
+Extended Data Table 3: Performance on PathMMU multiple-choice questions, EduContent subset. Ac-
+curacy is reported on test tiny subset (n = 255) and test subset (n = 1, 938). 95% confidence intervals from
+bootstrapping are included in parentheses. For more details see MLLM evaluation in Methods. ∗: The expert
+performance is quoted from the PathMMU paper68.
+25
+
+===== PAGE 26 =====
+Model
+PathCLS (test-tiny)
+PathCLS (test-all)
+Claude Sonnet 4
+0.350 (0.288, 0.418)
+0.333 (0.312, 0.356)
+GPT-5
+0.537 (0.463, 0.605)
+0.561 (0.537, 0.584)
+GPT-5-mini
+0.503 (0.429, 0.576)
+0.513 (0.490, 0.537)
+Gemini 2.5 pro
+0.525 (0.458, 0.599)
+0.561 (0.539, 0.585)
+HuatuoGPT-Vision
+0.367 (0.299, 0.441)
+0.363 (0.341, 0.384)
+LLaVA-OneVision
+0.226 (0.164, 0.288)
+0.239 (0.220, 0.261)
+Llama-3.2
+0.311 (0.249, 0.379)
+0.307 (0.287, 0.328)
+PA-LLaVA
+0.305 (0.237, 0.379)
+0.286 (0.266, 0.307)
+PathChat 1
+0.424 (0.356, 0.497)
+0.452 (0.430, 0.475)
+PathChat+
+0.740 (0.678, 0.802)
+0.748 (0.728, 0.768)
+Quilt-LLaVA
+0.299 (0.232, 0.367)
+0.271 (0.252, 0.293)
+Qwen3-VL
+0.384 (0.316, 0.458)
+0.376 (0.354, 0.398)
+Expert performance
+0.789
+-
+Extended Data Table 4: Performance on PathMMU multiple-choice questions, PathCLS subset. Accu-
+racy is reported on test tiny subset (n = 177) and test subset (n = 1, 809). 95% confidence intervals from
+bootstrapping are included in parentheses. For more details see MLLM evaluation in Methods. ∗: The expert
+performance is quoted from the PathMMU study68.
+Model
+SocialPath (test-tiny)
+SocialPath (test-all)
+Claude Sonnet 4
+0.668 (0.607, 0.729)
+0.625 (0.600, 0.646)
+GPT-5
+0.738 (0.677, 0.790)
+0.694 (0.673, 0.717)
+GPT-5-mini
+0.668 (0.611, 0.729)
+0.655 (0.634, 0.677)
+Gemini 2.5 pro
+0.703 (0.646, 0.764)
+0.663 (0.641, 0.685)
+HuatuoGPT-Vision
+0.576 (0.511, 0.638)
+0.596 (0.575, 0.619)
+LLaVA-OneVision
+0.489 (0.419, 0.555)
+0.489 (0.464, 0.513)
+Llama-3.2
+0.520 (0.454, 0.585)
+0.521 (0.499, 0.545)
+PA-LLaVA
+0.454 (0.393, 0.520)
+0.410 (0.385, 0.433)
+PathChat 1
+0.638 (0.576, 0.699)
+0.614 (0.591, 0.637)
+PathChat+
+0.751 (0.694, 0.808)
+0.717 (0.695, 0.738)
+Quilt-LLaVA
+0.441 (0.376, 0.507)
+0.454 (0.433, 0.478)
+Qwen3-VL
+0.642 (0.581, 0.703)
+0.561 (0.538, 0.582)
+Expert performance∗
+0.715
+-
+Extended Data Table 5: Performance on PathMMU multiple-choice questions, SocialPath subset. Ac-
+curacy is reported on test tiny subset (n = 229) and test subset (n = 1, 796). 95% confidence intervals from
+bootstrapping are included in parentheses. For more details see MLLM evaluation in Methods. ∗: The human
+expert performance is quoted from the PathMMU study68.
+26
+
+===== PAGE 27 =====
+Model
+PubMed (test-tiny)
+PubMed (test-all)
+Claude Sonnet 4
+0.687 (0.637, 0.744)
+0.641 (0.623, 0.657)
+GPT-5
+0.747 (0.698, 0.797)
+0.713 (0.696, 0.729)
+GPT-5-mini
+0.719 (0.665, 0.769)
+0.688 (0.671, 0.704)
+Gemini 2.5 pro
+0.776 (0.730, 0.826)
+0.725 (0.709, 0.741)
+HuatuoGPT-Vision
+0.637 (0.584, 0.690)
+0.635 (0.619, 0.653)
+LLaVA-OneVision
+0.495 (0.438, 0.552)
+0.489 (0.471, 0.507)
+Llama-3.2
+0.580 (0.520, 0.637)
+0.535 (0.517, 0.553)
+PA-LLaVA
+0.427 (0.367, 0.484)
+0.401 (0.384, 0.419)
+PathChat 1
+0.633 (0.580, 0.687)
+0.636 (0.620, 0.654)
+PathChat+
+0.769 (0.719, 0.815)
+0.753 (0.738, 0.768)
+Quilt-LLaVA
+0.438 (0.377, 0.498)
+0.416 (0.399, 0.433)
+Qwen3-VL
+0.623 (0.566, 0.680)
+0.579 (0.561, 0.596)
+Expert performance∗
+0.729
+-
+Extended Data Table 6: Performance on PathMMU multiple-choice questions, Pubmed subset. Accu-
+racy is reported on test tiny subset (n = 281) and test subset (n = 3, 068). 95% confidence intervals from
+bootstrapping are included in parentheses. For more details see MLLM evaluation in Methods. ∗: The expert
+performance is quoted from the PathMMU paper68.
+Model
+PathQABench MCQ
+Claude Sonnet 4
+0.771 (0.686, 0.848)
+GPT-5
+0.848 (0.771, 0.914)
+GPT-5-mini
+0.848 (0.711, 0.914)
+Gemini 2.5 pro
+0.876 (0.810, 0.933)
+HuatuoGPT-Vision
+0.571 (0.476, 0.667)
+LLaVA-OneVision
+0.257 (0.171, 0.343)
+Llama-3.2
+0.733 (0.647, 0.810)
+PA-LLaVA
+0.324 (0.238, 0.410)
+PathChat 1
+0.895 (0.829, 0.952)
+PathChat+
+0.943 (0.895, 0.981)
+Quilt-LLaVA
+0.333 (0.248, 0.429)
+Qwen3-VL
+0.638 (0.543, 0.724)
+Extended Data Table 7: Performance on multiple-choice questions of PathQABench MCQ. Accuracy is
+reported on PathQABench MCQ (n = 105) with 95% confidence intervals from bootstrapping are included in
+parentheses. For more details see MLLM evaluation in Methods.
+27
+
+===== PAGE 28 =====
+Model
+BRACS
+UniToPatho
+HiCervix
+Claude Sonnet 4
+0.230 (0.198, 0.263)
+0.252 (0.235, 0.270)
+0.249 (0.240, 0.259)
+GPT-5
+0.349 (0.309, 0.388)
+0.263 (0.245, 0.281)
+0.456 (0.445, 0.466)
+GPT-5-mini
+0.340 (0.298, 0.381)
+0.392 (0.372, 0.411)
+0.426 (0.415, 0.436)
+Gemini 2.5 pro
+0.372 (0.333, 0.412)
+0.401 (0.381, 0.421)
+0.443 (0.433, 0.454)
+HuatuoGPT-Vision
+0.198 (0.167, 0.228)
+0.311 (0.294, 0.329)
+0.371 (0.360, 0.381)
+LLaVA-OneVision
+0.147 (0.118, 0.175)
+0.360 (0.341, 0.378)
+0.376 (0.366, 0.386)
+Llama-3.2
+0.200 (0.170, 0.235)
+0.212 (0.196, 0.229)
+0.293 (0.282, 0.302)
+PA-LLaVA
+0.161 (0.132, 0.191)
+0.242 (0.226, 0.260)
+0.330 (0.320, 0.340)
+PathChat 1
+0.558 (0.516, 0.596)
+0.506 (0.485, 0.526)
+0.368 (0.356, 0.379)
+PathChat+
+0.633 (0.589, 0.672)
+0.522 (0.504, 0.541)
+0.715 (0.706, 0.724)
+Quilt-LLaVA
+0.160 (0.132, 0.189)
+0.207 (0.191, 0.222)
+0.372 (0.362, 0.382)
+Qwen3-VL
+0.232 (0.198, 0.265)
+0.250 (0.233, 0.266)
+0.258 (0.248, 0.267)
+Extended Data Table 8:
+Performance on multiple-choice questions of BRACS, UniToPatho and
+HiCervix. Accuracy is reported on BRACS (n = 570), UniToPatho (n = 2, 399) and HiCervix (n = 8, 051).
+95% confidence intervals from bootstrapping are included in parentheses. For more details see MLLM evalu-
+ation in Methods.
+Model
+PathQABench Caption
+Claude Sonnet 4
+0.224 (0.212, 0.236)
+GPT-5
+0.242 (0.230, 0.253)
+GPT-5-mini
+0.236 (0.224, 0.247)
+Gemini 2.5 pro
+0.248 (0.235, 0.260)
+HuatuoGPT-Vision
+0.217 (0.208, 0.226)
+LLaVA-Med 1.5
+0.200 (0.190, 0.209)
+LLaVA-OneVision
+0.109 (0.094, 0.122)
+Llama-3.2
+0.192 (0.183, 0.201)
+PathChat 1
+0.263 (0.247, 0.280)
+PathChat+
+0.281 (0.270, 0.293)
+Quilt-LLaVA
+0.199 (0.189, 0.209)
+Qwen3-VL
+0.240 (0.227, 0.253)
+Extended Data Table 9: Performance on PathQABench Caption for image captioning. METEOR score73
+is reported on PathQABench Caption (n = 105) with 95% confidence intervals from bootstrapping are included
+in parentheses. For more details see MLLM evaluation in Methods.
+28
+
+===== PAGE 29 =====
+Site
+Diagnoses
+Brain
+Anaplastic Astrocytoma*, Ependymoma*, Glioblastoma*,
+Medulloblastoma*, Meningioma*, Oligodendroglioma*, Pilocytic
+Astrocytoma*, Pituitary Adenoma*
+Breast
+Invasive Breast Carcinoma of No Special Type (NST), Invasive
+Lobular Carcinoma, Mixed Ductal and Lobular Carcinoma
+Endocrine
+Adrenocortical Carcinoma*, Anaplastic Thyroid Carcinoma*,
+Follicular Thyroid Carcinoma*, Medullary Thyroid Carcinoma*,
+Papillary Thyroid Carcinoma
+GI
+Colorectal Adenocarcinoma, Esophageal Adenocarcinoma*,
+Esophageal Squamous Cell Carcinoma*, Gastric Adenocarcinoma,
+Gastric Signet Ring Cell Carcinoma*, Squamous Cell Carcinoma of
+the Anus*
+GYN
+Clear Cell Carcinoma of the Ovary*, Clear Cell Carcinoma of the
+Uterus*, Endometrioid Carcinoma of the Ovary*, Endometrioid
+Carcinoma of the Uterus, High-Grade Serous Carcinoma of the
+Ovary*, Low-Grade Serous Carcinoma of the Ovary*, Mucinous
+Carcinoma of the Ovary*, Serous Borderline Tumor of the Ovary*,
+Serous Carcinoma of the Uterus*, Squamous Cell Carcinoma of the
+Cervix*
+Lung
+Adenocarcinoma of the Lung, Atypical Carcinoid Tumor*, Large Cell
+Neuroendocrine Carcinoma*, Mixed Large Cell and Small Cell
+Neuroendocrine Carcinoma, Small Cell Carcinoma of the Lung*,
+Squamous Cell Carcinoma of the Lung, Typical Carcinoid Tumor*
+Male Reproductive Tract
+Prostatic Adenocarcinoma, Seminoma*
+Pancreaticohepatobiliary
+Hepatocellular Carcinoma*, Pancreatic Adenocarcinoma*, Pancreatic
+Neuroendocrine Tumor (PanNET)*
+Skin and Connective
+Tissue
+Cutaneous Squamous Cell Carcinoma, Malignant Melanoma, Merkel
+Cell Carcinoma*
+Urinary Tract
+Adenocarcinoma of the Bladder*, Bladder Urothelial Carcinoma,
+Chromophobe Renal Cell Carcinoma*, Clear Cell Renal Cell
+Carcinoma*, Nephroblastoma (Wilms Tumor)*, Papillary Renal Cell
+Carcinoma*, Renal Oncocytoma*, Upper Tract Urothelial Carcinoma*
+Extended Data Table 10: Unique diagnoses by tissue site in DDxBench. GI: Gastrointestinal, GYN: Gy-
+necology. Rare diseases, as defined by an incidence of fewer than 6 in 100,000 per year, are marked with an
+asterisk (*)87–97.
+29
+
+===== PAGE 30 =====
+Agent LLMs
+Multi-Agent
+Captioner
+Primary (top-1)
+Primary & Differential (top-3)
+GPT-5-mini
+✓
+PathChat+
+0.860 (0.800, 0.907)
+0.927 (0.880, 0.967)
+GPT-4.1
+✓
+PathChat+
+0.813 (0.753, 0.873)
+0.927 (0.880, 0.967)
+GPT-5-mini
+×
+PathChat+
+0.780 (0.707, 0.847)
+0.880 (0.827, 0.927)
+GPT-5-mini
+✓
+PathChat 1
+0.640 (0.560, 0.713)
+0.807 (0.740, 0.867)
+GPT-5-mini
+✓
+GPT-5-mini
+0.427 (0.353, 0.507)
+0.627 (0.547, 0.700)
+Extended Data Table 11: Ablations of SlideSeek on DDxBench. Each row ablates one component of the
+full system to isolate its effect. “Agent LLMs” is the backbone used by the supervisor and explorer agents
+for planning/reasoning; “Captioner” is the model used to extract morphology and to produce the final differ-
+ential (PathChat+ unless ablated). The first row is the reference system for SlideSeek: a supervisor–explorer
+multi-agent setup with GPT-5-mini agents and PathChat+ as the captioner. Row 2 swaps the agent backbone
+to GPT-4.1 while keeping the hierarchy and captioner fixed (tests value of a reasoning agent). Row 3 collapses
+the hierarchy to a single explorer (no supervisor; Multi-Agent ×) with the same agent backbone and captioner
+(tests the supervisor–explorer design). Rows 4–5 keep the agent side fixed and ablate the captioner: replacing
+PathChat+ with PathChat 1 (row 4) or a general-purpose GPT-5-mini captioner (row 5). Values are accuracy
+(higher is better) for primary (top-1) and primary + differentials (top-3) with 95% CIs; ✓indicates the super-
+visor–explorer hierarchy is present, × indicates the single-agent ablation.
+Model
+Primary Diagnosis
+Primary + Add. Differentials
+Claude Sonnet 4
+0.427 (0.347, 0.507)
+0.560 (0.487, 0.640)
+GPT-5
+0.407 (0.327, 0.487)
+0.613 (0.533, 0.700)
+GPT-5-mini
+0.433 (0.353, 0.513)
+0.673 (0.600, 0.745)
+Gemini 2.5 pro
+0.513 (0.433, 0.593)
+0.713 (0.647, 0.787)
+HuatuoGPT-Vision
+0.333 (0.260, 0.413)
+0.540 (0.460,0.620)
+LLaVA-OneVision
+0.107 (0.067, 0.160)
+0.167 (0.113,0.227)
+PathChat 1
+0.720 (0.647, 0.787)
+0.887 (0.833,0.933)
+PathChat+
+0.800 (0.740, 0.860)
+0.920 (0.873,0.960)
+Qwen3-VL
+0.387 (0.313, 0.467)
+0.627 (0.553,0.707))
+Extended Data Table 12: Performance of PathChat+ with expert-curated ROIs on DDxBench. Primary
+Diagnosis (top-1 accuracy) and Primary + Differential (top-3 accuracy) are reported on DDxBench (n = 150)
+Each slide is represented by ten curated ROIs, which are directly fed to PathChat+. 95% confidence intervals
+from bootstrapping are included in parentheses. For more details see MLLM evaluation in Methods.
+30
+
+===== PAGE 31 =====
+Hyperparameter
+Value
+Automatic mixed precision
+BF16
+DeepSpeed ZeRO
+Stage 3
+Batch size
+128
+Learning rate scheduler
+Cosine
+Warmup ratio
+0.03
+Peak learning rate
+2e-3
+AdamW β
+(0.9, 0.999)
+AdamW ϵ
+1e-8
+Weight decay
+0.
+Gradient clipping max. norm
+1.0
+Training epochs
+1
+Gradient checkpointing
+Yes
+TF32
+Yes
+Extended Data Table 13: Hyperparameters for PathChat+ pretraining. Training was conducted on 8 ×
+80GB NVIDIA A100 GPUs. The reported batch size is the effective batch size across all GPUs. The learning
+rate was linearly increased from zero to the peak value over warmup ratio × total batches steps, then decayed
+to zero following a cosine schedule. These parameters closely follow the original pretraining of PathChat 1.
+Hyperparameter
+Value
+Automatic mixed precision
+BF16
+DeepSpeed ZeRO
+Stage 3
+Batch size per GPU
+2
+Gradient accumulation steps
+2
+Learning rate scheduler
+Cosine
+Warmup ratio
+0.03
+Peak learning rate
+2e-5
+AdamW β
+(0.9, 0.999)
+AdamW ϵ
+1e-8
+Weight decay
+0.
+Gradient clipping max. norm
+1.0
+Training epochs
+1
+Gradient checkpointing
+Yes
+TF32
+Yes
+Extended Data Table 14: Hyperparameters for PathChat+ multimodal LLM finetuning. Training was
+performed on 24 × 80GB NVIDIA A100 GPUs across 3 compute nodes using multi-node distributed train-
+ing. The reported batch size is per GPU; the effective batch size is given by (batch size × number of GPUs
+× gradient accumulation steps). The learning rate was linearly increased from zero to the peak value over
+warmup ratio × total batches steps, then decayed to zero following a cosine schedule.
+31
+
+===== PAGE 32 =====
+References
+1. Madabhushi, A. & Lee, G. Image analysis and machine learning in digital pathology: Challenges and
+opportunities. Medical Image Analysis 33, 170–175 (2016).
+2. Bera, K., Schalper, K. A., Rimm, D. L., Velcheti, V. & Madabhushi, A. Artificial intelligence in digital
+pathology—new tools for diagnosis and precision oncology. Nature Reviews Clinical oncology 16, 703–
+715 (2019).
+3. Heinz, C. N., Echle, A., Foersch, S., Bychkov, A. & Kather, J. N. The future of artificial intelligence in
+digital pathology–results of a survey across stakeholder groups. Histopathology 80, 1121–1127 (2022).
+4. Cui, M. & Zhang, D. Y. Artificial intelligence and computational pathology. Laboratory Investigation
+101, 412–422 (2021).
+5. Abels, E. et al. Computational pathology definitions, best practices, and recommendations for regulatory
+guidance: a white paper from the digital pathology association. The Journal of Pathology 249, 286–294
+(2019).
+6. Lu, M. Y. et al. A multimodal generative ai copilot for human pathology. Nature 634, 466–473 (2024).
+7. Li, C. et al. Llava-med: Training a large language-and-vision assistant for biomedicine in one day. Ad-
+vances in Neural Information Processing Systems 36, 28541–28564 (2023).
+8. Seyfioglu, M. S., Ikezogwo, W. O., Ghezloo, F., Krishna, R. & Shapiro, L. Quilt-llava: Visual instruction
+tuning by extracting localized narratives from open-source histopathology videos. In Proceedings of the
+IEEE/CVF Conference on Computer Vision and Pattern Recognition, 13183–13192 (2024).
+9. Dai, D. et al. Pa-llava: A large language-vision assistant for human pathology image understanding.
+In 2024 IEEE International Conference on Bioinformatics and Biomedicine (BIBM), 3138–3143 (IEEE,
+2024).
+10. Coudray, N. et al. Classification and mutation prediction from non–small cell lung cancer histopathology
+images using deep learning. Nature Medicine 24, 1559–1567 (2018).
+11. Lu, M. Y. et al. Data-efficient and weakly supervised computational pathology on whole-slide images.
+Nature Biomedical Engineering 5, 555–570 (2021).
+12. Bulten, W. et al. Automated deep-learning system for gleason grading of prostate cancer using biopsies:
+a diagnostic study. The Lancet Oncology 21, 233–241 (2020).
+13. Nagpal, K. et al. Development and validation of a deep learning algorithm for improving gleason scoring
+of prostate cancer. NPJ digital medicine 2, 48 (2019).
+14. Huang, S.-C. et al. Deep neural network trained on gigapixel images improves lymph node metastasis
+detection in clinical settings. Nature Communications 13, 3347 (2022).
+15. Campanella, G. et al. Clinical-grade computational pathology using weakly supervised deep learning on
+whole slide images. Nature Medicine 25, 1301–1309 (2019).
+16. Ehteshami Bejnordi, B. et al.
+Diagnostic Assessment of Deep Learning Algorithms for Detection of
+Lymph Node Metastases in Women With Breast Cancer. JAMA 318, 2199–2210 (2017).
+17. Kather, J. N. et al. Pan-cancer image-based detection of clinically actionable genetic alterations. Nature
+Cancer 1, 789–799 (2020).
+18. Fu, Y. et al. Pan-cancer computational histopathology reveals mutations, tumor composition and progno-
+sis. Nature Cancer 1, 800–810 (2020).
+32
+
+===== PAGE 33 =====
+19. Saldanha, O. L. et al. Self-supervised attention-based deep learning for pan-cancer mutation prediction
+from histopathology. NPJ Precision Oncology 7, 35 (2023).
+20. Wagner, S. J. et al. Transformer-based biomarker prediction from colorectal cancer histology: A large-
+scale multicentric study. Cancer Cell 41, 1650–1661 (2023).
+21. Beck, A. H. et al. Systematic analysis of breast cancer morphology uncovers stromal features associated
+with survival. Science Translational Medicine 3 (2011).
+22. Mobadersany, P. et al. Predicting cancer outcomes from histology and genomics using convolutional
+networks. Proceedings of the National Academy of Sciences 115, E2970–E2979 (2018).
+23. Chen, R. J. et al. Pan-cancer integrative histology-genomic analysis via multimodal deep learning. Cancer
+Cell 40, 865–878 (2022).
+24. Lee, Y., Park, J., Oh, S. et al. Derivation of prognostic contextual histopathological features from whole-
+slide images of tumours via graph deep learning. Nature Biomedical Engineering (2022).
+25. Courtiol, P. et al.
+Deep learning-based classification of mesothelioma improves prediction of patient
+outcome. Nature Medicine 25, 1519–1525 (2019).
+26. Lu, C. et al. A prognostic model for overall survival of patients with early-stage non-small cell lung
+cancer: a multicentre, retrospective study. The Lancet Digital Health 2, e594–e606 (2020).
+27. Amgad, M. et al. A population-level digital histologic biomarker for enhanced prognosis of invasive breast
+cancer. Nature Medicine 1–13 (2023).
+28. Boehm, K. M. et al. Multimodal data integration using machine learning improves risk stratification of
+high-grade serous ovarian cancer. Nature Cancer 3, 723–733 (2022).
+29. Sammut, S.-J. et al. Multi-omic machine learning predictor of breast cancer therapy response. Nature 601,
+623–629 (2022).
+30. Vanguri, R. S. et al.
+Multimodal integration of radiology, pathology and genomics for prediction of
+response to pd-(l) 1 blockade in patients with non-small cell lung cancer. Nature Cancer 3, 1151–1164
+(2022).
+31. Huang, Z. et al.
+Artificial intelligence reveals features associated with breast cancer neoadjuvant
+chemotherapy responses from multi-stain histopathologic images. NPJ Precision Oncology 7, 14 (2023).
+32. Lu, M. Y. et al. Ai-based pathology predicts origins for cancers of unknown primary. Nature 594, 106–110
+(2021).
+33. Zhu, L. et al. An accurate prediction of the origin for bone metastatic cancer using deep learning on digital
+pathological images. EBioMedicine 87 (2023).
+34. Chen, C. et al. Fast and scalable search of whole-slide images via self-supervised deep learning. Nature
+Biomedical Engineering 6, 1420–1434 (2022).
+35. Kalra, S. et al. Yottixel–an image search engine for large archives of histopathology whole slide images.
+Medical Image Analysis 65, 101757 (2020).
+36. Hegde, N. et al. Similar image search for histopathology: Smily. NPJ digital medicine 2, 56 (2019).
+37. Wang, X. et al. Retccl: clustering-guided contrastive learning for whole-slide image retrieval. Medical
+Image Analysis 83, 102645 (2023).
+38. Yala, A. et al. Optimizing risk-based breast cancer screening policies with reinforcement learning. Nature
+Medicine 28, 136–143 (2022).
+33
+
+===== PAGE 34 =====
+39. Zhou, Y. et al. Multi-site cross-organ calibrated deep learning (muscld): Automated diagnosis of non-
+melanoma skin cancer. Medical Image Analysis 84, 102702 (2023).
+40. Laleh, N. G. et al. Benchmarking weakly-supervised deep learning pipelines for whole slide classification
+in computational pathology. Medical Image Analysis 79 (2022).
+41. Graham, S. et al. Hover-net: Simultaneous segmentation and classification of nuclei in multi-tissue his-
+tology images. Medical Image Analysis 58, 101563 (2019).
+42. Graham, S. et al. One model is all you need: multi-task learning enables simultaneous histology image
+segmentation and classification. Medical Image Analysis 83, 102685 (2023).
+43. Pati, P. et al. Hierarchical graph representations in digital pathology. Medical Image Analysis 75, 102264
+(2022).
+44. Vorontsov, E. et al. A foundation model for clinical-grade computational pathology and rare cancers
+detection. Nature Medicine 30, 2924–2935 (2024).
+45. Wang, X. et al. A pathology foundation model for cancer diagnosis and prognosis prediction. Nature 634,
+970–978 (2024).
+46. Xiang, J. et al. A vision–language foundation model for precision oncology. Nature 638, 769–778 (2025).
+47. Xu, H. et al. A whole-slide foundation model for digital pathology from real-world data. Nature 630,
+181–188 (2024).
+48. Tu, T. et al. Towards Generalist Biomedical AI. NEJM AI 1, AIoa2300138 (2024).
+49. Lu, M. Y. et al. Visual language pretrained multiple instance zero-shot transfer for histopathology images.
+In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, 19764–19775
+(2023).
+50. Ikezogwo, W. et al. Quilt-1m: One million image-text pairs for histopathology. Advances in Neural
+Information Processing Systems 36, 37995–38017 (2023).
+51. Zhang, S. et al. A multimodal biomedical foundation model trained from fifteen million image–text pairs.
+NEJM AI 2, AIoa2400640 (2025).
+52. Sun, Y. et al.
+Pathasst: A generative foundation ai assistant towards artificial general intelligence of
+pathology. In Proceedings of the AAAI Conference on Artificial Intelligence, vol. 38, 5034–5042 (2024).
+53. Sun, Y. et al. PathGen-1.6M: 1.6 Million Pathology Image-text Pairs Generation through Multi-agent
+Collaboration (2024). 2407.00203.
+54. Singhal, K. et al. Large language models encode clinical knowledge. Nature 620, 172–180 (2023).
+55. Jaech, A. et al. Openai o1 system card. arXiv preprint arXiv:2412.16720 (2024).
+56. Guo, D. et al. Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning. arXiv
+preprint arXiv:2501.12948 (2025).
+57. Talebirad, Y. & Nadiri, A. Multi-Agent Collaboration: Harnessing the Power of Intelligent LLM Agents
+(2023). 2306.03314.
+58. Swanson, K., Wu, W., Bulaong, N. L., Pak, J. E. & Zou, J. The Virtual Lab of AI agents designs new
+SARS-CoV-2 nanobodies. Nature 1–8 (2025).
+59. Schmidgall, S. et al. AgentClinic: A multimodal agent benchmark to evaluate AI in simulated clinical
+environments (2025). 2405.07960.
+34
+
+===== PAGE 35 =====
+60. Lu, C. et al. The AI Scientist: Towards Fully Automated Open-Ended Scientific Discovery (2024). 2408.
+06292.
+61. Ghezloo, F. et al. PathFinder: A Multi-Modal Multi-Agent System for Medical Diagnostic Decision-
+Making Applied to Histopathology (2025). 2502.08916.
+62. Gao, S. et al. Empowering biomedical discovery with AI agents. Cell 187, 6125–6151 (2024).
+63. Ferber, D. et al. Development and validation of an autonomous artificial intelligence agent for clinical
+decision-making in oncology. Nature Cancer 6, 1337–1349 (2025).
+64. Thandiackal, K. et al. Differentiable zooming for multiple instance learning on whole-slide images. In
+European Conference on Computer Vision, 699–715 (Springer, 2022).
+65. Ghezloo, F. et al. Pathfinder: A multi-modal multi-agent system for medical diagnostic decision-making
+applied to histopathology. arXiv preprint arXiv:2502.08916 (2025).
+66. Buzzard, Z., Hemker, K., Simidjievski, N. & Jamnik, M. Paths: A hierarchical transformer for efficient
+whole slide image analysis. arXiv preprint arXiv:2411.18225 (2024).
+67. Wang, S. et al. Pathology-cot: Learning visual chain-of-thought agent from expert whole slide image
+diagnosis behavior. arXiv preprint arXiv:2510.04587 (2025).
+68. Sun, Y. et al. Pathmmu: A massive multimodal expert-level benchmark for understanding and reasoning
+in pathology. In European Conference on Computer Vision, 56–73 (Springer, 2024).
+69. Team, Q. Qwen3 technical report (2025). URL https://arxiv.org/abs/2505.09388. 2505.
+09388.
+70. Dubey, A. et al. The llama 3 herd of models. arXiv preprint arXiv:2407.21783 (2024).
+71. Li, B. et al. Llava-onevision: Easy visual task transfer. arXiv preprint arXiv:2408.03326 (2024).
+72. Chen, J. et al. Huatuogpt-vision, towards injecting medical visual knowledge into multimodal llms at scale
+(2024). URL https://arxiv.org/abs/2406.19280. 2406.19280.
+73. Banerjee, S. & Lavie, A. Meteor: An automatic metric for mt evaluation with improved correlation with
+human judgments. In Proceedings of the acl workshop on intrinsic and extrinsic evaluation measures for
+machine translation and/or summarization, 65–72 (2005).
+74. OpenAI. Gpt-5 mini. https://platform.openai.com/docs/models/gpt-5-mini (2025).
+Model ID: gpt-5-mini-2025-08-07.
+75. Zhang, A., Jaume, G., Vaidya, A., Ding, T. & Mahmood, F. Accelerating data processing and benchmark-
+ing of ai models for pathology. arXiv preprint arXiv:2502.06750 (2025).
+76. Lu, M. Y. et al. A visual-language foundation model for computational pathology. Nature Medicine
+(2024).
+77. Dosovitskiy, A. et al. An image is worth 16x16 words: Transformers for image recognition at scale. In
+International Conference on Learning Representations (2021).
+78. Vaidya, A. et al.
+Molecular-driven foundation model for oncologic pathology.
+arXiv preprint
+arXiv:2501.16652 (2025).
+79. Yang, A. et al. Qwen2. 5 technical report. arXiv preprint arXiv:2412.15115 (2024).
+80. Liu, H. et al. Llava-next: Improved reasoning, ocr, and world knowledge, january 2024. URL https://llava-
+vl. github. io/blog/2024-01-30-llava-next 1 (2024).
+35
+
+===== PAGE 36 =====
+81. Tong, P. et al. Cambrian-1: A fully open, vision-centric exploration of multimodal llms. Advances in
+Neural Information Processing Systems 37, 87310–87356 (2024).
+82. Liu, H., Li, C., Wu, Q. & Lee, Y. J. Visual instruction tuning. In NeurIPS (2023).
+83. Lin, T.-Y. et al. Microsoft coco: Common objects in context. In Computer Vision–ECCV 2014: 13th Euro-
+pean Conference, Zurich, Switzerland, September 6-12, 2014, Proceedings, Part V 13, 740–755 (Springer,
+2014).
+84. Barbano, C. A. et al. Unitopatho, a labeled histopathological dataset for colorectal polyps classification
+and adenoma dysplasia grading. In 2021 IEEE International Conference on Image Processing (ICIP),
+76–80 (2021).
+85. Brancati, N. et al. Bracs: A dataset for breast carcinoma subtyping in h&e histology images. Database
+(2022).
+86. Cai, D. et al. Hicervix: An extensive hierarchical dataset and benchmark for cervical cytology classifica-
+tion. IEEE Transactions on Medical Imaging 1–1 (2024).
+87. Aslani, A. et al. Incidence trends of gastric cancer in the United States over 2000–2020: A population-
+based analysis. PLOS ONE 19, e0310040 (2024).
+88. Chen, C. et al. Incidence, demographics, and survival of patients with primary pituitary tumors: A SEER
+database study in 2004–2016. Scientific Reports 11, 15155 (2021).
+89. Feng, X., Zhang, L., Tu, W. & Cang, S. Frequency, incidence and survival outcomes of clear cell renal cell
+carcinoma in the United States from 1973 to 2014: A SEER-based analysis. Medicine 98, e16684 (2019).
+90. Gudbjartsson, T. et al. Renal oncocytoma: A clinicopathological analysis of 45 consecutive cases. BJU
+international 96, 1275–1279 (2005).
+91. Ingimarsson, J. P. et al. Chromophobe renal cell carcinoma in Iceland: An epidemiological and clinico-
+pathological study. Scandinavian Journal of Urology and Nephrology 45, 306–311 (2011).
+92. Lim, H., Devesa, S. S., Sosa, J. A., Check, D. & Kitahara, C. M. Trends in Thyroid Cancer Incidence and
+Mortality in the United States, 1974-2013. JAMA 317, 1338–1348 (2017).
+93. Li, C. I., Anderson, B. O., Daling, J. R. & Moe, R. E. Trends in Incidence Rates of Invasive Lobular and
+Ductal Breast Carcinoma. JAMA 289, 1421–1424 (2003).
+94. Patel, N., Khorolsky, C. & Benipal, B. Incidence of pancreatic adenocarcinoma in the united states from
+2001 to 2015: A united states cancer statistics analysis of 50 states. Cureus 10 (2018).
+95. Runarsson, T. G. et al. An epidemiological and clinicopathological study of type 1 vs. type 2 morpho-
+logical subtypes of papillary renal cell carcinoma– results from a nation-wide study covering 50 years in
+Iceland. BMC Urology 24, 105 (2024).
+96. Uprety, D. et al. Trends in the Incidence and Survival Outcomes in Patients With Small Cell Lung Cancer
+in the United States: An Analysis of the SEER Database. Cancer Medicine 14, e70608 (2025).
+97. Wijayabahu, A. T., Shiels, M. S., Arend, R. C. & Clarke, M. A. Uterine cancer incidence trends and
+5-year relative survival by race/ethnicity and histology among women under 50 years. American Journal
+of Obstetrics and Gynecology 231, 526.e1–526.e22 (2024).
+36
