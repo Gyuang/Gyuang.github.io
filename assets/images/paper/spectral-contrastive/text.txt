@@ -1,0 +1,4456 @@
+
+===== PAGE 1 =====
+Provable Guarantees for Self-Supervised Deep Learning
+with Spectral Contrastive Loss
+Jeff Z. HaoChen1
+Colin Wei1
+Adrien Gaidon2
+Tengyu Ma1
+1 Stanford University
+2 Toyota Research Institute
+{jhaochen, colinwei, tengyuma}@stanford.edu
+adrien.gaidon@tri.global
+Abstract
+Recent works in self-supervised learning have advanced the state-of-the-art by relying on the contrastive
+learning paradigm, which learns representations by pushing positive pairs, or similar examples from the
+same class, closer together while keeping negative pairs far apart. Despite the empirical successes, theoretical
+foundations are limited – prior analyses assume conditional independence of the positive pairs given the same
+class label, but recent empirical applications use heavily correlated positive pairs (i.e., data augmentations
+of the same image). Our work analyzes contrastive learning without assuming conditional independence
+of positive pairs using a novel concept of the augmentation graph on data. Edges in this graph connect
+augmentations of the same datapoint, and ground-truth classes naturally form connected sub-graphs. We
+propose a loss that performs spectral decomposition on the population augmentation graph and can be
+succinctly written as a contrastive learning objective on neural net representations. Minimizing this objective
+leads to features with provable accuracy guarantees under linear probe evaluation. By standard generalization
+bounds, these accuracy guarantees also hold when minimizing the training contrastive loss. Empirically, the
+features learned by our objective can match or outperform several strong baselines on benchmark vision
+datasets. In all, this work provides the ﬁrst provable analysis for contrastive learning where guarantees for
+linear probe evaluation can apply to realistic empirical settings.
+1
+Introduction
+Recent empirical breakthroughs have demonstrated the effectiveness of self-supervised learn-
+ing, which trains representations on unlabeled data with surrogate losses and self-deﬁned supervi-
+sion signals (Bachman et al., 2019, Bardes et al., 2021, Caron et al., 2020, Chen and He, 2020, Henaff,
+2020, Hjelm et al., 2018, Misra and Maaten, 2020, Oord et al., 2018, Tian et al., 2019, 2020a, Wu et al.,
+2018, Ye et al., 2019, Zbontar et al., 2021). Self-supervision signals in computer vision are often
+deﬁned by using data augmentation to produce multiple views of the same image. For example,
+the recent contrastive learning objectives (Arora et al., 2019, Chen et al., 2020a,b,c, He et al., 2020)
+encourage closer representations for augmentations/views of the same natural datapoint than for
+randomly sampled pairs of data.
+Despite the empirical successes, there is a limited theoretical understanding of why self-
+supervised losses learn representations that can be adapted to downstream tasks, for example,
+using linear heads. Recent mathematical analyses for contrastive learning by Arora et al. (2019),
+Tosh et al. (2020, 2021) provide guarantees under the assumption that two views are somewhat
+conditionally independent given the label or a hidden variable. However, in practical algorithms
+1
+arXiv:2106.04156v7  [cs.LG]  24 Jun 2022
+
+===== PAGE 2 =====
+for computer vision applications, the two views are augmentations of a natural image and usually
+exhibit a strong correlation that is difﬁcult to be de-correlated by conditioning. They are not inde-
+pendent conditioned on the label, and we are only aware that they are conditionally independent
+given the natural image, which is too complex to serve as a hidden variable with which prior works
+can be meaningfully applied. Thus the existing theory does not appear to explain the practical suc-
+cess of self-supervised learning.
+This paper presents a theoretical framework for self-supervised learning without requiring
+conditional independence. We design a principled, practical loss function for learning neural net
+representations that resembles state-of-the-art contrastive learning methods. We prove that, under
+a simple and realistic data assumption, linear classiﬁcation using representations learned on a poly-
+nomial number of unlabeled data samples can recover the ground-truth labels of the data with high
+accuracy.
+The fundamental data property that we leverage is a notion of continuity of the population data
+within the same class. Though a random pair of images from the same class can be far apart, the
+pair is often connected by (many) sequences of natural images, where consecutive images in the
+sequences are close neighbors within the same class. As shown in Figure 1 (images on the left
+top part), two very different French bulldogs can be connected by a sequence of French bulldogs
+(which may not be in the training set but are in the support of the population distribution). Prior
+work (Wei et al., 2020) empirically demonstrates this type of connectivity property and uses it in
+the analysis of pseudolabeling algorithms. This property is more salient when the neighborhood
+of an example includes many different types of augmentations.
+More formally, we deﬁne the population augmentation graph, whose vertices are all the aug-
+mented data in the population distribution, which can be an exponentially large or inﬁnite set. Two
+vertices are connected with an edge if they are augmentations of the same natural example. Our
+main assumption is that for some proper m ∈Z+, we cannot partition the graph into m + 1 sub-
+graphs between which there are few connections (Assumption 3.5). In other words, this intuitively
+states that there are at most m clusters in the population augmentation graph. This assumption can
+be seen as a graph-theoretic version of the continuity assumption on the population distribution. We
+also assume that there are very few edges across different ground-truth classes (Assumption 3.6).
+Figure 1 (left) illustrates a realistic scenario where dog and cat are the ground-truth categories,
+between which edges are very rare. Each breed forms a sub-graph that has sufﬁcient inner connec-
+tivity and thus cannot be further partitioned.
+Our assumption fundamentally does not require independence of the two views (the posi-
+tive pairs) conditioned on the class and can allow disconnected sub-graphs within a class. The
+classes in the downstream task can be also somewhat ﬂexible as long as they are disconnected in
+the augmentation graph. For example, when the augmentation graph consists of m disconnected
+sub-graphs corresponding to ﬁne-grained classes, our assumptions allow the downstream task to
+have any r ≤m coarse-grained classes containing these ﬁne-grained classes as a sub-partition.
+Prior work (Wei et al., 2020) on pseudolabeling algorithms essentially requires an exact alignment
+between sub-graphs and downstream classes (i.e., r = m). They face this limitation because their
+analysis requires ﬁtting discrete pseudolabels on the unlabeled data. We avoid this difﬁculty be-
+cause we consider directly learning continuous representations on the unlabeled data.
+The main insight of the paper is that contrastive learning can be viewed as a parametric form
+of spectral clustering (Ng et al., 2001, Shi and Malik, 2000) on the augmentation graph. Concretely,
+suppose we apply spectral decomposition or spectral clustering—a classical approach for graph
+partitioning—to the adjacency matrix deﬁned on the population augmentation graph. We form a
+2
+
+===== PAGE 3 =====
+Figure 1: Left: demonstration of the population augmentation graph. Two augmented data are
+connected if they are views of the same natural datapoint. Augmentations of data from different
+classes in the downstream tasks are assumed to be nearly disconnected, whereas there are more
+connections within the same class. We allow the existence of disconnected sub-graphs within a
+class corresponding to potential sub-classes. Right: decomposition of the learned representations.
+The representations (rows in the RHS) learned by minimizing the population spectral contrastive
+loss can be decomposed as the LHS. The scalar sxi is positive for every augmented datapoint xi.
+Columns of the matrix labeled “eigenvectors” are the top eigenvectors of the normalized adjacency
+matrix of the augmentation graph deﬁned in Section 3.1. The operator ⊙multiplies row-wise each
+sxi with the xi-th row of the eigenvector matrix. When classes (or sub-classes) are exactly dis-
+connected in the augmentation graph, the eigenvectors are sparse and align with the sub-class
+structure. The invertible Q matrix does not affect the performance of the rows under the linear
+probe.
+matrix where the top-k eigenvectors are the columns and interpret each row of the matrix as the
+representation (in Rk) of an example. Somewhat surprisingly, we prove that this feature extractor
+can be also recovered (up to some linear transformation) by minimizing the following population
+objective which is a variant of the standard contrastive loss:
+L(f) = −2 · Ex,x+
+h
+f(x)⊤f(x+)
+i
++ Ex,x− 
+f(x)⊤f(x−)
+2 
+,
+where (x, x+) is a pair of augmentations of the same datapoint, (x, x−) is a pair of independently
+random augmented data, and f is a parameterized function from augmented data to Rk. Figure 1
+(right) illustrates the relationship between the eigenvector matrix and the learned representations.
+We call this loss the population spectral contrastive loss.
+We analyze the linear classiﬁcation performance of the representations learned by minimiz-
+ing the population spectral contrastive loss. Our main result (Theorem 3.8) shows that when the
+representation dimension exceeds the maximum number of disconnected sub-graphs, linear clas-
+siﬁcation with learned representations is guaranteed to have a small error. Our theorem reveals a
+trend that a larger representation dimension is needed when there are a larger number of discon-
+nected sub-graphs. Our analysis relies on novel techniques tailored to linear probe performance,
+which have not been studied in the spectral graph theory community to the best of our knowledge.
+The spectral contrastive loss also works on empirical data. Since our approach optimizes para-
+metric loss functions, guarantees involving the population loss can be converted to ﬁnite sample
+results using off-the-shelf generalization bounds. The end-to-end result (Theorem 4.3) shows that
+the number of unlabeled examples required is polynomial in the Rademacher complexity of the
+3
+
+===== PAGE 4 =====
+model family and other relevant parameters, whereas the number of downstream labeled examples
+only needs to be linear in the representation dimension (which needs to be linear in the number of
+clusters in the graph). This demonstrates that contrastive learning reduces the amount of labeled
+examples needed.
+In summary, our main theoretical contributions are: 1) we propose a simple contrastive loss
+motivated by spectral decomposition of the population data graph, 2) under simple and realis-
+tic assumptions, we provide downstream classiﬁcation guarantees for the representation learned
+by minimizing this loss on population data, and 3) our analysis is easily applicable to deep net-
+works with polynomial unlabeled samples via off-the-shelf generalization bounds. Our theoretical
+framework can be viewed as containing two stages: we ﬁrst analyze the population loss and the
+representation that minimizes it (Section 3), then study the empirical loss where the representation
+is learned with a neural network with bounded capacity (Section 4).
+In addition, we implement and test the proposed spectral contrastive loss on standard vision
+benchmark datasets. Our algorithm is simple and doesn’t rely on tricks such as stop-gradient
+which is essential to SimSiam (Chen and He, 2020). We demonstrate that the features learned by
+our algorithm can match or outperform several strong baselines (Chen et al., 2020a, Chen and He,
+2020, Chen et al., 2020c, Grill et al., 2020) when evaluated using a linear probe.
+2
+Additional related works
+Empirical works on self-supervised learning.
+Self-supervised learning algorithms have been
+shown to successfully learn representations that beneﬁt downstream tasks (Bachman et al., 2019,
+Bardes et al., 2021, Caron et al., 2020, Chen et al., 2020a,b,c, He et al., 2020, Henaff, 2020, Hjelm
+et al., 2018, Misra and Maaten, 2020, Oord et al., 2018, Tian et al., 2019, 2020a, Wu et al., 2018, Xie
+et al., 2019, Ye et al., 2019, Zbontar et al., 2021). Many recent self-supervised learning algorithms
+learn features with siamese networks (Bromley et al., 1993), where two neural networks of shared
+weights are applied to pairs of augmented data. Introducing asymmetry to siamese networks either
+with a momentum encoder like BYOL (Grill et al., 2020) or by stopping gradient propagation for
+one branch of the siamese network like SimSiam (Chen and He, 2020) has been shown to effectively
+avoid collapsing. Contrastive methods (Chen et al., 2020a,c, He et al., 2020) minimize the InfoNCE
+loss (Oord et al., 2018), where two views of the same data are attracted while views from different
+data are repulsed.
+Theoretical works on self-supervised learning. As brieﬂy discussed in the introduction, several
+theoretical works have studied self-supervised learning. Arora et al. (2019) provide guarantees
+for representations learned by contrastive learning on downstream linear classiﬁcation tasks under
+the assumption that the positive pairs are conditionally independent given the class label. Theo-
+rem 3.3 and Theorem 3.7 of the work of Lee et al. (2020) show that, under conditional independence
+given the label and/or additional latent variables, representations learned by reconstruction-based
+self-supervised learning algorithms can achieve small errors in the downstream linear classiﬁca-
+tion task. Lee et al. (2020, Theorem 4.1) generalizes it to approximate conditional independence for
+Gaussian data and Theorem 4.5 further weakens the assumptions signiﬁcantly. Tosh et al. (2020)
+show that contrastive learning representations can linearly recover any continuous functions of the
+underlying topic posterior under a topic modeling assumption (which also requires conditional in-
+dependence of the positive pair given the hidden variable). More recently, Theorem 11 of the work
+of Tosh et al. (2021) provide novel guarantees for contrastive learning under the assumption that
+there exists a hidden variable h such that the positive pair (x, x+) are conditionally independent
+given h and the random variable p(x|h)p(x+|h)/p(x)p(x+) has a small variance. However, in prac-
+4
+
+===== PAGE 5 =====
+tical algorithms for computer vision applications, the two views are two augmentations and thus
+they are highly correlated. They might be only independent when conditioned on very complex
+hidden variables such as the original natural image, which might be too complex for the previous
+results to be meaningfully applied.
+We can also compare the assumptions and results on a concrete generative model for the data,
+our Example 3.10 in Section 3.4, where the data are generated by a mixture of Gaussian or a mix-
+ture of manifolds, the label is the index of the mixture, and the augmentations are small Gaussian
+blurring (i.e., adding Gaussian noise). In this case, the positive pairs (x, x+) are two points that are
+very close to each other. To the best of our knowledge, applying Theorem 11 of Tosh et al. (2021) to
+this case with h = ¯x (the natural datapoint) would result in requiring a large (if not inﬁnite) repre-
+sentation dimension. Because x+ and x are very close, the reconstruction-based algorithms in Lee
+et al. (2020), when used to predict x+ from x, will not be able to produce good representations as
+well.1
+On a technical level, to relate prior works’ assumptions to ours, we can consider an almost
+equivalent version of our assumption (although our proofs do not directly rely on or relate to the
+discussion below). Let (x, x+) be a positive pair and let p(·|x) be the conditional distribution of
+x+ given x. Starting from x0, let us consider a hypothetical Markov chain x0, . . . , xT , · · · where xt
+is drawn from p(·|xt−1). Our assumption essentially means that this hypothetical Markov chain of
+sampling neighbors will mix within the same class earlier than it mixes across the entire population
+(which might not be possible or takes exponential time). More concretely, the assumption that
+ρ⌊k/2⌋is large compared to α in Theorem 3.8 is roughly equivalent to the existence of a (potentially
+large) T such that x0 and xT are still likely to have the same label, but are sufﬁciently independent
+conditioned on this label or some hidden variable. Roughly speaking, prior works (Arora et al.,
+2019, Tosh et al., 2020, 2021) assume probabilistic structure about x0 and x1 (instead of x0 and xT ),
+e.g., Arora et al. (2019) and Theorem 11 of Tosh et al. (2021) assume that x0 and x1 are independent
+conditioned on the label and/or a hidden variable. Similar Markov chains on augmentated data
+have also been used in previous work (Dao et al., 2019) to study properties of data augmentation.
+Several other works (Bansal et al., 2020, Mitrovic et al., 2020, Tian et al., 2020b, Tsai et al., 2020,
+Wang and Isola, 2020) also theoretically study self-supervised learning. The work Tsai et al. (2020)
+prove that self-supervised learning methods can extract task-relevant information and discard task-
+irrelevant information, but lacks guarantees for solving downstream tasks efﬁciently with simple
+(e.g., linear) models. Tian et al. (2020b) study why non-contrastive self-supervised learning meth-
+ods can avoid feature collapse. Zimmermann et al. (2021) prove that for a speciﬁc data generating
+process, contrastvie learning can learn representations that recover the latent variable. Cai et al.
+(2021) analyze domain adaptation algorithms for subpopulation shift with a similar expansion con-
+dition as (Wei et al., 2020) while also allowing disconnected parts within each class, but require
+access to ground-truth labels during training. In contrast, our algorithm doesn’t need labels during
+pre-training.
+Co-training and multi-view learning are related settings which leverage two distinct “views”
+(i.e., feature subsets) of the data (Balcan et al., 2005, Blum and Mitchell, 1998, Dasgupta et al., 2002).
+The original co-training algorithms (Blum and Mitchell, 1998, Dasgupta et al., 2002) assume that
+the two views are independent conditioned on the true label and leverage this independence to
+obtain accurate pseudolabels for the unlabeled data. Balcan et al. (2005) relax the requirement on
+independent views of co-training, by using an “expansion” assumption, which is closely related
+1On a technical level, Example 3.10 does not satisfy the requirement regarding the β quantity in Assumption 4.1 of Lee
+et al. (2020), if (X1, X2) in that paper is equal to (x, x+) here—it requires the label to be correlated with the raw input x,
+which is not necessarily true in Example 3.10. This can likely be addressed by using a different X2.
+5
+
+===== PAGE 6 =====
+to our assumption that ρ⌊k/2⌋is not too small in Theorem 3.8. Besides recent works (e.g., the work
+of Tosh et al. (2021)), most co-training or multi-view learning algorithms are quite different from
+the modern contrastive learning algorithms which use neural network parameterization for vision
+applications.
+Our analysis relies on the normalized adjacency matrix (see Section 3.1), which is closely re-
+lated to the graph Laplacian regularization that has been studied in the setting of semi-supervised
+learning (Nadler et al., 2009, Zhu et al., 2003). In their works, the Laplacian matrix is used to deﬁne
+a regularization term that smooths the predictions on unlabeled data. This regularizer is further
+added to the supervised loss on labeled data during training. In contrast, we use the normalized
+adjacency matrix to deﬁne the unsupervised training objective in this paper.
+3
+Spectral contrastive learning on population data
+In this section, we introduce our theoretical framework, the spectral contrastive loss, and the
+main analysis of the performance of the representations learned on population data.
+We use X to denote the set of all natural data (raw inputs without augmentation). We assume
+that each ¯x ∈X belongs to one of r classes, and let y : X →[r] denote the ground-truth (determin-
+istic) labeling function. Let PX be the population distribution over X from which we draw training
+data and test our ﬁnal performance. In the main body of the paper, for the ease of exposition, we
+assume X to be a ﬁnite but exponentially large set (e.g., all real vectors in Rd with bounded pre-
+cision). This allows us to use sums instead of integrals and avoid non-essential nuances/jargons
+related to functional analysis. See Section F for the straightforward extensions to the case where X
+is an inﬁnite compact set (with mild regularity conditions).2
+We next formulate data augmentations. Given a natural data sample ¯x ∈X, we use A(·|¯x)
+to denote the distribution of its augmentations. For instance, when ¯x represents an image, A(·|¯x)
+can be the distribution of common augmentations (Chen et al., 2020a) that includes Gaussian blur,
+color distortion and random cropping. We use X to denote the set of all augmented data, which
+is the union of supports of all A(·|¯x) for ¯x ∈X. As with X, we also assume that X is a ﬁnite but
+exponentially large set, and denote N = |X|. None of the bounds will depend on N — it is only
+deﬁned and assumed to be ﬁnite for the ease of exposition.
+We will learn an embedding function f : X →Rk, and then evaluate its quality by the mini-
+mum error achieved with a linear probe. Concretely, a linear classiﬁer has weights B ∈Rk×r and
+predicts gf,B(x) = arg maxi∈[r](f(x)⊤B)i for an augmented datapoint x (arg max breaks tie arbitrar-
+ily). Then, given a natural data sample ¯x, we ensemble the predictions on augmented data and
+predict:
+¯gf,B(¯x) := arg max
+i∈[r]
+Pr
+x∼A(·|¯x) [gf,B(x) = i] .
+We denote the error of the representation and the linear head as:
+E(f, B) :=
+Pr
+¯x∼PX
+[y(¯x) ̸= ¯gf,B(¯x)].
+Deﬁne the linear probe error as the error of the best possible linear classiﬁer on the representations:
+E(f) :=
+min
+B∈Rk×r E(f, B) =
+min
+B∈Rk×r Pr
+¯x∼PX
+[y(¯x) ̸= ¯gf,B(¯x)].
+(1)
+2In Section F, we will deal with an inﬁnite graph, its adjacency operator (instead of adjacency matrix), and the
+eigenfunctions of the adjacency operator (instead of eigenvectors) essentially in the same way.
+6
+
+===== PAGE 7 =====
+3.1
+Augmentation graph and spectral decomposition
+Our approach is based on the central concept of population augmentation graph, denoted by
+G(X, w), where the vertex set is all augmentation data X and w denotes the edge weights deﬁned
+below. For any two augmented data x, x′ ∈X, deﬁne the weight wxx′ as the marginal probability
+of generating the pair x and x′ from a random natural data ¯x ∼PX :
+wxx′ := E¯x∼PX
+
+A(x|¯x)A(x′|¯x)
+
+(2)
+Therefore, the weights sum to 1 because the total probability mass is 1: P
+x,x′∈X wxx′ = 1. The
+relative magnitude intuitively captures the closeness between x and x′ with respect to the aug-
+mentation transformation. For most of the unrelated x and x′, the value wxx′ will be signiﬁcantly
+smaller than the average value. For example, when x and x′ are random croppings of a cat and a
+dog respectively, wxx′ will be essentially zero because no natural data can be augmented into both
+x and x′. On the other hand, when x and x′ are very close in ℓ2-distance or very close in ℓ2-distance
+up to color distortion, wxx′ is nonzero because they may be augmentations of the same image with
+Gaussian blur and color distortion. We say that x and x′ are connected with an edge if wxx′ > 0.
+See Figure 1 (left) for more illustrations.
+We emphasize that we only work with the population graph rather than the empirical graph
+(i.e., the corresponding graph constructed with the empirical dataset as the vertex set). The popula-
+tion graph is very sparse but not empty—many similar images exist in the population. In contrast,
+the empirical graph would be nearly empty, since two images in the empirical dataset almost never
+share the same augmentation image. Our analysis will apply to minimizing contrastive loss on
+an empirical dataset (see Section 4), but not via analyzing the property of the empirical graph. In-
+stead, we will show that contrastive learning on empirical data with parametrized models is similar
+to decomposing the population graph (see technical discussions in Section 5). This is a key differ-
+ence between our work and classical spectral clustering work—we only require properties of the
+population graph rather than the empirical graph.
+A simpliﬁed running example with Gaussian perturbation augmentation. Suppose the natural
+data is supported on manifolds in Euclidean space, and the data augmentation is adding random
+noise sampled from N(0, σ2 · Id×d) where σ is a small quantity (e.g., the norm of the perturbation
+σ
+√
+d should be much smaller than the norm of the original datapoint). Then the edge between two
+augmented datapoints would be have near zero weight unless the two datapoints have small ℓ2
+distance. Hence, the resulting graph is essentially the ϵ-ball proximity graph (Zemel and Carreira-
+Perpiñán, 2004) or geometric graph (Penrose, 2003) in Euclidean space.
+Given the structure of the population augmentation graph, we apply spectral decomposition
+to the population graph to construct principled embeddings. The eigenvalue problems are closely
+related to graph partitioning as shown in spectral graph theory (Chung and Graham, 1997) for
+both worst-case graphs (Cheeger, 1969, Kannan et al., 2004, Lee et al., 2014, Louis et al., 2011) and
+random graphs (Abbe, 2017, Lei et al., 2015, McSherry, 2001). In machine learning, spectral clus-
+tering (Ng et al., 2001, Shi and Malik, 2000) is a classical algorithm that learns embeddings by
+eigendecomposition on an empirical distance graph and invoking k-means on the embeddings.
+We will apply eigendecomposition to the population augmentation graph (and then later use
+linear probe for classiﬁcation). Let wx = P
+x′∈X wxx′ be the total weights associated to x, which is
+often viewed as an analog of the degree of x in weighted graph. A central object in spectral graph
+theory is the so-called normalized adjacency matrix:
+A := D−1/2AD−1/2
+(3)
+7
+
+===== PAGE 8 =====
+where A ∈RN×N is adjacency matrix with entires Axx′ = wxx′ and D ∈RN×N is a diagonal matrix
+with Dxx = wx.3
+Standard spectral graph theory approaches produce vertex embeddings as follows.
+Let
+γ1, γ2, · · · , γk be the k largest eigenvalues of A, and v1, v2, · · · , vk be the corresponding unit-norm
+eigenvectors. Let F ∗= [v1, v2, · · · , vk] ∈RN×k be the matrix that collects these eigenvectors in
+columns, and we refer to it as the eigenvector matrix. Let u∗
+x ∈Rk be the x-th row of the matrix
+F ∗. It turns out that u∗
+x’s can serve as desirable embeddings of x’s because they exhibit clustering
+structure in Euclidean space that resembles the clustering structure of the graph G(X, w).
+3.2
+From spectral decomposition to spectral contrastive learning
+The embeddings u∗
+x obtained by eigendecomposition are nonparametric—a k-dimensional pa-
+rameter is needed for every x—and therefore cannot be learned with a realistic amount of data. The
+embedding matrix F ∗cannot be even stored efﬁciently. Therefore, we will instead parameterize the
+rows of the eigenvector matrix F ∗as a neural net function, and assume embeddings u∗
+x can be rep-
+resented by f(x) for some f ∈F, where F is the hypothesis class containing neural networks. As
+we’ll show in Section 4, this allows us to leverage the extrapolation power of neural networks and
+learn the representation on a ﬁnite dataset.
+Next, we design a proper loss function for the feature extractor f, such that minimizing this
+loss could recover F ∗up to some linear transformation. As we will show in Section 4, the resulting
+population loss function on f also admits an unbiased estimator with ﬁnite training samples. Let
+F be an embedding matrix with ux on the x-th row, we will ﬁrst design a loss function of F that
+can be decomposed into parts about individual rows of F.
+We employ the following matrix factorization based formulation for eigenvectors. Consider
+the objective
+min
+F∈RN×k Lmf(F) :=
+A −FF ⊤
+2
+F .
+(4)
+By the classical theory on low-rank approximation (Eckart–Young–Mirsky theorem (Eckart
+and Young, 1936)), any minimizer bF of Lmf(F) contains scaling of the largest eigenvectors of
+A up to a right transformation—for some orthonormal matrix R ∈Rk×k, we have bF = F ∗·
+diag([√γ1, . . . , √γk])R. Fortunately, multiplying the embedding matrix by any matrix on the right
+and any diagonal matrix on the left does not change its linear probe performance, which is formal-
+ized by the following lemma.
+Lemma 3.1. Consider an embedding matrix F ∈RN×k and a linear classiﬁer B ∈Rk×r. Let D ∈RN×N
+be a diagonal matrix with positive diagonal entries and Q ∈Rk×k be an invertible matrix. Then, for any
+embedding matrix eF = D · F · Q, the linear classiﬁer ˜B = Q−1B on eF has the same prediction as B on F.
+As a consequence, we have
+E(F) = E( eF).
+(5)
+where E(F) denotes the linear probe performance when the rows of F are used as embeddings.
+Proof of Lemma 3.1. Let D = diag(s) where sx > 0 for x ∈X. Let ux, ˜ux ∈Rk be the x-th row of
+matrices F and eF, respectively. Recall that gu,B(x) = arg maxi∈[r](u⊤
+x B)i is the prediction on an
+augmented datapoint x ∈X with representation ux and linear classiﬁer B. Let eB = Q−1B, it’s easy
+3We index the matrix A, D by (x, x′) ∈X × X. Generally we index N-dimensional axis by x ∈X.
+8
+
+===== PAGE 9 =====
+to see that g˜u, eB(x) = arg maxi∈[r](sx · u⊤
+x B)i. Notice that sx > 0 doesn’t change the prediction since
+it changes all dimensions of u⊤
+x B by the same scale, we have g˜u, eB(x) = gu,B(x) for any augmented
+datapoint x ∈X. The equivalence of loss naturally follows.
+The main beneﬁt of objective Lmf(F) is that it’s based on the rows of F. Recall that vectors ux
+are the rows of F. Each entry of FF ⊤is of the form u⊤
+x ux′, and thus Lmf(F) can be decomposed
+into a sum of N2 terms involving terms u⊤
+x ux′. Interestingly, if we reparameterize each row ux
+by w1/2
+x
+f(x), we obtain a very similar loss function for f that resembles the contrastive learning
+loss used in practice (Chen et al., 2020a) as shown below in Lemma 3.2. See Figure 1 (right) for an
+illustration of the relationship between the eigenvector matrix and the representations learned by
+minimizing this loss.
+We formally deﬁne the positive and negative pairs to introduce the loss. Let ¯x ∼PX be a
+random natural datapoint and draw x ∼A(·|¯x) and x+ ∼A(·|¯x) independently to form a positive
+pair (x, x+). Draw ¯x′ ∼PX and x−∼A(·|¯x′) independently with ¯x, x, x+. We call (x, x−) a negative
+pair.4
+Lemma 3.2 (Spectral contrastive loss). Recall that ux is the x-th row of F. Let ux = w1/2
+x
+f(x) for some
+function f. Then, the loss function Lmf(F) is equivalent to the following loss function for f, called spectral
+contrastive loss, up to an additive constant:
+Lmf(F) = L(f) + const
+where L(f) ≜−2 · Ex,x+
+f(x)⊤f(x+)
+
++ Ex,x−
+
+f(x)⊤f(x−)
+2
+(6)
+Proof of Lemma 3.2. We can expand Lmf(F) and obtain
+Lmf(F) =
+X
+x,x′∈X
+
+wxx′
+√wxwx′ −u⊤
+x ux′
+2
+=
+X
+x,x′∈X
+ w2
+xx′
+wxwx′ −2 · wxx′ · f(x)⊤f(x′) + wxwx′ ·
+
+f(x)⊤f(x′)
+2
+(7)
+Notice that the ﬁrst term is a constant that only depends on the graph but not the variable f.
+By the deﬁnition of augmentation graph, wxx′ is the probability of a random positive pair being
+(x, x′) while wx is the probability of a random augmented datapoint being x. We can hence rewrite
+the sum of last two terms in Equation (7) as Equation (6).
+We note that spectral contrastive loss is similar to many popular contrastive losses (Chen et al.,
+2020a, Oord et al., 2018, Sohn, 2016, Wu et al., 2018). For instance, the contrastive loss in Sim-
+CLR (Chen et al., 2020a) can be rewritten as (with simple algebraic manipulation)
+−f(x)⊤f(x+) + log
+ 
+exp
+
+f(x)⊤f(x+)
+
++
+n
+X
+i=1
+exp
+
+f(x)⊤f(xi)
+!
+.
+Here x and x+ are a positive pair and x1, · · · , xn are augmentations of other data. Spectral
+contrastive loss can be seen as removing f(x)⊤f(x+) from the second term, and replacing the log
+sum of exponential terms with the average of the squares of f(x)⊤f(xi). We will show in Section 6
+that our loss has a similar empirical performance as SimCLR without requiring a large batch size.
+4Though x and x−are simply two independent draws, we call them negative pairs following the literature (Arora et al.,
+2019).
+9
+
+===== PAGE 10 =====
+3.3
+Theoretical guarantees for spectral contrastive loss on population data
+In this section, we introduce the main assumptions on the data and state our main theoretical
+guarantee for spectral contrastive learning on population data.
+To formalize the idea that G cannot be partitioned into too many disconnected sub-graphs, we
+introduce the notions of Dirichlet conductance and sparsest m-partition, which are standard in spectral
+graph theory. Dirichlet conductance represents the fraction of edges from S to its complement:
+Deﬁnition 3.3 (Dirichlet conductance). For a graph G = (X, w) and a subset S ⊆X, we deﬁne the
+Dirichlet conductance of S as
+φG(S) :=
+P
+x∈S,x′ /∈S wxx′
+P
+x∈S wx
+.
+We note that when S is a singleton, there is φG(S) = 1 due to the deﬁnition of wx. For i ∈Z+,
+we introduce the sparsest i-partition to represent the number of edges between i disjoint subsets.
+Deﬁnition 3.4 (Sparsest i-partition). Let G = (X, w) be the augmentation graph. For an integer i ∈
+[2, |X|], we deﬁne the sparsest i-partition as
+ρi :=
+min
+S1,··· ,Si max{φG(S1), . . . , φG(Si)}
+where S1, · · · , Si are non-empty sets that form a partition of X.
+We note that ρi increases as i increases.5 When r is the number of underlying classes, we
+might expect ρr ≈0 since the augmentations from different classes almost compose a disjoint r-
+way partition of X. However, for i > r, we can expect ρi to be much larger. For instance, in the
+extreme case when i = |X| = N, every set Sj is a singleton, which implies that ρN = 1. More
+generally, as we will show later (Lemma 3.9), ρi can be expected to be at least inverse polynomial
+in data dimension when i is larger than the number of underlying semantic classes in the data.
+Assumption 3.5 (at most m clusters). We assume that ρm+1 ≥ρ. A prototypical case would be that there
+are at most m clusters in the population augmentation graph, and each of them cannot be broken into two
+subsets both with conductance less than ρ.
+When there are m clusters that have sufﬁcient inner connections (corresponding to, e.g., m
+semantically coherent subpopulations), we expect ρm+1 to be much larger than ρm because any
+m + 1 partition needs to break one sub-graph into two pieces and incur a large conductance. In
+other words, suppose the graph is consists of m clusters, the quantity ρ is characterizing the level
+of internal connection within each cluster. Furthermore, in many cases we expect ρm+1 to be in-
+verse polynomial in dimension. In the running example of Section 3.1 (where augmentation is
+adding Gaussian noise), ρ is related to the Cheeger constant or the isoperimetric number of the
+data manifolds, which in many cases is believed to be at least inverse polynomial in dimension
+(e.g., see Bobkov et al. (1997) for the Cheeger constant of the Gaussian distribution.) Indeed, in
+Section 3.4 we will formally lowerbound ρm+1 by the product of the augmentation strength and
+the Cheeger constant of the subpopulation distributions (Proposition 3.9), and lowerbound the
+5To see this, consider 3 ≤i ≤|X|. Let S1, · · · , Si be the partition of X that minimizes the RHS of Deﬁnition 3.4
+Deﬁne set S′
+i−1 := Si ∪Si−1. It is easy to see that φG(S′
+i−1) =
+P
+x∈S′
+i−1,x′ /
+∈S′
+i−1
+wxx′
+P
+x∈S′
+i−1
+wx
+≤
+Pi
+j=i−1
+P
+x∈Sj ,x′ /
+∈Sj wxx′
+Pi
+j=i−1
+P
+x∈Sj wx
+≤
+max{φG(Si−1), φG(Si)}. Notice that S1, · · · , Si−2, S′
+i−1 are i−1 non-empty sets that form a partition of X, by Deﬁnition 3.4
+we have ρi−1 ≤max{φG(S1), · · · , φG(Si−2), φG(S′
+i−1)} ≤max{φG(S1), · · · , φG(Si)} = ρi.
+10
+
+===== PAGE 11 =====
+Cheeger constant by inverse polynomial for concrete settings where the data come from a mixture
+of manifolds (Theorem 3.11).
+Assumption 3.5 also implies properties of the graph spectrum. Recall that γi is the i-th largest
+eigenvalue of the normalized adjacency matrix A and γ1 = 1. According to Cheeger’s inequality
+(Lemma B.4), Assumption 3.5 implies that γ2m ≤1 −Ω(ρ2/ log m), which suggests that there is a
+gap between γ1 and γ2m and will be useful in our analysis.
+Next, we formalize the assumption that very few edges cross different ground-truth classes. It
+turns out that it sufﬁces to assume that the labels are recoverable from the augmentations (which
+is also equivalent to that two examples in different classes can rarely be augmented into the same
+point).
+Assumption 3.6 (Labels are recoverable from augmentations). Let ¯x ∼PX and y(¯x) be its label. Let
+the augmentation x ∼A(·|¯x). We assume that there exists a classiﬁer g that can predict y(¯x) given x with
+error at most α. That is, g(x) = y(¯x) with probability at least 1 −α.
+A small α in Assumption 3.6 means that different classes are “separated” in the sense that
+data from different classes have very few (at most O(α)) shared augmentations. Alternatively, one
+can think of this assumption as assuming that the augmentation graph can be partitioned into r
+clusters each corresponding to augmentations from one class, and there are at most O(α) edges
+across the clusters. This is typically true for real-world image data like ImageNet, since for any
+two images from different classes (e.g., images of a Husky and a Birman cat), using the typical data
+augmentations such as adding noise and random cropping can rarely (with exponentially small
+probability) lead to the same augmented image.
+Typically, both ρ in Assumption 3.5 and α in Assumption 3.7 are small positive values that are
+much less than 1. However, ρ can be much larger than α. Recall that ρ can be expected to be at
+least inverse polynomial in dimension. In contrast, α characterizes the separation between classes
+and are expected to be exponentially small in typical cases. For example, in the running example of
+Section 3.1 with Gaussian perturbation augmentation, if σ
+√
+d is smaller than the minimum distance
+between two subpopulations, we can rarely augment two datapoints from distinct subpopulations
+into a shared augmentation, and therefore α is expected to exponentially small. Our analysis be-
+low operates in the reasonable regime where ρ2 is larger than α, which intuitively means that the
+internal connection within the cluster is bigger than the separation between the clusters.
+We also introduce the following assumption which states that some minimizer of the popula-
+tion spectral contrastive loss can be realized by the hypothesis class.
+Assumption 3.7 (Expressivity of the hypothesis class). Let F be a hypothesis class containing functions
+from X to Rk. We assume that at least one of the global minima of L(f) belongs to F.
+Our main theorem bound from above the linear probe error of the feature learned by minimiz-
+ing the population spectral contrastive loss. In Theorem 4.3 we extend this result to the case where
+both the feature and the linear head are learned from empirical datasets.
+Theorem 3.8 (Main theorem for inﬁnite/population pretraining data case). Assume the representa-
+tion dimension k ≥2r and Assumption 3.6 holds for α > 0. Let F be a hypothesis class that satisﬁes
+Assumption 3.7 and let f∗
+pop ∈F be a minimizer of L(f). Then, we have
+E(f∗
+pop) ≤eO
+
+α/ρ2
+⌊k/2⌋
+
+.
+In particular, if Assumption 3.5 also holds and k > 2m, we have E(f∗
+pop) ≤eO
+ α/ρ2
+.
+11
+
+===== PAGE 12 =====
+Here we use eO(·) to hide universal constant factors and logarithmic factors in k. We note that
+α = 0 when augmentations from different classes are perfectly disconnected in the augmentation
+graph, in which case the above theorem guarantees the exact recovery of the ground truth. Gen-
+erally, we expect α to be an extremely (exponentially) small constant independent of k, whereas
+ρ⌊k/2⌋increases with k and can be at least inverse polynomial when k is reasonably large, hence
+much larger than √α. We characterize the ρk’s growth on more concrete distributions in the next
+subsection. When k > 2m, as argued below Assumption 3.6, we expect that α ≪ρ2 ≤ρ2
+m+1 and
+thus the error α/ρ2 is sufﬁciently small.
+Previous works on graph partitioning (Arora et al., 2009, Lee et al., 2014, Leighton and Rao,
+1999) often analyze the rounding algorithms that conduct clustering based on the representations
+of unlabeled data and do not analyze the performance of linear probe (which has access to labeled
+data). These results provide guarantees on the approximation ratio—the ratio between the conduc-
+tance of the obtained partition to the best partition—which may depend on graph size (Arora et al.,
+2009) that can be exponentially large in our setting. The approximation ratio guarantee does not
+lead to a guarantee on the representations’ performance on downstream tasks. Our guarantees are
+on the linear probe accuracy on the downstream tasks and independent of the graph size. We rely
+on the formulation of the downstream task’s labeling function (Assumption 3.6) as well as a novel
+analysis technique that characterizes the linear structure of the representations. In Section B, we
+provide the proof of Theorem 3.8 as well as its more generalized version where k/2 is relaxed to be
+any constant fraction of k. A proof sketch of Theorem 3.8 is given in Section 5.1.
+3.4
+Provable instantiation of Theorem 3.8 to mixture of manifold data
+In this section, we exemplify Theorem 3.8 on examples where the natural data distribution is
+a mixture of manifolds.
+We ﬁrst show that in the running example given in Section 3.1, Assumption 3.5 holds for some
+ρ that is closely related to the Cheeger constant of the data manifolds. Recall that the Cheeger
+constant or isoperimetric number (Buser, 1982) of a distribution µ with density p over Rd is deﬁned
+as
+hµ := inf
+S⊂Rd
+R
+∂S p(x)dx
+min{
+R
+S p(x)dx,
+R
+Rd\S p(x)dx}.
+(8)
+Here the denominator is the smaller one of volumes of S and Rd\S, whereas the numerator is the
+surface area of S. (See e.g.,(Chen, 2021) for the precise deﬁnition of the boundary measure ∂S.)
+The following proposition (proved in Section C.1) shows that ρ scales linearly in the augmentation
+strength and the Cheeger constant.
+Proposition 3.9. Suppose the natural data distribution PX is a mixture of m distributions P1, · · · , Pm
+supported on disjoint subsets of Rd, and the data augmentation is Gaussian perturbation sampled from
+N(0, σ2 · Id×d). Then,
+lim
+σ→0+
+ρm+1
+σ
+≳min
+i∈[m] hPi
+(9)
+That is, ρm+1 is at least linear in the augmentation size σ and the Cheeger constants of subpopulations.
+In many cases, the Cheeger constant is at least inverse polynomial in the data dimension (Chen,
+2021, Lee and Vempala, 2016). When the manifolds Pi are spherical Gaussian with unit identity co-
+variance, the Cheeger constant is Ω(1)(Bobkov et al., 1997), and thus the distribution PX in Proposi-
+tion 3.9 satisﬁes Assumption 3.5 with ρ ≳σ. Furthermore, when the distribution is transformed by
+12
+
+===== PAGE 13 =====
+a function with Lipschitzness κ > 0, the Cheeger constant changes by a factor at most κ. Therefore,
+Proposition 3.9 also applies to a mixture of manifolds setting deﬁned below.
+In the rest of this section, we instantiate Theorem 3.8 on a mixture of manifolds example where
+the data is generated from a Lipschitz transformation of a mixture of Gaussian distributions, and
+give an error bound for the downstream classiﬁcation task.
+Example 3.10 (Mixture of manifolds). Suppose PX is mixture of r ≤d distributions P1, · · · , Pr, where
+each Pi is generated by some κ-bi-Lipschitz6 generator Q : Rd′ →Rd on some latent variable z ∈Rd′ with
+d′ ≤d which as a mixture of Gaussian distribution:
+x ∼Pi ⇐⇒x = Q(z), z ∼N(µi, 1
+d′ · Id′×d′).
+Let the data augmentation of a natural data sample ¯x be ¯x+ξ where ξ ∼N(0, σ2
+d ·Id×d) is isotropic Gaussian
+noise with 0 < σ ≲
+1
+√
+d. We also assume mini̸=j ∥µi −µj∥2 ≳κ·√log d
+√
+d′
+.
+Let ¯y(x) be the most likely mixture index i that generates x: ¯y(x) := arg maxi Pi(x). The simplest
+downstream task can have label y(x) = ¯y(x). More generally, let r′ ≤r be the number of labels, and the
+label y(x) ∈[r′] in the downstream task be equal to π(¯y(x)) where π is a function that maps [r] to [r′].
+We note that the intra-class distance in the latent space is on the scale of Ω(1), which can be
+much larger than the distance between class means which is assumed to be ≳κ·√log d
+√
+d′
+. Therefore,
+distance-based clustering algorithms do not apply. Moreover, in the simple downstream tasks, the
+label for x could be just the index of the mixture where x comes from. We also allow downstream
+tasks that merge the r components into r′ labels as long as each mixture component gets the same
+label. We apply Theorem 3.8 and get the following theorem:
+Theorem 3.11 (Theorem for the mixture of manifolds example). When k ≥2r + 2, Example 3.10
+satisﬁes Assumption 3.6 with α ≤
+1
+poly(d), and has ρ⌊k/2⌋≳
+σ
+κ
+√
+d. As a consequence, the error bound is
+E(f∗
+pop) ≤eO
+
+κ2
+σ2·poly(d)
+
+.
+The theorem above guarantees small error even when σ is polynomially small. In this case,
+the augmentation noise has a much smaller scale than the data (which is at least on the order of
+1/κ). This suggests that contrastive learning can non-trivially leverage the structure of the under-
+lying data and learn good representations with relatively weak augmentation. To the best of our
+knowledge, it is difﬁcult to apply the theorems in previous works (Arora et al., 2019, Lee et al., 2020,
+Tosh et al., 2020, 2021, Wei et al., 2020) to this example and get similar guarantees with polynomial
+dependencies on d, σ, κ. The work of Wei et al. (2020) can apply to the setting where r is known
+and the downstream label is equal to ¯y(x), but cannot handle the case when r is unknown or when
+two mixture component can have the same label. We refer the reader to the related work section
+for more discussions and comparisons. The proof can be found in Section C.2.
+4
+Finite-sample generalization bounds
+4.1
+Unlabeled sample complexity for pretraining
+In Section 3, we provide guarantees for spectral contrastive learning on population data.
+In this section, we show that these guarantees can be naturally extended to the ﬁnite-sample
+6A κ bi-Lipschitz function satisﬁes 1
+κ ∥f(x) −f(y)∥2 ≤∥x −y∥2 ≤κ ∥f(x) −f(y)∥2.
+13
+
+===== PAGE 14 =====
+regime with standard concentration bounds. In particular, given a unlabeled pretraining dataset
+{¯x1, ¯x2, · · · , ¯xnpre} with ¯xi ∼PX , we learn a feature extractor by minimizing the following empirical
+spectral contrastive loss:
+bLnpre(f) := −2
+n
+npre
+X
+i=1
+E
+x∼A(·|¯xi)
+x+∼A(·|¯xi)
+h
+f(x)⊤f(x+)
+i
++
+1
+npre(npre −1)
+X
+i̸=j
+E
+x∼A(·|¯xi)
+x−∼A(·|¯xj )
+
+f(x)⊤f(x−)
+2
+.
+It is worth noting that bLnpre(f) is an unbiased estimator of the population spectral con-
+trastive loss L(f).
+(See Claim D.2 for a proof.)
+Therefore, we can derive generalization
+bounds via off-the-shelf concentration inequalities. Let F be a hypothesis class containing fea-
+ture extractors from X to Rk.
+We extend Rademacher complexity to function classes with
+high-dimensional outputs and deﬁne the Rademacher complexity of F on n data as bRn(F) :=
+maxx1,··· ,xn∈X Eσ
+h
+supf∈F,i∈[k]
+1
+n
+Pn
+j=1 σjfi(xj)
+i
+, where σ is a uniform random vector in {−1, 1}n
+and fi(z) is the i-th dimension of f(z).
+Recall that f∗
+pop ∈F is a minimizer of L(f). The following theorem with proofs in Section D.1
+bounds the population loss of a feature extractor trained with ﬁnite data:
+Theorem 4.1 (Excess contrasitve loss). For some κ > 0, assume ∥f(x)∥∞≤κ for all f ∈F and x ∈X.
+Let f∗
+pop ∈F be a minimizer of the population loss L(f). Given a random dataset of size npre, let ˆfemp ∈F
+be a minimizer of empirical loss bLnpre(f). Then, when Assumption 3.7 holds, with probability at least 1 −δ
+over the randomness of data, we have
+L( ˆfemp) ≤L(f∗
+pop) + c1 · bRnpre/2(F) + c2 ·
+ s
+log 2/δ
+npre
++ δ
+!
+,
+where constants c1 ≲k2κ2 + kκ and c2 ≲kκ2 + k2κ4.
+The Rademacher complexity usually looks like bRn(F) =
+p
+R/n where R measures the com-
+plexity of F (hence only depends on F). This suggests that when κ is O(1), the sample complexity
+for acheiving suboptimality ϵ on population loss is O(k4R/ϵ2). We can apply Theorem 4.1 to any
+hypothesis class F of interest (e.g., deep neural networks) and plug in off-the-shelf Rademacher
+complexity bounds. For instance, in Section D.2 we give a corollary of Theorem 4.1 when F con-
+tains deep neural networks with ReLU activation.
+The theorem above shows that we can achieve near-optimal population loss by minimizing
+empirical loss up to some small excess loss. The following theorem characterizes how the error
+propagates to the linear probe performance mildly under some spectral gap conditions.
+Theorem 4.2 (Minimum downstream error). In the setting of Theorem 4.1, suppose Assumption 3.5
+holds for ρ > 0, Assumption 3.6 holds for α > 0, Assumption 3.7 holds, and the representation dimension
+k ≥max{4r + 2, 2m},. Then, with 1 −δ probability over the randomness of data, for any ˆfemp ∈F that
+minimizes the empirical loss bLnpre(f), we have that
+E( ˆfemp) ≲α
+ρ2 · log k + ck
+∆2γ
+ 
+bRnpre/2(F) +
+s
+log 2/δ
+npre
++ δ
+!
+,
+where c ≲(kκ + kκ2 + 1)2, and ∆γ := γ⌊3k/4⌋−γk is the eigenvalue gap between the ⌊3k/4⌋-th and the
+k-th eigenvalue.
+14
+
+===== PAGE 15 =====
+This theorem shows that the error on the downstream task only grows linearly with the excess
+loss during pretraining. Roughly speaking, one can think of ∆γ as on the order of 1 −γk, hence by
+Cheeger’s inequality it’s larger than ρ2. When bRnpre/2(F) =
+p
+2R/npre and κ ≤O(1), we have that
+the number of unlabeled samples required to achieve ϵ downstream error is O(m6R/ϵ2ρ4). We can
+relax Assumption 3.7 to approximate realizability in the sense that F contains some sub-optimal
+feature extractor under the population spectral loss and pay an additional error term in the linear
+probe error bound. The proof of Theorem 4.2 can be found in Section D.3.
+4.2
+Labeled sample complexity for linear probe
+In this section, we provide sample complexity analysis for learning a linear probe with labeled
+data. Theorem 3.8 guarantees the existence of a linear probe that achieves a small downstream
+classiﬁcation error. However, a priori it is unclear how large the margin of the linear classiﬁer can
+be, so it is hard to apply margin theory to provide generalization bounds for 0-1 loss. We could
+in principle control the margin of the linear head, but using capped quadratic loss turns out to
+sufﬁce and mathematically more convenient. We learn a linear head with the following capped
+quadratic loss: given a tuple (z, y(¯x)) where z ∈Rk is a representation of augmented datapoint x ∼
+A(·|¯x) and y(¯x) ∈[r] is the label of ¯x, for a linear probe B ∈Rk×r we deﬁne loss ℓ((z, y(¯x)), B) :=
+Pr
+i=1 min
+  B⊤z −⃗y(¯x)
+2
+i , 1
+	
+, where ⃗y(¯x) is the one-hot embedding of y(¯x) as a r-dimensional
+vector (1 on the y(¯x)-th dimension, 0 on other dimensions). This is a standard modiﬁcation of
+quadratic loss in statistical learning theory that ensures the boundedness of the loss for the ease of
+analysis (Mohri et al., 2018).
+The following Theorem 4.3 provides a generalization guarantee for the linear classiﬁer that
+minimizes capped quadratic loss on a labeled downstream dataset of size ndown. The key challenge
+of the proof is showing the existence of a small-norm linear head B that gives small population
+quadratic loss, which is not obvious from Theorem 4.2 where only small 0-1 error is guaranteed.
+Given a labeled dataset {(¯xi, y(¯xi))}ndown
+i=1
+where ¯xi ∼PX and y(¯xi) is its label, we sample xi ∼
+A(·|¯xi) for i ∈[ndown]. Given a norm bound Ck > 0, we learn a linear probe bB by minimizing the
+capped quadratic loss subject to a norm constraint:
+bB ∈arg min
+∥B∥F ≤Ck
+ndown
+X
+i=1
+ℓ(( ˆfemp(xi), y(¯xi)), B).
+(10)
+Theorem 4.3 (End-to-end error bounds with ﬁnite pretraining and downstream samples). In the
+setting of Theorem 4.2, choose Ck > 0 such that Ck ≥2(k+1)
+γk
+. Then, with probability at least 1 −δ over the
+randomness of data, for any ˆfemp ∈F that minimizes the empirical pre-training loss bLnpre(f) and a linear
+head bB learned from Equation (10), we have
+E( ˆfemp, bB) ≲
+α
+ρ2
+⌊k/2⌋
+· log k + ck
+∆2γ
+ 
+bRnpre/2(F) +
+s
+log 2/δ
+npre
++ δ
+!
++
+
+rCk
+r
+k
+ndown
++
+s
+log 1/δ
+ndown
+
+.
+Here the ﬁrst term is an error caused by the property fo the population data, which is un-
+avoidable even with inﬁnite pretraining and downstream samples (but it can be small as argued in
+Section 3.3). The second term is caused by ﬁnite pretraining samples, and the third term is caused
+by ﬁnite samples in the linear classiﬁcation on the downstream task.
+Typically, the Rademacher complexity is roughly bRnpre/2(F) =
+p
+2R/npre where R is captures
+the complexity of the model architecture. Thus, to achieve ﬁnal linear probe error no more than
+15
+
+===== PAGE 16 =====
+Empirical
+pre-training loss
+Population
+pre-training loss
+Minimal
+downstream Loss
+Empirical
+downstream Loss
+Population
+downstream Loss
+pretrain
+adapt on 
+finite data  
+evaluate 
+adaptable on 
+infinite data  
+good pretraining 
+on infinite data 
+Thm. 4.1
+properties of population graph (Ass. 3.5 & 3.6)
++
+Thm. 3.8, or its extension Thm. 4.2
+handled by supervised DL theory
+Thm. 4.3
+model expressivity (Ass. 3.7)
+bounded model 
+complexity
+Figure 2: A diagram of our analysis framework. We decompose the problem into a core step that
+shows a small population pretraining loss implies a small minimal downstream loss (Theorem 3.8,
+or its extension Theorem 4.2) and a few other somewhat standard steps that link empirical losses
+to population losses (Theorems 4.1 and Theorem 4.3).
+O(ϵ), we would need to select k such that
+α
+ρ2
+⌊k/2⌋·log k ≤ϵ, and we need poly(k,
+1
+∆γ , R, 1
+ϵ) pretraining
+samples and poly(k, r, 1
+γk , 1
+ϵ) downstream samples.
+When r < k, the eigengap ∆γ is on the order of 1 −γk which is larger than ρ2 by Cheeger
+inequality. Recall that ρ is at least inverse polynomial in d as argued in Section 3.4, one can expect
+1
+∆γ to be at most poly(d). On the other hand, γk ≈1 so 1
+γk can be thought of as a constant. Thus, the
+ﬁnal required number of pretraining samples is npre = poly(k, d, R, 1
+ϵ) and number of downstream
+samples is ndown = poly(r, k, 1
+ϵ). We note that the downstream sample complexity doesn’t depend
+on the complexity of the hypothesis class R, suggesting that pretraining helps reduce the sample
+complexity of the supervised downstream task.
+The proof of Theorem 4.3 is in Section E.
+5
+Analysis Framework and Proof Sketch
+As discussed before and suggested by the structured of Section 3 and 4, our analysis frame-
+work decompose the problem into a key step about the population cases (Section 3) and a few
+other somewhat standard steps that link empirical losses to population losses (Section 4). As de-
+picted in Figure 2, the core step (Theorem 3.8, or its extension Theorem 4.2) is to show that a small
+population pretraining loss implies the existence of a linear classiﬁer for the downstream task, that
+is, a small minimal downstream loss.
+We ﬁrst remark that a feature of our analysis framework is that we link the population pretrain-
+ing data case to the ﬁnite sample case by showing the empirical and population pretraining losses
+are similar when the feature extractors are a parameterized family of models with capacity bounds
+(the ﬁrst arrow in Figure 2). Hypothetically, suppose such a connection between population and em-
+pirical data case was built through the relationship between the population and empirical graphs,
+e.g., by proving that the empirical graph has similar spectral properties as the population graph,
+then the sample complexity will be exponential. Intuitively, this is because the population graph
+is very sparse, and the empirical graph is with high probability empty if the number of samples is
+only polynomial in dimension (e.g. consider the case when the augmentation simply adds small
+perturbation, as in the running example in Section 3.1). The empirical graph essentially follows
+16
+
+===== PAGE 17 =====
+the well-studied random geometric graph model (Penrose, 2003), and tends to have no structure
+in high dimension (Brennan et al., 2020, Bubeck et al., 2016, Liu et al., 2021). The fundamental dif-
+ference between this hypothetical and our framework is that the empirical graph’s deﬁnition does
+not involve any parameterization, and thus the resemblance between the empirical and population
+graphs does not leverage the extrapolation (or inductive bias) of the model parameterization as our
+framework does for the pretraining losses.
+We note that the inductive bias of the parameterized model is indeed used in the anal-
+ysis for ﬁnite-sample case.
+We assume that the model family F can express the eigenfunc-
+tions/eigenvectors of the graph (Assumption 3.7) and also implicitly assume bounds on its
+Rademacher complexity (in Theorem 4.3).
+Once we obtained that the existence of a linear classiﬁer, the remaining steps (the third and
+fourth arrows in Figure 2) follow from standard supervised learning theory.
+In the rest of this section, we will give a proof sketch of the population case, which is the more
+challenging step.
+5.1
+Proof Sketch of Theorem 3.8
+In this section, we give a proof sketch of Theorem 3.8 in a simpliﬁed binary classiﬁcation setting
+where there are only two classes in the downstream task.
+Recall that N is the size of X. Recall that wx is the total weight associated with an augmented
+datapoint x ∈X, which can also be thought of as the probability mass of x as a randomly sampled
+augmented datapoint. In the scope of this section, for demonstrating the key idea, we also assume
+that x has uniform distribution, i.e., wx = 1
+N for any x ∈X.
+Let g : X →{0, 1} be the Bayes optimal classiﬁer for predicting the label given an augmented
+datapoint. By Assumption 3.6, g has an error at most α (which is assumed to be small). Thus,
+we can think of it as the “target” classiﬁer that we aim to recover. We will show that g can be
+approximated by a linear function on top of the learned features. Recall that v1, v2, · · · , vk are
+the top-k unit-norm eigenvectors of A and the feature u∗
+x for x is the x-th row of the eigenvector
+matrix F ∗= [v1, v2, · · · , vk] ∈RN×k. As discussed in Section 3.2, the spectral contrastive loss was
+designed to compute a variant of the eigenvector matrix F ∗up to row scaling and right rotation.
+More precisely, letting F ∗
+pop ∈RN×k be the matrix whose rows contain all the learned embeddings,
+Section 3.2 shows that F ∗
+pop = D·F ∗·R for a positive diagonal matrix D and an orthonormal matrix
+R, and Lemma 3.1 shows that these transformations do not affect the feature quality. Therefore,
+in the rest of the section, it sufﬁces to show that linear models on top of F ∗gives the labels of
+g. Let ⃗g ∈{0, 1}N be the vector that contains the labels of all the data under the optimal g, i.e.,
+⃗gx = g(x). Given a linear head b, note that F ∗b gives the prediction (before the threshold function)
+for all examples. Therefore, it sufﬁces to show the existence of a vector b such that
+F ∗b ≈⃗g
+(11)
+Let L ≜I −A be the normalized Laplacian matrix. Then, vi’s are the k smallest unit-norm
+eigenvectors of L with eigenvalues λi = 1 −γi. Elementary derivations can give a well-known,
+important property of the Laplacian matrix L: the quadratic form ⃗g⊤L⃗g captures the amount of
+edges across the two groups that are deﬁned by the binary vector ⃗g (Chung and Graham, 1997,
+section 1.2):
+⃗g⊤L⃗g = 1
+2 ·
+X
+x,x′∈X
+wxx′
+√wxwx′ (⃗gx −⃗gx′)2
+(12)
+17
+
+===== PAGE 18 =====
+With slight abuse of notation, suppose (x, x+) is the random variable for a positive pair. Using that
+w is the density function for the positive pair and the simpliﬁcation that wx = 1/N, we can rewrite
+equation (12) as
+⃗g⊤L⃗g = N
+2 · Ex,x+[(⃗gx −⃗gx+)2],
+(13)
+Note that Ex,x+[(⃗gx −⃗gx+)2] is the probability that a positive pair have different labels under the
+Bayes optimal classiﬁer g. Because Assumption 3.6 assumes that the labels can be almost deter-
+mined by the augmented data, we can show that two augmentations of the same datapoint should
+rarely produce different labels under the Bayes optimal classiﬁer. We will prove in Lemma B.5 via
+simple calculation that
+⃗g⊤L⃗g ≤Nα
+(14)
+(We can sanity-check the special case when α = 0, that is, the label is determined by the aug-
+mentation. In this case, g(x) = g(x+) for a positive pair (x, x+) w.p. 1, which implies ⃗g⊤L⃗g =
+N
+2 · Ex,x+[(⃗gx −⃗gx+)2] = 0.)
+Next, we use equation (14) to link ⃗g to the eigenvectors of L. Let λk+1 ≤. . . λN be the rest of
+eigenvalues with unit-norm eigenvectors vk+1, . . . , vN. Let Π ≜Pk
+i=1 viv⊤
+i and Π⊥≜PN
+i=k+1 viv⊤
+i
+be the projection operators onto the subspaces spanned by the ﬁrst k and the last N −k eigenvectors,
+respectively. Equation (14) implies that ⃗g has limited projection to the subspace of Π⊥:
+Nα ≥⃗g⊤L⃗g = (Π⃗g + Π⊥⃗g)⊤L (Π⃗g + Π⊥⃗g) ≥(Π⊥⃗g)⊤L (Π⊥⃗g) ≥λk+1 ∥Π⊥⃗g∥2
+2 ,
+(15)
+where the ﬁrst inequality follows from dropping the ∥(Π⃗g)⊤LΠ⃗g∥2
+2 and using Π⊥LΠ = 0, and the
+second inequality is because that Π⊥only contains eigenvectors with eigenvalue at least λk+1.
+Note that Π⃗g is in the span of eigenvectors v1, . . . , vk, that is, the column-span of F ∗. Therefore,
+there exists b ∈Rk such that Π⃗g = F ∗b. As a consequence,
+∥⃗g −F ∗b∥2
+2 = ∥Π⊥⃗g∥2
+2 ≤Nα
+λk+1
+(16)
+By higher-order Cheeger inequality (see Lemma B.4), we have that λk+1 ≳ρ2
+⌈k/2⌉. Then, we obtain
+the mean-squared error bound:
+1
+N ∥⃗g −F ∗b∥2
+2 ≤α/ρ2
+⌈k/2⌉
+(17)
+The steps above demonstrate the gist of the proofs, which are formalized in more generality in
+Section B.1. We will also need two minor steps to complete the proof of Theorem 3.8. First, we
+can convert the mean-squared error bound to classiﬁcation error bound: because F ∗b is close to
+the binary vector ⃗g in mean-squared error, 1 [F ∗b > 1/2] is close to ⃗g in 0-1 error. (See Claim B.9
+for the formal argument.) Next, F ∗b only gives the prediction of the model given the augmented
+datapoint. We will show in Section B.2 that averaging the predictions on the augmentations of a
+data ponit will not increase the classiﬁcation error.
+6
+Experiments
+We test spectral contrastive learning on benchmark vision datasets. We minimize the empir-
+ical spectral contrastive loss with an encoder network f and sample fresh augmentation in each
+iteration. The pseudo-code for the algorithm and more implementation details can be found in
+Section A.
+18
+
+===== PAGE 19 =====
+Encoder / feature extractor. The encoder f contains three components: a backbone network, a pro-
+jection MLP and a projection function. The backbone network is a standard ResNet architecture.
+The projection MLP is a fully connected network with BN applied to each layer, and ReLU activa-
+tion applied to each except for the last layer. The projection function takes a vector and projects it
+to a sphere ball with radius √µ, where µ > 0 is a hyperparameter that we tune in experiments. We
+ﬁnd that using a projection MLP and a projection function improves the performance.
+Linear evaluation protocol. Given the pre-trained encoder network, we follow the standard linear
+evaluation protocol (Chen and He, 2020) and train a supervised linear classiﬁer on frozen represen-
+tations, which are from the ResNet’s global average pooling layer.
+Results.
+We report the accuracy on CIFAR-10/100 (Krizhevsky and Hinton, 2009) and Tiny-
+ImageNet (Le and Yang, 2015) in Table 1. Our empirical results show that spectral contrastive
+learning achieves better performance than two popular baseline algorithms SimCLR (Chen et al.,
+2020a) and SimSiam (Chen and He, 2020). In Table 2 we report results on ImageNet (Deng et al.,
+2009) dataset, and show that our algorithm achieves similar performance as other state-of-the-art
+methods. We note that our algorithm is much more principled than previous methods and doesn’t
+rely on large batch sizes (SimCLR (Chen et al., 2020a)), momentum encoders (BYOL (Grill et al.,
+2020) and MoCo (He et al., 2020)) or additional tricks such as stop-gradient (SimSiam (Chen and
+He, 2020)).
+Datasets
+CIFAR-10
+CIFAR-100
+Tiny-ImageNet
+Epochs
+200
+400
+800
+200
+400
+800
+200
+400
+800
+SimCLR (repro.)
+83.73
+87.72
+90.60
+54.74
+61.05
+63.88
+43.30
+46.46
+48.12
+SimSiam (repro.)
+87.54
+90.31
+91.40
+61.56
+64.96
+65.87
+34.82
+39.46
+46.76
+Ours
+88.66
+90.17
+92.07
+62.45
+65.82
+66.18
+41.30
+45.36
+49.86
+Table 1: Top-1 accuracy under linear evaluation protocal.
+SimCLR
+BYOL
+MoCo v2
+SimSiam
+Ours
+acc. (%)
+66.5
+66.5
+67.4
+68.1
+66.97
+Table 2: ImageNet linear evaluation accuracy with 100-epoch pre-training. All results but ours are
+reported from (Chen and He, 2020). We use batch size 384 during pre-training.
+7
+Conclusion
+In this paper, we present a novel theoretical framework of self-supervised learning and provide
+provable guarantees for the learned representation on downstream linear classiﬁcation tasks. We
+hope the framework could facilitate future theoretical analyses of self-supervised pretraining losses
+and inspire new methods. It does not capture the potential implicit bias of optimizers but does take
+into account the inductive bias of the models. By abstracting away the effect of optimization, we can
+focus on the effect of pretraining losses and their interaction with the structure of the population
+data. Future directions may include designing better pretraining losses and analyzing more ﬁne-
+grained properties of the learned representations (e.g., as in recent follow-up works (HaoChen et al.,
+2022, Shen et al., 2022)), by potentially leveraging more advanced techniques from spectral graph
+theory.
+19
+
+===== PAGE 20 =====
+Acknowledgements
+We thank Margalit Glasgow, Ananya Kumar, Jason D. Lee, Sang Michael Xie, and Guodong
+Zhang for helpful discussions. CW acknowledges support from an NSF Graduate Research Fellow-
+ship. TM acknowledges support of Google Faculty Award and NSF IIS 2045685. We also acknowl-
+edge the support of HAI and the Google Cloud. Toyota Research Institute ("TRI") provided funds
+to assist the authors with their research but this article solely reﬂects the opinions and conclusions
+of its authors and not TRI or any other Toyota entity.
+References
+Emmanuel Abbe. Community detection and stochastic block models: recent developments, 2017.
+Sanjeev Arora, Satish Rao, and Umesh Vazirani. Expander ﬂows, geometric embeddings and graph
+partitioning. Journal of the ACM (JACM), 56(2):1–37, 2009.
+Sanjeev Arora, Hrishikesh Khandeparkar, Mikhail Khodak, Orestis Plevrakis, and Nikunj Saun-
+shi. A theoretical analysis of contrastive unsupervised representation learning. arXiv preprint
+arXiv:1902.09229, 2019.
+Philip Bachman, R Devon Hjelm, and William Buchwalter. Learning representations by maximiz-
+ing mutual information across views. arXiv preprint arXiv:1906.00910, 2019.
+Maria-Florina Balcan, Avrim Blum, and Ke Yang. Co-training and expansion: Towards bridging
+theory and practice. Advances in neural information processing systems, 17:89–96, 2005.
+Yamini Bansal, Gal Kaplun, and Boaz Barak. For self-supervised learning, rationality implies gen-
+eralization, provably. arXiv preprint arXiv:2010.08508, 2020.
+Adrien Bardes, Jean Ponce, and Yann LeCun. Vicreg: Variance-invariance-covariance regulariza-
+tion for self-supervised learning. arXiv preprint arXiv:2105.04906, 2021.
+Avrim Blum and Tom Mitchell. Combining labeled and unlabeled data with co-training. In Proceed-
+ings of the eleventh annual conference on Computational learning theory, pages 92–100, 1998.
+Sergey G Bobkov et al. An isoperimetric inequality on the discrete cube, and an elementary proof
+of the isoperimetric inequality in gauss space. The Annals of Probability, 25(1):206–214, 1997.
+Matthew Brennan, Guy Bresler, and Dheeraj Nagaraj. Phase transitions for detecting latent geome-
+try in random graphs. Probability Theory and Related Fields, 178(3):1215–1289, 2020.
+Jane Bromley, Isabelle Guyon, Yann LeCun, Eduard Säckinger, and Roopak Shah. Signature ver-
+iﬁcation using a" siamese" time delay neural network. Advances in neural information processing
+systems, 6:737–744, 1993.
+Sébastien Bubeck, Jian Ding, Ronen Eldan, and Miklós Z Rácz. Testing for high-dimensional geom-
+etry in random graphs. Random Structures & Algorithms, 49(3):503–532, 2016.
+Daniel Bump. Automorphic forms and representations. Number 55. Cambridge university press, 1998.
+Peter Buser. A note on the isoperimetric constant. In Annales scientiﬁques de l’École normale supérieure,
+volume 15, pages 213–230, 1982.
+20
+
+===== PAGE 21 =====
+Tianle Cai, Ruiqi Gao, Jason D Lee, and Qi Lei. A theory of label propagation for subpopulation
+shift. arXiv preprint arXiv:2102.11203, 2021.
+Mathilde Caron, Ishan Misra, Julien Mairal, Priya Goyal, Piotr Bojanowski, and Armand Joulin.
+Unsupervised learning of visual features by contrasting cluster assignments.
+arXiv preprint
+arXiv:2006.09882, 2020.
+Jeff Cheeger. A lower bound for the smallest eigenvalue of the laplacian. In Proceedings of the
+Princeton conference in honor of Professor S. Bochner, pages 195–199, 1969.
+Ting Chen, Simon Kornblith, Mohammad Norouzi, and Geoffrey Hinton. A simple framework for
+contrastive learning of visual representations. In International conference on machine learning, pages
+1597–1607. PMLR, 2020a.
+Ting Chen, Simon Kornblith, Kevin Swersky, Mohammad Norouzi, and Geoffrey Hinton. Big self-
+supervised models are strong semi-supervised learners. arXiv preprint arXiv:2006.10029, 2020b.
+Xinlei Chen and Kaiming He. Exploring simple siamese representation learning. arXiv preprint
+arXiv:2011.10566, 2020.
+Xinlei Chen, Haoqi Fan, Ross Girshick, and Kaiming He. Improved baselines with momentum
+contrastive learning. arXiv preprint arXiv:2003.04297, 2020c.
+Yuansi Chen. An almost constant lower bound of the isoperimetric coefﬁcient in the kls conjecture.
+Geometric and Functional Analysis, 31(1):34–61, 2021.
+Fan RK Chung and Fan Chung Graham. Spectral graph theory. Number 92. American Mathematical
+Soc., 1997.
+Tri Dao, Albert Gu, Alexander Ratner, Virginia Smith, Chris De Sa, and Christopher Ré. A kernel
+theory of modern data augmentation. In International Conference on Machine Learning, pages 1528–
+1537. PMLR, 2019.
+Sanjoy Dasgupta, Michael L Littman, and David McAllester. Pac generalization bounds for co-
+training. Advances in neural information processing systems, 1:375–382, 2002.
+J. Deng, W. Dong, R. Socher, L.-J. Li, K. Li, and L. Fei-Fei. ImageNet: A Large-Scale Hierarchical
+Image Database. In CVPR09, 2009.
+Luc Devroye, Abbas Mehrabian, and Tommy Reddad. The total variation distance between high-
+dimensional gaussians. arXiv preprint arXiv:1810.08693, 2018.
+Carl Eckart and Gale Young. The approximation of one matrix by another of lower rank. Psychome-
+trika, 1(3):211–218, 1936.
+Noah Golowich, Alexander Rakhlin, and Ohad Shamir. Size-independent sample complexity of
+neural networks. In Conference On Learning Theory, pages 297–299. PMLR, 2018.
+Jean-Bastien Grill, Florian Strub, Florent Altché, Corentin Tallec, Pierre H Richemond, Elena
+Buchatskaya, Carl Doersch, Bernardo Avila Pires, Zhaohan Daniel Guo, Mohammad Gheshlaghi
+Azar, et al. Bootstrap your own latent: A new approach to self-supervised learning. arXiv preprint
+arXiv:2006.07733, 2020.
+Heinrich Walter Guggenheimer. Applicable Geometry: Global and Local Convexity. RE Krieger Pub-
+lishing Company, 1977.
+21
+
+===== PAGE 22 =====
+Jeff Z HaoChen, Colin Wei, Ananya Kumar, and Tengyu Ma.
+Beyond separability: Analyzing
+the linear transferability of contrastive representations to related subpopulations. arXiv preprint
+arXiv:2204.02683, 2022.
+Kaiming He, Haoqi Fan, Yuxin Wu, Saining Xie, and Ross Girshick. Momentum contrast for un-
+supervised visual representation learning. In Proceedings of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition, pages 9729–9738, 2020.
+Olivier Henaff. Data-efﬁcient image recognition with contrastive predictive coding. In International
+Conference on Machine Learning, pages 4182–4192. PMLR, 2020.
+R Devon Hjelm, Alex Fedorov, Samuel Lavoie-Marchildon, Karan Grewal, Phil Bachman, Adam
+Trischler, and Yoshua Bengio. Learning deep representations by mutual information estimation
+and maximization. In International Conference on Learning Representations, 2018.
+Ravi Kannan, Santosh Vempala, and Adrian Vetta. On clusterings: Good, bad and spectral. Journal
+of the ACM (JACM), 51(3):497–515, 2004.
+Alex Krizhevsky and Geoffrey Hinton. Learning multiple layers of features from tiny images. 2009.
+Ya Le and Xuan Yang. Tiny imagenet visual recognition challenge. CS 231N, 7:7, 2015.
+James R Lee, Shayan Oveis Gharan, and Luca Trevisan. Multiway spectral partitioning and higher-
+order cheeger inequalities. Journal of the ACM (JACM), 61(6):1–30, 2014.
+Jason D Lee, Qi Lei, Nikunj Saunshi, and Jiacheng Zhuo. Predicting what you already know helps:
+Provable self-supervised learning. arXiv preprint arXiv:2008.01064, 2020.
+Yin Tat Lee and Santosh S Vempala.
+Eldan’s stochastic localization and the kls conjecture:
+Isoperimetry, concentration and mixing. arXiv preprint arXiv:1612.01507, 2016.
+Jing Lei, Alessandro Rinaldo, et al. Consistency of spectral clustering in stochastic block models.
+Annals of Statistics, 43(1):215–237, 2015.
+Tom Leighton and Satish Rao. Multicommodity max-ﬂow min-cut theorems and their use in de-
+signing approximation algorithms. Journal of the ACM (JACM), 46(6):787–832, 1999.
+Siqi Liu, Sidhanth Mohanty, Tselil Schramm, and Elizabeth Yang.
+Testing thresholds for high-
+dimensional sparse random geometric graphs. arXiv preprint arXiv:2111.11316, 2021.
+Anand Louis and Konstantin Makarychev. Approximation algorithm for sparsest k-partitioning. In
+Proceedings of the twenty-ﬁfth annual ACM-SIAM symposium on Discrete algorithms, pages 1244–1255.
+SIAM, 2014.
+Anand Louis, Prasad Raghavendra, Prasad Tetali, and Santosh Vempala. Algorithmic extensions of
+cheeger’s inequality to higher eigenvalues and partitions. In Approximation, Randomization, and
+Combinatorial Optimization. Algorithms and Techniques, pages 315–326. Springer, 2011.
+Frank McSherry. Spectral partitioning of random graphs. In Proceedings 42nd IEEE Symposium on
+Foundations of Computer Science, pages 529–537. IEEE, 2001.
+Ishan Misra and Laurens van der Maaten. Self-supervised learning of pretext-invariant representa-
+tions. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pages
+6707–6717, 2020.
+22
+
+===== PAGE 23 =====
+Jovana Mitrovic, Brian McWilliams, Jacob Walker, Lars Buesing, and Charles Blundell. Representa-
+tion learning via invariant causal mechanisms. arXiv preprint arXiv:2010.07922, 2020.
+Mehryar Mohri, Afshin Rostamizadeh, and Ameet Talwalkar. Foundations of machine learning. MIT
+press, 2018.
+Boaz Nadler, Nathan Srebro, and Xueyuan Zhou. Semi-supervised learning with the graph lapla-
+cian: The limit of inﬁnite unlabelled data. Advances in neural information processing systems, 22:
+1330–1338, 2009.
+Andrew Ng, Michael Jordan, and Yair Weiss. On spectral clustering: Analysis and an algorithm.
+Advances in neural information processing systems, 14:849–856, 2001.
+Aaron van den Oord, Yazhe Li, and Oriol Vinyals. Representation learning with contrastive predic-
+tive coding. arXiv preprint arXiv:1807.03748, 2018.
+Mathew Penrose. Random geometric graphs, volume 5. OUP Oxford, 2003.
+Geoffrey Schiebinger, Martin J Wainwright, and Bin Yu. The geometry of kernelized spectral clus-
+tering. The Annals of Statistics, 43(2):819–846, 2015.
+Kendrick Shen, Robbie Jones, Ananya Kumar, Sang Michael Xie, Jeff Z HaoChen, Tengyu Ma, and
+Percy Liang. Connect, not collapse: Explaining contrastive learning for unsupervised domain
+adaptation. arXiv preprint arXiv:2204.00570, 2022.
+Jianbo Shi and Jitendra Malik. Normalized cuts and image segmentation. IEEE Transactions on
+pattern analysis and machine intelligence, 22(8):888–905, 2000.
+Kihyuk Sohn. Improved deep metric learning with multi-class n-pair loss objective. In Proceedings
+of the 30th International Conference on Neural Information Processing Systems, pages 1857–1865, 2016.
+Yonglong Tian, Dilip Krishnan, and Phillip Isola. Contrastive multiview coding. arXiv preprint
+arXiv:1906.05849, 2019.
+Yonglong Tian, Chen Sun, Ben Poole, Dilip Krishnan, Cordelia Schmid, and Phillip Isola. What
+makes for good views for contrastive learning. arXiv preprint arXiv:2005.10243, 2020a.
+Yuandong Tian, Lantao Yu, Xinlei Chen, and Surya Ganguli. Understanding self-supervised learn-
+ing with dual deep networks. arXiv preprint arXiv:2010.00578, 2020b.
+Christopher Tosh, Akshay Krishnamurthy, and Daniel Hsu. Contrastive estimation reveals topic
+posterior information to linear models. arXiv:2003.02234, 2020.
+Christopher Tosh, Akshay Krishnamurthy, and Daniel Hsu. Contrastive learning, multi-view re-
+dundancy, and linear models. In Algorithmic Learning Theory, pages 1179–1206. PMLR, 2021.
+Yao-Hung Hubert Tsai, Yue Wu, Ruslan Salakhutdinov, and Louis-Philippe Morency.
+Self-
+supervised learning from a multi-view perspective. arXiv preprint arXiv:2006.05576, 2020.
+Tongzhou Wang and Phillip Isola.
+Understanding contrastive representation learning through
+alignment and uniformity on the hypersphere. In International Conference on Machine Learning,
+pages 9929–9939. PMLR, 2020.
+Colin Wei, Kendrick Shen, Yining Chen, and Tengyu Ma. Theoretical analysis of self-training with
+deep networks on unlabeled data. arXiv preprint arXiv:2010.03622, 2020.
+23
+
+===== PAGE 24 =====
+Wikipedia contributors.
+Hilbert–schmidt integral operator — Wikipedia, the free encyclope-
+dia, 2020.
+URL https://en.wikipedia.org/w/index.php?title=Hilbert%E2%80%
+93Schmidt_integral_operator&oldid=986771357. [Online; accessed 21-July-2021].
+Zhirong Wu, Yuanjun Xiong, Stella X Yu, and Dahua Lin. Unsupervised feature learning via non-
+parametric instance discrimination. In Proceedings of the IEEE Conference on Computer Vision and
+Pattern Recognition, pages 3733–3742, 2018.
+Qizhe Xie, Zihang Dai, Eduard Hovy, Minh-Thang Luong, and Quoc V Le. Unsupervised data
+augmentation for consistency training. arXiv preprint arXiv:1904.12848, 2019.
+Mang Ye, Xu Zhang, Pong C Yuen, and Shih-Fu Chang. Unsupervised embedding learning via
+invariant and spreading instance feature. In Proceedings of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition, pages 6210–6219, 2019.
+Jure Zbontar, Li Jing, Ishan Misra, Yann LeCun, and Stéphane Deny. Barlow twins: Self-supervised
+learning via redundancy reduction. arXiv preprint arXiv:2103.03230, 2021.
+Richard Zemel and Miguel Carreira-Perpiñán. Proximity graphs for clustering and manifold learn-
+ing. Advances in neural information processing systems, 17, 2004.
+Xiaojin Zhu, Zoubin Ghahramani, and John D Lafferty. Semi-supervised learning using gaussian
+ﬁelds and harmonic functions. In Proceedings of the 20th International conference on Machine learning
+(ICML-03), pages 912–919, 2003.
+Roland S Zimmermann, Yash Sharma, Steffen Schneider, Matthias Bethge, and Wieland Brendel.
+Contrastive learning inverts the data generating process. arXiv preprint arXiv:2102.08850, 2021.
+24
+
+===== PAGE 25 =====
+A
+Experiment details
+The pseudo-code for our empirical algorithm is summarized in Algorithm 1.
+Algorithm 1 Spectral Contrastive Learning
+Require: batch size N, structure of encoder network f
+1: for sampled minibatch {¯xi}N
+i=1 do
+2:
+for i ∈{1, · · · , N} do
+3:
+draw two augmentations xi = aug(¯xi) and x′
+i = aug(¯xi).
+4:
+compute zi = f(xi) and z′
+i = f(x′
+i).
+5:
+compute loss L = −2
+N
+PN
+i=1 z⊤
+i z′
+i +
+1
+N(N−1)
+P
+i̸=j(z⊤
+i z′
+j)2
+6:
+update f to minimize L
+7: return encoder network f(·)
+Our results with different hyperparameters on CIFAR-10/100 and Tiny-ImageNet are listed in
+Table 3.
+Datasets
+CIFAR-10
+CIFAR-100
+Tiny-ImageNet
+Epochs
+200
+400
+800
+200
+400
+800
+200
+400
+800
+SimCLR (repro.)
+83.73
+87.72
+90.60
+54.74
+61.05
+63.88
+43.30
+46.46
+48.12
+SimSiam (repro.)
+87.54
+90.31
+91.40
+61.56
+64.96
+65.87
+34.82
+39.46
+46.76
+Ours (µ = 1)
+86.47
+89.90
+92.07
+59.13
+63.83
+65.52
+28.76
+33.94
+40.82
+Ours (µ = 3)
+87.72
+90.09
+91.84
+61.05
+64.79
+66.18
+40.06
+42.52
+49.86
+Ours (µ = 10)
+88.66
+90.17
+91.01
+62.45
+65.82
+65.16
+41.30
+45.36
+47.84
+Table 3: Top-1 accuracy under linear evaluation protocal.
+Additional details about the encoder. For the backbone network, we use the CIFAR variant
+of ResNet18 for CIFAR-10 and CIFAR-100 experiments and use ResNet50 for Tiny-ImageNet and
+ImageNet experiments. For the projection MLP, we use a 2-layer MLP with hidden and output
+dimensions 1000 for CIFAR-10, CIFAR100, and Tiny-ImageNet experiments. We use a 3-layer MLP
+with hidden and output dimension 8192 for ImageNet experiments. We set µ = 10 in the ImageNet
+experiment, and set µ ∈{1, 3, 10} for the CIFAR-10/100 and Tiny-ImageNet experiments.
+Training the encoder. We train the neural network using SGD with momentum 0.9. The
+learning rate starts at 0.05 and decreases to 0 with a cosine schedule. On CIFAR-10/100 and Tiny-
+ImageNet we use weight decay 0.0005 and train for 800 epochs with batch size 512. On ImageNet
+we use weight decay 0.0001 and train for 100 epochs with batch size 384. We use 1 GTX 1080
+GPU for CIFAR-10/100 and Tiny-ImageNet experiments, and use 8 GTX 1080 GPUs for ImageNet
+experiments.
+Linear evaluation protocol. We train the linear head using SGD with batch size 256 and weight
+decay 0 for 100 epochs, learning rate starts at 30.0 and is decayed by 10x at the 60th and 80th epochs.
+Image transformation details. We use the same augmentation strategy as described in (Chen
+and He, 2020).
+25
+
+===== PAGE 26 =====
+B
+Proofs for Section 3
+We ﬁrst prove a more generalized version of Theorem 3.8 in section B.1, and then prove Theo-
+rem 3.8 in Section B.2.
+B.1
+A generalized version of Theorem 3.8
+For the proof we will follow the convention in literature (Lee et al., 2014) and deﬁne the nor-
+malized Laplacian matrix as follows:
+Deﬁnition B.1. Let G = (X, w) be the augmentation graph deﬁned in Section 3.1. The normalized Lapla-
+cian matrix of the graph is deﬁned as L = I −D−1/2AD−1/2, where A is the adjacency matrix with
+Axx′ = wxx′ and D is a diagonal matrix with Dxx = wx.
+It is easy to see that L = I−A where A is the normalized adjacency matrix deﬁned in Section 3.1.
+Therefore, when λi is the i-th smallest eigenvalue of L, 1 −λi is the i-th largest eigenvalue of A.
+We call a function deﬁned on augmented data ˆy : X →[r] an extended labeling function. Given an
+extended labeling function, we deﬁne the following quantity that describes the difference between
+extended labels of two augmented data of the same natural datapoint:
+φˆy :=
+X
+x,x′∈X
+wxx′ · 1
+
+ˆy(x) ̸= ˆy(x′)
+
+.
+(18)
+We also deﬁne the following quantity that describes the difference between extended label of an
+augmentated datapoint and the ground truth label of the corresponding natural datapoint:
+∆(y, ˆy) :=
+Pr
+x∼PX ,˜x∼A(·|x) (ˆy(˜x) ̸= y(x)) .
+(19)
+Recall the spectral contrastive loss deﬁned in Section 3.2 is:
+L(f) := E
+x1∼PX ,x2∼PX ,
+x∼A(·|x1),x+∼A(·|x1),x′∼A(·|x2)
+
+−2 · f(x)⊤f(x+) +
+
+f(x)⊤f(x′)
+2
+.
+We ﬁrst state a more general version of Theorem 3.8 as follows.
+Theorem B.2. Assume the set of augmented data X is ﬁnite. Let f∗
+pop ∈arg minf:X→Rk L(f) be a mini-
+mizer of the population spectral contrastive loss L(f) with k ∈Z+. Let k′ ≥r such that k + 1 = (1 + ζ)k′,
+where ζ ∈(0, 1) and k′ ∈Z+. Then, there exists a linear probe B∗∈Rr×k and a universal constant c such
+that the linear probe predictor satisﬁes
+E¯x∼PX ,x∼A(·|¯x)
+⃗y(¯x) −B∗f∗
+pop(x)
+
+2
+2
+
+≤c ·
+
+poly(1/ζ) · log(k + 1) · φˆy
+ρ2
+k′
++ ∆(y, ˆy)
+
+,
+where ⃗y(¯x) is the one-hot embedding of y(¯x) and ρk′ is the sparsest m-partition deﬁned in Deﬁnition 3.4.
+Furthermore, the error of the linear probe predictor can be bounded by
+Pr
+¯x∼PX ,x∼A(·|¯x)
+
+gf ∗
+pop,B∗(x) ̸= y(¯x)
+
+≤2c ·
+
+poly(1/ζ) · log(k + 1) · φˆy
+ρ2
+k′
++ ∆(y, ˆy)
+
+.
+Also, if we let λi be the i-th smallest eigenvalue of the normalized Laplacian matrix of the graph of
+the augmented data, we can ﬁnd a matrix B∗satisfying the above equations with norm bound ∥B∗∥F ≤
+1/(1 −λk).
+26
+
+===== PAGE 27 =====
+We provide the proof for Theorem B.2 below.
+Let λ1, λ2, · · · , λk, λk+1 be the k + 1 smallest eigenvalues of the Laplacian matrix L. The follow-
+ing theorem gives a theoretical guarantee similar to Theorem B.2 except for that the bound depends
+on λk+1:
+Theorem B.3. Assume the set of augmented data X is ﬁnite. Let f∗
+pop ∈arg minf:X→Rk be a minimizer
+of the population spectral contrastive loss L(f) with k ∈Z+. Then, for any labeling function ˆy : X →[r]
+there exists a linear probe B∗∈Rr×k with norm ∥B∗∥F ≤1/(1 −λk) such that
+E¯x∼PX ,x∼A(·|¯x)
+⃗y(¯x) −B∗f∗
+pop(x)
+
+2
+2
+
+≤
+φˆy
+λk+1
++ 4∆(y, ˆy),
+where ⃗y(¯x) is the one-hot embedding of y(¯x). Furthermore, the error can be bounded by
+Pr
+¯x∼PX ,x∼A(·|¯x)
+
+gf ∗
+pop,B∗(x) ̸= y(¯x)
+
+≤2φˆy
+λk+1
++ 8∆(y, ˆy).
+We defer the proof of Theorem B.3 to Section B.3.
+To get rid of the dependency on λk+1, we use following higher-order Cheeger’s inequality
+from (Louis and Makarychev, 2014).
+Lemma B.4 (Proposition 1.2 in (Louis and Makarychev, 2014)). Let G = (V, w) be a weight graph with
+|V | = N. Then, for any t ∈[N] and ζ > 0 such that (1 + ζ)t ∈[N], there exists a partition S1, S2, · · · , St
+of V with
+φG(Si) ≲poly(1/ζ)
+q
+λ(1+ζ)t log t,
+where φG(·) is the Dirichlet conductance deﬁned in Deﬁnition 3.3.
+Now we prove Theorem B.2 by combining TheoremB.3 and Lemma B.4.
+Proof of Theorem B.2. Let G = (X, w) be the augmentation graph. In Lemma B.4 let (1 + ζ)t =
+k + 1 and t
+=
+k′ we have:
+there exists partition S1, · · · , Sk′
+⊂
+X such that φG(Si)
+≲
+poly(1/ζ)
+p
+λk+1 log (k + 1) for ∀i ∈[k′].
+By Deﬁnition 3.4, we have ρk′ ≤maxi∈[k′] φG(Si) ≲
+poly(1/ζ)
+p
+λk+1 log (k + 1), which leads to
+1
+λk+1 ≲poly(1/ζ) · log(k + 1) ·
+1
+ρ2
+k′ . Plugging this bound
+to Theorem B.3 ﬁnishes the proof.
+B.2
+Proof of Theorem 3.8
+We will use the following lemma which gives a connection between φˆy, ∆(y, ˆy) and Assump-
+tion 3.6.
+Lemma B.5. Let G = (X, w) be the augmentation graph, r be the number of underlying classes. Let
+S1, S2, · · · , Sr be the partition induced by the classiﬁer g in Assumption 3.6. Then, there exists an extended
+labeling function ˆy such that
+∆(y, ˆy) ≤α
+and
+φˆy =
+X
+x,x′∈X
+wxx′ · 1
+
+ˆy(x) ̸= ˆy(x′)
+
+≤2α.
+27
+
+===== PAGE 28 =====
+Proof of Lemma B.5. We deﬁne function ˆy : X →[r] as follows: for an augmented data x ∈X, we
+use function ˆy(x) to represent the index of set that x is in, i.e., x ∈Sˆy(x). By Assumption 3.6 it is
+easy to see ∆(y, ˆy) ≤α. On the other hand, we have
+φˆy =
+X
+x,x′∈X
+wxx′1
+
+ˆy(x) ̸= ˆy(x′)
+
+=
+X
+x,x′∈X
+E¯x∼PX
+
+A(x|¯x)A(x′|¯x) · 1
+
+ˆy(x) ̸= ˆy(x′)
+
+≤
+X
+x,x′∈X
+E¯x∼PX
+
+A(x|¯x)A(x′|¯x) ·
+ 1 [ˆy(x) ̸= y(¯x)] + 1
+
+ˆy(x′) ̸= y(¯x)
+
+=2 · E¯x∼PX [A(x|¯x) · 1 [ˆy(x) ̸= y(¯x)]]
+=2 ·
+Pr
+¯x∼PX ,x∼A(·|¯x)
+ x /∈Sy(¯x)
+
+= 2α.
+Here the inequality is because when ˆy(x) ̸= ˆy(x′), there must be ˆy(x) ̸= y(¯x) or ˆy(x′) ̸= y(¯x).
+Now we give the proof of Theorem 3.8 using Lemma B.5 and Theorem B.2.
+Proof of Theorem 3.8. Let S1, S2, · · · , Sr be the partition of X induced by the classiﬁer g given in
+Assumption 3.6. Deﬁne function ˆy : X →[r] as follows: for an augmented datapoint x ∈X, we use
+function ˆy(x) to represent the index of set that x is in, i.e., x ∈Sˆy(x). Let k′ = ⌊k
+2⌋in Theorem B.2, we
+have Pr¯x∼PX ,x∼A(·|¯x)
+
+gf ∗
+pop,B∗(x) ̸= y(¯x)
+
+≲log(k) ·
+φˆy
+ρ2
+⌊k/2⌋+ ∆(y, ˆy). By Lemma B.5 we have φˆy ≤2α
+and ∆(y, ˆy) ≤α, so we have Pr¯x∼PX ,x∼A(·|¯x)
+
+gf ∗
+pop,B∗(x) ̸= y(¯x)
+
+≲
+α
+ρ2
+⌊k/2⌋· log(k). Notice that by
+deﬁnition of ensembled linear probe predictor, ¯gf ∗
+pop,B∗(¯x) ̸= y(¯x) happens only if more than half
+of the augmentations of ¯x predicts differently from y(¯x), so we have Pr¯x∼PX
+
+¯gf ∗
+pop,B∗(¯x) ̸= y(¯x)
+
+≤
+2 Pr¯x∼PX ,x∼A(·|¯x)
+
+gf ∗
+pop,B∗(x) ̸= y(¯x)
+
+≲
+α
+ρ2
+⌊k/2⌋· log(k).
+B.3
+Proof of Theorem B.3
+The proof of Theorem B.3 contains two steps. First, we show that when the feature extractor is
+composed of the minimal eigenvectors of the normalized Laplacian matrix L, we can achieve good
+linear probe accuracy. Then we show that minimizing L(f) gives us a feature extractor equally
+good as the eigenvectors.
+For the ﬁrst step, we use the following lemma which shows that the smallest eigenvectors of
+L can approximate any function on X up to an error proportional to the Rayleigh quotient of the
+function.
+Lemma B.6. Let L be the normalized Laplacian matrix of some graph G. Let N = |X| be total number of
+augmented data, vi be the i-th smallest unit-norm eigenvector of L with eigenvalue λi (make them orthogonal
+in case of repeated eignevalues). Let R(u) := u⊤Lu
+u⊤u be the Rayleigh quotient of a vector u ∈RN . Then, for
+any k ∈Z+ such that k < N and λk+1 > 0, there exists a vector b ∈Rk with norm ∥b∥2 ≤∥u∥2 such that
+u −
+k
+X
+i=1
+bivi
+
+2
+2
+≤R(u)
+λk+1
+∥u∥2
+2 .
+28
+
+===== PAGE 29 =====
+Proof of Lemma B.6. We can decompose the vector u in the eigenvector basis as:
+u =
+N
+X
+i=1
+ζivi.
+We have
+R(u) =
+PN
+i=1 λiζ2
+i
+∥u∥2
+2
+.
+Let b ∈Rk be the vector such that bi = ζi. Obviously we have ∥b∥2
+2 ≤∥u∥2
+2. Noticing that
+u −
+k
+X
+i=1
+bivi
+
+2
+2
+=
+N
+X
+i=k+1
+ζ2
+i ≤R(u)
+λk+1
+∥u∥2
+2 ,
+which ﬁnishes the proof.
+We also need the following claim about the Rayleigh quotient R(u) when u is a vector deﬁned
+by an extended labeling function ˆy.
+Claim B.7. In the setting of Lemma B.6, let ˆy be an extended labeling function. Fix i ∈[r]. Deﬁne function
+uˆy
+i (x) := √wx · 1 [ˆy(x) = i] and uˆy
+i is the corresponding vector in RN. Also deﬁne the following quantity:
+φˆy
+i :=
+P
+x,x′∈X wxx′ · 1 [(ˆy(x) = i ∧ˆy(x′) ̸= i) or (ˆy(x) ̸= i ∧ˆy(x′) = i)]
+P
+x∈X wx · 1 [ˆy(x) = i]
+.
+Then, we have
+R(uˆy
+i ) = 1
+2φˆy
+i .
+Proof of Claim B.7. Let f be any function X →R, deﬁne function u(x) := √wx · f(x). Let u ∈RN
+be the vector corresponding to u. Let A be the adjacency matrix with Axx′ = wxx′ and D be the
+diagonal matrix with Dxx = wx. By deﬁnition of Laplacian matrix, we have
+u⊤Lu = ∥u∥2
+2 −u⊤D−1/2AD−1/2u
+=
+X
+x∈X
+wxf(x)2 −
+X
+x,x′∈X
+wxx′f(x)f(x′)
+= 1
+2
+X
+x,x′∈X
+wxx′ ·
+ f(x) −f(x′)
+2 .
+Therefore we have
+R(u) = u⊤Lu
+u⊤u
+= 1
+2 ·
+P
+x,x′∈X wxx′ · (f(x) −f(x′))2
+P
+x∈X wx · f(x)2
+.
+Setting f(x) = 1 [ˆy(x) = i] ﬁnishes the proof.
+To see the connection between the feature extractor minimizing the population spectral con-
+trastive loss L(f) and the feature extractor corresponding to eigenvectors of the Laplacian matrix,
+we use the following lemma which states that the minimizer of the matrix approximation loss de-
+ﬁned in Section 3.2 is equivalent to the minimizer of population spectral contrastive loss up to a
+data-wise scaling.
+29
+
+===== PAGE 30 =====
+Lemma B.8. Let f : X →Rk be a feature extractor, matrix F ∈RN×k be such that its x-th row is
+√wx · f(x). Then, F is a minimizer of Lmf(F) if and only if f is a minimizer of the population spectral
+contrastive loss L(f).
+Proof of Lemma B.8. Notice that
+Lmf(F) =
+(I −L) −FF ⊤
+2
+F
+=
+X
+x,x′∈X
+
+wxx′
+√wxwx′ −√wxwx′f(x)⊤f(x′)
+2
+=
+X
+x,x′∈X
+wxwx′
+
+f(x)⊤f(x′)
+2
+−2
+X
+x,x′∈X
+wxx′f(x)⊤f(x′) + ∥I −L∥2
+F .
+(20)
+Recall that the deﬁnition of spectral contrastive loss is
+L(f) := −2 · Ex,x+
+h
+f(x)⊤f(x+)
+i
++ Ex,x−
+
+f(x)⊤f(x−)
+2
+,
+where (x, x+) is a random positive pair, (x, x−) is a random negative pair. We can rewrite the
+spectral contrastive loss as
+L(f) = −2
+X
+x,x′∈X
+wxx′ · f(x)⊤f(x′) +
+X
+x,x′∈X
+wxwx′ ·
+
+f(x)⊤f(x′)
+2
+.
+(21)
+Compare Equation (20) and Equation (21), we see they only differ by a constant, which ﬁnishes
+the proof.
+Note that the minimizer of matrix approximation loss is exactly the largest eigenvectors of I−L
+(also the smallest eigenvectors of L) due to Eckart–Young–Mirsky theorem, Lemma B.8 indicates
+that the minimizer of L(f) is equivalent to the smallest eigenvectors of L up to data-wise scaling.
+The following claim shows the relationship between quadratic loss and prediction error.
+Claim B.9. Let f : X →Rk be a feature extractor, B ∈Rk×k be a linear head. Let gf,B be the predictor
+deﬁned in Section 3. Then, for any x ∈X and label y ∈[k], we have
+∥⃗y −Bf(x)∥2
+2 ≥1
+2 · 1 [y ̸= gf,B(x)] ,
+where ⃗y is the one-hot embedding of y.
+Proof. When y ̸= gf,B(x), by the deﬁnition of gf,B we know that there exists another y′ ̸= y such
+that (Bf(x))y′ ≥(Bf(x))y. In this case,
+∥⃗y −Bf(x)∥2
+2 ≥(1 −(Bf(x))y)2 + (Bf(x))2
+y′
+(22)
+≥1
+2 (1 −(Bf(x))y + (Bf(x))y′)2
+(23)
+≥1
+2,
+(24)
+where the ﬁrst inequality is by omitting all the dimensions in the ℓ2 norm other than the y-th and
+y′-th dimensions, the second inequality is by Jensen’s inequality, and the third inequality is because
+(Bf(x))y′ ≥(Bf(x))y. This proves the inequality in the claim when y ̸= gf,B(x). Finally, we ﬁnish
+the proof by noticing that the inequality in this claim obviously holds when y = gf,B(x).
+30
+
+===== PAGE 31 =====
+Now we are ready to prove Theorem B.3 by combining Lemma B.6, Claim B.7, Lemma B.8 and
+Claim B.9.
+Proof of Theorem B.3. Let Fsc = [v1, v2, · · · , vk] be the matrix that contains the smallest k eigenvectors
+of L as columns. For each i ∈[r], we deﬁne function uˆy
+i (x) := √wx · 1 [ˆy(x) = i] and uˆy
+i be the
+corresponding vector in RN. By Lemma B.6, there exists a vector bi ∈Rk with norm bound ∥bi∥2 ≤
+uˆy
+i
+
+2 such that
+uˆy
+i −Fscbi
+
+2
+2 ≤R(uˆy
+i )
+λk+1
+uˆy
+i
+
+2
+2 .
+(25)
+By Claim B.7, we have
+R(uˆy
+i ) = 1
+2φˆy
+i = 1
+2 ·
+P
+x,x′∈X wxx′ · 1 [(ˆy(x) = i ∧ˆy(x′) ̸= i) or (ˆy(x) ̸= i ∧ˆy(x′) = i)]
+P
+x∈X wx · 1 [ˆy(x) = i]
+.
+So we can rewrite Equation (25) as:
+uˆy
+i −Fscbi
+
+2
+2 ≤
+φˆy
+i
+2λk+1
+·
+X
+x∈X
+wx · 1 [ˆy(x) = i]
+=
+1
+2λk+1
+X
+x,x′∈X
+wxx′ · 1
+
+(ˆy(x) = i ∧ˆy(x′) ̸= i) or (ˆy(x) ̸= i ∧ˆy(x′) = i)
+
+.
+(26)
+Let matrix U = [uˆy
+1, · · · , uˆy
+r] contains all uˆy
+i as columns, and let u : X →Rr be the corresponding
+feature extractor. Deﬁne matrix B ∈RN×k such that B⊤= [b1, · · · , br]. Summing Equation (26) over
+all i ∈[r] and by the deﬁnition of φˆy we have
+U −FscB⊤
+2
+F ≤
+1
+2λk+1
+X
+x,x′∈X
+wxx′ · 1
+
+ˆy(x) ̸= ˆy(x′)
+
+=
+φˆy
+2λk+1
+,
+(27)
+where
+∥B∥2
+F =
+r
+X
+i=1
+∥bi∥2
+2 ≤
+r
+X
+i=1
+uˆy
+i
+
+2
+2 =
+X
+x∈X
+wx = 1.
+Now we come back to the feature extractor f∗
+pop that minimizes the spectral contrastive loss
+function L(f). By Lemma B.8, matrix F ∗that contains √wx · f∗
+pop(x) as its x-th row is a minimizer
+of Lmf(F). By Eckard-Young-Mirsky theorem, we have
+F ∗= FscDλQ,
+where Q is an orthonormal matrix and
+Dλ =
+
+
+√1 −λ1
+√1 −λ2
+· · ·
+√1 −λk
+
+.
+Let
+B∗= BD−1
+λ Q−1,
+31
+
+===== PAGE 32 =====
+and let ⃗y(¯x) be the one-hot embedding of y(¯x), ⃗ˆy(x) be the one-hot embedding of ˆy(x), we have
+E¯x∼PX ,x∼A(·|¯x)
+⃗y(¯x) −B∗f∗
+pop(x)
+
+2
+2
+
+≤2E¯x∼PX ,x∼A(·|¯x)
+⃗ˆy(x) −B∗f∗
+pop(x)
+
+2
+2
+
++ 2E¯x∼PX ,x∼A(·|¯x)
+⃗ˆy(x) −⃗y(¯x)
+
+2
+2
+
+=2
+X
+x∈X
+wx ·
+⃗ˆy(x) −B∗f∗
+pop(x)
+
+2
+2 + 4∆(y, ˆy)
+(because wx is the probability of x)
+=2
+U −F ∗B∗⊤
+2
+F + 4∆(y, ˆy)
+(rewrite in matrix form)
+=2
+U −FscB⊤
+2
+F + 4∆(y, ˆy)
+(by deﬁnition of B∗)
+≤φˆy
+λk+1
++ 4∆(y, ˆy).
+(by Equation (27))
+To bound the error rate, we ﬁrst notice that Claim B.9 tells us that for any x ∈X,
+⃗y(¯x) −B∗f∗
+pop(x)
+
+2
+2 ≥1
+2 · 1
+h
+gf ∗
+pop,B∗(x) ̸= y(¯x)
+i
+.
+(28)
+Now we bound the error rate on X as follows:
+Pr
+¯x∼PX ,x∼A(·|¯x)
+
+gf ∗
+pop,B∗(x) ̸= y(¯x)
+
+≤2E¯x∼PX ,x∼A(·|¯x)
+⃗y(¯x) −B∗f∗
+pop(x)
+
+2
+2
+
+(by Equation (28))
+≤2φˆy
+λk+1
++ 8∆(y, ˆy).
+Finally we bound the norm of B∗as
+∥B∗∥2
+F = Tr
+
+B∗B∗⊤
+= Tr
+
+BD−2
+λ B⊤
+≤
+1
+1 −λk
+∥B∥2
+F =
+1
+1 −λk
+.
+C
+Proofs for Section 3.4
+C.1
+Proof of Proposition 3.9
+Proof of Proposition 3.9. Let Bσ be the uniform distribution over a ball with radius σ.
+Let
+S1, S2, · · · , Sm+1 be a partition of the Euclidean space. There must be some i ∈[m + 1] such that
+Prx∼Pj,ξ∼Bσ[x + ξ ∈Si] ≤1
+2 for all j ∈[m]. Thus, we know that
+ρm+1 ≥φG(Si) ≥min
+j∈[m]
+Prx∼Pj,ξ∼Bσ,ξ′∼Bσ[x + ξ ∈Si ∧x + ξ′ /∈Si]
+Prx∼Pj,ξ∼Bσ[x + ξ ∈Si]
+.
+(29)
+For x ∈Rd, we use P(Si|x) as a shorthand for Prξ∼Bσ(x + ξ ∈Si). Let
+R :=
+
+x
+ Pr(Si|x) ≥2
+3
+
+.
+(30)
+32
+
+===== PAGE 33 =====
+On one hand, suppose
+R
+x/∈R Pj(x)P(Si|x)dx ≥1
+2 Prx∼Pj,ξ∼Bσ[x + ξ ∈Si], we can lower bound the
+numerator in the RHS of Equation (29) as
+Pr
+x∼Pj,ξ∼Bσ,ξ′∼Bσ[x + ξ ∈Si ∧x + ξ′ /∈Si] ≥
+Z
+x/∈R
+Pj(x)P(Si|x)(1 −P(Si|x))dx
+(31)
+≥1
+6
+Pr
+x∼Pj,ξ∼Bσ[x + ξ ∈Si],
+(32)
+hence the RHS of Equation (29) is at least 1/6.
+On the other hand, suppose
+R
+x/∈R Pj(x)P(Si|x)dx < 1
+2 Prx∼Pj,ξ∼Bσ[x + ξ ∈Si], we have
+Z
+x∈R
+Pj(x)P(Si|x)dx =
+Pr
+x∼Pj,ξ∼Bσ[x + ξ ∈Si] −
+Z
+x/∈R
+Pj(x)P(Si|x)dx ≥1
+2
+Pr
+x∼Pj,ξ∼Bσ[x + ξ ∈Si],
+(33)
+hence the denominator of the RHS of Equation (29) can be upper bounded by
+Pr
+x∼Pj,ξ∼Bσ[x + ξ ∈Si] ≤2
+Z
+x∈R
+P(Si|x)Pj(x)dx ≤2
+Z
+x∈R
+Pj(x)dx.
+(34)
+Deﬁne
+N(R) :=
+
+x
+ ∥x −a∥2 ≤σ
+6 for some a ∈R
+
+.
+(35)
+For two Gaussian distributions with variance σ2 · Id×d and centers at most σ
+6 far from each other,
+their TV-distance is at most 1
+6 (see the ﬁrst equation on Page 5 of (Devroye et al., 2018)), hence for
+any x ∈N(R), we have P(Si|x) ≥2
+3 −1
+6 = 1
+2. We can now lower bound the numerator in the RHS
+of Equation (29) as:
+Pr
+x∼Pj,ξ∼Bσ,ξ′∼Bσ[x + ξ ∈Si ∧x + ξ′ /∈Si] ≥
+Z
+x∈N(R)\R
+Pj(x)P(Si|x)(1 −P(Si|x))dx
+≥1
+6
+Z
+x∈N(R)\R
+Pj(x)dx.
+(36)
+Notice that Prx∼Pj,ξ∼Bσ[x+ξ ∈Si] ≤1
+2 and by the deﬁnition of R, we know
+R
+x∈R Pj(x)dx ≤3
+4, thus
+Z
+x∈R
+Pj(x)dx ≤3
+4 ≤3
+Z
+x/∈R
+Pj(x)dx.
+(37)
+Combine Equation (34), Equation (36) and Equation (37) gives:
+Prx∼Pj,ξ∼Bσ,ξ′∼Bσ[x + ξ ∈Si ∧x + ξ′ /∈Si]
+Prx∼Pj,ξ∼Bσ[x + ξ ∈Si]
+≥1
+36
+R
+x∈N(R)\R Pj(x)P(Si|x)dx
+min{
+R
+x∈R Pj(x)dx,
+R
+x∈R Pj(x)dx}.
+(38)
+Notice that (using the deﬁnition of surface area (Guggenheimer, 1977, chapter 4))
+lim
+σ→0+
+1
+σ ·
+R
+x∈N(R)\R Pj(x)P(Si|x)dx
+min{
+R
+x∈R Pj(x)dx,
+R
+x∈R Pj(x)dx} ≥1
+6hPj,
+(39)
+we have that as σ →0+,
+ρm+1
+σ
+≥
+1
+216 min
+j∈[m] hPj,
+(40)
+which ﬁnishes the proof.
+33
+
+===== PAGE 34 =====
+C.2
+Proof of Theorem 3.11
+In this section, we give a proof of Theorem 3.11.
+The following lemma shows that the augmented graph for Example 3.10 satisﬁes Assump-
+tion 3.6 with some bounded α.
+Lemma C.1. In the setting of Theorem 3.11, the data distribution satisﬁes Assumption 3.6 with α ≤
+1
+poly(d′).
+Proof of Lemma C.1. For any z ∼N(µi, 1
+d′ · Id′×d′) and any j ̸= i, by the tail bound of gaussian
+distribution we have
+Pr
+z∼N(µi, 1
+d′ ·Id′×d′)
+
+(z −µi)⊤
+
+µj −µi
+∥µj −µi∥2
+
+≲
+√log d
+√
+d′
+
+≥1 −
+1
+poly(d).
+Also, for ξ ∼N(0, 1
+d · Id×d), when σ ≤
+1
+√
+d we have
+Pr
+ξ∼N(0, σ2
+d ·Id′×d′)
+
+∥ξ∥2 ≲
+√log d
+√
+d
+
+≥1 −
+1
+poly(d).
+Notice that
+Q−1(Q(z) + ξ) −z
+
+2 ≤κ ∥ξ∥, we can set ∥µi −µj∥≳κ
+√log d
+√
+d . Therefore, when
+∥µi −µj∥≳κ
+√log d
+√
+d′
+we can combine the above two cases and have
+Pr
+z∼N(µi, 1
+d′ ·Id′×d′),ξ∼N(0, σ2
+d ·Id′×d′)
+ Pi(z) > Pj(Q−1(Q(z) + ξ))
+
+≥1 −
+1
+poly(d).
+Since r ≤d, we have
+Pr
+¯x∼PX ,x∼A(·|¯x)(y(x) ̸= y(¯x)) ≥1 −
+1
+poly(d).
+We use the following lemma to give a lower bound for the sparest m-partition of the augmen-
+tation graph in Example 3.10.
+Lemma C.2. In the setting of Theorem 3.11, for any k′ > r and τ > 0, we have
+ρk′ ≥cτ/κ
+18 · exp
+
+−2cστ + τ 2
+2σ2/d
+
+,
+where
+cσ := σ · Φ−1
+d (2
+3)
+with Φd(z) := Prξ∼N(0, 1
+dId×d)(∥ξ∥2 ≤z), and
+cτ/κ := min
+p∈[0, 3
+4]
+Φ(Φ−1(p) + τ
+√
+d/κ)
+p
+−1
+with Φ(z) :=
+R z
+−∞
+e−u2/2
+√
+2π du.
+The proof of Lemma C.2 can be found in Section C.3. Now we give the proof of Example 3.11.
+34
+
+===== PAGE 35 =====
+Proof of Theorem 3.11. The result on α is directly from Lemma C.1. By concentration inequality, there
+must exists some universal constant C > 0 such that for any d ≥C, we have 1 −Φd(
+q
+3
+2) ≤1
+3.
+When this happens, we have Φ−1
+d (2
+3) ≤
+q
+3
+2. Since for d ≤C we can just treat d as constant, we have
+Φ−1
+d (2
+3) ≲1. Set τ = σ/d in Lemma C.2, we have ρk′ ≳
+σ
+κ
+√
+d. Set k′ = ⌊k/2⌋, we apply Theorem 3.8
+and get the bound we need.
+C.3
+Proof of Lemma C.2
+In this section we give a proof for Lemma C.2. We ﬁrst introduce the following claim which
+states that for a given subset of augmented data, any two data close in L2 norm cannot have a very
+different chance of being augmented into this set.
+Claim C.3. In the setting of Theorem 3.11, given a set S ⊆Rd.
+If x ∈Rd satisﬁes Pr(S|x) :=
+Pr˜x∼A(·|x)(˜x ∈S) ≥2
+3. Then, for any x′ such that ∥x −x′∥2 ≤τ, we have
+Pr(S|x′) ≥1
+3 · exp
+
+−2cστ + τ 2
+2σ2
+
+,
+where
+cσ := σ · Φ−1
+d (2
+3),
+with Φd(z) := Prξ∼N(0, 1
+d·Id×d)(∥ξ∥2 ≤z).
+Proof of Claim C.3. By the deﬁnition of augmentation, we know
+Pr(S|x) = Eξ∼N(0, σ2
+d ·Id×d) [1 [x + ξ ∈S]] .
+By the deﬁnition of cσ, we have
+Pr
+ξ∼N(0, σ2
+d ·Id×d)
+(∥ξ∥2 ≤cσ) = 2
+3.
+Since Pr(S|x) ≥2
+3 by assumption, we have
+Eξ∼N(0, σ2
+d ·Id×d) [P(S|x + ξ) · 1 [∥ξ∥2 ≤cσ]] ≥1
+3.
+Now we can bound the quanity of our interest:
+Pr(S|x′) =
+1
+(2πσ2/d)d/2
+Z
+ξ
+e−
+∥ξ∥2
+2
+2σ2/d P(S|x′ + ξ)dξ
+=
+1
+(2πσ2/d)d/2
+Z
+ξ
+e−∥ξ+x−x′∥2
+2
+2σ2/d
+P(S|x + ξ)dξ
+≥
+1
+(2πσ2/d)d/2
+Z
+ξ
+e−∥ξ+x−x′∥2
+2
+2σ2/d
+P(S|x + ξ) · 1 [∥ξ∥2 ≤cσ] dξ
+≥
+1
+(2πσ2/d)d/2
+Z
+ξ
+e−
+2cστ+τ2+∥ξ∥2
+2
+2σ2/d
+P(S|x + ξ) · 1 [∥ξ∥2 ≤cσ] dξ
+= e−2cστ+τ2
+2σ2/d
+· Eξ∼N(0, σ2
+d Id×d) [P(S|x + ξ) · 1 [∥ξ∥2 ≤cσ]]
+≥1
+3 · exp
+
+−2cστ + τ 2
+2σ2/d
+
+.
+35
+
+===== PAGE 36 =====
+We now give the proof of Lemma C.2.
+Proof of Lemma C.2. Let S1, · · · , Sk′ be the disjoint sets that gives ρk′ in Deﬁnition 3.4. First we notice
+that when k′ > r, there must exist t ∈[k′] such that for all i ∈[r], we have
+Pr
+x∼Pi,˜x∼A(·|x)(˜x ∈St) ≤1
+2.
+(41)
+WLOG, we assume t = 1. So we know that
+ρk′ = max
+i∈[k′] φG(Si) ≥φG(S1) ≥min
+j∈[r]
+Ex∼Pj [Pr(S1|x)(1 −Pr(S1|x))]
+Ex∼Pj [Pr(S1|x)]
+,
+(42)
+where
+Pr(S|x) :=
+Pr
+˜x∼A(·|x)(˜x ∈S).
+WLOG, we assume j = 1 minimizes the RHS of Equation (42), so we only need to prove
+Ex∼P1 [Pr(S1|x)(1 −Pr(S1|x))]
+Ex∼P1 [Pr(S1|x)]
+≥cτ/κ
+18 · exp
+
+−2cστ + τ 2
+2σ2/d
+
+.
+We deﬁne the following set
+R :=
+
+x
+ Pr(S1|x) ≥2
+3
+
+.
+Notice that
+Ex∼P1 [Pr(S1|x)] =
+Z
+x
+P1(x) Pr(S1|x)dx
+=
+Z
+x∈R
+P1(x) Pr(S1|x)dx +
+Z
+x/∈R
+P1(x) Pr(S1|x)dx.
+(43)
+We can consider the following two cases.
+Case 1:
+R
+x/∈R P1(x) Pr(S1|x)dx ≥1
+2Ex∼P1 [Pr(S1|x)].
+This is the easy case because we have
+Ex∼P1 [Pr(S1|x)(1 −Pr(S1|x))] ≥
+Z
+x/∈R
+P1(x) Pr(S1|x)(1 −Pr(S1|x))dx
+≥1
+3
+Z
+x/∈R
+P1(x) Pr(S1|x)dx
+≥1
+6Ex∼P1 [Pr(S1|x)] .
+Case 2:
+R
+x∈R P1(x) Pr(S1|x)dx ≥1
+2Ex∼P1 [Pr(S1|x)].
+Deﬁne neighbourhood of R as
+N(R) :=
+
+x
+ ∥x −a∥2 ≤τ for some a ∈R
+
+.
+We have
+Ex∼P1 [Pr(S1|x)(1 −Pr(S1|x))] ≥
+Z
+x∈N(R)\R
+P1(x) Pr(S1|x)(1 −Pr(S1|x))dx
+≥1
+9 · exp
+
+−2cστ + τ 2
+2σ2/d
+
+·
+Z
+x∈N(R)\R
+P1(x)dx,
+36
+
+===== PAGE 37 =====
+where the second inequality is by Claim C.3. Notice that
+Z
+x∈R
+P1(x)dx ≤3
+2
+Z
+x∈R
+P1(x) Pr(S1|x)dx ≤3
+2
+Z
+x
+P1(x) Pr(S1|x)dx ≤3
+4,
+where we use Equation (41). Deﬁne set eR := Q−1(R) be the set in the ambient space corresponding
+to R. Deﬁne
+e
+N( eR) :=
+
+x′ ∈Rd′
+x′ −a
+
+2 ≤τ
+κ for some a ∈eR
+
+Due to Q being κ-bi-lipschitz, it is easy to see e
+N( eR) ⊆Q−1 (N(R)). According to the Gaussian
+isoperimetric inequality (Bobkov et al., 1997), we have
+Z
+x∈N(R)\R
+P1(x)dx ≥cτ/κ
+Z
+x∈R
+P1(x)dx,
+where
+cτ/κ :=
+min
+0≤p≤3/4
+Φ(Φ−1(p) + τ
+√
+d/κ)
+p
+−1,
+with Φ(·) is the Gaussian CDF function deﬁned as
+Φ(z) :=
+Z z
+−∞
+e−u2/2
+√
+2π du.
+So we have
+Ex∼P1 [Pr(S1|x)(1 −Pr(S1|x))] ≥cτ/κ
+9
+· exp
+
+−2cστ + τ 2
+2σ2/d
+
+·
+Z
+x∈R
+P1(x)dx
+≥cτ/κ
+9
+· exp
+
+−2cστ + τ 2
+2σ2/d
+
+·
+Z
+x∈R
+P1(x) Pr(S1|x)dx
+≥cτ/κ
+18 · exp
+
+−2cστ + τ 2
+2σ2/d
+
+· Ex∼P1 [Pr(S1|x)] .
+By Equation (43), either case 1 or case 2 holds. Combining case 1 and case 2, we have
+Ex∼P1 [Pr(S1|x)(1 −Pr(S1|x))]
+Ex∼P1 [Pr(S1|x)]
+≥min
+1
+6, cτ/κ
+18 · exp
+
+−2cστ + τ 2
+2σ2/d
+
+= cτ/κ
+18 · exp
+
+−2cστ + τ 2
+2σ2/d
+
+.
+D
+Proofs for Section 4
+D.1
+Proof of Theorem 4.1
+We restate the empirical spectral contrastive loss deﬁned in Section 4 as follows:
+Deﬁnition D.1 (Empirical spectral contrastive loss). Consider a dataset b
+X = {¯x1, ¯x2, · · · , ¯xn} contain-
+ing n data points i.i.d. sampled from PX . Let ˆPX be the uniform distribution over b
+X. Let ˆP¯x,¯x′ be the
+uniform distribution over data pairs (¯xi, ¯xj) where i ̸= j. We deﬁne the empirical spectral contrastive loss
+of a feature extractor f as
+bLn(f) := −2E
+¯x∼ˆ
+PX ,
+x∼A(·|¯x),x′∼A(·|¯x)
+h
+f(x)⊤f(x′)
+i
++ E
+(¯x,¯x′)∼ˆ
+P¯x,¯x′ ,
+x∼A(·|¯x),x′∼A(·|¯x′)
+
+f(x)⊤f(x′)
+2
+.
+37
+
+===== PAGE 38 =====
+The following claim shows that bLn(f) is an unbiased estimator of population spectral con-
+trastive loss.
+Claim D.2. bLn(f) is an unbiased estimator of L(f), i.e.,
+E b
+X
+h
+bLn(f)
+i
+= L(f).
+Proof. This is because
+E b
+X
+h
+bLn(f)
+i
+= −2 · E b
+X
+
+E
+¯x∼ˆ
+PX ,
+x∼A(·|¯x),x′∼A(·|¯x)
+h
+f(x)⊤f(x′)
+i
++ E b
+X
+
+E
+(¯x,¯x′)∼ˆ
+P¯x,¯x′ ,
+x∼A(·|¯x),x′∼A(·|¯x′)
+
+f(x)⊤f(x′)
+2
+= −2E
+¯x∼PX ,
+x∼A(·|¯x),x′∼A(·|¯x)
+h
+f(x)⊤f(x′)
+i
++ E
+¯x∼PX ,¯x′∼PX ,
+x∼A(·|¯x),x′∼A(·|¯x′)
+
+f(x)⊤f(x′)
+2
+= L(f).
+To make use of the Radmacher complexity theory, we need to write the empirical loss as the
+sum of i.i.d. terms, which is achieved by the following sub-sampling scheme:
+Deﬁnition D.3. Given dataset b
+X, we sample a subset of tuples as follows: ﬁrst sample a permutation
+π : [n] →[n], then we sample tuples S = {(zi, z+
+i , z′
+i)}n/2
+i=1 as follows:
+zi ∼A(·|¯xπ(2i−1)),
+z+
+i ∼A(·|¯xπ(2i−1)),
+z′
+i ∼A(·|¯xπ(2i)).
+We deﬁne the following loss on S:
+bLS(f) :=
+1
+n/2
+n/2
+X
+i=1
+
+f(zi)⊤f(z′
+i)
+2
+−2f(zi)⊤f(z+
+i )
+
+.
+It is easy to see that bLS(f) is an unbiased estimator of bLn(f):
+Claim D.4. For given b
+X, if we sample S as above, we have:
+ES
+h
+bLS(f)
+i
+= bLf(.)
+Proof. This is obvious by the deﬁnition of bLS(f) and bLn(f).
+The following lemma reveals the relationship between the Rademacher complexity of feature
+extractors and the Rademacher complexity of the loss deﬁned on tuples:
+Lemma D.5. Let F be a hypothesis class of feature extractors from X to Rk. Assume ∥f(x)∥∞≤κ for all
+x ∈X. For i ∈[k], deﬁne fi : X →R be the function such that fi(x) is the i-th dimension of f(x). Let Fi
+be the hypothesis containing fi for all f ∈F. For n ∈Z+, let bRn(Fi) be the maximal possible empirical
+Rademacher complexity of Fi over n data:
+bRn(Fi) :=
+max
+{x1,x2,··· ,xn} Eσ
+
+sup
+fi∈Fi
+
+1
+n
+n
+X
+j=1
+σjfi(xj)
+
+
+
+,
+38
+
+===== PAGE 39 =====
+where x1, x2, · · · , xm are in X, and σ is a uniform random vector in {−1, 1}n.
+Then, the empirical
+Rademacher complexity on any n tuples {(zi, z+
+i , z′
+i)}n
+i=1 can be bounded by
+Eσ
+
+sup
+f∈F
+
+1
+n
+n
+X
+j=1
+σj
+
+f(zj)⊤f(z′
+j)
+2
+−2f(zj)⊤f(z+
+j )
+
+
+
+≤(16k2κ2 + 16kκ) · max
+i∈[k]
+bRn(Fi).
+Proof.
+Eσ
+
+sup
+f∈F
+
+1
+n
+n
+X
+j=1
+σj
+
+f(zj)⊤f(z′
+j)
+2
+−2f(zj)⊤f(z+
+j )
+
+
+
+
+≤Eσ
+
+sup
+f∈F
+
+1
+n
+n
+X
+j=1
+σj
+
+f(zj)⊤f(z′
+j)
+2
+
+
+
++ 2Eσ
+
+sup
+f∈F
+
+1
+n
+n
+X
+j=1
+σjf(zj)⊤f(z+
+j )
+
+
+
+
+≤2kκEσ
+
+sup
+f∈F
+
+1
+n
+n
+X
+j=1
+σjf(zj)⊤f(z′
+j)
+
+
+
++ 2Eσ
+
+sup
+f∈F
+
+1
+n
+n
+X
+j=1
+σjf(zj)⊤f(z+
+j )
+
+
+
+
+≤(2k2κ + 2k)
+max
+z1,z2,··· ,zn
+z′
+1,z′
+2,··· ,z′n
+max
+i∈[k] Eσ
+
+sup
+fi∈Fi
+
+1
+n
+n
+X
+j=1
+σjfi(zj)fi(z′
+j)
+
+
+
+,
+here the second inequality is by Talagrand’s lemma.
+Notice that for any z1, z2 · · · zn and
+z′
+1, z′
+2, · · · , z′
+n in X and any i ∈[k] we have
+Eσ
+
+sup
+fi∈Fi
+
+1
+n
+n
+X
+j=1
+σjfi(zj)fi(z′
+j)
+
+
+
+
+≤1
+2Eσ
+
+sup
+fi∈Fi
+
+1
+n
+n
+X
+j=1
+σj
+ fi(zj) + fi(z′
+j)
+2
+
+
+
++ 1
+2Eσ
+
+sup
+fi∈Fi
+
+1
+n
+n
+X
+j=1
+σj
+ fi(zj) −fi(z′
+j)
+2
+
+
+
+
+≤4κEσ
+
+sup
+fi∈Fi
+
+1
+n
+n
+X
+j=1
+σjfi(zj)
+
+
+
++ 4κEσ
+
+sup
+fi∈Fi
+
+1
+n
+n
+X
+j=1
+σjfi(z′
+j)
+
+
+
+,
+where the ﬁrst inequaltiy is by Talagrand’s lemma. Combine these two equations and we get:
+Eσ
+
+sup
+f∈F
+
+1
+n
+n
+X
+j=1
+σj
+
+f(zj)⊤f(z′
+j)
+2
+−2f(zj)⊤f(z+
+j )
+
+
+
+
+≤(16k2κ2 + 16kκ)
+max
+z1,z2,··· ,zn max
+i∈[k] Eσ
+
+sup
+fi∈Fi
+
+1
+n
+n
+X
+j=1
+σjfi(zj)
+
+
+
+.
+Proof of Theorem 4.1. By Claim D.2 and Claim D.4, we know that ES[ bLS(f)] = L(f), where S is sam-
+pled by ﬁrst sampling b
+X then sample S according to Deﬁnition D.3. Notice that when b
+X contains
+n i.i.d. samples natural data, the set of random tuples S contains n i.i.d tuples. Therefore, we can
+apply generalization bound with Rademacher complexity to get a uniform convergence bound. In
+39
+
+===== PAGE 40 =====
+particular, by Lemma D.5 and notice the fact that
+
+f(zj)⊤f(z′
+j)
+2
+−2f(zj)⊤f(z+
+j ) always take val-
+ues in range [−2kκ2, 2kκ2 +k2κ4], we apply standard generalization analysis based on Rademacher
+complexity and get: with probability at least 1 −δ2/4 over the randomness of b
+X and S, we have for
+any f ∈F,
+L(f) ≤bLS(f) + (32k2κ2 + 32kκ) max
+i∈[k]
+bRnpre/2(Fi) + (4kκ2 + k2κ4) ·
+s
+4 log 2/δ
+npre
+.
+(44)
+This means with probability at least 1 −δ/2 over random b
+X, we have: with probability at least
+1 −δ/2 over random tuples S conditioned on b
+X, Equation (44) holds. Since both L(f) and bLnpre(f)
+take value in range [−2kκ2, 2kκ2 + k2κ4], we have: with probability at least 1 −δ/2 over random b
+X,
+we have for any f ∈F,
+L(f) ≤bLnpre(f) + (32k2κ2 + 32kκ) · max
+i∈[k]
+bRnpre/2(Fi) + (4kκ2 + k2κ4) ·
+ s
+4 log 2/δ
+npre
++ δ
+2
+!
+.
+Since negating the functions in a function class doesn’t change its Rademacher complexity, we also
+have the other direction: with probability at least 1 −δ/2 over random b
+X, we have for any f ∈F,
+L(f) ≥bLnpre(f) −(32k2κ2 + 32kκ) · max
+i∈[k]
+bRnpre/2(Fi) + (4kκ2 + k2κ4) ·
+ s
+4 log 2/δ
+npre
++ δ
+2
+!
+.
+Combine them together we get the excess risk bound: with probability at least 1 −δ, we have
+L( ˆf) ≤L(f∗
+F) + (64k2κ2 + 64kκ) · max
+i∈[k]
+bRnpre/2(Fi) + (8kκ2 + 2k2κ4) ·
+ s
+4 log 2/δ
+npre
++ δ
+2
+!
+,
+where ˆf is minimizer of bLnpre(f) in F and f∗
+F is minimizer of L(f) in F. Set c1 = 64k2κ2 + 64kκ and
+c2 = 16kκ2 + 4k2κ4 and notice that maxi∈[k] bRnpre/2(Fi) = bRnpre/2(F) ﬁnishes the proof.
+D.2
+Generalization bound for spectral contrastive learning with deep neural networks
+In this section, we examplify Theorem 4.1 with the norm-contralled Rademacher complexity
+bound introduced in (Golowich et al., 2018), which gives the following theorem.
+Theorem D.6. Assume X is a subset of Euclidean space Rd and ∥x∥2 ≤Cx for any x ∈X. Let F be a
+hypothesis class of norm-contralled l-layer deep neural networks deﬁned as
+{x →Pκ(Wlσ(Wl−1σ(· · · σ(W1x)))) : ∥Wi∥F ≤Cw,i}
+where σ(·) is element-wise ReLU activation, Pκ(·) is element-wise projection to interval [−κ, κ] for some
+κ > 0, Cw,i is the norm bound of the i-th layer, Wl has k rows and W1 has d columns. Then, with probability
+at least 1 −δ over randomness of a dataset with size 2npre, we have
+L( ˆf) ≤L∗
+F + c1 · CxCw
+√
+l
+√npre
++ c2 ·
+ s
+log 1/δ
+npre
++ δ
+!
+,
+where ˆf is the minimizer of bL2npre(f) in F, L∗
+F is the minimal L(f) achievable by any function f ∈F,
+Cw := Ql
+i=1 Cw,i, constants c1 ≲k2κ2 + kκ and c2 ≲kκ2 + k2κ4.
+40
+
+===== PAGE 41 =====
+Proof of Theorem D.6. Consider the following hypothesis class of real-valued neural networks:
+Freal ≜
+n
+x →c
+Wlσ(Wl−1σ(· · · σ(W1x))) : ∥Wi∥F ≤Cw,i
+o
+where σ(·) is element-wise ReLU activation and Cw,i is the norm bound of the i-th layer deﬁned in
+the theorem, Wl has k rows and c
+W1 is a vector. By Theorem 1 of (Golowich et al., 2018), we have
+bRnpre (Freal) ≤Cx(
+p
+2 log(2)l + 1)Cw
+√npre
+.
+Let the projection version of this hyposis class be:
+Freal+proj ≜
+n
+x →Pκ(c
+Wlσ(Wl−1σ(· · · σ(W1x)))) : ∥Wi∥F ≤Cw,i
+o
+,
+where Pκ(·) projects a real number into interval [−Cw, Cw]. Notice that Pκ(·) is 1-Lipschitz, by
+Telegrand’s lemma we have
+bRnpre
+ Freal+proj
+
+≤Cx(
+p
+2 log(2)l + 1)Cw
+√npre
+.
+For each i ∈[k], deﬁne function fi : X →R such that fi(x) is the i-th dimension of f(x), deﬁne
+Fi be the hypothesis class including all fi for f ∈F. Then when F is the composition of deep neural
+networks and projection function as deﬁned in the theorem, it is obvious to see that Fi = Freal+proj
+for all i ∈[k]. Therefore, by Theorem 4.1 we have
+L( ˆf) ≤L∗
+F + c1 · Cx(
+p
+2 log(2)l + 1)Cw
+√npre
++ c2 ·
+ s
+log 2/δ
+npre
++ δ
+!
+,
+and absorbing the constants into c1 ﬁnishes the proof.
+D.3
+Proof of Theorem 4.2
+In this section we give the proof of Theorem 4.2. We will ﬁrst prove the following theorem that
+characterize the error propagation from pre-training to the downstream task.
+Theorem D.7 (Error propagation from pre-training to the downstream task). Assume representation
+dimension k ≥4r + 2, Assumption 3.6 holds for α > 0 and Assumption 3.7 holds. Recall γi be the i-
+th largest eigenvalue of the normalized adjacency matrix. Then, for any ϵ > 0 and ˆfemp ∈F such that
+L( ˆfemp) < L(f∗
+pop) + ϵ, we have:
+E( ˆfemp) ≲
+α
+ρ2
+⌊k/2⌋
+· log k + kϵ
+∆2γ
+,
+where ∆γ := γ⌊3k/4⌋−γk is the eigenvalue gap between the ⌊3k/4⌋-th and the k-th eigenvalue. Furthermore,
+there exists a linear head bB ∈Rk×r that achieves this error and has norm bound
+ bB
+
+F ≤2(k + 1)
+1 −λk
+.
+(45)
+We ﬁrst introduce the following deﬁnitions of ϵ-optimal minimizers of matrix approximation
+loss and population spectral contrastive loss:
+41
+
+===== PAGE 42 =====
+Deﬁnition D.8. We say a function ˆfmf is ϵ-optimal minimizer of matrix approximation loss Lmf if
+Lmf( bFmf) ≤min
+F
+Lmf(F) + ϵ,
+where bFmf is ˆfmf written in the matrix form. We say a function ˆf is ϵ-optimal minimizer of spectral con-
+trastive loss L if
+L( ˆf) ≤min
+f
+L(f) + ϵ.
+We introduce the following generalized version of Theorem B.3, which captures the main ef-
+fects of error in the representation.
+Theorem D.9. [Generalization of Theorem B.3] Assume the set of augmented data X is ﬁnite. Let λi be the
+i-th smallest eigenvalue of the normalize laplacian matrix. Let ˆf ∈arg minf:X→Rk be a ϵ-optimal minimizer
+of the spectral contrastive loss function L(f) with k ∈Z+. Then, for any labeling function ˆy : X →[r]
+there exists a linear probe bB ∈Rr×k with norm bound
+ bB
+
+F ≤2(k+1)
+1−λk such that
+E¯x∼PX ,x∼A(·|¯x)
+⃗y(¯x) −bB ˆfemp(x)
+
+2
+2
+
+≲min
+1≤k′≤k
+ φˆy
+λk′+1
++
+k′ϵ
+(λk+1 −λk′)2
+
++ ∆(y, ˆy),
+and
+Pr
+¯x∼PX ,x∼A(·|¯x)
+
+g ˆf, bB(x) ̸= y(¯x)
+
+≲min
+1≤k′≤k
+ φˆy
+λk′+1
++
+k′ϵ
+(λk+1 −λk′)2
+
++ ∆(y, ˆy),
+where φˆy and ∆(y, ˆy) are deﬁned in Equations 18 and 19 respectively.
+The proof of Theorem D.9 is deferred to Section D.4.
+Now we are ready to prove Theorem 4.2 using Theorem D.9.
+Proof of Theorem D.7. In Theorem D.9 we let k′ = ⌊3
+4k⌋on the RHS of the bound and get: for any
+ˆy : X →[r] there exists bB ∈Rr×k such that
+Pr
+x∼PX ,˜x∼A(·|x)
+
+g ˆf, bB(˜x) ̸= y(x)
+
+≲
+φˆy
+λ⌊3
+4k⌋+1
++
+kϵ
+(λk+1 −λ⌊3
+4k⌋)2 + ∆(y, ˆy).
+Let S1, S2, · · · , Sr be the partition of X induced by the classiﬁer g in Assumption 3.6. Deﬁne func-
+tion ˆy : X →[r] as follows: for an augmented datapoint x ∈X, we use function ˆy(x) to represent
+the index of set that x is in, i.e., x ∈Sˆy(x). Then by Lemma B.5 we have φˆy ≤2α and ∆(y, ˆy) ≤α.
+In Lemma B.4 let (1 + ζ)t = ⌊3
+4k⌋+ 1 and t = ⌊k
+2⌋, then there is ζ ≥0.5, so we have: there exists a
+partition S1, · · · , S⌊k
+2 ⌋⊂X such that φG(Si) ≲
+q
+λ⌊3
+4k⌋+1 log (k) for ∀i ∈[⌊k
+2⌋]. By Deﬁnition 3.4, we
+have ρ⌊k
+2 ⌋≲
+q
+λ⌊3
+4k⌋+1 log (k), which leads to
+1
+λ⌊3
+4 k⌋+1 ≲log(k)
+ρ2
+⌊k
+2 ⌋. So we have
+Pr
+¯x∼PX ,x∼A(·|¯x)
+
+g ˆf, bB(x) ̸= y(¯x)
+
+≲
+α
+ρ2
+⌊k
+2 ⌋
+· log(k) +
+kϵ
+(λk+1 −λ⌊3
+4k⌋)2
+≲
+α
+ρ2
+⌊k
+2 ⌋
+· log(k) +
+kϵ
+(λk −λ⌊3
+4k⌋)2 .
+Notice that by the deﬁnition of ensembled linear probe predictor, ¯g ˆf, bB(¯x) ̸= y(¯x) happens
+only if more than half of the augmentations of ¯x predicts differently from y(¯x), so we have
+Pr¯x∼PX
+
+¯g ˆf, bB ̸= y(¯x)
+
+≤2 Pr¯x∼PX ,x∼A(·|¯x)
+
+g ˆf, bB(x) ̸= y(¯x)
+
+which ﬁnishes the proof.
+Proof of Theorem 4.2. Theorem 4.2 is a direct corollary of Theorem 4.1 and Theorem D.7.
+42
+
+===== PAGE 43 =====
+D.4
+Proof of Theorem D.9
+In this section, we give the proof for Theorem D.9.
+Lemma D.10 (Generalization of Lemma B.8). Let f : X →Rk be a feature extractor, matrix F ∈RN×k
+be such that its x-th row is √wx · f(x). Then, F is an ϵ-optimal minimizer of Lmf(F) if and only if f is an
+ϵ-optimal minimizer of the population spectral contrastive loss L(f).
+Proof of Lemma D.10. The proof follows the proof of Lemma B.8.
+We will use the following two lemmas about ϵ-optimal minimizer of Lmf:
+Lemma D.11. Let λi be the i-th minimal eigenvalue of the normalized Laplacian matrix L with corrsponding
+unit-norm eigenvector vi. Let F ∈RN×k be an ϵ-optimal minimizer of Lmf. Let Πfvi be the projection of vi
+onto the column span of F. Then, there exists vector b ∈Rk with norm bound ∥b∥≤∥F∥F /(1 −λi) such
+that
+∥Πfvi −Fb∥2
+2 ≤
+ϵ
+(1 −λi)2 .
+(46)
+Furthermore, the norm of F is bounded by
+∥F∥2
+F ≤2(k + ϵ).
+(47)
+Proof of Lemma D.11. Since columns of A −ΠfA and columns of ΠfA −FF ⊤are in orthogonal
+subspaces, we have
+A −FF ⊤
+2
+F =
+A −ΠfA
+2
+F +
+ΠfA −FF ⊤
+2
+F .
+(48)
+On one hand, since ΠfA is a rank-k matrix, we know that
+A −ΠfA
+2
+F ≥minF Lmf(F). On the
+other hand, by the deﬁnition of ϵ-optimal minimizer, we have
+A −FF ⊤2
+F ≤minF Lmf(F) + ϵ.
+Thus, we have
+ΠfA −FF ⊤
+2
+F ≤ϵ.
+(49)
+Since A = PN
+i=1(1 −λi)viv⊤
+i , we have vi =
+1
+1−λi Avi. Thus,
+Πfvi =
+1
+1 −λi
+Πf(Avi) =
+1
+1 −λi
+FF ⊤vi +
+1
+1 −λi
+(ΠfA −FF ⊤)vi.
+(50)
+Let b =
+1
+1−λi F ⊤vi, we have
+∥Πfvi −Fb∥2
+2 =
+1
+(1 −λi)2
+(ΠfA −FF ⊤)vi
+
+2
+2
+(51)
+≤
+1
+(1 −λi)2
+ΠfA −FF ⊤
+2
+F
+(52)
+≤
+ϵ
+(1 −λi)2 .
+(53)
+To bound the norm of F, we ﬁrst notice that
+ΠfA
+2
+F = Tr(A
+2Πf) ≤Tr(Πf) = k,
+(54)
+43
+
+===== PAGE 44 =====
+where the inequality uses that fact that A
+2 has operator norm at most 1. Combine this result with
+ΠfA −FF ⊤2
+F ≤ϵ we have
+FF ⊤
+F ≤
+√
+k + √ϵ.
+(55)
+Since FF ⊤has rank at most k, we can write its SVD deocmposition as FF ⊤= UΣU⊤where
+U ∈RN×k and Σ ∈Rk × k. As a result, we have
+∥F∥2
+F = Tr(FF ⊤) = Tr(Σ) ≤
+√
+k
+p
+Tr(Σ2) =
+√
+k
+FF ⊤
+F ≤k +
+√
+kϵ ≤2(k + ϵ).
+(56)
+Lemma D.12. Let λi be the i-th minimal eigenvalue of the normalized Laplacian matrix L with corrsponding
+unit-norm eigenvector vi. Let F ∈RN×k be an ϵ-optimal minimizer of Lmf. Let Π⊥
+f vi be the projection of vi
+onto the subspace orthogonal to the column span of F. Then, for i ≤k we have
+Π⊥
+f vi
+
+2
+2 ≤
+ϵ
+(λk+1 −λi)2 .
+Proof. Recall normalized adjacency matrix A = I −L. We use Ai to denote the i-th column of
+A. We use bA to denote matrix FF ⊤and bAi to denote the i-th column of bA. Let z1, · · · , zk be unit-
+norm orthogonal vectors in the column span of F. Since the column span of bA is the same as the
+column span of F, we know columns of bA are in span{z1, · · · , zk}. Let zk+1, · · · , zN be unit-norm
+orthogonal vectors such that together with z1, · · · , zk they form an orthonormal basis of RN. We
+use Πf and Π⊥
+f to denote matrices Pk
+j=1 zjz⊤
+j and PN
+j=k+1 zjz⊤
+j respectively, then for any vector
+v ∈RN, vectors Πfv and Π⊥
+f v are the projections of v onto the column span of F and its orthogonal
+space respectively.
+We ﬁrst give a lower bound of Lmf(F) as follows:
+Lmf(F) =
+A −bA
+
+2
+F =
+N
+X
+j=1
+Aj −bAj
+
+2
+2 ≥
+N
+X
+j=1
+Aj −ΠfAj
+2
+2
+=
+N
+X
+j=1
+Aj −
+ k
+X
+t=1
+ztz⊤
+t
+!
+Aj
+
+2
+2
+=
+N
+X
+j=1
+
+ 
+N
+X
+t=k+1
+ztz⊤
+t
+!
+Aj
+
+2
+2
+=
+
+ 
+N
+X
+t=k+1
+ztz⊤
+t
+!
+A
+
+2
+F
+=
+Π⊥
+f A
+
+2
+F .
+where the ﬁrst equality is by deﬁnition of Lmf(F), the second equality is by writing the Frobenius
+norm square as the sum of column norm square, the inequality is because bAj must be in the span of
+z1, · · · , zk while ΠfAj is the vector in this span that is closest to Aj, the third equality is writing the
+projection function in the matrix form, the fourth equality is because z1, · · · zd are an orthonormal
+basis, the ﬁfth equality is rewriting to Frobenius norm, and the last equality is by deﬁnition of Π⊥
+f .
+Notice that Π⊥
+f A
+
+2
+F = Tr
+
+A
+⊤Π⊥
+f
+⊤Π⊥
+f A
+
+= Tr
+
+A
+⊤Π⊥
+f A
+
+= Tr
+
+AA
+⊤Π⊥
+f
+
+.
+We can rewrite the above lower bound as
+Lmf(F) ≥Tr
+
+AA
+⊤Π⊥
+f
+
+= Tr
+
+
+N
+X
+j=1
+(1 −λj)2vjv⊤
+j
+N
+X
+t=k+1
+ztz⊤
+t
+
+=
+N
+X
+j=1
+N
+X
+t=k+1
+(1 −λj)2⟨vj, zt⟩2.
+44
+
+===== PAGE 45 =====
+We deﬁne variable Sj ≜Pj
+t=1
+Pd
+l=k+1⟨vt, zl⟩2 for any j ∈[N]. Also denote λd+1 = 1. We have
+the following equality:
+N
+X
+j=1
+N
+X
+t=k+1
+(1 −λj)2⟨vj, zt⟩2 =
+N
+X
+j=1
+ (1 −λj)2 −(1 −λj+1)2
+Sj.
+Notice that Sj ≥0 and also when i ≤j ≤k, we have Sj ≥
+Π⊥
+f vi
+
+2
+2, we have
+N
+X
+j=1
+N
+X
+t=k+1
+(1 −λj)2⟨vj, zt⟩2 ≥
+ (1 −λi)2 −(1 −λk+1)2 Π⊥
+f vi
+
+2
+2 +
+N
+X
+j=k+1
+ (1 −λj)2 −(1 −λj+1)2
+Sj,
+where we replace every Sj with 0 when j < k, replace Sj with
+Π⊥
+f vi
+
+2
+2 when i ≤j ≤k, and keep
+Sj when j ≥k + 1. Now notice that
+SN =
+N
+X
+t=1
+N
+X
+l=k+1
+⟨vt, zl⟩2 =
+N
+X
+l=k+1
+N
+X
+t=1
+⟨vt, zl⟩2 =
+N
+X
+l=k+1
+∥zl∥2
+2 = N −k,
+and also
+Sj+1 −Sj =
+N
+X
+l=k+1
+⟨vj+1, zl⟩2 ≤
+N
+X
+l=1
+⟨vj+1, zl⟩2 = 1,
+there must be Sj ≥j −k when j ≥k + 1. So we have
+N
+X
+j=1
+N
+X
+t=k+1
+(1 −λj)2⟨vj, zt⟩2
+≥
+ (1 −λi)2 −(1 −λk+1)2 Π⊥
+f vi
+
+2
+2 +
+N
+X
+j=k+1
+ (1 −λj)2 −(1 −λj+1)2
+(j −k)
+=
+ (1 −λi)2 −(1 −λk+1)2 Π⊥
+f vi
+
+2
+2 +
+N
+X
+j=k+1
+(1 −λj)2
+=
+ (1 −λi)2 −(1 −λk+1)2 Π⊥
+f vi
+
+2
+2 +
+min
+F∈RN×k Lmf(F),
+where the last equality is by Eckart–Young–Mirsky Theorem. So we know
+Lmf(F) ≥
+ (1 −λi)2 −(1 −λk+1)2 Π⊥
+f vi
+
+2
+2 +
+min
+F∈RN×k Lmf(F),
+(57)
+which implies that
+Π⊥
+f vi
+
+2
+2 ≤
+ϵ
+(1 −λi)2 −(1 −λk+1)2 ≤
+ϵ
+(λk+1 −λi)2 .
+(58)
+The following lemma generalizes Lemma B.6.
+Lemma D.13 (Generalization of Lemma B.6). Let L be the normalized Laplacian matrix of graph G =
+(X, w), where |X| = N. Let f : X →Rk be an ϵ-optimal minimizer of Lmf(f). Let F be the matrix form of
+45
+
+===== PAGE 46 =====
+f and Fi is the i-th column of F. Let R(u) := u⊤Lu
+u⊤u be the Rayleigh quotient of a vector u ∈RN . Then, for
+any k ∈Z+ such that k < N, there exists a vector b ∈Rk such that
+∥u −Fb∥2
+2 ≤min
+1≤k′≤k
+3R(u)
+λk′+1
++
+6k′ϵ
+(λk+1 −λk′)2
+
+∥u∥2
+2 .
+Furethermore, the norm of b is upper bounded by
+∥b∥2 ≤2(k + 1)
+1 −λk
+∥u∥2 .
+(59)
+Proof. Let k′ be the choice that minimizes the right hand side. We use pv(u) to denote the projection
+of u onto the span of v1, · · · , vk′. We denote the coefﬁcients as pv(u) = Pk′
+i=1 ρivi. For every i ∈[k′],
+let bi be the vector in Lemma D.11. Deﬁne vector b = Pk′
+i=1 ρibi.
+We use pv,f(u) to denote the projection of pv(u) onto the span of f1, · · · , fk. Then we know that
+∥u −Fb∥2
+2 ≤3 ∥u −pv(u)∥2
+2 + 3 ∥pv(u) −pv,f(u)∥2
+2 + 3 ∥pv,f(u) −Fb∥2
+2 .
+(60)
+By the proof of Lemma B.6, we know that
+∥u −pv(u)∥2
+2 ≤R(u)
+λk′+1
+∥u∥2
+2 .
+(61)
+For the second term, we have
+∥pv(u) −pvf(u)∥2
+2 =
+Π⊥
+f pv(u)
+
+2
+2
+=
+
+k′
+X
+i=1
+Π⊥
+f viv⊤
+i u
+
+2
+2
+≤
+ k′
+X
+i=1
+Π⊥
+f vi
+
+2
+2
+!
+·
+ k′
+X
+i=1
+(v⊤
+i u)2
+!
+≤
+k′ϵ
+(λk+1 −λk′)2 ∥u∥2
+2 ,
+(62)
+where the ﬁrst inequality if by Cauchy–Schwarz inequality and the second inequality if by
+Lemma D.12.
+For the third term, we have
+∥pv,f(u) −Fb∥2
+2 =
+
+k′
+X
+i=1
+ρi(Πfvi −Fbi)
+
+2
+2
+≤k′
+k′
+X
+i=1
+ρ2
+i ∥Πfvi −Fbi∥2
+2
+≤
+k′ϵ
+(1 −λk′)2 ∥u∥2
+2 ,
+(63)
+where the ﬁrst inequality is by Cauchy-Schwarz inequality, and the second inequality is by
+Lemma D.11. Plugging Equation (61), Equation (62), and Equation (63) into Equation (60) ﬁnishes
+the proof.
+46
+
+===== PAGE 47 =====
+To bound the norm of b, we use Lemma D.11 and have
+∥b∥2
+2 =
+
+k′
+X
+i=1
+ρibi
+
+2
+2
+≤k′
+k′
+X
+i=1
+ρ2
+i ∥bi∥2
+2 ≤
+k′ ∥u∥2
+2
+(1 −λk′)2 ∥F∥2
+F ≤2k′(k + 1)
+(1 −λk′)2 ∥u∥2
+2 .
+(64)
+Now we prove Theorem D.9 using the above lemmas.
+Proof of Theorem D.9. Let bF ∈RN×k be such that its x-th row is √wx · ˆf(x). By Lemma D.10, bF is an
+ϵ-optimal minimizer of Lmf(F).
+For each i ∈[r], we deﬁne the function ui(x) = 1 [ˆy(x) = i] · √wx. Let u : X →Rk be the
+function such that u(x) has ui at the i-th dimension. By Lemma D.13, there exists a vector bi ∈Rk
+such that
+ui −bFbi
+
+2
+2 ≤min
+1≤k′≤k
+3R(ui)
+λk′+1
++
+6k′ϵ
+(λk+1 −λk′)2
+
+∥ui∥2
+2
+Let matrices U = [u1, · · · , ur] and bB⊤= [b1, · · · , br]. We sum the above equation over all i ∈[r] and
+get
+U −bF bB⊤
+2
+F ≤
+r
+X
+i=1
+min
+1≤k′≤k
+3R(ui)
+λk′+1
++
+6k′ϵ
+(λk+1 −λk′)2
+
+∥ui∥2
+2
+≤min
+1≤k′≤k
+r
+X
+i=1
+3R(ui)
+λk′+1
+∥ui∥2
+2 +
+6k′ϵ
+(λk+1 −λk′)2 ∥ui∥2
+2
+
+.
+(65)
+Notice that
+r
+X
+i=1
+R(ui) ∥ui∥2
+2 =
+r
+X
+i=1
+1
+2φˆy
+i
+X
+x∈X
+wx · 1 [ˆy(x) = i]
+= 1
+2
+r
+X
+i=1
+X
+x,x′∈X
+wxx′ · 1
+
+(ˆy(x) = i ∧ˆy(x′) ̸= i) or (ˆy(x) ̸= i ∧ˆy(x′) = i)
+
+= 1
+2
+X
+x,x′∈X
+wxx′ · 1
+
+ˆy(x) ̸= ˆy(x′)
+
+= 1
+2φˆy,
+(66)
+where the ﬁrst equality is by Claim B.7. On the other hand, we have
+r
+X
+i=1
+∥ui∥2
+2 =
+r
+X
+i=1
+X
+x∈X
+wx · 1 [ˆy(x) = i] =
+X
+x∈X
+wx = 1.
+(67)
+Plugging Equation (66) and Equation (67) into Equation (65) gives us
+U −bF bB⊤
+2
+F ≤min
+1≤k′≤k
+ 3φˆy
+2λk′+1
++
+3k′ϵ
+(λk+1 −λk′)2
+
+.
+Notice that by deﬁnition of u(x), we know that prediction g ˆf, bB(x) ̸= ˆy(x) only happens if
+u(x) −bB ˆf(x)
+
+2
+2 ≥wx
+2 . Hence we have
+X
+x∈X
+1
+2wx · 1
+h
+g ˆf, bB(x) ̸= ˆy(x)
+i
+≤
+X
+x∈X
+u(x) −bB ˆf(x)
+
+2
+2 =
+U −bF bB⊤
+2
+F .
+47
+
+===== PAGE 48 =====
+Now we are ready to bound the error rate on X:
+Pr
+x∼X(g ˆf, bB(x) ̸= ˆy(x)) =
+X
+x∈X
+wx · 1
+h
+g ˆf, bB(x) ̸= ˆy(x)
+i
+≤2 ·
+U −ˆf bB⊤
+2
+F ≤min
+1≤k′≤k
+ 3φˆy
+λk′+1
++
+6k′ϵ
+(λk+1 −λk′)2
+
+.
+Here for the equality we are using the fact that Pr(x) = wx. We ﬁnish the proof by noticing that by
+the deﬁnition of ∆(y, ˆy):
+Pr
+¯x∼PX ,x∼A(·|¯x)
+
+g ˆf, bB(x) ̸= y(¯x)
+
+≤
+Pr
+¯x∼PX ,x∼A(·|¯x)
+
+g ˆf, bB(x) ̸= ˆy(x)
+
++
+Pr
+¯x∼PX ,x∼A(·|¯x) (y(¯x) ̸= ˆy(x))
+≤min
+1≤k′≤k
+ 3φˆy
+λk′+1
++
+6k′ϵ
+(λk+1 −λk′)2
+
++ ∆(y, ˆy).
+The norm of bB can be bounded using Lemma D.13 as:
+ bB
+
+F ≤2(k + 1)
+1 −λk
+v
+u
+u
+t
+r
+X
+i=1
+∥ui∥2
+2 = 2(k + 1)
+1 −λk
+.
+(68)
+E
+Proofs for Section 4.2
+In this section we give the proof of Theorem 4.3.
+Proof of Theorem 4.3. Let ˆfemp be the minimizer of the empirical spectral contrastive loss. Let ϵ =
+L( ˆfemp) −L(f∗
+pop). We abuse notation and use yi to denote y(¯xi), and let zi = ˆfemp(xi). We ﬁrst
+study the average empirical Rademacher complexity of the capped quadratic loss on a dataset
+{(zi, yi)}ndown
+i=1 , where (zi, yi) is sampled as in Section 4.2:
+bRndown(ℓ) :=E{(zi,yi)}
+ndown
+i=1
+Eσ
+"
+sup
+∥B∥F ≤Ck
+1
+ndown
+"ndown
+X
+i=1
+σiℓ((zi, yi), B)
+##
+≤2rE{(zi,yi)}
+ndown
+i=1
+Eσ
+"
+sup
+∥b∥2≤Ck
+1
+ndown
+"ndown
+X
+i=1
+σiw⊤zi
+##
+≤2rCk
+s
+E[∥zi∥2]
+ndown
+≤2rCk
+s
+2(k + ϵ)
+ndown
+,
+where the ﬁrst inequality uses Talagrand’s lemma and the fact that ℓσ is 2-Lipschitz, the second
+inequality is by standard Rademacher complexity of linear models, the third inequality is by the
+feature norm bound in Lemma D.11.
+By Theorem D.9 and follow the proof of Theorem D.7, we know that there exists a linear probe
+bB∗with norm bound
+ bB∗
+F ≤Ck such that
+E¯x∼PX ,x∼A(·|¯x)
+h
+ℓ
+
+( ˆfemp(x), y(¯x)), bB∗i
+≲
+α
+ρ2
+⌊k
+2 ⌋
+· log(k) +
+kϵ
+(λk −λ⌊3
+4k⌋)2 .
+48
+
+===== PAGE 49 =====
+Let bB be the minimizer of Pndown
+i=1
+ℓ((zi, yi), B) subject to ∥B∥F ≤Ck, then by standard generaliza-
+tion bound, we have: with probability at least 1 −δ, we have
+E¯x∼PX ,x∼A(·|¯x)
+h
+ℓ
+
+( ˆfemp(x), y(¯x)), bB
+i
+≲
+α
+ρ2
+⌊k
+2 ⌋
+· log(k) +
+kϵ
+(λk −λ⌊3
+4k⌋)2 + rCk
+√
+k + ϵ
+√ndown
++
+s
+log 1/δ
+ndown
+.
+Notice that y(¯x) ̸= g ˆfemp, bB(x) only if ℓ
+
+( ˆfemp(x), y(¯x)), bB
+
+≥1
+2, we have that when ϵ < 1 the error
+bound
+Pr
+¯x∼PX ,x∼A(·|¯x)
+
+g ˆfemp, bB(x) ̸= y(¯x)
+
+≲
+α
+ρ2
+⌊k
+2 ⌋
+· log(k) +
+kϵ
+(λk −λ⌊3
+4k⌋)2 + rCk
+√
+k
+√ndown
++
+s
+log 1/δ
+ndown
+.
+The result on ¯g ˆfemp, bB naturally follows by the deﬁnition of ¯g. When ϵ > 1 clearly the bound is also
+true since LHS is always smaller than 1, so we know that the above bound is true for any ϵ. Plug in
+the bound for ϵ from Theorem 4.1 ﬁnishes the proof.
+F
+Formal statements for population with inﬁnite supports
+In the main body of the paper, we make the simplifying assumption that the set of augmented
+data X is ﬁnite (but could be exponential in dimension). Although this is a reasonable assumption
+given that modern computers store data with ﬁnite bits so the possible number of all data has to
+be ﬁnite, one might wonder whether our theory can be generalized to the case where X is inﬁnite
+(e.g., the entire Euclidean space Rd for some integer d > 0). In this section, we show that our theory
+can be straightforwardly extended to the case when X has inﬁnite supports with some additional
+regularity conditions. In fact, almost all proofs remain the same as long as we replace sum by
+integral, ﬁnite graph by an inﬁnite graph, adjacency matrix by adjacency operator, and eigenvectors
+by the eigenfunctions.
+For simplicity, we consider the case when X = Rd is the set of all augmented data.7 The weight
+matrix wxx′ now becomes a weight function w : X × X →R. As usual, let w(x, x′) be the marginal
+probability of generating the pair x and x′ from a random natural datapoint ¯x ∼PX . Or in other
+words, w is the p.d.f. of the joint distribution of a random positive pair. For any u ∈X, deﬁne
+the marginal weight function w(u) ≜
+R
+w(u, z)dz. A sufﬁcient (but not necessary) condition for our
+theory to hold is as follows:
+Assumption F.1 (Regularity conditions). The distribution w satisﬁes the following conditions:
+(i) For any u ∈X, the marginal distribution is well-deﬁned and bouned w(u) =
+R
+w(u, z)dz < ∞.
+(ii) There exists B > 0 such that for every u, v ∈X, the conditional probability with respect to one
+variable is upper bounded by the marginal probability of the other variable w(u,v)
+w(u) ≤B · w(v).
+We note that our bound does not depend on value of B—we only the existence of B for a
+qualitative purpose. When the regularity conditions above hold, we will show that there exists an
+eigenfunction of the inﬁnite adjacency graph is an analog to the eigenvectors of Laplacian that we
+introduced in Section B.
+Let L2(Rd) be the set of all L2 integratable functions L2(Rd) ≜{f : Rd →R |
+R
+f(z)2dz < ∞}.
+For functions f, g ∈L2(Rd), deﬁne their inner product as ⟨f, g⟩≜
+R
+f(z)g(z)dz. Note that ℓ2(Rd) is
+a Hilbert space.
+7When X is a subset of Rd equipped with a base measure µ, then we will need to replace every dx by dµ in the
+formulation below.
+49
+
+===== PAGE 50 =====
+To generalize the Laplacian matrix and eigenvectors to the inﬁnite-size X setting, we consider
+the notions of Laplacian operators and eigenfunctions. Let H : L2(Rd) →L2(Rd) be a linear opera-
+tor, a function f ∈L2(Rd) is an eigenfunction of H if H(f)(u) = λf(u) for any u ∈X, where λ ∈R
+is the corresponding eigenvalue. We deﬁne the Laplacian operator as L : L2(Rd) →L2(Rd) such
+that for every u ∈X and function f ∈L2(Rd), we have
+L(f)(u) = f(u) −
+Z
+w(u, v)
+p
+w(u)w(v)
+f(v)dv.
+(69)
+The following theorem shows the existence of eigenfunctions of the Laplacian operator.
+Theorem F.2 (Existence of Eigenfunctions). When Assumption F.1 is satisﬁed, there exists an orthonor-
+mal basis {fi}∞
+i=1 of L2(Rd) such that L(fi) = λifi. Furthermore, the eigenvalues satisfy λi ∈[0, 1] and
+λi ≤λi+1 for any i ≥0.
+Proof of Theorem F.2. Deﬁne kernel function k(u, v) ≜
+w(u,v)
+√
+w(u)w(v), we have
+Z
+k(u, v)2dudv =
+Z
+w(u, v)2
+w(u)w(v)dudv ≤B
+Z
+w(u, v)dudv = B < ∞.
+(70)
+Let I be the identity operator, then L −I is a Hilbert–Schmidt integral operator (Wikipedia contrib-
+utors, 2020), so the spectral theorem (Bump, 1998) applies to L −I hence also applies to L. By the
+spectral theorem, there exists an orthonormal basis {fi}∞
+i=1 of L2(Rd) such that L(fi) = λifi.
+Notice that
+λi = ⟨fi, L(fi)⟩= ⟨fi, fi⟩−
+Z
+w(u, v)
+p
+w(u)w(v)
+fi(u)fi(v)dudv.
+(71)
+On the one hand, since w(u, v) ≥0 and ⟨fi, fi⟩= 1, we have λi ≤1. On the other hand, notice that
+by Cauchy-Schwart inequality,
+Z
+w(u, v)
+p
+w(u)w(v)
+fi(u)fi(v)dudv ≤
+sZ
+fi(u)2 w(u, v)
+w(u) dudv ·
+Z
+fi(v)2 w(u, v)
+w(v) dudv = ⟨fi, fi⟩,
+(72)
+so λi ≥0, which ﬁnishes the proof.
+Given the existence of eigenfunctions guaranteed by Theorem F.2, our results Theorem 3.8,
+Theorem 4.2 and Theorem 4.3 can all be easily generalized to the inﬁnite-size X case following
+exactly the same proof. For example, in the context of Lemma 3.2, ux will be replaced by u(x) :
+Rd →R which belongs to L2(Rd), and f(x) = w(x)1/2u(x) as a result belongs to L2(w). Let Lmf(f) =
+⟨u, Lu⟩L2(Rd) = ⟨f, Lf⟩L2(w). The rest of the derivations follows by replacing the sum in equation (7)
+by integral (w.r.t to Lebesgue measure). More details on the normalized Laplacian operator and
+spectral clustering can be found in (Schiebinger et al., 2015).
+We omit the proof for simplicity.
+50

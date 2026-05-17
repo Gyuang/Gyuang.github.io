@@ -1,0 +1,2652 @@
+
+===== PAGE 1 =====
+A Theoretical Analysis of Contrastive Unsupervised Representation Learning
+Sanjeev Arora 1 2 Hrishikesh Khandeparkar 1 Mikhail Khodak 3 Orestis Plevrakis 1 Nikunj Saunshi 1
+{arora, hrk, orestisp, nsaunshi}@cs.princeton.edu
+khodak@cmu.edu
+Abstract
+Recent empirical works have successfully used
+unlabeled data to learn feature representations
+that are broadly useful in downstream classiﬁca-
+tion tasks. Several of these methods are remi-
+niscent of the well-known word2vec embedding
+algorithm: leveraging availability of pairs of se-
+mantically “similar” data points and “negative
+samples,” the learner forces the inner product of
+representations of similar pairs with each other to
+be higher on average than with negative samples.
+The current paper uses the term contrastive learn-
+ing for such algorithms and presents a theoretical
+framework for analyzing them by introducing la-
+tent classes and hypothesizing that semantically
+similar points are sampled from the same latent
+class. This framework allows us to show provable
+guarantees on the performance of the learned rep-
+resentations on the average classiﬁcation task that
+is comprised of a subset of the same set of latent
+classes. Our generalization bound also shows that
+learned representations can reduce (labeled) sam-
+ple complexity on downstream tasks. We conduct
+controlled experiments in both the text and image
+domains to support the theory.
+1. Introduction
+This paper concerns unsupervised representation learning:
+using unlabeled data to learn a representation function f
+such that replacing data point x by feature vector f(x) in
+new classiﬁcation tasks reduces the requirement for labeled
+data. This is distinct from semi-supervised learning, where
+learning can leverage unlabeled as well as labeled data.
+(Section 7 surveys other prior ideas and models).
+For images, a proof of existence for broadly useful represen-
+tations is the output of the penultimate layer (the one before
+1Princeton University, Princeton, New Jersey, USA. 2Institute for
+Advanced Study, Princeton, New Jersey, USA. 3Carnegie Mellon
+University, Pittsburgh, Pennsylvania, USA.
+Copyright 2019 by the authors.
+the softmax) of a powerful deep net trained on ImageNet.
+In natural language processing (NLP), low-dimensional rep-
+resentations of text – called text embeddings – have been
+computed with unlabeled data (Peters et al., 2018; Devlin
+et al., 2018). Often the embedding function is trained by
+using the embedding of a piece of text to predict the sur-
+rounding text (Kiros et al., 2015; Logeswaran & Lee, 2018;
+Pagliardini et al., 2018). Similar methods that leverage simi-
+larity in nearby frames in a video clip have had some success
+for images as well (Wang & Gupta, 2015).
+Many of these algorithms are related: they assume access to
+pairs or tuples (in the form of co-occurrences) of text/images
+that are more semantically similar than randomly sampled
+text/images, and their objective forces representations to
+respect this similarity on average. For instance, in order to
+learn a representation function f for sentences, a simpliﬁed
+version of what Logeswaran & Lee (2018) minimize is the
+following loss function
+E
+x,x+,x−
+"
+−log
+ 
+ef(x)T f(x+)
+ef(x)T f(x+) + ef(x)T f(x−)
+!#
+where (x, x+) are a similar pair and x−is presumably dis-
+similar to x (often chosen to be a random point) and typi-
+cally referred to as a negative sample. Though reminiscent
+of past ideas – e.g. kernel learning, metric learning, co-
+training (Cortes et al., 2010; Bellet et al., 2013; Blum &
+Mitchell, 1998) – these algorithms lack a theoretical frame-
+work quantifying when and why they work. While it seems
+intuitive that minimizing such loss functions should lead
+to representations that capture ‘similarity,’ formally it is
+unclear why the learned representations should do well on
+downstream linear classiﬁcation tasks – their somewhat
+mysterious success is often treated as an obvious conse-
+quence. To analyze this success, a framework must connect
+‘similarity’ in unlabeled data with the semantic information
+that is implicitly present in downstream tasks.
+We propose the term Contrastive Learning for such methods
+and provide a new conceptual framework with minimal
+assumptions1. Our main contributions are the following:
+1The alternative would be to make assumptions about genera-
+tive models of data. This is difﬁcult for images and text.
+arXiv:1902.09229v1  [cs.LG]  25 Feb 2019
+
+===== PAGE 2 =====
+Contrastive Unsupervised Representation Learning
+1. We formalize the notion of semantic similarity by in-
+troducing latent classes. Similar pairs are assumed to
+be drawn from the same latent class. A downstream
+task is comprised of a subset of these latent classes.
+2. Under this formalization, we prove that a representa-
+tion function f learned from a function class F by con-
+trastive learning has low average linear classiﬁcation
+loss if F contains a function with low unsupervised
+loss. Additionally, we show a generalization bound for
+contrastive learning that depends on the Rademacher
+complexity of F. After highlighting inherent limita-
+tions of negative sampling, we show sufﬁcient proper-
+ties of F which allow us to overcome these limitations.
+3. Using insights from the above framework, we provide
+a novel extension of the algorithm that can leverage
+larger blocks of similar points than pairs, has better
+theoretical guarantees, and performs better in practice.
+Ideally, one would like to show that contrastive learning al-
+ways gives representations that compete with those learned
+from the same function class with plentiful labeled data.
+Our formal framework allows a rigorous study of such ques-
+tions: we show a simple counterexample that prevents such
+a blanket statement without further assumptions. However,
+if the representations are well-concentrated and the mean
+classiﬁer (Deﬁnition 2.1) has good performance, we can
+show a weaker version of the ideal result (Corollary 5.1.1).
+Sections 2 and 3 give an overview of the framework and the
+results, and subsequent sections deal with the analysis. Re-
+lated work is discussed in Section 7 and Section 8 describes
+experimental veriﬁcation and support for our framework.
+2. Framework for Contrastive Learning
+We ﬁrst set up notation and describe the framework for
+unlabeled data and classiﬁcation tasks that will be essential
+for our analysis. Let X denote the set of all possible data
+points. Contrastive learning assumes access to similar data
+in the form of pairs (x, x+) that come from a distribution
+Dsim as well as k i.i.d. negative samples x−
+1 , x−
+2 , . . . , x−
+k
+from a distribution Dneg that are presumably unrelated to x.
+Learning is done over F, a class of representation functions
+f : X →Rd, such that ∥f(·)∥≤R for some R > 0.
+Latent Classes
+To formalize the notion of semantically similar pairs
+(x, x+), we introduce the concept of latent classes.
+Let C denote the set of all latent classes. Associated with
+each class c ∈C is a probability distribution Dc over X .
+Roughly, Dc(x) captures how relevant x is to class c. For
+example, X could be natural images and c the class “dog”
+whose associated Dc assigns high probability to images
+containing dogs and low/zero probabilities to other images.
+Classes can overlap arbitrarily.2 Finally, we assume a distri-
+bution ρ over the classes that characterizes how these classes
+naturally occur in the unlabeled data. Note that we make no
+assumption about the functional form of Dc or ρ.
+Semantic Similarity
+To formalize similarity, we assume similar data points x, x+
+are i.i.d. draws from the same class distribution Dc for some
+class c picked randomly according to measure ρ. Negative
+samples are drawn from the marginal of Dsim:
+Dsim(x, x+) = E
+c∼ρ Dc(x)Dc(x+)
+(1)
+Dneg(x−) = E
+c∼ρ Dc(x−)
+(2)
+Since classes are allowed to overlap and/or be ﬁne-grained,
+this is a plausible formalization of “similarity.” As the iden-
+tity of the class in not revealed, we call it unlabeled data.
+Currently empirical works heuristically identify such similar
+pairs from co-occurring image or text data.
+Supervised Tasks
+We now characterize the tasks that a representation function
+f will be tested on. A (k + 1)-way3 supervised task T
+consists of distinct classes {c1, . . . , ck+1} ⊆C. The labeled
+dataset for the task T consists of m i.i.d. draws from the
+following process:
+A label c ∈{c1, ..., ck+1} is picked according to a distribu-
+tion DT . Then, a sample x is drawn from Dc. Together they
+form a labeled pair (x, c) with distribution
+DT (x, c) = Dc(x)DT (c)
+(3)
+A key subtlety in this formulation is that the classes in
+downstream tasks and their associated data distributions Dc
+are the same as in the unlabeled data. This provides a path to
+formalizing how capturing similarity in unlabeled data can
+lead to quantitative guarantees on downstream tasks. DT is
+assumed to be uniform4 for theorems in the main paper.
+Evaluation Metric for Representations
+The quality of the representation function f is evaluated
+by its performance on a multi-class classiﬁcation task T
+using linear classiﬁcation. For this subsection, we ﬁx a
+task T = {c1, ..., ck+1}. A multi-class classiﬁer for T is
+a function g : X →Rk+1 whose output coordinates are
+indexed by the classes c in task T .
+The loss incurred by g on point (x, y) ∈X × T is deﬁned
+2An image of a dog by a tree can appear in both Ddog & Dtree.
+3We use k as the number of negative samples later.
+4We state and prove the general case in the Appendix.
+
+===== PAGE 3 =====
+Contrastive Unsupervised Representation Learning
+as ℓ({g(x)y −g(x)y′}y′̸=y), which is a function of a k-
+dimensional vector of differences in the coordinates. The
+two losses we will consider in this work are the standard
+hinge loss ℓ(v) = max{0, 1+maxi{−vi}} and the logistic
+loss ℓ(v) = log2 (1 + P
+i exp(−vi)) for v ∈Rk. Then the
+supervised loss of the classiﬁer g is
+Lsup(T , g) :=
+E
+(x,c)∼DT
+
+ℓ
+ {g(x)c −g(x)c′}c′̸=c
+
+To use a representation function f with a linear classiﬁer,
+a matrix W ∈R(k+1)×d is trained and g(x) = Wf(x) is
+used to evaluate classiﬁcation loss on tasks. Since the best
+W can be found by ﬁxing f and training a linear classiﬁer,
+we abuse notation and deﬁne the supervised loss of f on T
+to be the loss when the best W is chosen for f:
+Lsup(T , f) =
+inf
+W ∈R(k+1)×d Lsup(T , Wf)
+(4)
+Crucial to our results and experiments will be a speciﬁc W
+where the rows are the means of the representations of each
+class which we deﬁne below.
+Deﬁnition 2.1 (Mean Classiﬁer). For a function f and task
+T = (c1, . . . , ck+1), the mean classiﬁer is W µ whose cth
+row is the mean µc of representations of inputs with label c:
+µc :=
+E
+x∼Dc
+[f(x)]. We use Lµ
+sup(T , f) := Lsup(T , W µf)
+as shorthand for its loss.
+Since contrastive learning has access to data with latent
+class distribution ρ, it is natural to have better guarantees
+for tasks involving classes that have higher probability in ρ.
+Deﬁnition 2.2 (Average Supervised Loss). Average loss for
+a function f on (k + 1)-way tasks is deﬁned as
+Lsup(f) :=
+E
+{ci}k+1
+i=1 ∼ρk+1
+
+Lsup({ci}k+1
+i=1 , f) | ci ̸= cj
+
+The average supervised loss of its mean classiﬁer is
+Lµ
+sup(f) :=
+E
+{ci}k+1
+i=1 ∼ρk+1
+
+Lµ
+sup({ci}k+1
+i=1 , f) | ci ̸= cj
+
+Contrastive Learning Algorithm
+We describe the training objective for contrastive learning:
+the choice of loss function is dictated by the ℓused in
+the supervised evaluation, and k denotes number of neg-
+ative samples used for training.
+Let (x, x+) ∼Dsim,
+(x−
+1 , .., x−
+k ) ∼Dk
+neg as deﬁned in Equations (1) and (2).
+Deﬁnition 2.3 (Unsupervised Loss). The population loss is
+Lun(f) := E
+h
+ℓ
+ 
+f(x)T  f(x+) −f(x−
+i )
+	k
+i=1
+ i
+(5)
+and
+its
+empirical
+counterpart
+with
+M
+samples
+(xj, x+
+j , x−
+j1, ..., x−
+jk)M
+j=1 from Dsim × Dk
+neg is
+bLun(f) = 1
+M
+M
+X
+j=1
+ℓ
+
+f(xj)T  f(x+
+j ) −f(x−
+ji)
+	k
+i=1
+
+(6)
+Note that, by the assumptions of the framework described
+above, we can now express the unsupervised loss as
+Lun(f)
+=
+E
+c+,c−
+i
+∼ρk+1
+E
+x,x+∼D2
+c+
+x−
+i ∼Dc−
+i
+
+ℓ
+ 
+f(x)T  f(x+) −f(x−
+i )
+	
+The algorithm to learn a representation function from F is
+to ﬁnd a function bf ∈arg minf∈F bLun(f) that minimizes
+the empirical unsupervised loss. This function bf can be
+subsequently used for supervised linear classiﬁcation tasks.
+In the following section we proceed to give an overview of
+our results that stem from this framework.
+3. Overview of Analysis and Results
+What can one provably say about the performance of bf?
+As a ﬁrst step we show that Lun is like a “surrogate” for
+Lsup by showing that Lsup(f) ≤αLun(f), ∀f ∈F, sug-
+gesting that minimizing Lun makes sense. This lets us
+show a bound on the supervised performance Lsup( bf) of
+the representation learned by the algorithm. For instance,
+when training with one negative sample, the performance on
+average binary classiﬁcation has the following guarantee:
+Theorem 4.1 (Informal binary version).
+Lsup( bf) ≤αLun(f) + η GenM + δ
+∀f ∈F
+where α, η, δ are constants depending on the distribution
+ρ and GenM →0 as M →∞. When ρ is uniform and
+|C| →∞, we have that α, η →1, δ →0.
+At ﬁrst glance, this bound seems to offer a somewhat com-
+plete picture: When the number of classes is large, if the
+unsupervised loss can be made small by F, then the super-
+vised loss of bf, learned using ﬁnite samples, is small.
+While encouraging, this result still leaves open the question:
+Can Lun(f) indeed be made small on reasonable datasets
+using function classes F of interest, even though the similar
+pair and negative sample can come from the same latent
+class? We shed light on this by upper-bounding Lun(f) by
+two components: (a) the loss L̸=
+un(f) for the case where the
+positive and negative samples are from different classes; (b)
+a notion of deviation s(f), within each class.
+Theorem 4.5 (Informal binary version).
+Lsup( bf) ≤L̸=
+un(f) + βs(f) + η GenM
+∀f ∈F
+for constants β, η that depend on the distribution ρ. Again,
+when ρ is uniform and |C| →∞we have β →0, η →1.
+This bound lets us infer the following: if the class F is rich
+enough to contain a function f for which L̸=
+un(f)+βs(f) is
+
+===== PAGE 4 =====
+Contrastive Unsupervised Representation Learning
+low, then bf has high supervised performance. Both L̸=
+un(f)
+and s(f) can potentially be made small for rich enough F.
+Ideally, however, one would want to show that bf can com-
+pete on classiﬁcation tasks with every f ∈F
+(Ideal Result):
+Lsup( bf) ≤αLsup(f) + η GenM
+(7)
+Unfortunately, we show in Section 5.1 that the algorithm
+can pick something far from the optimal f. However, we
+extend Theorem 4.5 to a bound similar to (7) (where the
+classiﬁcation is done using the mean classiﬁer) under as-
+sumptions about the intraclass concentration of f and about
+its mean classiﬁer having high margin.
+Sections 6.1 and 6.2 extend our results to the more compli-
+cated setting where the algorithm uses k negative samples
+(5) and note an interesting behavior: increasing the num-
+ber of negative samples beyond a threshold can hurt the
+performance. In Section 6.3 we show a novel extension of
+the algorithm that utilizes larger blocks of similar points.
+Finally, we perform controlled experiments in Section 8 to
+validate components of our framework and corroborate our
+suspicion that the mean classiﬁer of representations learned
+using labeled data has good classiﬁcation performance.
+4. Guaranteed Average Binary Classiﬁcation
+To provide the main insights, we prove the algorithm’s guar-
+antee when we use only 1 negative sample (k = 1). For
+this section, let Lsup(f) and Lµ
+sup(f) be as in Deﬁnition
+2.2 for binary tasks. We will refer to the two classes in the
+supervised task as well as the unsupervised loss as c+, c−.
+Let S = {xj, x+
+j , x−
+j }M
+j=1 be our training set sampled from
+the distribution Dsim × Dneg and bf ∈arg minf∈F bLun(f).
+4.1. Upper Bound using Unsupervised Loss
+Let f|S =
+ ft(xj), ft(x+
+j ), ft(x−
+j )
+
+j∈[M],t∈[d] ∈R3dM be
+the restriction on S for any f ∈F. Then, the statistical
+complexity measure relevant to the estimation of the repre-
+sentations is the following Rademacher average
+RS(F) =
+E
+σ∼{±1}3dM
+
+sup
+f∈F
+⟨σ, f|S⟩
+
+Let τ =
+E
+c,c′∼ρ2 1{c = c′} be the probability that two classes
+sampled independently from ρ are the same.
+Theorem 4.1. With probability at least 1−δ, for all f ∈F
+Lµ
+sup( bf) ≤
+1
+(1 −τ)(Lun(f) −τ) +
+1
+(1 −τ)GenM
+where
+GenM = O
+
+RRS(F)
+M
++ R2
+s
+log 1
+δ
+M
+
+
+Remark. The complexity measure RS(F) is tightly related
+to the labeled sample complexity of the classiﬁcation tasks.
+For the function class G = {wT f(·)|f ∈F, ∥w∥≤1}
+that one would use to solve a binary task from scratch using
+labeled data, it can be shown that RS(F) ≤dRS(G),
+where RS(G) is the usual Rademacher complexity of G on
+S (Deﬁnition 3.1 from (Mohri et al., 2018)).
+We state two key lemmas needed to prove the theorem.
+Lemma 4.2. With probability at least 1−δ over the training
+set S, for all f ∈F
+Lun( bf) ≤Lun(f) + GenM
+We prove Lemma 4.2 in Appendix A.3.
+Lemma 4.3. For all f ∈F
+Lµ
+sup(f) ≤
+1
+(1 −τ) (Lun(f) −τ)
+Proof. The key idea in the proof is the use of Jensen’s in-
+equality. Unlike the unsupervised loss which uses a random
+point from a class as a classiﬁer, using the mean of the
+class as the classiﬁer should only make the loss lower. Let
+µc =
+E
+x∼Dc
+f(x) be the mean of the class c.
+Lun(f) =
+E
+(x,x+)∼Dsim
+x−∼Dneg
+
+ℓ(f(x)T (f(x+) −f(x−)))
+
+=(a)
+E
+c+,c−∼ρ2
+x∼Dc+
+E
+x+∼Dc+
+x−∼Dc−
+
+ℓ(f(x)T (f(x+) −f(x−)))
+
+≥(b)
+E
+c+,c−∼ρ2
+E
+x∼Dc+
+
+ℓ(f(x)T (µc+ −µc−))
+
+=(c) (1 −τ)
+E
+c+,c−∼ρ2[Lµ
+sup({c+, c−}, f)|c+ ̸= c−] + τ
+=(d) (1 −τ)Lµ
+sup(f) + τ
+where (a) follows from the deﬁnitions in (1) and (2), (b)
+follows from the convexity of ℓand Jensen’s inequality by
+taking the expectation over x+, x−inside the function, (c)
+follows by splitting the expectation into the cases c+ = c−
+and c+ ̸= c−, from symmetry in c+ and c−in sampling
+and since classes in tasks are uniformly distributed (general
+distributions are handled in Appendix B.1). Rearranging
+terms completes the proof.
+Proof of Theorem 4.1. The result follows directly by apply-
+ing Lemma 4.3 for bf and ﬁnishing up with Lemma 4.2.
+One could argue that if F is rich enough such that Lun can
+be made small, then Theorem 4.1 sufﬁces. However, in the
+next section we explain that unless τ ≪1, this may not
+always be possible and we show one way to alleviate this.
+
+===== PAGE 5 =====
+Contrastive Unsupervised Representation Learning
+4.2. Price of Negative Sampling: Class Collision
+Note ﬁrst that the unsupervised loss can be decomposed as
+Lun(f) = τL=
+un(f) + (1 −τ)L̸=
+un(f)
+(8)
+where L̸=
+un(f) is the loss suffered when the similar pair and
+the negative sample come from different classes.
+L̸=
+un(f)
+=
+E
+c+,c−∼ρ2
+x,x+∼D2
+c+
+x−∼Dc−
+
+ℓ(f(x)T (f(x+) −f(x−)))|c+ ̸= c−
+and L=
+un(f) is when they come from the same class. Let ν
+be a distribution over C with ν(c) ∝ρ2(c), then
+L=
+un(f) =
+E
+c∼ν
+x,x+,x−∼D3
+c
+
+ℓ(f(x)T (f(x+) −f(x−)))
+
+≥
+E
+c∼ν,x∼Dc
+
+ℓ(f(x)T (µc −µc))
+
+= 1
+by Jensen’s inequality again, which implies Lun(f) ≥τ. In
+general, without any further assumptions on f, Lun(f) can
+be far from τ, rendering the bound in Theorem 4.1 useless.
+However, as we will show, the magnitude of L=
+un(f) can
+be controlled by the intraclass deviation of f. Let Σ(f, c)
+the covariance matrix of f(x) when x ∼Dc. We deﬁne a
+notion of intraclass deviation as follows:
+s(f) := E
+c∼ν
+hp
+∥Σ(f, c)∥2
+E
+x∼Dc
+∥f(x)∥
+i
+(9)
+Lemma 4.4. For all f ∈F,
+L=
+un(f) −1 ≤c′s(f)
+where c′ is a positive constant.
+We prove Lemma 4.4 in Appendix A.1. Theorem 4.1 com-
+bined with Equation (8) and Lemma 4.4 gives the following
+result.
+Theorem 4.5. With probability at least 1 −δ, ∀f ∈F
+Lsup( bf) ≤Lµ
+sup( bf) ≤L̸=
+un(f) + β s(f) + η GenM
+where β = c′
+τ
+1−τ , η =
+1
+1−τ and c′ is a constant.
+The above bound highlights two sufﬁcient properties of the
+function class for unsupervised learning to work: when the
+function class F is rich enough to contain some f with low
+βs(f) as well as low L̸=
+un(f) then bf, the empirical mini-
+mizer of the unsupervised loss – learned using sufﬁciently
+large number of samples – will have good performance on
+supervised tasks (low Lsup( bf)).
+5. Towards Competitive Guarantees
+We provide intuition and counter-examples for why con-
+trastive learning does not always pick the best supervised
+representation f ∈F and show how our bound captures
+these. Under additional assumptions, we show a competitive
+bound where classiﬁcation is done using the mean classiﬁer.
+5.1. Limitations of contrastive learning
+The bound provided in Theorem 4.5 might not appear as the
+most natural guarantee for the algorithm. Ideally one would
+like to show a bound like the following: for all f ∈F,
+(Ideal 1):
+Lsup( bf) ≤αLsup(f) + η GenM
+(10)
+for constants α, η and generalization error GenM. This
+guarantees that bf is competitive against the best f on the
+average binary classiﬁcation task. However, the bound we
+prove has the following form: for all f ∈F,
+Lµ
+sup( bf) ≤αL̸=
+un(f) + βs(f) + η GenM
+To show that this discrepancy is not an artifact of our anal-
+ysis but rather stems from limitations of the algorithm, we
+present two examples in Figure 1. Our bound appropriately
+captures these two issues individually owing to the large
+values of L̸=(f) or s(f) in each case, for the optimal f.
+In Figure 1a, we see that there is a direction on which f1
+can be projected to perfectly separate the classes. Since the
+algorithm takes inner products between the representations,
+it inevitably considers the spurious components along the
+orthogonal directions. This issue manifests in our bound as
+the term L̸=
+un(f1) being high even when s(f1) = 0. Hence,
+contrastive learning will not always work when the only
+guarantee we have is that F can make Lsup small.
+This should not be too surprising, since we show a relatively
+strong guarantee – a bound on Lµ
+sup for the mean classiﬁer
+of bf. This suggests a natural stronger assumption that F
+can make Lµ
+sup small (which is observed experimentally
+in Section 8 for function classes of interest) and raises the
+question of showing a bound that looks like the following:
+for all f ∈F,
+(Ideal 2):
+Lµ
+sup( bf) ≤αLµ
+sup(f) + ηGenM
+(11)
+without accounting for any intraclass deviation – recall that
+s(f) captures a notion of this deviation in our bound. How-
+ever this is not true: high intraclass deviation may not imply
+high Lµ
+sup(f), but can make L=
+un(f) (and thus Lun(f))
+high, resulting in the failure of the algorithm. Consequently,
+the term s(f) also increases while L̸=
+un does not necessarily
+have to. This issue, apparent in Figure 1b, shows that a guar-
+antee like (11) cannot be shown without further assumptions.
+
+===== PAGE 6 =====
+Contrastive Unsupervised Representation Learning
+(a) Mean is bad
+(b) High intraclass variance
+Figure 1. In both examples we have uniform distribution over
+classes C = {c1, c2}, blue and red points are in c1 and c2 re-
+spectively and Dci is uniform over the points of ci. In the ﬁrst
+ﬁgure we have one point per class, while in the second we have
+two points per class. Let F = {f0, f1} where f0 maps all points
+to (0, 0) and f1 is deﬁned in the ﬁgure. In both cases, using the
+hinge loss, Lsup(f1) = 0, Lsup(f0) = 1 and in the second case
+Lµ
+sup(f1) = 0. However, in both examples the algorithm will pick
+f0 since Lun(f0) = 1 but Lun(f1) = Ω(r2).
+5.2. Competitive Bound via Intraclass Concentration
+We saw that Lµ
+sup(f) being small does not imply low
+Lµ
+sup( bf), if f is not concentrated within the classes. In
+this section we show that when there is an f that has intra-
+class concentration in a strong sense (sub-Gaussianity) and
+can separate classes with high margin (on average) with the
+mean classiﬁer, then Lµ
+sup( bf) will be low.
+Let ℓγ(x) = (1 −x
+γ )+ be the hinge loss with margin γ and
+Lµ
+γ,sup(f) be Lµ
+sup(f) with the loss function ℓγ.
+Lemma 5.1. For f ∈F, if the random variable f(X),
+where X ∼Dc, is σ2-sub-Gaussian in every direction for
+every class c and has maximum norm R = maxx∈X ∥f(x)∥,
+then for all ϵ > 0,
+L̸=
+un(f) ≤γLµ
+γ,sup(f) + ϵ
+where γ = 1 + c′Rσ
+q
+log R
+ϵ and c′ is some constant.
+The proof of Lemma 5.1 is provided in the Appendix A.2.
+Using Lemma 5.1 and Theorem 4.5, we get the following:
+Corollary 5.1.1. For all ϵ > 0, with probability at least
+1 −δ, for all f ∈F,
+Lµ
+sup( bf) ≤γ(f)Lµ
+γ(f),sup(f) + βs(f) + ηGenM + ϵ
+where γ(f) is as deﬁned in Lemma 5.1, β = c′
+τ
+1−τ ,
+η =
+τ
+1−τ and c′ is a constant.
+6. Multiple Negative Samples and Block
+Similarity
+In this section we explore two extensions to our analysis.
+First, in Section 6.1, inspired by empirical works like Lo-
+geswaran & Lee (2018) that often use more than one nega-
+tive sample for every similar pair, we show provable guar-
+antees for this case by careful handling of class collision.
+Additionally, in Section 6.2 we show simple examples where
+increasing negative samples beyond a certain threshold can
+hurt contrastive learning. Second, in Section 6.3, we ex-
+plore a modiﬁed algorithm that leverages access to blocks
+of similar data, rather than just pairs and show that it has
+stronger guarantees as well as performs better in practice.
+6.1. Guarantees for k Negative Samples
+Here the algorithm utilizes k negative samples x−
+1 , ..., x−
+k
+drawn i.i.d. from Dneg for every positive sample pair x, x+
+drawn from Dsim and minimizes (6). As in Section 4, we
+prove a bound for bf of the following form:
+Theorem 6.1. (Informal version) For all f ∈F
+Lsup( bf) ≤Lµ
+sup( bf) ≤αL̸=
+un(f) + βs(f) + η GenM
+where L̸=
+un(f) and GenM are extensions of the correspond-
+ing terms from Section 4 and s(f) remains unchanged. The
+formal statement of the theorem and its proof appears in
+Appendix B.1. The key differences from Theorem 4.5 are β
+and the distribution of tasks in Lsup that we describe below.
+The coefﬁcient β of s(f) increases with k, e.g. when ρ is
+uniform and k ≪|C|, β ≈
+k
+|C|.
+The average supervised loss that we bound is
+Lsup( bf) :=
+E
+T ∼D
+h
+Lsup(T , bf)
+i
+where D is a distribution over tasks, deﬁned as follows:
+sample k + 1 classes c+, c−
+1 , . . . , c−
+k ∼ρk+1, conditioned
+on the event that c+ does not also appear as a negative
+sample. Then, set T to be the set of distinct classes in
+{c+, c−
+1 , . . . , c−
+k }. Lµ
+sup( bf) is deﬁned by using Lµ
+sup(T , bf).
+Remark. Bounding Lsup( bf) directly gives a bound for
+average (k + 1)-wise classiﬁcation loss Lsup( bf) from Def-
+inition 2.2, since Lsup( bf) ≤Lsup( bf)/p, where p is the
+probability that the k + 1 sampled classes are distinct. For
+k ≪|C| and ρ ≈uniform, these metrics are almost equal.
+We also extend our competitive bound from Section 5.2 for
+the above bf in Appendix B.2.
+6.2. Effect of Excessive Negative Sampling
+The standard belief is that increasing the number of negative
+samples always helps, at the cost of increased computational
+costs. In fact for Noise Contrastive Estimation (NCE) (Gut-
+mann & Hyv¨arinen, 2010), which is invoked to explain the
+success of negative sampling, increasing negative samples
+has shown to provably improve the asymptotic variance of
+
+===== PAGE 7 =====
+Contrastive Unsupervised Representation Learning
+the learned parameters. However, we ﬁnd that such a phe-
+nomenon does not always hold for contrastive learning –
+larger k can hurt performance for the same inherent reasons
+highlighted in Section 5.1, as we illustrate next.
+When ρ is close to uniform and the number of negative
+samples is k = Ω(|C|), frequent class collisions can prevent
+the unsupervised algorithm from learning the representation
+f ∈F that is optimal for the supervised problem. In this
+case, owing to the contribution of s(f) being high, a large
+number of negative samples could hurt. This problem, in
+fact, can arise even when the number of negative samples
+is much smaller than the number of classes. For instance,
+if the best representation function f ∈F groups classes
+into t “clusters”,5 such that f cannot contrast well between
+classes from the same cluster, then L̸=
+un will contribute to
+the unsupervised loss being high even when k = Ω(t). We
+illustrate, by examples, how these issues can lead to picking
+suboptimal bf in Appendix C. Experimental results in Fig-
+ures 2a and 2b also suggest that larger negative samples hurt
+performance beyond a threshold, conﬁrming our suspicions.
+6.3. Blocks of Similar Points
+Often a dataset consists of blocks of similar data instead
+of just pairs: a block consists of x0, x1, . . . xb that are i.i.d.
+draws from a class distribution Dc for a class c ∼ρ. In
+text, for instance, paragraphs can be thought of as a block
+of sentences sampled from the same latent class. How can
+an algorithm leverage this additional structure?
+We propose an algorithm that uses two blocks: one for
+positive samples x, x+
+1 , . . . , x+
+b that are i.i.d. samples from
+c+ ∼ρ and another one of negative samples x−
+1 , . . . x−
+b that
+are i.i.d. samples from c−∼ρ. Our proposed algorithm
+then minimizes the following loss:
+Lblock
+un
+(f) :=
+E
+
+ℓ
+
+f(x)T
+P
+i f(x+
+i )
+b
+−
+P
+i f(x−
+i )
+b
+
+(12)
+To understand why this loss function make sense, recall that
+the connection between Lµ
+sup and Lun was made in Lemma
+4.3 by applying Jensen’s inequality. Thus, the algorithm
+that uses the average of the positive and negative samples
+in blocks as a proxy for the classiﬁer instead of just one
+point each should have a strictly better bound owing to
+the Jensen’s inequality getting tighter. We formalize this
+intuition below. Let τ be as deﬁned in Section 4.
+Proposition 6.2. ∀f ∈F
+Lsup(f) ≤
+1
+1 −τ
+ Lblock
+un
+(f) −τ
+
+≤
+1
+1 −τ (Lun(f) −τ)
+This bound tells us that Lblock
+un
+is a better surrogate for Lsup,
+5This can happen when F is not rich enough.
+making it a more attractive choice than Lun when larger
+blocks are available.6. The algorithm can be extended, anal-
+ogously to Equation (5), to handle more than one negative
+block. Experimentally we ﬁnd that minimizing Lblock
+un
+in-
+stead of Lun can lead to better performance and our results
+are summarized in Section 8.2. We defer the proof of Propo-
+sition 6.2 to Appendix A.4.
+7. Related Work
+The contrastive learning framework is inspired by several
+empirical works, some of which were mentioned in the
+introduction. The use of co-occurring words as semanti-
+cally similar points and negative sampling for learning word
+embeddings was introduced in Mikolov et al. (2013). Subse-
+quently, similar ideas have been used by Logeswaran & Lee
+(2018) and Pagliardini et al. (2018) for sentences representa-
+tions and by Wang & Gupta (2015) for images. Notably the
+sentence representations learned by the quick thoughts (QT)
+method in Logeswaran & Lee (2018) that we analyze has
+state-of-the-art results on many text classiﬁcation tasks. Pre-
+vious attempts have been made to explain negative sampling
+(Dyer, 2014) using the idea of Noise Contrastive Estima-
+tion (NCE) (Gutmann & Hyv¨arinen, 2010) which relies on
+the assumption that the data distribution belongs to some
+known parametric family. This assumption enables them to
+consider a broader class of distributions for negative sam-
+pling. The mean classiﬁer that appears in our guarantees is
+of signiﬁcance in meta-learning and is a core component of
+ProtoNets (Snell et al., 2017).
+Our data model for similarity is reminiscent of the one in
+co-training (Blum & Mitchell, 1998). They assume access
+to pairs of “views” with the same label that are conditionally
+independent given the label. Our unlabeled data model can
+be seen as a special case of theirs, where the two views have
+the same conditional distributions. However, they addition-
+ally assume access to some labeled data (semi-supervised),
+while we learn representations using only unlabeled data,
+which can be subsequently used for classiﬁcation when la-
+beled data is presented. Two-stage kernel learning (Cortes
+et al., 2010; Kumar et al., 2012) is similar in this sense: in
+the ﬁrst stage, a positive linear combination of some base
+kernels is learned and is then used for classiﬁcation in the
+second stage; they assume access to labels in both stages.
+Similarity/metric learning (Bellet et al., 2012; 2013) learns
+a linear feature map that gives low distance to similar points
+and high to dissimilar. While they identify dissimilar pairs
+using labels, due to lack of labels we resort to negative sam-
+pling and pay the price of class collision. While these works
+analyze linear function classes, we can handle arbitrarily
+powerful representations. Learning of representations that
+6Rigorous comparison of the generalization errors is left for
+future work.
+
+===== PAGE 8 =====
+Contrastive Unsupervised Representation Learning
+Table 1. Performance of supervised and unsupervised represen-
+tations on average k-wise classiﬁcation tasks (AVG-k) and for
+comparison, on full multiclass (TOP-R) which is not covered by
+our theory. Classiﬁer can have a trained output layer (TR), or the
+mean classiﬁer (µ) of Deﬁnition 2.1, with µ-5 indicating the mean
+was computed using only 5 labeled examples.
+SUPERVISED
+UNSUPERVISED
+TR
+µ
+µ-5
+TR
+µ
+µ-5
+WIKI-3029
+AVG-2
+97.8 97.7 97.0
+97.3 97.7
+96.9
+AVG-10
+89.1 87.2 83.1
+88.4 87.4
+83.5
+TOP-10
+67.4 59.0 48.2
+64.7 59.0
+45.8
+TOP-1
+43.2 33.2 21.7
+38.7 30.4
+17.0
+CIFAR-100
+AVG-2
+97.2 95.9 95.8
+93.2 92.0
+90.6
+AVG-5
+92.7 89.8 89.4
+80.9 79.4
+75.7
+TOP-5
+88.9 83.5 82.5
+70.4 65.6
+59.0
+TOP-1
+72.1 69.9 67.3
+36.9 31.8
+25.0
+are broadly useful on a distribution of tasks is done in mul-
+titask learning, speciﬁcally in the learning-to-learn model
+(Maurer et al., 2016) but using labeled data.
+Recently Hazan & Ma (2016) proposed “assumption-free”
+methods for representation learning via MDL/compression
+arguments, but do not obtain any guarantees comparable
+to ours on downstream classiﬁcation tasks. As noted by
+Arora & Risteski (2017), this compression approach has to
+preserve all input information (e.g. preserve every pixel of
+the image) which seems suboptimal.
+8. Experimental Results
+We report experiments in text and vision domains supporting
+our theory. Since contrastive learning has already shown to
+obtain state-of-the-art results on text classiﬁcation by quick
+thoughts (QT) in Logeswaran & Lee (2018), most of our
+experiments are conducted to corroborate our theoretical
+analysis. We also show that our extension to similarity
+blocks in Section 6.3 can improve QT on a real-world task.
+Datasets: Two datasets were used in the controlled exper-
+iments. (1) The CIFAR-100 dataset (Krizhevsky, 2009)
+consisting of 32x32 images categorized into 100 classes
+with a 50000/10000 train/test split. (2) Lacking an appropri-
+ate NLP dataset with large number of classes, we create the
+Wiki-3029 dataset, consisting of 3029 Wikipedia articles
+as the classes and 200 sentences from each article as sam-
+ples. The train/dev/test split is 70%/10%/20%. To test our
+method on a more standard task, we also use the unsuper-
+vised part of the IMDb review corpus (Maas et al., 2011),
+which consists of 560K sentences from 50K movie reviews.
+Representations trained using this corpus are evaluated on
+the supervised IMDb binary classiﬁcation task, consisting
+of training and testing set with 25K reviews each.
+Table 2. Effect of larger block size on representations. For CIFAR-
+100 and WIKI-3029 we measure the average binary classiﬁcation
+accuracy. IMDB representations are tested on IMDB supervised
+task. CURL is our large block size contrastive method, QT is the
+algorithm from (Logeswaran & Lee, 2018). For larger block sizes,
+QT uses all pairs within a block as similar pairs. We use the same
+GRU architecture for both CURL and QT for a fair comparison.
+DATASET
+METHOD
+b = 2
+b = 5
+b = 10
+CIFAR-100
+CURL
+88.1
+89.6
+89.7
+WIKI-3029
+CURL
+96.6
+97.5
+97.7
+IMDB
+CURL
+89.2
+89.6
+89.7
+QT
+86.5
+87.7
+86.7
+8.1. Controlled Experiments
+To simulate the data generation process described in Sec-
+tion 2, we generate similar pairs (blocks) of data points by
+sampling from the same class. Dissimilar pairs (negative
+samples) are selected randomly. Contrastive learning was
+done using our objectives (5), and compared to performance
+of standard supervised training, with both using the same
+architecture for representation f. For CIFAR-100 we use
+VGG-16 (Simonyan & Zisserman, 2014) with an additional
+512x100 linear layer added at the end to make the ﬁnal
+representations 100 dimensional, while for Wiki-3029 we
+use a Gated Recurrent Network (GRU) (Chung et al., 2015)
+with output dimension 300 and ﬁx the word embedding
+layer with pretrained GloVe embeddings (Pennington et al.,
+2014). The unsupervised model for CIFAR-100 is trained
+with 500 blocks of size 2 with 4 negative samples, and for
+Wiki-3029 we use 20 blocks of size 10 with 8 negative sam-
+ples. We test (1) learned representations on average tasks
+by using the mean classiﬁer and compare to representations
+trained using labeled data; (2) the effect of various parame-
+ters like amount of unlabeled data (N)7, number of negative
+samples (k) and block size (b) on representation quality; (3)
+whether the supervised loss tracks the unsupervised loss as
+suggested by Theorem 4.1; (4) performance of the mean
+classiﬁer of the supervised model.
+Results: These appear in Table 1. For Wiki-3029 the un-
+supervised performance is very close to the supervised per-
+formance in all respects, while for CIFAR-100 the avg-k
+performance is respectable, rising to good for binary clas-
+siﬁcation. One surprise is that the mean classiﬁer, central
+to our analysis of unsupervised learning, performs well
+also with representations learned by supervised training on
+CIFAR-100. Even the mean computed by just 5 labeled sam-
+ples performs well, getting within 2% accuracy of the 500
+7If we used M similar blocks of size b and k negative blocks
+for each similar block, N = Mb(k + 1). In practice, however, we
+reuse the blocks for negative sampling and lose the factor of k + 1.
+
+===== PAGE 9 =====
+Contrastive Unsupervised Representation Learning
+200
+400
+600
+800
+1000
+Unlabeled data
+72.5
+75.0
+77.5
+80.0
+82.5
+85.0
+87.5
+90.0
+92.5
+Accuracy
+k=1
+k=2
+k=4
+k=10
+(a) CIFAR-100
+50
+100
+150
+200
+250
+300
+350
+400
+Unlabeled data
+8
+10
+12
+14
+16
+18
+20
+22
+24
+Accuracy
+k=1
+k=4
+k=8
+k=50
+(b) Wiki-3029
+0
+10
+20
+30
+40
+50
+Epoch
+0.2
+0.4
+0.6
+0.8
+1.0
+Loss
+Unsup train loss
+Unsup test loss
+Sup loss
+(c) Wiki-3029
+Figure 2. Effect of amount of unlabeled data and # of negative samples on unsupervised representations, measured on binary classiﬁcation
+for CIFAR100 in (a) and on top-1 performance on Wiki-3029 in Fig (b) (top-1 performance is used because avg binary was same for all
+k). Fig. (c) shows the dynamics of train/test loss; supervised loss roughly tracks unsupervised test loss, as suggested by Theorem 4.1
+sample mean classiﬁer on CIFAR-100. This suggests that
+representations learnt by standard supervised deep learn-
+ing are actually quite concentrated. We also notice that
+the supervised representations have fairly low unsupervised
+training loss (as low as 0.4), even though the optimization
+is minimizing a different objective.
+To measure the sample complexity beneﬁt provided by con-
+trastive learning, we train the supervised model on just 10%
+fraction of the dataset and compare it with an unsupervised
+model trained on unlabeled data whose mean classiﬁers are
+computed using the same amount of labeled data. We ﬁnd
+that the unsupervised model beats the supervised model by
+almost 4% on the 100-way task and by 5% on the average
+binary task when only 50 labeled samples are used.
+Figure 2 highlights the positive effect of increasing num-
+ber of negative samples as well as amount of data used by
+unsupervised algorithm. In both cases, using a lot of neg-
+ative examples stops helping after a point, conﬁrming our
+suspicions in Section 6.2. We also demonstrate how the
+supervised loss tracks unsupervised test loss in Figure 2c.
+8.2. Effect of Block Size
+As suggested in Section 6.3, a natural extension to the model
+would be access to blocks of similar points. We refer to our
+method of minimizing the loss in (12) as CURL for Con-
+trastive Unsupervised Representation Learning and perform
+experiments on CIFAR-100, Wiki-3029, and IMDb. In Ta-
+ble 2 we see that for CIFAR-100 and Wiki-3029, increasing
+block size yields an improvement in classiﬁcation accuracy.
+For IMDb, as is evident in Table 2, using larger blocks
+provides a clear beneﬁt and the method does better than
+QT, which has state-of-the-art performance on many tasks.
+A thorough evaluation of CURL and its variants on other
+unlabeled datasets is left for future work.
+9. Conclusion
+Contrastive learning methods have been empirically success-
+ful at learning useful feature representations. We provide a
+new conceptual framework for thinking about this form of
+learning, which also allows us to formally treat issues such
+as guarantees on the quality of the learned representations.
+The framework gives fresh insights into what guarantees
+are possible and impossible, and shapes the search for new
+assumptions to add to the framework that allow tighter guar-
+antees. The framework currently ignores issues of efﬁcient
+minimization of various loss functions, and instead studies
+the interrelationships of their minimizers as well as sample
+complexity requirements for training to generalize, while
+clarifying what generalization means in this setting. Our
+approach should be viewed as a ﬁrst cut; possible exten-
+sions include allowing tree structure – more generally met-
+ric structure – among the latent classes. Connections to
+meta-learning and transfer learning may arise.
+We use experiments primarily to illustrate and support the
+new framework. But one experiment on sentence embed-
+dings already illustrates how fresh insights derived from our
+framework can lead to improvements upon state-of-the-art
+models in this active area. We hope that further progress
+will follow, and that our theoretical insights will begin to
+inﬂuence practice, including design of new heuristics to
+identify semantically similar/dissimilar pairs.
+10. Acknowledgements
+This work is supported by NSF, ONR, the Simons Founda-
+tion, the Schmidt Foundation, Mozilla Research, Amazon
+Research, DARPA, and SRC. We thank Rong Ge, Elad
+Hazan, Sham Kakade, Karthik Narasimhan, Karan Singh
+and Yi Zhang for helpful discussions and suggestions.
+
+===== PAGE 10 =====
+Contrastive Unsupervised Representation Learning
+References
+Arora, S. and Risteski, A. Provable beneﬁts of representa-
+tion learning. arXiv, 2017.
+Bellet, A., Habrard, A., and Sebban, M. Similarity learning
+for provably accurate sparse linear classiﬁcation. arXiv
+preprint arXiv:1206.6476, 2012.
+Bellet, A., Habrard, A., and Sebban, M. A survey on metric
+learning for feature vectors and structured data. CoRR,
+abs/1306.6709, 2013.
+Blum, A. and Mitchell, T. Combining labeled and unlabeled
+data with co-training. In Proceedings of the Eleventh
+Annual Conference on Computational Learning Theory,
+COLT’ 98, 1998.
+Chung, J., Gulcehre, C., Cho, K., and Bengio, Y. Gated
+feedback recurrent neural networks. In Proceedings of
+the 32Nd International Conference on International Con-
+ference on Machine Learning - Volume 37, ICML’15.
+JMLR.org, 2015.
+Cortes, C., Mohri, M., and Rostamizadeh, A. Two-stage
+learning kernel algorithms. 2010.
+Devlin, J., Chang, M.-W., Lee, K., and Toutanova, K. BERT:
+Pre-training of deep bidirectional transformers for lan-
+guage understanding. arXiv preprint arXiv:1810.04805,
+10 2018.
+Dyer, C. Notes on noise contrastive estimation and negative
+sampling. CoRR, abs/1410.8251, 2014. URL http:
+//arxiv.org/abs/1410.8251.
+Gutmann, M. and Hyv¨arinen, A. Noise-contrastive esti-
+mation: A new estimation principle for unnormalized
+statistical models. In Proceedings of the Thirteenth Inter-
+national Conference on Artiﬁcial Intelligence and Statis-
+tics, pp. 297–304, 2010.
+Hazan, E. and Ma, T. A non-generative framework and
+convex relaxations for unsupervised learning. In Neural
+Information Processing Systems, 2016.
+Kiros, R., Zhu, Y., Salakhutdinov, R., Zemel, R. S., Torralba,
+A., Urtasun, R., and Fidler, S. Skip-thought vectors. In
+Neural Information Processing Systems, 2015.
+Krizhevsky, A. Learning multiple layers of features from
+tiny images. Technical report, 2009.
+Kumar, A., Niculescu-Mizil, A., Kavukcoglu, K., and
+Daum´e, H. A binary classiﬁcation framework for two-
+stage multiple kernel learning. In Proceedings of the 29th
+International Coference on International Conference on
+Machine Learning, ICML’12, 2012.
+Logeswaran, L. and Lee, H. An efﬁcient framework for
+learning sentence representations. In Proceedings of the
+International Conference on Learning Representations,
+2018.
+Maas, A. L., Daly, R. E., Pham, P. T., Huang, D., Ng, A. Y.,
+and Potts, C. Learning word vectors for sentiment anal-
+ysis. In Proceedings of the 49th Annual Meeting of the
+ACL: Human Language Technologies, 2011.
+Maurer, A. A vector-contraction inequality for rademacher
+complexities. In International Conference on Algorithmic
+Learning Theory, pp. 3–17. Springer, 2016.
+Maurer, A., Pontil, M., and Romera-Paredes, B. The beneﬁt
+of multitask representation learning. J. Mach. Learn. Res.,
+2016.
+Mikolov, T., Sutskever, I., Chen, K., Corrado, G. S., and
+Dean, J. Distributed representations of words and phrases
+and their compositionality. In Neural Information Pro-
+cessing Systems, 2013.
+Mohri, M., Rostamizadeh, A., and Talwalkar, A. Founda-
+tions of machine learning. MIT press, 2018.
+Pagliardini, M., Gupta, P., and Jaggi, M. Unsupervised
+learning of sentence embeddings using compositional
+n-gram features. Proceedings of the North American
+Chapter of the ACL: Human Language Technologies,
+2018.
+Pennington, J., Socher, R., and Manning, C. D. GloVe:
+Global vectors for word representation. In Proceedings
+of the Conference on Empirical Methods in Natural Lan-
+guage Processing, 2014.
+Peters, M. E., Neumann, M., Iyyer, M., Gardner, M., Clark,
+C., Lee, K., and Zettlemoyer, L. Deep contextualized
+word representations. In Proceedings of NAACL-HLT,
+2018.
+Simonyan, K. and Zisserman, A.
+Very deep convolu-
+tional networks for large-scale image recognition. arXiv
+preprint arXiv:1409.1556, 2014.
+Snell, J., Swersky, K., and Zemel, R. Prototypical networks
+for few-shot learning. In Advances in Neural Information
+Processing Systems 30. 2017.
+Wang, X. and Gupta, A. Unsupervised learning of visual
+representations using videos. In Proc. of IEEE Interna-
+tional Conference on Computer Vision, 2015.
+
+===== PAGE 11 =====
+Contrastive Unsupervised Representation Learning
+A. Deferred Proofs
+A.1. Class Collision Lemma
+We prove a general Lemma, from which Lemma 4.4 can be derived directly.
+Lemma A.1. Let c ∈C and ℓ: Rt →R be either the t-way hinge loss or t-way logistic loss, as deﬁned in Section 2. Let
+x, x+, x−
+1 , ..., x−
+t be iid draws from Dc. For all f ∈F, let
+L=
+un,c(f) =
+E
+x,x+,x−
+i
+h
+ℓ
+
+f(x)T  f(x+) −f(x−
+i )
+	t
+i=1
+i
+Then
+L=
+un,c(f) −ℓ(⃗0) ≤c′t
+p
+∥Σ(f, c)∥2
+E
+x∼Dc
+[∥f(x)∥]
+(13)
+where c′ is a positive constant.
+Lemma 4.4 is a direct consequence of the above Lemma, by setting t = 1 (which makes ℓ(0) = 1), taking an expectation
+over c ∼ν in Equation (13) and noting that Ec∼ν[L=
+un,c(f)] = L=
+un(f).
+Proof of Lemma A.1. Fix an f ∈F and let zi = f(x)T  f(x−
+i ) −f(x+)
+
+and z = maxi∈[t] zi. First, we show that
+L=
+un,c(f) −ℓ(⃗0) ≤c′E[|z|], for some constant c′. Note that E[|z|] = P[z ≥0]E[z|z ≥0] + P[z ≤0]E[−z|z ≤0] ≥P[z ≥
+0]E[z|z ≥0].
+t-way hinge loss: By deﬁnition ℓ(v) = max{0, 1+maxi∈[t]{−vi}}. Here, L=
+un,c(f) = E[(1+z)+] ≤E[max{1+z, 1}] =
+1 + P[z ≥0]E[z|z ≥0] ≤1 + E[|z|].
+t-way logistic loss: By deﬁnition ℓ(v) = log2(1 + Pt
+i=1 e−vi), we have L=
+un,c(f) = E[log2(1 + P
+i ezi)] ≤E[log2(1 +
+tez)] ≤max{
+z
+log 2 + log2(1 + t), log2(1 + t)} = P[z≥0]E[z|z≥0]
+log 2
++ log2(1 + t) ≤E[|z|]
+log 2 + log2(1 + t).
+Finally, E[|z|] ≤E[maxi∈[t] |zi|] ≤tE[|z1|]. But,
+E[|z1|] = Ex,x+,x−
+1
+ f(x)T  f(x−
+1 ) −f(x+)
+ 
+≤Ex
+
+∥f(x)∥
+v
+u
+u
+tEx+,x−
+1
+"  f(x)T
+∥f(x)∥
+ f(x−
+1 ) −f(x+)
+2 #
+≤
+√
+2
+p
+∥Σ(f, c)∥2
+E
+x∼Dc
+[∥f(x)∥]
+A.2. Proof of Lemma 5.1
+Fix an f ∈F and suppose that within each class c, f is σ2-subgaussian in every direction. 8 Let µc =
+E
+x∼Dc
+[f(x)]. This
+means that for all c ∈C and unit vectors v, for x ∼Dc, we have that vT (f(x) −µc) is σ2-subgaussian. Let ϵ > 0 and
+γ = 1 + 2Rσ
+p
+2 log R + log 3/ϵ. 9 Consider ﬁxed c+, c−, x and let f(x)T (f(x−) −f(x+)) = µ + z, where
+µ = f(x)T (µc−−µc+)
+and
+z = f(x)T  f(x−) −µc−
+−f(x)T  f(x+) −µc+
+For x+ ∼D+
+c , x−∼D−
+c independently, z is the sum of two independent R2σ2-subgaussians (x is ﬁxed), so z is 2R2σ2-
+subgaussian and thus p = Pr[z ≥γ −1] ≤e−4R2σ2(2 log R+log 3/ϵ)
+4R2σ2
+=
+ϵ
+3R2 . So, Ez[(1 + µ + z)+] ≤(1 −p)(γ + µ)+ +
+p(2R2 + 1) ≤γ(1 + µ
+γ )+ + ϵ (where we used that µ + z ≤2R2). By taking expectation over c+, c−∼ρ2, x ∼Dc+ we
+8A random variable X is called σ2-subgaussian if E[eλ(X−E[X])] ≤eλ2σ2/2, ∀λ ∈R. A random vector V ∈Rd is σ2-subgaussian in
+every direction, if ∀u ∈Rd, ||u|| = 1, the random variable ⟨u, V ⟩is σ2-subgaussian.
+9We implicitly assume here that R ≥1, but for R < 1, we just set γ = 1 + 2Rσ
+p
+log 3/ϵ and the same argument holds.
+
+===== PAGE 12 =====
+Contrastive Unsupervised Representation Learning
+have
+L̸=
+un(f) ≤
+E
+c+,c−∼ρ2
+x∼Dc+
+"
+γ
+
+1 + f(x)T (µc−−µc+)
+γ
+
++
+c+ ̸= c−
+#
++ ϵ
+= γ
+E
+c+,c−∼ρ2
+"
+1
+2
+E
+x∼Dc+
+"
+1 + f(x)T (µc−−µc+)
+γ
+
++
+#
++ 1
+2
+E
+x∼Dc−
+"
+1 + f(x)T (µc+ −µc−)
+γ
+
++
+# c+ ̸= c−
+#
++ ϵ
+= γ
+E
+c+,c−∼ρ2
+
+Lµ
+γ,sup({c+, c−}, f)
+c+ ̸= c−
++ ϵ
+(14)
+where Lµ
+γ,sup({c+, c−}, f) is Lµ
+sup({c+, c−}, f) when ℓγ(x) = (1 −x/γ)+ is the loss function. Observe that in 14 we
+used that DT are uniform for binary T , which is an assumption we work with in section 4, but we remove it in section 5.
+The proof ﬁnishes by observing that the last line in 14 is equal to γLµ
+γ,sup(f) + ϵ.
+A.3. Generalization Bound
+We ﬁrst state the following general Lemma in order to bound the generalization error of the function class F on the
+unsupervised loss function Lun(·). Lemma 4.2 can be directly derived from it.
+Lemma A.2. Let ℓ: Rk →R be η-Lipschitz and bounded by B. Then with probability at least 1 −δ over the training set
+S = {(xj, x+
+j , x−
+j1, . . . , x−
+jk)}M
+j=1, for all f ∈F
+Lun( ˆf) ≤Lun(f) + O
+
+ηR
+√
+kRS(F)
+M
++ B
+s
+log 1
+δ
+M
+
+
+(15)
+where
+RS(F) =
+E
+σ∼{±1}(k+2)dM
+"
+sup
+f∈F
+⟨σ, f|S⟩
+#
+(16)
+and f|S =
+
+ft(xj), ft(x+
+j ), ft(x−
+j1), . . . , , ft(x−
+jk)
+
+j∈[M]
+t∈[d]
+Note that for k + 1-way classiﬁcation, for hinge loss we have η = 1 and B = O(R2), while for logistic loss η = 1 and
+B = O(R2 + log k). Setting k = 1, we get Lemma 4.2. We now prove Lemma A.2.
+Proof of Lemma A.2. First, we use the classical bound for the generalization error in terms of the Rademacher complexity
+of the function class (see (Mohri et al., 2018) Theorem 3.1). For a real function class G whose functions map from a set Z
+to [0, 1] and for any δ > 0, if S is a training set composed by M iid samples {zj}M
+j=1, then with probability at least 1 −δ
+2,
+for all g ∈G
+E[g(z)] ≤1
+M
+M
+X
+j=1
+g(zi) + 2RS(G)
+M
++ 3
+s
+log 4
+δ
+2M
+(17)
+where RS(G) is the usual Rademacher complexity. We apply this bound to our case by setting Z = X k+2, S is our training
+set and the function class is
+G =
+
+gf(x, x+, x−
+1 , ..., x−
+k ) = 1
+B ℓ
+ {f(x)T  f(x+) −f(x−
+i )
+
+}k
+i=1
+ f ∈F
+
+(18)
+We will show that for some universal constant c, RS(G) ≤c ηR
+√
+k
+B
+RS(F) or equivalently
+E
+σ∼{±1}M
+"
+sup
+f∈F
+
+σ, (gf)|S
+
+#
+≤cηR
+√
+k
+B
+E
+σ∼{±1}d(k+2)M
+"
+sup
+f∈F
+
+σ, f|S
+
+#
+(19)
+
+===== PAGE 13 =====
+Contrastive Unsupervised Representation Learning
+where (gf)|S = {gf(xj, x+
+j , x−
+j1, ..., x−
+jk)}M
+j=1. To do that we will use the following vector-contraction inequality.
+Theorem A.3. [Corollary 4 in (Maurer, 2016)] Let Z be any set, and S = {zj}M
+j=1 ∈ZM. Let eF be a class of functions
+˜f : Z →Rn and h : Rn →R be L-Lipschitz. For all ˜f ∈eF, let g ˜
+f = h ◦˜f. Then
+E
+σ∼{±1}M
+"
+sup
+˜
+f∈e
+F
+D
+σ, (g ˜
+f)|S
+E#
+≤
+√
+2L
+E
+σ∼{±1}nM
+"
+sup
+˜
+f∈e
+F
+D
+σ, ˜f|S
+E#
+where ˜f|S =
+
+˜ft(zj)
+
+t∈[n],j∈[M].
+We apply Theorem A.3 to our case by setting Z = X k+2, n = d(k + 2) and
+eF =
+n
+˜f(x, x+, x−
+j1, ..., x−
+jk) = (f(x), f(x+), f(x−
+j1), ..., f(x−
+jk))|f ∈F
+o
+We also use g ˜
+f = gf where ˜f is derived from f as in the deﬁnition of eF. Observe that now A.3 is exactly in the form of 19 and
+we need to show that L ≤
+c
+√
+2
+ηR
+√
+k
+B
+for some constant c. But, for z = (x, x+, x−
+1 , ..., x−
+k ), we have g ˜
+f(z) = 1
+B ℓ(φ( ˜f(z)))
+where φ : R(k+2)d →Rk and φ
+ (vt, v+
+t , v−
+t1, ..., v−
+tk)t∈[d]
+
+=
+ P
+t vt(v+
+t −v−
+ti)
+
+i∈[k]. Thus, we may use h = 1
+B ℓ◦φ to
+apply Theorem A.3.
+Now, we see that φ is
+√
+6kR-Lipschitz when P
+t v2
+t , P
+t(v+
+t )2, P
+t(v−
+tj)2 ≤R2 by computing its Jacobian. Indeed, for all
+i, j ∈[k] and t ∈[d], we have ∂φi
+∂vt = v+
+t −v−
+ti, ∂φi
+∂v+
+t = vt and ∂φi
+∂v−
+tj = −vt1{i = j}. From triangle inequaltiy, the Frobenius
+norm of the Jacobian J of φ is
+||J||F =
+sX
+i,t
+(v+
+t −v−
+ti)2 + 2k
+X
+t
+v2
+t ≤
+p
+4kR2 + 2kR2 =
+√
+6kR
+Now, taking into account that ||J||2 ≤||J||F , we have that φ is
+√
+6kR-Lipschitz on its domain and since ℓis η-Lipschitz,
+we have L ≤
+√
+6 ηR
+√
+k
+B
+.
+Now, we have that with probability at least 1 −δ
+2
+Lun( ˆf) ≤bLun( ˆf) + O
+
+ηR
+√
+kRS(F)
+M
++ B
+s
+log 1
+δ
+M
+
+
+(20)
+Let f ∗∈arg minf∈F Lun(f). With probability at least 1−δ
+2, we have that bLun(f ∗) ≤Lun(f ∗)+3B
+q
+log 2
+δ
+2M (Hoeffding’s
+inequality). Combining this with Equation (20), the fact that bLun( ˆf) ≤bLun(f ∗) and applying a union bound, ﬁnishes the
+proof.
+A.4. Proof of Proposition 6.2
+By convexity of ℓ,
+ℓ
+
+f(x)T
+P
+i f(x+
+i )
+b
+−
+P
+i f(x−
+i )
+b
+
+= ℓ
+ 
+1
+b
+X
+i
+f(x)T  f(x+
+i ) −f(x−
+i )
+
+!
+≤1
+b
+X
+i
+ℓ
+ f(x)T  f(x+
+i ) −f(x−
+i )
+
+Thus,
+Lblock
+un
+(f) = E
+x,x+
+i
+x−
+i
+
+ℓ
+
+f(x)T
+P
+i f(x+
+i )
+b
+−
+P
+i f(x−
+i )
+b
+
+≤E
+x,x+
+i
+x−
+i
+"
+1
+b
+X
+i
+ℓ
+ f(x)T  f(x+
+i ) −f(x−
+i )
+
+#
+= Lun(f)
+
+===== PAGE 14 =====
+Contrastive Unsupervised Representation Learning
+The proof of the lower bound is analogous to that of Lemma 4.3.
+B. Results for k Negative Samples
+B.1. Formal theorem statement and proof
+We now present Theorem B.1 as the formal statement of Theorem 6.1 and prove it. First we deﬁne some necessary quantities.
+Let (c+, c−
+1 , . . . , c−
+k ) be k + 1 not necessarily distinct classes. We deﬁne Q(c+, c−
+1 , . . . , c−
+k ) to be the set of distinct classes
+in this tuple. We also deﬁne I+(c−
+1 , ..., c−
+k ) = {i ∈[k] | c−
+i = c+} to be the set of indices where c+ reappears in the
+negative samples. We will abuse notation and just write Q, I+ when the tuple is clear from the context.
+To deﬁne L̸=
+un(f) consider the following tweak in the way the latent classes are sampled: sample c+, c−
+1 , . . . , c−
+k ∼ρk+1
+conditioning on |I+| < k and then remove all c−
+i , i ∈I+. The datapoints are then sampled as usual: x, x+ ∼D2
+c+ and
+x−
+i ∼Dc−
+i , i ∈[k], independently.
+L̸=
+un(f) :=
+E
+c+,c−
+i
+x,x+,x−
+i
+h
+ℓ
+
+f(x)T  f(x+) −f(x−
+i )
+	
+i/∈I+
+ |I+| < k
+i
+which always contrasts points from different classes, since it only considers the negative samples that are not from c+.
+The generalization error is 10
+GenM = O
+
+R
+√
+k RS(F)
+M
++ (R2 + log k)
+s
+log 1
+δ
+M
+
+
+were RS(F) is the extension of the deﬁnition in Section 4: RS(F) =
+E
+σ∼{±1}(k+2)dM
+
+supf∈F⟨σ, f|S⟩
+
+, where f|S =
+
+ft(xj), ft(x+
+j ), ft(x−
+j1), . . . , , ft(x−
+jk)
+
+j∈[M],t∈[d].
+For c+, c−
+1 , ..., c−
+k ∼ρk+1, let τk = P[I+ ̸= ∅] and τ ′ = P[c+ = c−
+i , ∀i]. Observe that τ1, as deﬁned in Section 4, is
+P[c+ = c−
+1 ]. Let pmax(T ) = maxc DT (c) and
+ρ+
+min(T ) = min
+c∈T Pc+,c−
+i ∼ρk+1
+ c+ = c|Q = T , I+ = ∅
+
+In Theorem B.1 we will upper bound the following quantity:
+E
+T ∼D
+
+ρ+
+min(T )
+pmax(T ) Lµ
+sup(T , ˆf)
+
+(D was deﬁned in Section 6.1).
+Theorem B.1. Let ˆf ∈arg minf∈F bLun(f). With probability at least 1 −δ, for all f ∈F
+E
+T ∼D
+ ρ+
+min(T )
+pmax(T ) Lµ
+sup(T , ˆf)
+
+≤1 −τ ′
+1 −τk
+L̸=
+un(f) + c′k
+τ1
+1 −τk
+s(f) +
+1
+1 −τk
+GenM
+where c′ is a constant.
+Note that the deﬁnition of s(f) used here is deﬁned in Section 4
+Proof. First, we note that both hinge and logistic loss satisfy the following property: ∀I1, I2 such that I1 ∪I2 = [t] we have
+that
+ℓ({vi}i∈I1) ≤ℓ({vi}i∈[t]) ≤ℓ({vi}i∈I1) + ℓ({vi}i∈I2)
+(21)
+We now prove the Theorem in 3 steps. First, we leverage the convexity of ℓto upper bound a supervised-type loss with the
+unsupervised loss Lun(f) of any f ∈F. We call it supervised-type loss because it also includes degenerate tasks: |T | = 1.
+10The log k term can be made O(1) for the hinge loss.
+
+===== PAGE 15 =====
+Contrastive Unsupervised Representation Learning
+Then, we decompose the supervised-type loss into an average loss over a distribution of supervised tasks, as deﬁned in the
+Theorem, plus a degenerate/constant term. Finally, we upper bound the unsupervised loss Lun(f) with two terms: L̸=
+un(f)
+that measures how well f contrasts points from different classes and an intraclass deviation penalty, corresponding to s(f).
+Step 1 (convexity): When the class c is clear from context, we write ˆµc = E
+x∼c[ ˆf(x)]. Recall that the sampling procedure for
+unsupervised data is as follows: sample c+, c−
+1 , ..., c−
+k ∼ρk+1 and then x, x+ ∼D2
+c+ and x−
+i ∼Dc−
+i , i ∈[k]. So, we have
+Lun( ˆf) =
+E
+c+,c−
+i ∼ρk+1
+x,x+∼D2
+c+
+x−
+i ∼Dc−
+i
+
+ℓ
+n
+ˆf(x)T 
+ˆf(x+) −ˆf(x−
+i )
+ok
+i=1
+
+=
+E
+c+,c−
+i ∼ρk+1
+x∼Dc+
+E
+x+∼Cc+
+x−
+i ∼Dc−
+i
+
+ℓ
+n
+ˆf(x)T 
+ˆf(x+) −ˆf(x−
+i )
+ok
+i=1
+
+≥
+E
+c+,c−
+i ∼ρk+1
+x∼Dc+
+
+ℓ
+n
+ˆf(x)T 
+ˆµc+ −ˆµc−
+i
+ok
+i=1
+
+(22)
+where the last inequality follows by applying the usual Jensen’s inequality and the convexity of ℓ. Note that in the upper
+bounded quantity, the c+, c−
+1 , ..., c−
+k don’t have to be distinct and so the tuple does not necessarily form a task.
+Step 2 (decomposing into supervised tasks) We now decompose the above quantity to handle repeated classes.
+E
+c+,c−
+i ∼ρk+1
+x∼Dc+
+
+ℓ
+n
+ˆf(x)T 
+ˆµc+ −ˆµc−
+i
+ok
+i=1
+
+≥(1 −τk)
+E
+c+,c−
+i ∼ρk+1
+x∼Dc+
+"
+ℓ
+n
+ˆf(x)T 
+ˆµc+ −ˆµc−
+i
+ok
+i=1
+ I+ = ∅
+#
++ τk
+E
+c+,c−
+i ∼ρk+1[ℓ( 0, ..., 0
+| {z }
+|I+| times
+)|I+ ̸= ∅]
+≥(1 −τk)
+E
+c+,c−
+i ∼ρk+1
+x∼Dc+
+"
+ℓ
+ n
+ˆf(x)T (ˆµc+ −ˆµc)
+o
+c∈Q
+c̸=c+
+! I+ = ∅
+#
++ τk
+E
+c+,c−
+i ∼ρk+1
+h
+ℓ|I+|(⃗0)
+ I+ ̸= ∅
+i
+(23)
+where ℓt(⃗0) = ℓ(0, . . . , 0) (t times). Both inequalities follow from the LHS of Equation (21). Now we are closer to our
+goal of lower bounding an average supervised loss, since the ﬁrst expectation in the RHS has a loss which is over a set of
+distinct classes. However, notice that this loss is for separating c+ from Q(c+, c−
+1 , ..., c−
+k ) \ {c+}. We now proceed to a
+symmetrization of this term to alleviate this issue.
+Recall that in the main paper, sampling T from D is deﬁned as sampling the (k+1)-tuple from ρk+1 conditioned on I+ = ∅
+and setting T = Q. Based on this deﬁnition, by the tower property of expectation, we have
+E
+c+,c−
+i ∼ρk+1
+x∼Dc+
+"
+ℓ
+ n
+ˆf(x)T (ˆµc+ −ˆµc)
+o
+c∈Q
+c̸=c+
+! I+ = ∅
+#
+=
+E
+T ∼D
+E
+c+,c−
+i ∼ρk+1
+x∼Dc+
+h
+ℓ
+n
+ˆf(x)T  ˆµc+ −ˆµc
+o
+c∈Q
+c̸=c+
+Q = T , I+ = ∅
+i
+=
+E
+T ∼D
+E
+c+∼ρ+(T )
+x∼Dc+
+h
+ℓ
+n
+ˆf(x)T  ˆµc+ −ˆµc
+o
+c∈T
+c̸=c+
+i
+(24)
+where ρ+(T ) is the distribution of c+ when (c+, c−
+1 , ..., c−
+k ) are sampled from ρk+1 conditioned on Q = T and I+ = ∅.
+Recall that ρ+
+min(T ) from the theorem’s statement is exactly the minimum out of these |T | probabilities. Now, to lower
+bound the last quantity with the LHS in the theorem statement, we just need to observe that for all tasks T
+
+===== PAGE 16 =====
+Contrastive Unsupervised Representation Learning
+E
+c+∼ρ+(T )
+x∼Dc+
+h
+ℓ
+n
+ˆf(x)T  ˆµc+ −ˆµc
+o
+c∈T
+c̸=c+
+i
+≥ρ+
+min(T )
+pmax(T )
+E
+c+∼DT
+x∼Dc+
+h
+ℓ
+n
+ˆf(x)T  ˆµc+ −ˆµc
+o
+c∈T
+c̸=c+
+i
+= ρ+
+min(T )
+pmax(T )Lsup(T , ˆf)
+(25)
+By combining this with Equations (22), (23), (25) we get
+(1 −τk) E
+T ∼D
+"
+ρ+
+min(T)
+pmax(T)Lsup(T , ˆf)
+#
+≤Lun( ˆf) −τk
+E
+c+,c−
+i ∼ρk+1
+h
+ℓ|I+|(⃗0)
+ I+ ̸= ∅
+i
+(26)
+Now, by applying Lemma A.2, we bound the generalization error: with probability at least 1 −δ, ∀f ∈F
+Lun( ˆf) ≤Lun(f) + GenM
+(27)
+However, Lun(f) cannot be made arbitrarily small. One can see that for all f ∈F, Lun(f) is lower bounded by the second
+term in Equation (22), which cannot be made arbitrarily small as τk > 0.
+Lun(f) ≥
+E
+c+,c−
+i ∼ρk+1
+x,x+∼Dc+
+x−
+i ∼Dc−
+i
+h
+ℓ
+
+f(x)T  f(x+) −f(x−
+i )
+	
+i∈I+
+i
+≥τ
+E
+c+,c−
+i ∼ρk+1
+h
+ℓ|I+|(⃗0)
+ I+ ̸= ∅
+i
+(28)
+where we applied Jensen’s inequality. Since τk is not 0, the above quantity can never be arbitrarily close to 0 (no matter how
+rich F is).
+Step 3 (Lun decomposition) Now, we decompose Lun(f) by applying the RHS of Equation (21)
+Lun(f) ≤
+E
+c+,c−
+i ∼ρk+1
+x,x+∼D2
+c+
+x−
+i ∼Dc−
+i
+h
+ℓ
+n
+f(x)T  f(x+) −f(x−
+i )
+o
+i/∈I+
+
++ ℓ
+n
+f(x)T  f(x+) −f(x−
+i )
+o
+i∈I+
+i
+(29)
+=
+E
+c+,c−
+i ∼ρk+1
+x,x+∼D2
+c+
+x−
+i ∼Dc−
+i
+, i/∈I+
+h
+ℓ
+n
+f(x)T  f(x+) −f(x−
+i )
+o
+i/∈I+
+i
++
+E
+c+,c−
+i ∼ρk+1
+x,x+∼D2
+c+
+x−
+i ∼Dc−
+i
+, i∈I+
+h
+ℓ
+
+f(x)T  f(x+) −f(x−
+i )
+	
+i∈I+
+i
+(30)
+= (1 −τ ′)
+E
+c+,c−
+i ∼ρk+1
+x,x+∼D2
+c+
+x−
+i ∼Dc−
+i
+,i /∈I+
+h
+ℓ
+n
+f(x)T  f(x+) −f(x−
+i )
+o
+i/∈I+
+|I+| < k
+i
++τk
+E
+c+,c−
+i ∼ρk+1
+x,x+∼D2
+c+
+x−
+i ∼Dc−
+i
+, i∈I+
+"
+ℓ
+
+f(x)T  f(x+) −f(x−
+i )
+	
+i∈I+
+ I+ ̸= ∅
+#
+(31)
+Observe that the ﬁrst term is exactly (1 −τ ′)L̸=
+un(f). Thus, combining (26), (27) and (31) we get
+
+===== PAGE 17 =====
+Contrastive Unsupervised Representation Learning
+(1 −τk) E
+T ∼D
+"
+ρ+
+min(T)
+pmax(T)Lsup(T , ˆf)
+#
+≤(1 −τ ′)L̸=
+un(f) + GenM
++ τk
+E
+c+,c−
+i ∼ρk+1
+"
+E
+x,x+∼D2
+c+
+x−
+i ∼Dc−
+i
+, i∈I+
+h
+ℓ
+n
+f(x)T  f(x+) −f(x−
+i )
+o
+i∈I+
+i
+−ℓ|I+|(⃗0)
+I+ ̸= ∅
+#
+|
+{z
+}
+∆(f)
+(32)
+From the deﬁnition of I+, c−
+i = c+, ∀i ∈I+. Thus, from Lemma A.1, we get that
+∆(f) ≤c′
+E
+c+,c−
+i ∼ρk+1
+
+|I+|
+p
+∥Σ(f, c)∥2
+E
+x∼Dc
+[∥f(x)∥]
+ I+ ̸= ∅
+
+(33)
+for some constant c′.
+Let u be a distribution over classes with u(c) = Pc+,c−
+i ∼ρk+1[c+ = c|I+ ̸= ∅] and it is easy to see that u(c) ∝ρ(c)
+ 1 −
+(1 −ρ(c))k
+By applying the tower property to Equation (33) we have
+∆(f) ≤c′ E
+c∼u
+"
+E
+c+,c−
+i ∼ρk+1
+
+|I+|
+c+ = c, I+ ̸= ∅
+ p
+∥Σ(f, c)∥2
+E
+x∼Dc
+[∥f(x)∥]
+#
+(34)
+But,
+E
+c+,c−
+i ∼ρk+1
+
+|I+|
+c+ = c, I+ ̸= ∅
+
+=
+k
+X
+i=1
+Pc+,c−
+i ∼ρk+1
+ c−
+i = c+c+ = c, I+ ̸= ∅
+
+= kPc+,c−
+i ∼ρk+1
+ c−
+1 = c+c+ = c, I+ ̸= ∅
+
+= k
+Pc+,c−
+i ∼ρk+1
+ c−
+1 = c+ = c
+
+Pc+,c−
+i ∼ρk+1
+ c+ = c, I+ ̸= ∅
+
+= k
+ρ2(c)
+ρ(c)
+ 1 −(1 −ρ(c))k = k
+ρ(c)
+1 −(1 −ρ(c))k
+(35)
+Now, using the fact that τk = 1 −P
+c′ ρ(c′)(1 −ρ(c′))k = P
+c′ ρ(c′)
+ 1 −(1 −ρ(c′))k
+and τ1 = P
+c ρ2(c),
+τk
+1 −τk
+∆(f) ≤
+τk
+1 −τk
+c′ E
+c∼u
+
+k
+ρ(c)
+1 −(1 −ρ(c))k
+p
+∥Σ(f, c)∥2
+E
+x∼Dc
+[∥f(x)∥]
+
+= c′k
+τk
+1 −τk
+X
+c
+ρ2(c)
+P
+c′ ρ(c′) (1 −(1 −ρ(c′))k)
+p
+∥Σ(f, c)∥2
+E
+x∼Dc
+[∥f(x)∥]
+= c′k
+τ1
+1 −τk E
+c∼ν
+p
+∥Σ(f, c)∥2
+E
+x∼Dc
+[∥f(x)∥]
+
+= c′k
+τ1
+1 −τk
+s(f)
+(36)
+and we are done.
+B.2. Competitive Bound
+As in Section 5.2, we prove a competitive type of bound, under similar assumptions.
+Let ℓγ(v) = max{0, 1 +
+maxi{−vi}/γ}, v ∈Rk, be the multiclass hinge loss with margin γ and for any T let Lµ
+γ,sup(T , f) be Lµ
+sup(T , f)
+when ℓγ is used as loss function. For all tasks T , let ρ′+(T ) is the distribution of c+ when (c+, c−
+1 , ..., c−
+k ) are sampled
+from ρk+1 conditioned on Q = T and |I+| < k. Also, let ρ′+
+max(T ) be the maximum of these |T | probabilities and
+pmin(T ) = minc∈T DT (c).
+
+===== PAGE 18 =====
+Contrastive Unsupervised Representation Learning
+We will show a competitive bound against the following quantity, for all f ∈F:
+E
+T ∼D′
+h
+ρ′+
+max(T )
+pmin(T ) Lµ
+γ,sup(T , f)
+i
+, where
+D′ is deﬁned as follows: sample c+, c−
+1 , ..., c−
+k ∼ρk+1, conditioned on |I+| < k. Then, set T = Q. Observe that when
+I+ = ∅with high probability, we have D′ ≈D.
+Lemma B.2. For all f ∈F suppose the random variable f(X), where X ∼Dc, is σ2(f)-subgaussian in every direction
+for every class c and has maximum norm R(f) = maxx∈X ∥f(x)∥. Let bf ∈arg minf∈F bLun(f). Then for all ϵ > 0, with
+probability at least 1 −δ, for all f ∈F
+E
+T ∼D
+ ρ+
+min(T )
+pmax(T ) Lµ
+sup(T , ˆf)
+
+≤αγ(f)
+E
+T ∼D′
+"
+ρ′+
+max(T )
+pmin(T ) Lµ
+γ,sup(T , f)
+#
++ βs(f) + ηGenM + ϵ
+where γ(f) = 1 + c′R(f)σ(f)(√log k +
+q
+log R(f)
+ϵ
+), c′ is some constant, α = 1−τ ′
+1−τk , β = k
+τ1
+1−τk and η =
+1
+1−τk .
+Proof. We will show that ∀f ∈F
+L̸=
+un(f) ≤γ(f)
+E
+T ∼D′
+"
+ρ′+
+max(T )
+pmin(T ) Lµ
+γ,sup(T , f)
+#
+(37)
+and the Lemma follows from Theorem 6.1. Now, we ﬁx an ϵ > 0, an f ∈F and we drop most of the arguments f in the rest
+of the proof. Also, ﬁx c+, c−
+1 . . . c−
+k , x and let t = k −|I+|. We assume without loss of generality, that c+ ̸= c−
+i , ∀i ∈[t].
+Now,
+max
+i∈[t] f(x)T (f(x−
+i ) −f(x+)) ≤µ + max
+i
+z−
+i −z+
+(38)
+where µ = maxi∈[t] f(x)T (µc−
+i −µc+), z−
+i
+= f(x)T (f(x−
+i ) −µc−
+i ) and z+ = f(x)T (f(x+) −µc+). zi are cen-
+tered σ2R2-subgaussian, so from standard properties of subgaussian random variables P[maxi z−
+i
+≥
+√
+2σR√log t +
+√2c1σR
+p
+log R/ϵ] ≤(ϵ/R)c1 (again we consider here the case where R ≥1 and for R < 1, the same arguments hold
+but with removing R from the log). z+ is also centered σ2R2-subgaussian, so P[z+ ≥√2c1σR
+p
+log R/ϵ] ≤(ϵ/R)c1.
+Let γ = 1 + c′σR(√log t +
+p
+log R/ϵ) for appropriate constant c′. By union bound, we have p = P[maxi z−
+i −z+ ≥
+γ −1] ≤2(ϵ/R)c1. Thus, Ez+,z−
+i [(1 + µ + maxi z−
+i −z+)+] ≤(1 −p)(µ + γ)+ + p(2R2 + 1) ≤γ(1 + µ/γ)+ + ϵ (for
+appropriate constant c1). By taking expectation over c+, c−
+i ∼ρk+1, conditioned on |I+| < k , and over x ∼Dc+ we get
+L̸=
+un(f) ≤γ
+E
+c+,c−
+i ∼ρk+1
+x∼Dc+
+"
+1 + maxc∈Q,c̸=c+ f(x)T (µc −µc+)
+γ
+
++
+|I+| < k
+#
+= γ
+E
+T ∼D′
+E
+c+,c−
+i ∼ρk+1
+x∼Dc+
+"
+1 + maxc∈Q,c̸=c+ f(x)T (µc −µc+)
+γ
+
++
+Q = T , |I+| < k
+#
+= γ
+E
+T ∼D′
+E
+c+∼ρ′+(T )
+x∼Dc+
+"
+1 + maxc∈T,c̸=c+ f(x)T (µc −µc+)
+γ
+
++
+#
+≤γ
+E
+T ∼D′
+"
+ρ′+
+max(T )
+pmin(T ) Lµ
+γ,sup(T , f)
+#
+(39)
+C. Examples for Section 6.2
+Here, we illustrate via examples two ways in which the increase of k can lead to suboptimal ˆf. We will consider the hinge
+loss as the loss function, while the examples carry over trivially for logistic loss.
+1. The ﬁrst example is the case where even though there exist representations in F that can separate every class, the
+suboptimal representation is picked by the algorithm when k = Ω(|C|). Let C = {ci}i∈[n] where for each class, Dci is
+
+===== PAGE 19 =====
+Contrastive Unsupervised Representation Learning
+uniform over two points {x1
+i , x2
+i }. Let ei be the indicator vectors in Rn and let the class F consists of {f0, f1} with
+f0, f1 : X 7→Rn where f1(x1
+i ) = 3/2rei and f1(x2
+i ) = 1/2rei for all i, for some r > 0, and f0 = ⃗0. Finally, ρ is
+uniform over C. Now, when the number of negative samples is Ω(n), the probability that ∃j ∈[k] such that c+ = c−
+j is
+constant, and therefore Lun(f) = Ω(r2) > 1 = Lun(f0) when r is large. This means that despite Lsup(C, f1) = 0,
+the algorithm will pick f0 which is a suboptimal representation.
+2. We can extend the ﬁrst example to the case where, even when k = o(|C|), the algorithm picks suboptimal representations.
+To do so, we simply ‘replicate’ the ﬁrst example to create clusters of classes. Formally, let C = {cij}i,j∈[n] where for
+each class, Dcij is uniform over two points {x1
+ij, x2
+ij}. Finally, same as above, let F consist of two functions {f0, f1}.
+The function f1 maps f1(x1
+ij) = 3/2rei and f1(x2
+ij) = 1/2rei for all i, j and f0 = ⃗0. ρ is uniform over C. Now, note
+that f1 ‘clutsters’ the n2 classes and their points into n clusters, each along an ei. Thus, it is only useful for contrasting
+classes from different clusters. However, note that the probability of intra-cluster collision with k negative samples
+is 1 −(1 −1/n)k. When k = o(n), we have that Lun(f1) = o(1) < 1 = Lun(f0) so the algorithm will pick f1.
+However, when k = Ω(n), Lun(f) = Ω(r2) > 1 = Lun(f0) and the algorithm will pick the suboptimal representation
+f0. Thus, despite |C| = n2, having more than n negative samples can hurt performance, since even tough f1 cannot
+solve all the tasks, the average supervised loss over t-way tasks, t = o(n), is Lsup(f) ≤O(1 −(1 −1/n)t−1) = o(1).
+D. Experiments
+D.1. Wiki-3029 construction
+We use the Wikipedia dump and select articles that have entries in the WordNet, have at least 8 sections and at least 12
+sentences of length at least 4 per section. At the end of this ﬁltering we are left with 3029 articles with at least 200 sentences
+per article. We then sample 200 sentences from each article and do a 70%/10%/20% train/dev/test split.
+D.2. GRU model
+We use a bi-directional GRU with output dimension of 300 trained using dropout 0.3. The input word embeddings are
+initialized to pretrained CC GloVe vectors and ﬁxed throughout training.

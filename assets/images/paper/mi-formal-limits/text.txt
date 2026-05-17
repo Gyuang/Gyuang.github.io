@@ -1,0 +1,1425 @@
+
+===== PAGE 1 =====
+Formal Limitations on the Measurement of Mutual Information
+David McAllester
+Karl Stratos
+Toyota Technological Institute at Chicago
+Rutgers University
+Abstract
+Measuring mutual information from ﬁnite data is
+difﬁcult. Recent work has considered variational
+methods maximizing a lower bound. In this pa-
+per, we prove that serious statistical limitations
+are inherent to any method of measuring mutual
+information. More speciﬁcally, we show that any
+distribution-free high-conﬁdence lower bound on
+mutual information estimated from N samples
+cannot be larger than O(ln N).
+1
+INTRODUCTION
+Mutual information has important applications to unsuper-
+vised learning. It underlies classical representation learn-
+ing methods such as Brown clustering (Brown et al., 1992),
+INFOMAX (Bell and Sejnowski, 1995), and the informa-
+tion bottleneck method (Tishby et al., 1999). Maximiz-
+ing mutual information is also central to recent works on
+unsupervised representation learning with neural networks
+(McAllester, 2018; Belghazi et al., 2018; Oord et al., 2018;
+Stratos, 2019; Hjelm et al., 2019).
+Unfortunately, measuring mutual information from ﬁnite
+data is a notoriously difﬁcult estimation problem. This dif-
+ﬁculty has motivated researchers to consider more compu-
+tationally amenable measurement methods that maximize
+a parameterized lower bound on mutual information. The
+hope is that the optimized value of the bound is close to
+the true value of mutual information and can serve as a
+good enough approximation. For instance, this is the ap-
+proach advocated by Mutual Information Neural Estimator
+(MINE) (Belghazi et al., 2018) and contrastive predictive
+coding (CPC) (Oord et al., 2018).
+Here we prove that serious statistical limitations are in-
+herent to all methods of measuring mutual information.
+More speciﬁcally, we show that any distribution-free high-
+conﬁdence lower bound on mutual information cannot be
+Proceedings of the 23rdInternational Conference on Artiﬁcial In-
+telligence and Statistics (AISTATS) 2020, Palermo, Italy. PMLR:
+Volume 108. Copyright 2020 by the author(s).
+larger than O(ln N) where N is the number of samples.
+Thus a meaningful high-conﬁdence lower bound is infeasi-
+ble when underlying mutual information is large (e.g., hun-
+dreds of bits).
+Our result corrects, generalizes, and uniﬁes past work on
+measuring mutual information. Unlike previous intractabil-
+ity results that are tied to speciﬁc estimators (Gao et al.,
+2015; Oord et al., 2018), our result is universal to all es-
+timators. Hence we show that without making strong as-
+sumptions on the population distribution, such as the small
+support assumption in Valiant and Valiant (2011) and min-
+imax bounds (Jiao et al., 2015), it is generally impossible
+to guarantee an accurate estimate of mutual information.
+Our results contradict a theorem in Belghazi et al. (2018)
+claiming a polynomial sample size convergence rate for a
+mutual information estimator and we point out an error in
+their proof.
+While it is infeasible to give meaningful high-conﬁdence
+lower bound guarantees for large mutual information, es-
+timators lacking formal guarantees might still be useful
+in practice.
+To this end, we propose expressing mutual
+information as a difference of entropies and estimating
+the entropy terms by cross-entropy upper bounds.
+This
+difference-of-entropies (DoE) estimator gives neither an
+upper bound nor a lower bound guarantee on mutual in-
+formation. Nevertheless, we give theoretical and empirical
+evidence that DoE can meaningfully estimate large mutual
+information from feasible samples.
+1.1
+Overview
+We state our main result below. We write (X, Y ) to denote
+a pair of random variables with ranges (X, Y). Unless oth-
+erwise speciﬁed, they can be discrete or continuous. For
+simplicity, all distributions are assumed to have full sup-
+port.
+Theorem 1.1. Let B be any mapping from N samples of
+(X, Y ) to a real number with the following property: for
+any distribution pXY over (X, Y ), given N iid samples
+(x1, y1) . . . (xN, yN) ∼pXY , with probability at least 0.99
+I(X, Y ; pXY ) ≥B((x1, y1) . . . (xN, yN))
+where I(X, Y ; pXY ) is the mutual information between
+(X, Y ) under pXY .
+Now pick any distribution qXY
+arXiv:1811.04251v4  [cs.IT]  20 May 2020
+
+===== PAGE 2 =====
+Formal Limitations on the Measurement of Mutual Information
+over (X, Y ).
+Then given N
+≥
+50 iid samples
+(x′
+1, y′
+1) . . . (x′
+N, y′
+N) ∼qXY , with probability at least 0.96
+B((x′
+1, y′
+1) . . . (x′
+N, y′
+N)) ≤2 ln N + 5
+In the rest of the paper, we build toward this result by prov-
+ing statistical limitations on measuring lower bounds on
+Kullback-Leibler (KL) divergence and entropy. We derive
+several intermediate results, speciﬁcally:
+• We ﬁrst consider the Donsker-Varadhan lower bound on
+KL divergence which underlies the approach in MINE.
+We give an intuitive explanation on why estimating the
+bound from samples is problematic. We show that the
+polynomial sample complexity result given by Belghazi
+et al. (2018) is incorrect.
+• We formally prove that any lower bound on KL diver-
+gence cannot be larger than O(ln N). This subsumes the
+Donsker-Varadhan bound as a special case.
+• We formally prove that any lower bound on entropy can-
+not be larger than O(ln N). Theorem 1.1 is a special
+case of this result.
+• We motivate measuring mutual information as a differ-
+ence of entropies, each of which measured by minimiz-
+ing cross entropy. We empirically show that it outper-
+forms existing variational lower bounds in synthetic ex-
+periments and produce realistic estimates of mutual in-
+formation in real-world datasets.
+2
+ISSUES WITH THE
+DONSKER-VARADHAN LOWER
+BOUND
+The Donsker-Varadhan (DV) lower bound on KL diver-
+gence is stated below. For completeness, a simple proof
+is given in the supplementary material.
+Theorem 2.1 (Donsker and Varadhan, 1983). Let pX and
+qX be distributions over X with ﬁnite KL divergence. Then
+for all bounded functions f : X →R
+DKL(pX||qX) ≥DVf(pX||qX)
+(1)
+where
+DVf(pX||qX) :=
+E
+x∼pX [f(x)] −ln
+E
+x∼qX
+h
+ef(x)i
+(2)
+Moreover, (1) holds with equality for some f with range
+[0, Fmax].
+The DV bound (2) computes the difference between the
+expected value of f(x) under pX and the log of the ex-
+pected value of the exponential of f(x) under qX. It can be
+easily estimated by sampling: given x1 . . . xN ∼pX and
+x′
+1 . . . x′
+N ∼qX, we can compute the empirical estimate
+d
+DV
+N
+f (pX||qX) := 1
+N
+N
+X
+i=1
+f(xi) −ln
+ 
+1
+N
+N
+X
+i=1
+ef(x′
+i)
+!
+(3)
+An application of the DV bound is measuring KL diver-
+gence. Speciﬁcally, we estimate KL divergence by esti-
+mating the associated DV bound from samples:
+DKL(pX||qX) ≥DVf(pX||qX)
+≳d
+DV
+N
+f (pX||qX)
+The ﬁrst inequality holds for all choices of f by Theo-
+rem 2.1. We require that the second inequality holds with
+high probability (with respect to random sampling). We
+now show that this approach to measuring KL divergence
+is problematic.
+2.1
+Statistical Limitations on Measuring the DV
+Bound
+A crucial observation is that the second term in the DV
+bound (2) involves an expectation of the exponential
+E
+x∼qX
+h
+ef(x)i
+This expression has the same form as the moment gener-
+ating function used in analyzing large deviation probabil-
+ities. The utility of expectations of exponentials in large
+deviation theory is that such expressions can be dominated
+by extremely rare events (large deviations). The rare events
+dominating the expectation will never be observed by sam-
+pling from qX.
+To quantitatively analyze the risk of unseen outlier events,
+we will make use of the following simple lemma where we
+write pX(Φ[x]) for the probability over drawing x from pX
+that the statement Φ[x] holds.
+Lemma 2.2 (Outlier risk lemma). Given N ≥2 samples
+from pX and a property Φ[x] such that pX(Φ[x]) ≤1/N,
+the probability that no sample x satisﬁes Φ[x] is at least
+1/4.
+Proof. The probability that Φ[x] is unseen in the sample is
+at least (1 −1/N)N which is at least 1/4 for N ≥2 and
+where limN→∞(1 −1/N)N = 1/e.
+We can use the outlier risk lemma to perform a quantitative
+risk analysis of the DV bound. Assume without loss of
+generality that [0, Fmax] is the range of f taken on X. Let
+us consider the best case scenario in which the empirical
+estimate (3) is the largest. It is easy to see that the largest
+value is Fmax and attained when
+f(xi) = Fmax
+∀i = 1 . . . N
+f(x′
+i) = 0
+∀i = 1 . . . N
+
+===== PAGE 3 =====
+David McAllester, Karl Stratos
+where x1 . . . xN are samples from pX and x′
+1 . . . x′
+N are
+samples from qX. But by the outlier risk lemma, there is
+still at least a 1/4 probability that
+E
+x∼qX
+h
+ef(x)i
+≥1
+N eFmax
+Since we require that (3) is a high-conﬁdence lower bound
+on the DV bound, it must account for the unseen outlier
+risk.1 In particular, we must have
+d
+DV
+N
+f (pX||qX) ≤Fmax −ln eFmax
+N
+= ln N
+2.2
+Discussion of MINE
+Our investigation of measuring the DV bound from samples
+is motivated by Belghazi et al. (2018) who propose mea-
+suring and maximizing mutual information by formulating
+it as KL divergence and considering the DV lower bound.
+More speciﬁcally, they introduce a function f : X ×Y →R
+parameterized by a neural network and perform gradient
+descent to optimize
+sup
+f
+1
+N
+N
+X
+i=1
+f(xi, yi) −ln 1
+N
+N
+X
+i=1
+ef(x′
+i,y′
+i)
+(4)
+where (x1, y1) . . . (xN, yN) are drawn from pXY
+and
+(x′
+1, y′
+1) . . . (x′
+N, y′
+N) are drawn from pX × pY . This is an
+empirical estimate of the DV bound on
+DKL(pXY ||pX × pY ) = I(X, Y ; pXY )
+(5)
+They claim that (4) yields a high-conﬁdence accurate mea-
+surement of underlying mutual information with polyno-
+mial sample complexity under mild assumptions (Theorem
+3 in their paper), which apparently contradicts our previous
+observation.
+Upon inspection, we have found that their claim is wrong.
+In the appendix of the arXiv version v4, they make an in-
+correct application of the Hoeffding inequality in equation
+(46) from which they incorrectly derive equation (49). Ho-
+effding depends on the bounded range of the random vari-
+able: (49) is bounding the exponential of the variable. Thus
+their bound stated in Theorem 3 has an exponential depen-
+dence on the variable M.
+3
+STATISTICAL LIMITATIONS ON
+MEASURING LOWER BOUNDS ON
+KL DIVERGENCE
+The analysis given in Section 2.1 is speciﬁc to the DV
+bound.
+One might hope that there exists a different
+1We intentionally keep this argument informal to give intuition
+since the result on the DV bound will be subsumed by the general
+result in Theorem 3.1.
+lower bound on KL divergence (e.g., DKL(pX||qX) =
+supf>0
+E
+x∼pX [ln f(x)] −
+E
+x∼qX [f(x)] + 1 in Nguyen et al.
+(2010) which does not involve an expectation of the expo-
+nential) that overcomes the limitation.
+We now strengthen the result by formally proving that no
+lower bound on KL divergence estimated from samples can
+be large. We consider a more challenging setting in which
+we have perfect knowledge of pX (i.e., we can compute
+probabilities under the distribution) and only sample from
+qX to estimate a lower bound on DKL(pX||qX). Even in
+this setting, we have the following negative result.
+Theorem 3.1.
+Let B be any distribution-free high-
+conﬁdence lower bound on DKL(pX||qX) computed with
+complete knowledge of pX but only samples from qX.
+More speciﬁcally, let B(pX, S, δ) be any real-valued func-
+tion of a distribution pX, a multiset S, and a conﬁdence
+parameter δ such that, for any pX, qX and δ, with proba-
+bility at least 1 −δ over a draw of S from qN
+X we have
+DKL(pX||qX) ≥B(pX, S, δ)
+For any such bound, and for N ≥2, for any qX, with
+probability at least 1 −4δ over the draw of S from qN
+X we
+have
+B(pX, S, δ) ≤ln N
+Proof. Consider distributions pX and qX and N ≥2. De-
+ﬁne ˜qX by
+˜qX(x) =
+
+1 −1
+N
+
+qX(x) + 1
+N pX(x)
+We now have DKL(pX||˜qX) ≤ln N. We will prove that
+from samples S ∼qN
+X we cannot reliably distinguish be-
+tween qX and ˜qX.
+The premise is that B yields a high-conﬁdence lower bound
+for any distribution. Thus we have
+Pr
+S∼˜qN
+X
+(Small(S)) ≥1 −δ
+(6)
+where Small(S) represent the event that B(pX, S, δ) ≤
+ln N. The distribution ˜qX equals the marginal on x of a
+distribution on pairs (s, x) where s is the value of Bernoulli
+variable with bias 1/N such that if s = 1 then x is drawn
+from pX and otherwise x is drawn from qX. By Lemma 2.2
+the probability that all coins are zero is at least 1/4. Condi-
+tioned on all coins being zero the distributions ˜qN
+X and qN
+X
+are the same. Let Pure(S) represent the event that all coins
+
+===== PAGE 4 =====
+Formal Limitations on the Measurement of Mutual Information
+are 0. We now have
+Pr
+S∼qN
+X
+(Small(S))
+=
+Pr
+S∼˜qN
+X
+(Small(S)|Pure(S))
+=
+PrS∼˜qN
+X (Pure(S) ∧Small(S))
+PrS∼˜qN
+X (Pure(S))
+≥
+PrS∼˜qN
+X (Pure(S)) −PrS∼˜qN
+X (¬Small(S))
+PrS∼˜qN
+X (Pure(S))
+≥
+PrS∼˜qN
+X (Pure(S)) −δ
+PrS∼˜qN
+X (Pure(S))
+= 1 −
+δ
+PrS∼˜qN
+X (Pure(S))
+≥1 −4δ
+Note the importance of the fact that the lower bound B is
+distribution-free (the DV bound is distribution-free): this
+allows us to construct an adversarial distribution ˜qX with
+small KL divergence and turn the premise on its head
+to upper bound B (6).
+It may be possible to construct
+distribution-speciﬁc lower bounds that do not suffer the
+same limitations. Theorem 3.1 proves that without making
+such additional assumptions, it is not possible to guarantee
+a large lower bound on KL divergence.
+This result has immediate implications on measuring mu-
+tual information which is a special case of KL divergence
+(5).
+A direct application of Theorem 3.1 gives the fol-
+lowing: in the setting in which we have perfect knowl-
+edge of pXY but can only sample from pX and pY (i.e.,
+we cannot compute marginals) and measure a lower bound
+on I(X, Y ; pXY ) from N samples, we cannot guarantee
+that the bound is larger than ln N. However, this setting is
+arguably awkward. In the next section, we make a more
+natural argument by considering entropy.
+4
+STATISTICAL LIMITATIONS ON
+MEASURING LOWER BOUNDS ON
+ENTROPY
+Recall that mutual information can be formulated as a dif-
+ference of entropies
+I(X, Y ; pXY ) = H(X; pX) −H(X|Y ; pXY )
+(7)
+where H(X; pX) is the entropy of X under pX and
+H(X|Y ; pXY ) is the conditional entropy of X given Y un-
+der pXY . Entropy is nonnegative for discrete variables: in
+this case we have
+I(X, Y ; pXY ) ≤H(X; pX)
+It states that the mutual information between X and Y can-
+not be larger than information content of X alone. Thus a
+lower bound on mutual information implies a lower bound
+on entropy. We will show that any distribution-free high-
+conﬁdence lower bound on entropy requires a sample size
+exponential in the size of the bound.
+The above argument seems problematic for the case of con-
+tinuous densities as differential entropy can be negative.
+However, for the continuous case we have
+I(X, Y ; pXY ) = sup
+C,C′ I(C(X), C′(Y ); pXY )
+(8)
+where C and C′ range over all maps from the underlying
+continuous space to discrete sets (all binnings of the con-
+tinuous space). A proof is given in the supplementary ma-
+terial. Hence an O(ln N) upper bound on the measurement
+of mutual information for the discrete case applies to the
+continuous case as well. We assume the discrete case in
+this section without loss of generality.
+We use the following deﬁnition.
+Deﬁnition 4.1. The type of a multiset S, denoted T (S), is
+a function on positive integers such that
+T (S)(i) :=
+
+(
+x ∈S :
+X
+x′∈S: x′=x
+1 = i
+)
+That is, T (S)(i) is the number of elements of S that occur
+i times in S.
+The type T (S) contains all information relevant to esti-
+mating the actual probability of the items of a given count
+and of estimating the entropy of the underlying distribu-
+tion. The problem of estimating distributions and entropies
+from sample types has been investigated by various authors
+(McAllester and Schapire, 2000; Orlitsky et al., 2003; Or-
+litsky and Suresh, 2015; Arora et al., 2018). Here we give
+the following negative result on lower bounding the entropy
+of a distribution by sampling.
+Theorem 4.1.
+Let B be any distribution-free high-
+conﬁdence lower bound on H(X; pX) computed from a
+type T (S) with S ∼pN
+X.
+More speciﬁcally, let B(T , δ) be any real-valued function
+of a type T and a conﬁdence parameter δ such that for any
+pX, with probability at least 1 −δ over a draw of S from
+pN
+X, we have
+H(X; pX) ≥B(T (S), δ)
+For any such bound, and for N ≥50 and k ≥2, for any
+pX, with probability at least 1 −δ −1.01/k over the draw
+of S from pN
+X we have
+B(T (S), δ) ≤ln 2kN 2
+
+===== PAGE 5 =====
+David McAllester, Karl Stratos
+pX
+˜pX
+kN 2
+2kN 2
+1
+kN2
+Figure 1: Construction of an adversarial distribution ˜pX
+from pX with entropy H(X; ˜pX) ≤ln 2kN 2.
+Proof. Consider a distribution pX and N
+≥100.
+If
+the support of pX has fewer than 2kN 2 elements then
+H(X; pX) < ln 2kN 2 and by the premise of the theorem
+we have that, with probability at least 1 −δ over the draw
+of S, B(T (S), δ) ≤H(X; pX) and the theorem follows.
+If the support of pX has at least 2kN 2 elements then we
+sort the support of pX into a (possibly inﬁnite) sequence
+x1, x2, . . . so that pX(xi) ≥pX(xi+1). We then deﬁne a
+distribution ˜pX on the elements x1 . . . x2kN 2 by
+˜pX(xi) =
+
+
+pX(xi)
+for i ≤kN 2
+µ
+kN 2
+for kN 2 < i ≤2kN 2
+
+
+where µ := P
+j>kN2 pX(xj). See Figure 1 for illustration.
+We will let Small(S) denote the event that B(T (S), δ) ≤
+ln 2kN 2 and let Pure(S) abbreviate the event that no ele-
+ment xi for i > kN 2 occurs twice in the sample. Since ˜pX
+has a support of size 2kN 2 we have H(X; ˜pX) ≤ln 2kN 2.
+Applying the premise of the lemma to ˜pX gives
+Pr
+S∼˜pN
+X
+(Small(S)) ≥1 −δ
+(9)
+For a type T let PrS∼P N (T ) denote the probability over
+drawing S ∼P N that T (S) = T . We now have
+Pr
+S∼pN
+X
+(T (S)|Pure(S)) =
+Pr
+S∼˜pN
+X
+(T (S)|Pure(S))
+This gives the following.
+Pr
+S∼pN
+X
+(Small(S))
+≥
+Pr
+S∼pN
+X
+(Pure(S) ∧Small(S))
+=
+Pr
+S∼pN
+X
+(Pure(S))
+Pr
+S∼pN
+X
+(Small(S) | Pure(S))
+=
+Pr
+S∼pN
+X
+(Pure(S))
+Pr
+S∼˜pN
+X
+(Small(S) | Pure(S))
+≥
+Pr
+S∼pN
+X
+(Pure(S))
+Pr
+S∼˜pN
+X
+(Pure(S) ∧Small(S))
+(10)
+For i > kN 2 we have ˜pX(xi) ≤1/(kN 2) which gives
+Pr
+S∼˜pN
+X
+(Pure(S)) ≥
+N−1
+Y
+j=1
+
+1 −
+j
+kN 2
+
+Using 1−z ≥e−1.01z for z ≤1/100 we have the following
+birthday paradox calculation.
+ln Pr
+S∼˜pN
+X
+(Pure(S)) ≥−1.01
+kN 2
+N−1
+X
+j=1
+j
+= −1.01
+kN 2
+(N −1)N
+2
+≥−.505
+k
+Therefore
+Pr
+S∼˜pN
+X
+(Pure(S)) ≥e−.505/k ≥1 −.505
+k
+(11)
+Applying the union bound to (9) and (11) gives
+Pr
+S∼˜pN
+X
+(Pure(S) ∧Small(S)) ≥1 −δ −.505
+k
+(12)
+By a derivation similar to that of (11) we get
+Pr
+S∼pN
+X
+(Pure(S)) ≥1 −.505
+k
+(13)
+Combining (10), (12) and (13) gives
+Pr
+S∼pN
+X
+(Small(S)) ≥1 −δ −1.01
+k
+Again, we note the importance of the fact that the entropy
+lower bound B is distribution-free: this allows us to con-
+struct an adversarial distribution ˜pX with small entropy and
+apply the premise to upper bound B (9). Theorem 1.1 is
+derived from Theorem 4.1 by choosing appropriate hyper-
+parameter values δ, k and using the fact that a lower bound
+on mutual information implies a lower bound on entropy.
+5
+TOWARD ACCURATE
+MEASUREMENT OF MUTUAL
+INFORMATION
+Our main contribution is a set of fundamental statistical
+limitations on measuring a lower bound on mutual informa-
+tion implied by the difﬁculty of measuring a lower bound
+on KL divergence (Theorem 3.1) or entropy (Theorem 4.1).
+But it is natural to ask: then how can we achieve an accurate
+measurement of mutual information? As a complementary
+piece of contribution, in this section we explore a new es-
+timator for mutual information that, while lacking formal
+guarantees, does not suffer from the same limitations.
+
+===== PAGE 6 =====
+Formal Limitations on the Measurement of Mutual Information
+5.1
+Mutual Information as a Difference of Entropies
+Since mutual information can be expressed as a difference
+of entropies (7), the problem of measuring mutual informa-
+tion can be reduced to the problem of measuring entropies.
+More speciﬁcally, we write mutual information as
+I(X, Y ; pXY )
+= inf
+qX H(pX, qX) −inf
+qX|Y H(pX|Y , qX|Y )
+(14)
+where we use the fact that the entropy H(X; pX) is up-
+per bounded by the cross entropy between pX and qX,
+denoted H(pX, qX), for all distributions qX (similarly for
+the conditional entropy H(X|Y ; pXY )). They are equal iff
+qX = pX and we have
+H(X; pX) = inf
+qX H(pX, qX)
+(15)
+Note that the upper-bound guarantee for the cross-entropy
+estimator (15) yields neither an upper bound nor a lower
+bound guarantee for a difference of entropies (14). How-
+ever, we give theoretical evidence below that, unlike lower
+bound estimators, upper bound cross-entropy estimators
+can meaningfully estimate large entropies from feasible
+samples.
+Cross entropy estimation.
+The statistical limitations on
+distribution-free high-conﬁdence lower bounds on entropy
+do not arise for cross-entropy upper bounds. For upper
+bounds we can show that naive sample estimates of the
+cross-entropy loss produce meaningful (large entropy) re-
+sults. The empirical cross-entropy loss computed on sam-
+ples x1 . . . xN from a population distribution pX is
+bHN(pX, qX) = 1
+N
+N
+X
+i=1
+−ln qX(xi)
+(16)
+where qX is viewed as a model of pX. We can bound the
+true loss of qX by ensuring a minimum probability e−Fmax
+where Fmax is then the maximum possible log loss in the
+cross-entropy objective.2
+Given a loss bound of Fmax,
+bHN(pX, qX) is just the standard sample mean estimator of
+an expectation of a bounded variable. In this case we have
+the following standard conﬁdence interval derived from the
+Chernoff bound.
+Theorem 5.1. For any population distribution pX, and
+model distribution qX with −ln qX(x) bounded to the in-
+terval [0, Fmax], with probability at least 1 −δ over the
+draw of x1 . . . xN ∼pX we have
+H(pX, qX) ∈bHN(pX, qX) ± Fmax
+s
+ln 2
+δ
+2N
+2In language modeling a loss bound exists for any model that
+ultimately backs off to a uniform distribution on characters.
+Thus
+unlike
+high-conﬁdence
+distribution-free
+lower
+bounds, high-conﬁdence distribution-free upper bounds on
+entropy can approach the true cross entropy at the modest
+sample rate of 1/
+√
+N even when the true cross entropy is
+large.3
+5.2
+Experiments
+We present experiments with the proposed difference-of-
+entropies (DoE) estimator to gain a better understanding of
+its empirical behavior. First, we compare DoE with exist-
+ing lower-bound estimators in a standard synthetic setting
+based on correlated Gaussians. Next, we apply DoE on the
+task of measuring mutual information between related ar-
+ticles and translation pairs and show an evidence of large
+mutual information.
+In the following, DoE computes an empirical estimate of
+(14) by taking iid samples (x1, y1) . . . (xN, yN) from pXY
+and computing
+bH(pX, qX) = inf
+qX
+1
+N
+N
+X
+i=1
+−log qX(xi)
+bH(pX|Y , qX|Y ) = inf
+qX|Y
+1
+N
+N
+X
+i=1
+−log qX|Y (xi|yi)
+bI(X, Y ; pXY ) = bH(pX, qX) −bH(pX|Y , qX|Y )
+(17)
+where each minimization corresponds to ﬁtting a proba-
+bilistic model on the samples with the cross-entropy loss.
+5.2.1
+Synthetic Experiments
+Following Poole et al. (2019), we deﬁne random variables
+X, Y ∈Rd where (Xi, Yi) are standard normal with cor-
+relation ρ ∈[−1, 1]. It can be checked that I(X, Y ) =
+−(d/2) ln(1 −ρ2). We use d = 128 and vary ρ to ex-
+periment with different values of mutual information. We
+compare with the following lower-bound estimators: the
+DV bound (2), MINE (i.e., DV with an “improved gradient
+estimator”) (Belghazi et al., 2018), NWJ (Nguyen et al.,
+2010), NWJ estimated by optimizing Jensen-Shannon di-
+vergence (NWJ (JS)), CPC (Oord et al., 2018), and a non-
+linear interpolation between NWJ and CPC (NWJ+CPC).
+We refer the reader to Poole et al. (2019) for a detailed
+exposition of these estimators. We parameterize the dis-
+tributions in DoE (i.e., qX and qX|Y in (17)) by isotropic
+Gaussian (correct) or logistic (misspeciﬁed).
+Table 1 shows mutual information estimates given by these
+estimators. All estimators are trained for 3,000 steps where
+at every step they use N = 128 samples drawn from
+pXY to update their weights. We tune the hyperparame-
+3It is also possible to give PAC-Bayesian bounds on
+H(pX, qθ
+X) as functions of the parameters θ of qX. See the sup-
+plementary material for details.
+
+===== PAGE 7 =====
+David McAllester, Karl Stratos
+Table 1: Estimates of mutual information under different estimators. Each estimator is trained for 3,000 steps where at
+every step it receives N = 128 samples of (X, Y ) and optimizes its weights; it is fully tuned over hyperparameter choices
+with respect to its ﬁnal estimate. In each row, we boldface the estimate closest to the ground-truth mutual information.
+DV
+MINE
+NWJ
+NWJ (JS)
+CPC
+CPC+NWJ
+DoE (Gaussian)
+DoE (Logistic)
+I(X, Y )
+ln N
+2.72
+2.57
+1.99
+1.50
+2.73
+2.77
+4.19
+4.13
+4.13
+4.85
+10.27
+9.38
+9.25
+5.55
+4.82
+8.18
+18.38
+18.42
+18.41
+4.85
+61.96
+34.56
+50.46
+13.41
+4.85
+10.45
+104.18
+104.16
+106.29
+4.85
+500
+1000
+1500
+2000
+2500
+3000
+0
+5
+10
+15
+20
+25
+30
+DoE (Gaussian)
+DoE (Logistic)
+NWJ
+NWJ (JS)
+DV
+MINE
+CPC
+CPC+NWJ
+I(X,Y)
+ln N
+Figure 2: A plot of mutual information estimates during training. At every training step (x-axis), each estimator receives
+a (shared) minibatch of N = 128 samples, computes the current estimate (y-axis), and updates weights. We show the
+best-case scenario for each estimator by fully tuning its hyperparameters with respect to the ﬁnal estimate.
+ters of each estimator (e.g., learning rate, number of hid-
+den units, initialization strategies, estimator-speciﬁc hyper-
+parameters such as the mixing weights in NWJ+CPC and
+MINE) to minimize |I(X, Y ) −ˆm| where ˆm is the ﬁnal
+estimate. Thus the results assume an oracle that gives an
+optimal conﬁguration. All details can be found in the code:
+https://github.com/karlstratos/doe.
+It is clear that (1) DoE obtains the most accurate esti-
+mates whether I(X, Y ) > ln N or I(X, Y ) ≤ln N, (2)
+DoE is the only estimator that achieves accurate estimates
+when underlying mutual information is large, and (3) either
+Gaussian or logistic parameterization of DoE yields accu-
+rate estimates. Furthermore, Table 1 does not show the
+fact that DV, MINE, and NWJ are highly unstable (espe-
+cially in the large mutual information setting). In particular,
+while it seems that they can achieve estimates much larger
+than ln N, it is not representative of their general perfor-
+mance which is fraught with numerical overﬂow/underﬂow
+problems leading to completely off estimates. Poole et al.
+(2019) discuss the large variance of these estimators. In
+contrast, DoE is based on the standard cross-entropy loss
+and very stable.
+Figure 2 shows a plot of the best training session for each
+estimator. DoE is a clear outlier as the only accurate esti-
+mator of mutual information. Unlike lower-bound estima-
+tors, DoE can approach I(X, Y ) from above or below.
+5.2.2
+Mutual Information Between Articles and
+Translations
+We consider two datasets for the choice of (X, Y ):
+1. Related news article pairs extracted from the Who-
+Did-What dataset (Onishi et al., 2016)
+2. English-German translation pairs extracted from the
+IWSLT 2014 dataset
+We expect that mutual information is large in either setting:
+a random article (sentence) has large entropy, but given a
+related article (translation) the uncertainty is drastically re-
+duced. We use a standard LSTM language model for qX
+and a standard attention-based translation model for qX|Y .
+More details of the experiments can be found in the supple-
+mentary material.
+Table 2 shows the estimates of mutual information on the
+test portion of data. We use log base 2 to accommodate
+
+===== PAGE 8 =====
+Formal Limitations on the Measurement of Mutual Information
+Table 2:
+Estimates of mutual information (in bits) on
+article pairs and translation pairs based on the difference
+of entropies (17).
+distribution pXY
+(17)
+related article pairs
+120.34
+shufﬂed article pairs
+−2.38
+translation pairs
+54.72
+shufﬂed translation pairs
+−2.64
+the bit interpretation of entropies (rather than nats). We
+see that mutual information is estimated to be over 120 bits
+on related article pairs and 54 bits on translation pairs. Mu-
+tual information is estimated to be close to zero for shufﬂed
+pairs: this shows that the estimator can also handle small
+mutual information.
+6
+RELATED WORK
+We make a few additional remarks on related work to better
+contextualize our work. In the continuous setting, a classi-
+cal approach to estimating mutual information is based on
+computing the average log of the distance to the k-th near-
+est neighbor in samples (Kraskov et al., 2004). Gao et al.
+(2015) show that this estimator suffers exponential sam-
+ple complexity and propose more reﬁned nearest-neighbor
+methods (Gao et al., 2015). In contrast, we establish that
+serious statistical limitations are inherent to the measure-
+ment of mutual information no matter what estimator is
+used.
+There is a line of work that develops efﬁcient estima-
+tors for entropy by assuming distributions with very small
+support—distributions with support smaller than the sam-
+ple size. Valiant and Valiant (2011) show that it is possible
+to achieve an optimal sample rate of O(n/ ln n) where n is
+the support size. Past work on analyzing minimax bounds
+likewise assume small support (Jiao et al., 2015; Han et al.,
+2015; Kandasamy et al., 2015). In this case, the entropy of
+the distribution cannot be larger than the log of the number
+of samples. This is in agreement with, but does not imply,
+our results. We are interested in the large entropy setting,
+such as a distribution over all possible images or articles.
+We cannot have the number of samples equal to the num-
+ber of possible images or articles.
+As discussed in depth in Section 2, we are motivated by the
+approach in MINE which measures the DV bound to esti-
+mate and maximize mutual information (Belghazi et al.,
+2018).
+CPC is another notable example that illustrates
+the statistical limitations of measuring mutual information
+(Oord et al., 2018). CPC maximizes a lower bound on mu-
+tual information through noise contrastive estimation: it
+is shown that this lower bound cannot be larger than ln k
+where k is number of negative samples used in the con-
+trastive choice. Complementary to our work, a recent work
+by Poole et al. (2019) investigates tradeoffs between bias
+and variance in estimating variational bounds on mutual in-
+formation.
+There is a class of representation learning methods such as
+Brown clustering (Brown et al., 1992) and the information
+bottleneck method (Tishby et al., 1999) that maximize a
+lower bound on mutual information given by the data pro-
+cessing inequality (DPI). In these methods, we learn “cod-
+ing” functions (C, C′) by optimizing the objective
+max
+C,C′ I(C(X), C′(Y ); pXY ) ≤I(X, Y ; pXY )
+where the inequality is by the DPI. Information theoretic
+co-training (McAllester, 2018) considers a similar lower
+bound and has been shown to be useful for label induction
+in speech and text (Stratos, 2019). Measuring these lower
+bounds is subject to the same limitations presented in this
+paper.
+7
+CONCLUSIONS
+Maximizing mutual information is well motivated as a
+method of unsupervised pretraining of representations that
+maintain semantic signal while dropping uninformative
+noise. However, measuring and maximizing mutual infor-
+mation from ﬁnite data is a difﬁcult training objective. In
+this paper, we have shown serious statistical limitations in-
+herent to measuring lower bounds on various information
+theoretic measures including KL divergence, entropy, and
+mutual information. We have also given theoretical argu-
+ments that representing mutual information as a difference
+of entropies, and estimating those entropies by minimizing
+cross-entropy loss, is a more statistically justiﬁed approach
+than maximizing a lower bound on mutual information.
+Unfortunately cross-entropy upper bounds on entropy
+fail to provide either upper or lower bounds on mutual
+information—mutual information is a difference of en-
+tropies. We cannot rule out the possible existence of su-
+perintelligent models, models beyond current expressive
+power, that dramatically reduce cross-entropy loss. Lower
+bounds on entropy can be viewed as proofs of the non-
+existence of superintelligence. We should not surprised that
+such proofs are infeasible.
+References
+Arora, S., Risteski, A., and Zhang, Y. (2018). Do GANs
+learn the distribution? some theory and empirics. In In-
+ternational Conference on Learning Representations.
+Belghazi, M. I., Baratin, A., Rajeshwar, S., Ozair, S., Ben-
+gio, Y., Courville, A., and Hjelm, D. (2018). Mutual in-
+formation neural estimation. In J. Dy and A. Krause, edi-
+tors, Proceedings of the 35th International Conference on
+
+===== PAGE 9 =====
+David McAllester, Karl Stratos
+Machine Learning, volume 80 of Proceedings of Machine
+Learning Research, pages 531–540, StockholmsmÃd’s-
+san, Stockholm Sweden. PMLR.
+Bell, A. J. and Sejnowski, T. J. (1995). An information-
+maximization approach to blind separation and blind de-
+convolution. Neural computation, 7(6), 1129–1159.
+Brown, P. F., Desouza, P. V., Mercer, R. L., Pietra, V. J. D.,
+and Lai, J. C. (1992). Class-based n-gram models of natu-
+ral language. Computational Linguistics, 18(4), 467–479.
+Donsker, M. and Varadhan, S. (1983). Asymptotic evalua-
+tion of certain markov process expectations for large time,
+iv. Communications on Pure and Applied Mathematics,
+36(2), 183–212.
+Dziugaite, G. K. and Roy, D. M. (2017). Computing non-
+vacuous generalization bounds for deep (stochastic) neu-
+ral networks with many more parameters than training
+data. In Proceedings of the Thirty-Third Conference on
+Uncertainty in Artiﬁcial Intelligence, UAI 2017, Sydney,
+Australia, August 11-15, 2017.
+Gao, S., Ver Steeg, G., and Galstyan, A. (2015). Efﬁcient
+estimation of mutual information for strongly dependent
+variables. In Artiﬁcial Intelligence and Statistics, pages
+277–286.
+Han, Y., Jiao, J., and Weissman, T. (2015). Minimax esti-
+mation of discrete distributions under l1 loss. IEEE Trans-
+actions on Information Theory, 61(11), 6343–6354.
+Hjelm, R. D., Fedorov, A., Lavoie-Marchildon, S., Gre-
+wal, K., Bachman, P., Trischler, A., and Bengio, Y.
+(2019). Learning deep representations by mutual informa-
+tion estimation and maximization. In International Con-
+ference on Learning Representations.
+Jiao, J., Venkat, K., Han, Y., and Weissman, T. (2015).
+Minimax estimation of functionals of discrete distribu-
+tions. IEEE Transactions on Information Theory, 61(5),
+2835–2885.
+Kandasamy, K., Krishnamurthy, A., Poczos, B., Wasser-
+man, L., et al. (2015). Nonparametric von mises estima-
+tors for entropies, divergences and mutual informations.
+In Advances in Neural Information Processing Systems,
+pages 397–405.
+Kraskov, A., Stögbauer, H., and Grassberger, P. (2004).
+Estimating mutual information. Physical review E, 69(6),
+066138.
+Luong, T., Pham, H., and Manning, C. D. (2015). Effec-
+tive approaches to attention-based neural machine trans-
+lation. In Proceedings of the 2015 Conference on Em-
+pirical Methods in Natural Language Processing, pages
+1412–1421.
+McAllester, D. (2013).
+A pac-bayesian tutorial with a
+dropout bound. arXiv preprint arXiv:1307:2118.
+McAllester, D. (2018). Information theoretic co-training.
+arXiv preprint arXiv:1802.07572.
+McAllester, D. A. and Schapire, R. E. (2000). On the con-
+vergence rate of good-turing estimators. In COLT, pages
+1–6.
+Nguyen, X., Wainwright, M. J., and Jordan, M. I. (2010).
+Estimating divergence functionals and the likelihood ra-
+tio by convex risk minimization. IEEE Transactions on
+Information Theory, 56(11), 5847–5861.
+Onishi, T., Wang, H., Bansal, M., Gimpel, K., and
+McAllester, D. (2016).
+Who did what: A large-scale
+person-centered cloze dataset. In Proceedings of the 2016
+Conference on Empirical Methods in Natural Language
+Processing, pages 2230–2235.
+Oord, A. v. d., Li, Y., and Vinyals, O. (2018). Represen-
+tation learning with contrastive predictive coding. arXiv
+preprint arXiv:1807.03748.
+Orlitsky, A. and Suresh, A. T. (2015). Competitive distri-
+bution estimation: Why is good-turing good. In Advances
+in Neural Information Processing Systems, pages 2143–
+2151.
+Orlitsky, A., Santhanam, N., and Zhang1, J. (2003). Al-
+ways good turing: Asymptotically optimal probability es-
+timation. Science, 302(5644).
+Poole, B., Ozair, S., Van Den Oord, A., Alemi, A., and
+Tucker, G. (2019). On variational bounds of mutual infor-
+mation. In International Conference on Machine Learn-
+ing, pages 5171–5180.
+Stratos, K. (2019). Mutual information maximization for
+simple and accurate part-of-speech induction. In Proceed-
+ings of the 2019 Conference of the North American Chap-
+ter of the Association for Computational Linguistics: Hu-
+man Language Technologies. Association for Computa-
+tional Linguistics.
+Tishby, N., Pereira, F. C., and Bialek, W. (1999). The in-
+formation bottleneck method. In Proceedings of the 37-th
+Annual Allerton Conference on Communication, Control
+and Computing, pages 368–377.
+Valiant, G. and Valiant, P. (2011).
+Estimating the un-
+seen: an n/log (n)-sample estimator for entropy and sup-
+port size, shown optimal via new clts. In Proceedings of
+the forty-third annual ACM symposium on Theory of com-
+puting, pages 685–694. ACM.
+
+===== PAGE 10 =====
+Formal Limitations on the Measurement of Mutual Information
+A
+PROOF OF THEOREM 2.1
+For any distribution rX over X, we can write
+DKL(pX||qX) =
+E
+x∼pX
+
+ln rX(x)
+qX(x)
+
++ DKL(pX||rX)
+≥
+E
+x∼pX
+
+ln rX(x)
+qX(x)
+
+(18)
+Let f : X →R be a bounded function and deﬁne
+rX(x) = qX(x)ef(x)
+E
+x∼qX
+
+ef(x)
+∀x ∈X
+which is a valid distribution over X. Plugging this into the
+lower bound in (18), we have
+E
+x∼pX
+
+ln rX(x)
+qX(x)
+
+=
+E
+x∼pX [f(x)] −ln
+E
+x∼qX
+h
+ef(x)i
+(19)
+By (18), the supremum of (19) over the choice of f is pre-
+cisely the KL divergence between pX and qX. It can be
+easily veriﬁed that an optimal f is given by
+f(x) = ln pX(x)
+qX(x)
+∀x ∈X
+Since (19) is invariant to translation of f, without loss of
+generality we can assume that the range of f is bounded in
+[0, Fmax] for some constant Fmax.
+B
+MUTUAL INFORMATION AS THE
+SUPREMUM OVER BINNINGS
+We now show that the mutual information I(X, Y ; pXY )
+for X and Y continuous can be expressed as the supre-
+mum of I(C(X), C′(Y ); pXY ) over discrete binnings of
+the continuous space.
+We ﬁrst consider the case where
+X, Y ∈R and where the mutual information can be written
+as a Riemann integral over densities.
+I(X, Y ; pXY )
+=
+Z
+pXY (x, y) ln pXY (x, y)
+pX(x)pY (y) dx dy
+= lim
+ϵ→0
+X
+i,j∈Z
+pXY (iϵ, jϵ) ln pXY (iϵ, jϵ)
+pX(iϵ)pY (jϵ)ϵ2
+where Z is the set of all integers. For each i ∈Z, deﬁne the
+half-open interval Ci,ϵ := [iϵ, (i + 1)ϵ). The probability of
+the interval is approximately ϵpX(iϵ) under pX (similarly
+for pY and pXY ). Therefore we can write the last expres-
+sion as
+lim
+ϵ→0
+X
+i,j∈Z
+pXY (Ci,ϵ × Cj,ϵ) ln pXY (Ci,ϵ × Cj,ϵ)
+pX(Ci,ϵ)pY (Cj,ϵ)
+= lim
+ϵ→0
+X
+i,j∈Z
+pIϵJϵ(i, j) ln pIϵJϵ(i, j)
+pIϵ(i)pJϵ(j)
+= lim
+ϵ→0 I(Iϵ, Jϵ; pIϵJϵ)
+where (Iϵ, Jϵ) denote the indices (i, j) such that x ∈Ci,ϵ
+and y ∈Cj,ϵ for (x, y) ∼pXY .
+This proof immediately generalizes to higher dimensions
+where the mutual information can be expressed as a Rie-
+mann integral. We believe that this statement remains true
+for arbitrary measures on product spaces where the mutual
+information is ﬁnite. However the proof for this extremely
+general case appears to be nontrivial.
+C
+PAC-BAYESIAN BOUNDS
+The PAC-Bayesian bounds apply to “broad basin” losses
+and loss estimates such as the following:
+Hσ(S, qθ
+X) =
+E
+x∼pX
+
+E
+ϵ∼N(0,σI)
+
+−ln qθ+ϵ
+X (x)
+
+bHσ(S, qθ
+X) = 1
+|S|
+X
+x∈S
+E
+ϵ∼N(0,σI)
+
+−ln qθ+ϵ
+X (x)
+
+Under mild smoothness conditions on qθ
+X(x) as a function
+of θ we have
+lim
+σ→0 Hσ(pX, qθ
+X) = H(pX, qθ
+X)
+lim
+σ→0
+bHσ(S, qθ
+X) = bH(S, qθ
+X)
+An L2 PAC-Bayesian generalization bound (McAllester,
+2013) gives that for any parameterized class of models and
+any bounded notion of loss, and any λ > 1/2 and σ > 0,
+with probability at least 1 −δ over the draw of S from
+pN
+X we have the following simultaneously for all parameter
+vectors θ.
+Hσ(pX, qθ
+X)
+≤
+1
+1 −
+1
+2λ
+
+b
+Hσ(S, qθ
+X) + λFmax
+N
+||θ||2
+2σ2 + ln 1
+δ
+
+It is instructive to set λ = 5 in which case the bound be-
+comes.
+Hσ(pX, qθ
+X)
+≤10
+9
+
+b
+Hσ(S, qθ
+X) + 5Fmax
+N
+||θ||2
+2σ2 + ln 1
+δ
+
+
+===== PAGE 11 =====
+David McAllester, Karl Stratos
+train (tgt)
+train (src)
+# articles
+68348
+68348
+vocab size
+100001
+87941
+# words
+20271664
+19072167
+avg length
+296
+279
+max length
+400
+400
+min length
+10
+12
+Table 3: Training statistics of the article pairs
+While this bound is linear in 1/N, and tighter in practice
+than square root bounds, note that there is a small resid-
+ual gap when holding λ ﬁxed at 5 while taking N →∞.
+In practice the regularization parameter λ can be tuned on
+holdout data. One point worth noting is the form of the de-
+pendence of the regularization coefﬁcient on Fmax, N and
+the basin parameter σ.
+It is also worth noting that the bound can be given in terms
+of “distance traveled” in parameter space from an initial
+(random) parameter setting θ0.
+Hσ(pX, qθ
+X)
+≤10
+9
+
+b
+Hσ(S, qθ
+X) + 5Fmax
+N
+||θ −θ0||2
+2σ2
++ ln 1
+δ
+
+Evidence is presented in Dziugaite and Roy (2017) that the
+distance traveled bounds are tighter in practice than tradi-
+tional L2 generalization bounds.
+D
+EXPERIMENT DETAILS
+Article pairs.
+We take pairs from the Who-Did-What
+dataset (Onishi et al., 2016). The pairs in this dataset were
+constructed by drawing articles from the LDC Gigaword
+newswire corpus. A ﬁrst article is drawn at random and
+then a list of candidate second articles is drawn using the
+ﬁrst sentence of the ﬁrst article as an information retrieval
+query. A second article is selected from the candidates us-
+ing criteria described in Onishi et al. (2016), the most sig-
+niﬁcant of which is that the second article must have oc-
+curred within a two week time interval of the ﬁrst. The
+training statistics of this dataset after preprocessing is given
+in Table 3.
+Translation pairs.
+Our translation pairs consists of
+English-German sentence pairs extracted from the IWSLT
+2014 dataset. The training statistics of this dataset after
+preprocessing is given in Table 4.
+Model.
+We train an LSTM encoder-decoder model where
+the decoder doubles as both the decoder of a translation
+train (tgt)
+train (src)
+# sentences
+160239
+160239
+vocab size
+24726
+35445
+# words
+3275729
+3100720
+avg length
+20
+19
+max length
+175
+172
+min length
+2
+2
+Table 4: Training statistics of the translation pairs
+model and a language model. The decoder is a left-to-right
+2-layer LSTM in which a single word embedding matrix
+is used for both input embeddings and the softmax predic-
+tions. When this model is trained as a language model on
+PTB using standard hyperparameter values it achieves test
+perplexity of 72.26. The encoder is a separate left-to-right
+2-layer LSTM using the same word embeddings as the de-
+coder. We use the input-feeding attention archietecture of
+Luong et al. (2015).
+The model is trained using SGD and batch size 10 with no
+BPTT-style truncation. The dimension of the input/hidden
+states is 900 (thus 1800 for the input-feeding decoder). We
+use step-wise dropout with rate 0.65 on word embeddings
+and hidden states. The model is trained for 40 epochs and
+the model that achieves the best validation perplexity is se-
+lected. The sequence-level cross entropy is estimated as
+SQXENT =
+1
+M NLL where NLL is the negative log likeli-
+hood of the corpus and M is the total number of sequences
+in the corpus.
+Mutual information is estimated by taking the difference in
+SQXENT between the language model and the translation
+model (17).For article pairs, we obtain
+bI(X, Y ; pXY ) = 1131.74 −1048.33 = 83.41
+in nats which translates to 120.34 bits. For translation pairs,
+we obtain
+bI(X, Y ; pXY ) = 81.73 −43.80 = 37.9
+in nats which translates to 54.72 bits.

@@ -1,0 +1,2880 @@
+
+===== PAGE 1 =====
+Understanding Self-Supervised Learning Dynamics without Contrastive Pairs
+Yuandong Tian 1 Xinlei Chen 1 Surya Ganguli 1 2
+Abstract
+While contrastive approaches of self-supervised
+learning (SSL) learn representations by minimiz-
+ing the distance between two augmented views
+of the same data point (positive pairs) and max-
+imizing views from different data points (neg-
+ative pairs), recent non-contrastive SSL (e.g.,
+BYOL and SimSiam) show remarkable perfor-
+mance without negative pairs, with an extra
+learnable predictor and a stop-gradient opera-
+tion.
+A fundamental question arises: why do
+these methods not collapse into trivial represen-
+tations? We answer this question via a simple
+theoretical study and propose a novel approach,
+DirectPred, that directly sets the linear predictor
+based on the statistics of its inputs, without gra-
+dient training. On ImageNet, it performs com-
+parably with more complex two-layer non-linear
+predictors that employ BatchNorm and outper-
+forms a linear predictor by 2.5% in 300-epoch
+training (and 5% in 60-epoch). DirectPred is
+motivated by our theoretical study of the nonlin-
+ear learning dynamics of non-contrastive SSL in
+simple linear networks. Our study yields con-
+ceptual insights into how non-contrastive SSL
+methods learn, how they avoid representational
+collapse, and how multiple factors, like predic-
+tor networks, stop-gradients, exponential mov-
+ing averages, and weight decay all come into
+play. Our simple theory recapitulates the results
+of real-world ablation studies in both STL-10 and
+ImageNet. Code is released1.
+1. Introduction
+Self-supervised learning (SSL) has emerged as a power-
+ful method for learning useful representations without re-
+1Facebook AI Research 2Stanford University. Correspondence
+to: Yuandong Tian <yuandong@fb.com>.
+Proceedings of the 38 th International Conference on Machine
+Learning, PMLR 139, 2021. Copyright 2021 by the author(s).
+1https://github.com/facebookresearch/
+luckmatters/tree/master/ssl
+quiring expensive target labels (Devlin et al., 2018). Many
+state-of-the-art SSL methods in computer vision employ
+the principle of contrastive learning (Oord et al., 2018; Tian
+et al., 2019; He et al., 2020; Chen et al., 2020a; Bach-
+man et al., 2019) whereby the hidden representations of
+two augmented views of the same object (positive pairs)
+are brought closer together, while those of different ob-
+jects (negative pairs) are encouraged to be further apart.
+Minimizing differences between positive pairs encourages
+modeling invariances, while contrasting negative pairs is
+thought to be required to prevent representational collapse
+(i.e., mapping all data to the same representation).
+However, some recent SSL work, notably BYOL (Grill
+et al., 2020) and SimSiam (Chen & He, 2020), have shown
+the remarkable capacity to learn powerful representations
+using only positive pairs, without ever contrasting nega-
+tive pairs. These methods employ a dual pair of Siamese
+networks (Bromley et al., 1994) (Fig. 1): the representa-
+tion of two views are trained to match, one obtained by the
+composition of an online and predictor network, and the
+other by a target network. The target network is not trained
+via gradient descent; and either employs a direct copy of
+the online network (e.g., SimSiam (Chen & He, 2020)), or
+a momentum encoder that slowly follows the online net-
+work in a delayed fashion through an exponential moving
+average (EMA) (e.g., MoCo (He et al., 2020; Chen et al.,
+2020b) and BYOL (Grill et al., 2020)). Compared to con-
+trastive learning, these non-contrastive SSL methods do not
+require large batch size (e.g., 4096 in SimCLR (Chen et al.,
+2020a)) or memory queue (e.g., MoCo (He et al., 2020;
+Chen et al., 2020b)) to provide negative pairs. Therefore,
+they are generally more efﬁcient and conceptually simple
+while maintaining state-of-the-art performance.
+Since the entire procedure in non-contrastive SSL en-
+courages the online+predictor network and the target net-
+work to become similar to each other, this overall scheme
+raises several fundamental unsolved theoretical questions.
+Why/how does it avoid collapsed representations? What is
+the nature of the learned representations? How do multiple
+design choices and hyperparameters interact nonlinearly in
+the learning dynamics? While there are interesting theo-
+retical studies of contrastive SSL (Arora et al., 2019; Lee
+et al., 2020; Tosh et al., 2020), any theoretical understand-
+ing of the nonlinear learning dynamics of non-contrastive
+arXiv:2102.06810v4  [cs.LG]  8 Oct 2021
+
+===== PAGE 2 =====
+Understanding Self-Supervised Learning Dynamics without Contrastive Pairs
+Predictor 
+𝑊!
+L2 loss
+Online
+𝑊
+Target 
+𝑊"
+𝒇𝟏
+𝒇"#
+𝒙𝟏
+𝒙𝟐
+𝒙
+Augmentation
+Stop-Gradient
+Figure 1. Two-layer setting with a linear, bias-free predictor.
+SSL remains open.
+In this paper, we make a ﬁrst attempt to analyze the be-
+havior of non-contrastive SSL training and the empirical
+effects of multiple hyperparameters, including (1) Expo-
+nential Moving Average (EMA) or momentum encoder,
+(2) Higher relative learning rate (αp) of the predictor, and
+(3) Weight decay η. We explain all these empirical ﬁnd-
+ings with an exceedingly simple theory based on analyzing
+the nonlinear learning dynamics of simple linear networks.
+Note that deep linear networks have provided a useful
+tractable theoretical model of nonconvex loss landscapes
+(Kawaguchi, 2016; Du & Hu, 2019; Laurent & Brecht,
+2018) and nonlinear learning dynamics (Saxe et al., 2013;
+2019; Lampinen & Ganguli, 2018; Arora et al., 2018) in
+these landscapes, yielding insights like dynamical isome-
+try (Saxe et al., 2013; Pennington et al., 2017; 2018) that
+lead to improved training of nonlinear deep networks. De-
+spite the simplicity of our theory, it can still predict how
+various hyperparameter choices affect performance in an
+extensive set of real-world ablation studies. Moreover, the
+simplicity also enables us to provide conceptual and ana-
+lytic insights into why performance patterns vary the way
+they do. Speciﬁcally, our theory accounts for the following
+diverse empirical ﬁndings:
+Essential part of non-contrastive SSL. The existence of
+the predictor and stop-gradient is absolutely essential. Re-
+moving either of them leads to representational collapse in
+BYOL and SimSiam.
+EMA. While the original BYOL needs EMA to work, they
+later conﬁrmed that EMA is not necessary (i.e., the online
+and target networks can be identical) if a higher αp is used.
+This is also conﬁrmed with SimSiam, as long as the pre-
+dictor is updated more often or has larger learning rate (or
+larger αp). However, the performance is slightly lower.
+Predictor Optimality and Relative learning rate αp.
+Both BYOL and SimSiam suggest that the predictor should
+always be optimal, in the sense of always achieving min-
+Plug-in frequency (every N minibatches)
+1
+2
+3
+5
+EMA
+40.67±0.50 35.29±2.49 34.60±0.98 35.63±2.66
+no EMA 39.45±1.26 34.01±1.54 34.58±2.93 32.22±2.94
+Table 1. Simply plugging in the “optimal solution” to the linear
+predictor shows poor performance after 100 BYOL epochs (Top-
+1 accuracy in STL-10 (Coates et al., 2011) downstream classiﬁca-
+tion task). The optimal solution is obtained by solving (with reg-
+ularization) WpE [ff ⊺] = 1
+2(E [faf ⊺] + E [ff ⊺
+a ]), in which the
+two expectations is estimated with exponential moving average.
+In comparison, with gradient descent, BYOL with a single linear
+layer predictor can reach 74%-75% Top-1 in STL-10 after 100
+epochs. Unless explicitly stated, in all our experiments, we use
+ResNet-18 (He et al., 2016) as the backbone network for CIFAR-
+10/STL-10 experiments and SGD as the optimizer with learning
+rate α = 0.03, momentum 0.9, weight decay ¯η = 0.0004 and
+EMA parameter γa = 0.996. Each setting is repeated 5 times.
+imal ℓ2 error in predicting the target network’s outputs
+from the online network’s outputs. This optimality con-
+jecture was motivated by observed superior performance
+when the predictor had large learning rates and/or was al-
+lowed more frequent updates than the rest of the network.
+However (Chen & He, 2020) also showed that if the pre-
+dictor is updated too often, then performance drops, which
+questions the importance of an always optimal predictor as
+a key requirement for learning good representations.
+Weight Decay. Table 15 in BYOL (Grill et al., 2020) in-
+dicates that no weight decay may lead to unstable results.
+A recent blogpost (Fetterman & Albrecht, 2020) also men-
+tions using weight decay leads to stable learning in BYOL.
+Finally, motivated by our theoretical analysis, we pro-
+pose a new method DirectPred that directly sets the pre-
+dictor weights based on principal components analysis of
+the predictor’s input, thereby avoiding complicated pre-
+dictor dynamics and initialization issues.
+We show that
+this simple DirectPred method nevertheless yields com-
+parable performance in CIFAR-10 and outperforms gra-
+dient training of the linear predictor by +5% Top-1 ac-
+curacy in linear evaluation protocol on both STL-10 and
+ImageNet (60 epochs). On the standard ImageNet bench-
+mark (300 epochs), DirectPred achieves 72.4%/91.0%
+Top-1/Top-5, 2.5% higher than BYOL with linear predictor
+(69.9%/89.6%) and comparable with default BYOL set-
+ting with 2-layer predictor (72.5%/90.8%).
+2. Two-layer linear model
+To obtain analytic and conceptual insights into non-
+contrastive SSL we analyze a simple, bias-free linear
+BYOL model where the online, target and predictor net-
+works are speciﬁed by the weight matrices W ∈Rn2×n1,
+Wp ∈Rn2×n2 and Wa ∈Rn2×n1 respectively (Fig. 1).
+
+===== PAGE 3 =====
+Understanding Self-Supervised Learning Dynamics without Contrastive Pairs
+Let x ∈Rn1 be a data point drawn from the data distri-
+bution p(x) and let x1 and x2 be two augmented views of
+x: x1, x2 ∼paug(·|x) where paug(·|x) is the augmenta-
+tion distribution. In practice such data augmentations cor-
+respond to random crops, blurs or color distortions of im-
+ages (Chen et al., 2020a). Let f1 = Wx1 ∈Rn2 be the
+online representation of view 1, and f2a = Wax2 ∈Rn2
+be the target representation of view 2. In BYOL, the learn-
+ing dynamics of W and Wp are obtained by minimizing
+J(W, Wp) := 1
+2Ex1,x2
+
+∥Wpf1 −StopGrad(f2a)∥2
+2
+
+,
+(1)
+while the dynamics of Wa is obtained differently, via an ex-
+ponential moving average (EMA) of W. We will analyze
+this combined dynamics for W, Wp and Wa, in the pres-
+ence of additional weight decay, in the limit of large batch
+sizes and small discrete time learning rates. This limit can
+be well approximated by the gradient ﬂow (see Supplemen-
+tary Material (SM) for all derivations):
+Lemma 1. BYOL learning dynamics following Eqn. 1:
+˙Wp = αp (−WpW(X + X′) + WaX) W ⊺−ηWp (2)
+˙W = W ⊺
+p (−WpW(X + X′) + WaX) −ηW
+(3)
+˙Wa = β(−Wa + W)
+(4)
+Here, X := E [¯x¯x⊺] where ¯x(x) := Ex′∼paug(·|x) [x′] is
+the average augmented view of a data point x and X′ :=
+Ex
+
+Vx′|x[x′]
+
+is the covariance matrix Vx′|x[x′] of aug-
+mented views x′ conditioned on x, subsequently averaged
+over the data x. Note that αp and β reﬂect multiplicative
+learning rate ratios between the predictor and target net-
+works relative to the online network. Finally, the terms in-
+volving η reﬂect weight decay.
+As a gradient ﬂow formulation, the learning rate α does
+not appear in Lemma 1. In the actual ﬁnite time update, the
+learning rate for Wp is ααp, the EMA rate is αβ = 1 −γa,
+where γa is the usual EMA parameter (e.g,. BYOL uses
+0.996), and the weight decay for actual training is ¯η := αη.
+We note that since SimSiam is an ablation of BYOL that
+removes the EMA computation, the underlying dynamics
+of SimSiam can also be obtained from Lemma 1 simply by
+setting Wa = W, inserting this relation into Eqn. 2 and
+Eqn. 3, and ignoring Eqn. 4. Importantly, the stop-gradient
+on the target branch is still there.
+Overall Eqns. 2-4 constitute our starting point for analyz-
+ing the combined roles of relative learning rates αp and β,
+weight decay rate η and various ablations in determining
+the performance of both BYOL and SimSiam.
+We ﬁrst derive two very general results (see SM).
+Theorem 1 (Weight decay promotes balancing of the pre-
+dictor and online networks.). Completely independent of
+EMA + no-bias EMA + bias no EMA + no-bias no EMA + bias
+70.62±1.05
+70.99±1.01
+71.36±0.44
+71.37±0.77
+Table 2. Top-1 accuracy of BYOL on STL-10 under linear evalu-
+ation protocol, trained for 100 epochs with no weight decay (η =
+0) and αp = 1. It is worse than the baseline (74.51±0.47 without
+predictor bias) when the weight decay is set to be η = 0.0004.
+“No-bias” means the linear predictor does not have a bias term.
+the particular dynamics of Wa in Eqn. 4, the update rules
+(Eqn. 2 and Eqn. 3) possess the invariance
+W(t)W ⊺(t) = α−1
+p W ⊺
+p (t)Wp(t) + e−2ηtC,
+(5)
+where C is a symmetric matrix that depends only on the
+initialization of W and Wp.
+This theorem implies that for both BYOL and SimSiam,
+there exists a “balancing” that ensures that any matching
+between the online and target representations will not be
+attributable solely to the predictor weights, rendering the
+online weights useless. Instead what the predictor learns,
+the online network will also learn, which is important as
+the online network’s representations are what is used for
+downstream tasks.
+We note that similar weight balanc-
+ing dynamics has been discovered in multi-layer linear net-
+works and matrix factorization (Arora et al., 2018; Du et al.,
+2018). Our results generalize this to SSL dynamics. Sec-
+ond, a nonzero weight decay could help remove the extra
+constant C due to initialization, further balancing the pre-
+dictor and online network weights and possibly leading to
+better performance on downstream tasks (Tbl. 2).
+Theorem 2 (The stop-gradient signal is essential for suc-
+cess.). With Wa = W (SimSiam case), removing the
+stop-gradient signal yields a gradient update for W given
+by positive semi-deﬁnite (PSD) matrix H(t) := X′ ⊗
+(W ⊺
+p Wp + In2) + X ⊗˜W ⊺
+p ˜Wp + ηIn1n2 (here ˜Wp :=
+Wp −In2 and ⊗is the Kronecker product):
+d
+dtvec(W) = −H(t)vec(W).
+(6)
+If the minimal eigenvalue λmin(H(t)) over time is bounded
+below, inft≥0 λmin(H(t)) ≥λ0 > 0, then W(t) →0.
+Thus we have proven analytically in this simple setting
+that removing the stop-gradient leads to representational
+collapse, as observed in more complex settings in Sim-
+Siam (Chen & He, 2020). Similarly, with Wa = W and
+no predictor (Wp = In2), then the dynamics Eqn. 3 also
+reduces to a similar form and W(t) →0 (see SM).
+3. How multiple factors affect learning
+dynamics
+The learning dynamics in Eqns. 2-4 constitute a set of high
+dimensional coupled nonlinear differential equations that
+
+===== PAGE 4 =====
+Understanding Self-Supervised Learning Dynamics without Contrastive Pairs
+0
+20
+40
+60
+80
+100
+120
+Sorted eigenvalue index
+−25
+−20
+−15
+−10
+−5
+0
+Log of eigenvalues log(sj) of matrix F
+Evolvement of Eigenvalues sj of F
+Epoch 0
+Epoch 5
+Epoch 10
+Epoch 15
+Epoch 20
+Epoch 95
+0
+20
+40
+60
+80
+100
+120
+Sorted eigenvalue index
+−0.4
+−0.2
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Eigenvalues pj of matrix Wp
+Evolvement of Eigenvalues pj of Wp
+Epoch 0
+Epoch 5
+Epoch 10
+Epoch 15
+Epoch 20
+Epoch 95
+0
+20
+40
+60
+80
+100
+120
+Sorted eigenvalue index
+−0.6
+−0.4
+−0.2
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Normalized correlation
+Eigenspace alignment
+Epoch 0
+Epoch 5
+Epoch 10
+Epoch 15
+Epoch 20
+Epoch 95
+0
+20
+40
+60
+80
+Epochs
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+1.2
+1.4
+Assymmetry Measure |Wp −W⊺
+p|/|Wp|
+Assymetric Measure
+Wpred
+0
+20
+40
+60
+80
+100
+120
+Sorted eigenvalue index
+−25
+−20
+−15
+−10
+−5
+0
+Log of eigenvalues log(sj) of matrix F
+Evolvement of Eigenvalues sj of F
+Epoch 0
+Epoch 5
+Epoch 10
+Epoch 15
+Epoch 20
+Epoch 95
+0
+20
+40
+60
+80
+100
+120
+Sorted eigenvalue index
+−0.4
+−0.2
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Eigenvalues pj of matrix Wp
+Evolvement of Eigenvalues pj of Wp
+Epoch 0
+Epoch 5
+Epoch 10
+Epoch 15
+Epoch 20
+Epoch 95
+0
+20
+40
+60
+80
+100
+120
+Sorted eigenvalue index
+−0.75
+−0.50
+−0.25
+0.00
+0.25
+0.50
+0.75
+1.00
+Normalized correlation
+Eigenspace alignment
+Epoch 0
+Epoch 5
+Epoch 10
+Epoch 15
+Epoch 20
+Epoch 95
+0
+20
+40
+60
+80
+Epochs
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+1.2
+1.4
+Assymmetry Measure |Wp −W⊺
+p|/|Wp|
+Assymetric Measure
+Wpred
+Figure 2. Training BYOL in STL-10 for 100 epochs with EMA. Top row: No symmetric regularization imposed on Wp, Bottom row:
+symmetric regularization on Wp. From left to right: (1) Evolvement of eigenvalues for F. Since F is PSD and its eigenvalue sj varies
+across scales, we plot log(si). We could see some eigenvalues are growing while others are shrinking to zero over training. (2) Similar
+“step-function” behaviors for the predictor Wp. Its negative eigenvalues shrinks towards zero and leading eigenvalues becomes larger.
+(3) The eigenspace of F and Wp gradually align with each other (Theorem 3). For each eigenvector uj of F, we compute cosine angle
+(normalized correlation) between uj and Wpuj to measure alignment. (4) Wp gradually becomes symmetric and PSD during training.
+can be difﬁcult to solve analytically in general. Therefore,
+to obtain analytic insights into the functional roles of the
+relative learning rates αp and β and weight decay η, we
+make a series of simplifying assumptions. Intriguingly, un-
+der these simplifying assumptions we obtain a rich set of
+analytic predictions, which we then test experimentally in
+more realistic scenarios. We ﬁnd, nicely, that these pre-
+dictions still qualitatively hold even when our simplifying
+assumptions required for obtaining analytic results do not.
+Assumption 1 (Proportional EMA). We ﬁrst reduce the di-
+mensionality of the dynamics in Eqns. 2-4 by enforcing that
+the target network Wa undergoes EMA but is forced to al-
+ways be proportional to the online network via the relation
+Wa(t) = τ(t)W(t). Inserting this relation into the EMA
+dynamics in Eqn. 4 yields ˙τW + τ ˙W = β(1 −τ)W.
+Thus we obtain a reduced dynamics for W, Wp and τ. By
+not enforcing the stronger SimSiam constraint that Wa =
+W, we can still model EMA dynamics. Intuitively, τ =
+τ(t) is a dynamic parameter that depends on how quickly
+W = W(t) grows over time. If W is constant, then ˙W =
+0 and τ stabilizes to 1. On the other hand, if W grows
+rapidly, then τ becomes small. While Assumption 1 is a
+simpliﬁcation, as we shall see, it still reveals interesting
+veriﬁable predictions about the functional role of EMA.
+Assumption 2 (Isotropic data and augmentation). We as-
+sume the data distribution p(x) has zero mean and identity
+covariance, while the augmentation distribution paug(·|x)
+has mean x and covariance σ2I. This simpliﬁes the dy-
+namics in Eqns. 2-4 by reducing the augmentation aver-
+aged data covariance to X = I and the data averaged
+augmentation covariance to X′ = σ2I.
+Many previous studies of deep learning dynamics made
+simplifying isotropic assumptions about data (Tian, 2017;
+Brutzkus & Globerson, 2017; Du et al., 2019; Bartlett et al.,
+2018; Safran & Shamir, 2018). Since our fundamental goal
+is to obtain the ﬁrst analytic understanding of the dynamics
+of non-contrastive SSL methods, it is useful to ﬁrst achieve
+this in the simplest possible isotropic setting. Interestingly,
+we will ﬁnd that our ﬁnal conclusions generalize to non-
+isotropic real world settings.
+Assumption 3 (Symmetric predictor). We enforce symme-
+try in Wp by initializing it to be a symmetric matrix, and
+then symmetrizing the ﬂow for Wp in Eqn. 2 (see SM).
+This symmetry assumption was motivated by both ﬁxed
+point analysis and empirical ﬁndings. First, the ﬁxed point
+of Eqn. 2 under Assumption 1 and 2 and η > 0 is always
+a symmetric matrix and in numerical simulation the asym-
+metric part Wp −W ⊺
+p eventually vanishes (See Appendix
+for the proof and numerical simulations). Moreover, dur-
+ing BYOL training without a symmetry constraint on the
+predictor, Wp gradually moves towards symmetry (Fig. 2).
+Second, a set of experiments reveal that whether the pre-
+dictor is symmetric or not has a dramatic effect in terms
+of both performance and interaction with EMA. In our
+STL-10 experiment, enforcing symmetric Wp in the pres-
+ence of EMA improves performance on downstream tasks
+(Tbl. 3). In contrast, in the absence of EMA, a symmet-
+ric Wp fails while an asymmetric Wp works reasonably
+well.
+Similar behavior holds on ImageNet: a symmet-
+ric one layer linear predictor Wp in SimSiam (i.e. with-
+out EMA) achieves performance no better than random
+guessing (Top-1/5: 0.1%/0.5%), while an asymmetric Wp
+
+===== PAGE 5 =====
+Understanding Self-Supervised Learning Dynamics without Contrastive Pairs
+No predictor bias
+With predictor bias
+sym Wp
+regular Wp
+sym Wp
+regular Wp
+One-layer linear predictor
+EMA
+75.09±0.48 74.51±0.47 74.52±0.29 74.16±0.33
+no EMA 36.62±1.85 72.85±0.16 36.04±2.74 72.13±0.53
+Two-layer predictor with BatchNorm and ReLU
+EMA
+71.58±6.46 78.85±0.25 77.64±0.41 78.53±0.34
+no EMA 35.59±2.10 65.98±0.71 41.92±4.25 65.59±0.66
+Table 3. The effect of symmetrization of Wp on downstream clas-
+siﬁcation task (BYOL Top-1 on STL-10). Symmetric Wp leads to
+slightly better performance compared to regular Wp in the pres-
+ence of EMA. On the other hand, without EMA, symmetric Wp
+crashes. Same effects happen in two-layer predictor with Batch-
+Norm and ReLU as well. Weight decay ¯η = 0.0004 and αp = 1.
+achieves a Top-1/5 accuracy of 68.1%/88.2%. Our the-
+ory will explain this as well as show how to obtain good
+performance with a symmetric predictor without EMA by
+increasing its relative learning rate αp.
+3.1. Dynamical alignment of eigenspaces between the
+predictor and its input correlation matrix
+Under the three assumptions stated above, we analyze the
+coupled dynamics of F := WXW ⊺and Wp. Note that F
+is the correlation matrix of the outputs of the online net-
+work which also serve as inputs to the predictor. By As-
+sumption 2, E [x] = 0 and F is also the covariance matrix.
+We ﬁnd F and Wp obey the following dynamics (see SM):
+˙Wp
+=
+−αp
+2 (1 + σ2){Wp, F} + αpτF −ηWp (7)
+˙F
+=
+−(1 + σ2){W 2
+p , F} + τ{Wp, F} −2ηF
+This dynamics reveals that the eigenspace of Wp will grad-
+ually align with that of F under certain conditions (see SM
+for derivation):
+Theorem 3 (Eigenspace alignment). Under Eqn. 7, the
+commutator [F, Wp] := FWp −WpF satisﬁes:
+d
+dt[F, Wp] = −[F, Wp]K −K[F, Wp]
+(8)
+where
+K(t) = (1+σ2)
+αp
+2 F(t) + W 2
+p (t) −
+τ
+1 + σ2 Wp(t)
+
++3
+2ηI
+(9)
+If inft≥0 λmin[K(t)] = λ0 > 0, then the commutator
+∥[F(t), Wp(t)]∥F ≤e−2λ0t∥[F(0), Wp(0)]∥F →0 (10)
+For symmetric Wp, when Wp and F commute they can
+be simultaneously diagonalized. Thus this shows that the
+eigenspace of Wp gradually aligns with that of F.
+To test this prediction, we performed extensive experiments
+showing that training BYOL using ResNet-18 on STL-10
+yields eigenspace alignment, as demonstrated in Fig. 2.
+Now if the eigenspaces of Wp and F do align, we can
+obtain fully decoupled dynamics. Let the columns of the
+matrix U be the common eigenvectors, so that Wp =
+UΛWpU ⊺where ΛWp
+=
+diag[p1, p2, . . . , pd], F
+=
+UΛF U ⊺where ΛF = diag[s1, s2, . . . , sd]. For each mode
+j, we have (see SM for derivation):
+˙pj
+=
+αpsj
+
+τ −(1 + σ2)pj
+
+−ηpj
+(11)
+˙sj
+=
+2pjsj
+
+τ −(1 + σ2)pj
+
+−2ηsj
+(12)
+sj ˙τ
+=
+β(1 −τ)sj −τ ˙sj/2.
+(13)
+This decoupled dynamics constitutes a dramatically sim-
+pliﬁed set of 3 dimensional nonlinear dynamical systems
+for BYOL learning, and two dimensional nonlinear sys-
+tems (obtained by constraining τ = 1) for SimSiam. As
+expected, each mode’s dynamics is equivalent to the 3 di-
+mensional dynamics obtained by setting n1 = n2 = 1
+in Eqns. 2-4 and making the replacements W 2 = sj,
+Wp = pj, and Wa/W = τ (see SM). Thus the decou-
+pled dynamics in Eqns 11- 13 reduce to the scalar case of
+BYOL dynamics in Eqns. 2-4 after a change of variables
+and the condition in Thm. 3 reveals when this decoupled
+regime is reachable.
+Non-symmetric Wp. When Assumption 3 is absent, the
+analysis is much more convoluted. One possible way is to
+decompose Wp = A + B where A = A⊺is symmetric and
+B = −B⊺is skew-symmetric. We leave it for future work.
+3.2. Analysis of decoupled dynamics
+The simpliﬁed three (two) dimensional dynamics of BYOL
+(SimSiam) yields signiﬁcant insights. First, there is clearly
+a collapsed ﬁxed point at pj(t) = sj(t) = 0 and τ taking
+any value. We wish to understand conditions under which
+pj and sj can avoid this collapsed ﬁxed point and grow
+from small random initial conditions. Since sj is an eigen-
+value of WW ⊺, we are particularly interested in conditions
+under which sj achieves large ﬁnal values, corresponding
+to a non-collapsed online network, that are moreover sen-
+sitive to the statistics of the data, governed by σ2.
+Exact integral. First, an important observation, similar to
+Theorem 1, is that the dynamics possesses an exact integral
+of motion, obtained by multiplying Eqn. 11 by 2α−1
+p pj,
+subtracting, Eqn. 12 and integrating over time yielding
+sj(t) = α−1
+p p2
+j(t) + e−2ηtcj
+(14)
+where cj = α−1
+p p2
+j(0)−sj(0) is ﬁxed by initial conditions.
+In absence of weight decay (η = 0), this integral reveals
+that the initial condition encoded in cj is never forgotten
+
+===== PAGE 6 =====
+Understanding Self-Supervised Learning Dynamics without Contrastive Pairs
+Figure 3. State space dynamics in Eqns. 11 and 12 for no (η = 0)
+weak (η = 0.01) and strong (η = 1) weight decay at ﬁxed τ = 1
+and αp = 1. Red (green) points indicate stable (unstable) ﬁxed
+points, blue curves indicate ﬂow lines, and the dashed black curve
+indicates the parabola sj = p2
+j/αp.
+and the dynamics of pj and sj are conﬁned to parabolas
+of the form sj(t) = p2
+j(t) + cj, as can be seen by the
+blue ﬂow lines in Fig. 3(left). With weight decay (η > 0)
+over time the initial condition is forgotten and the dynam-
+ics approaches the invariant parabola sj = α−1
+p p2
+j as can
+been seen by the approach of the blue ﬂow lines to the
+black dashed parabola in Fig. 3 right and middle. We dis-
+cuss these two cases in turn. First we note that in both
+cases, since the EMA computation is often very slow (Grill
+et al., 2020), corresponding to small β, the dynamics of τ
+in Eqn. 13 is slow relative to that of pj and sj. Therefore to
+understand the combined dynamics, we can search for the
+ﬁxed points that pj and sj will rapidly approach at ﬁxed τ.
+Over time τ will then either slowly approach 1 (BYOL) or
+be always equal to 1 (SimSiam), and sj and pj will follow
+their τ-dependent ﬁxed points.
+No weight decay. When η = 0, Eqns. 11 and 12 at a
+ﬁxed value of τ yield a branch of collapsed ﬁxed points
+given by sj = 0 and pj taking any value, and a branch
+of non-collapsed ﬁxed points, with pj = τ/(1 + σ2) and
+sj taking any value (horizontal and vertical red/green lines
+in Fig. 3,left). A sufﬁcient criterion on initial conditions
+to avoid the collapsed branch is sj(0) > p2
+j(0)/αp cor-
+responding to lying above the dashed black parabola in
+Fig. 3,left. This restricted initial condition reveals why a
+fast predictor (large αp) is advantageous (Obs#1): larger αp
+leads to a smaller basin of attraction of the collapsed branch
+by ﬂattening the dashed parabola. Indeed both BYOL and
+SimSiam have noted that a fast predictor can help avoid
+collapse. On the other hand, αp cannot be inﬁnitely large
+(Obs#2): since sj(+∞) = sj(0)+α−1
+p (p2
+j(+∞)−p2
+j(0)),
+very large αp implies that sj, the ﬁnal value of the online
+network characterizing the learned representation, does not
+grow even if pj does. This is consistent with results which
+show that optimizing the predictor too often doesn’t work
+in SimSiam (Chen & He, 2020), and directly setting an “op-
+timal” predictor fails as well (Tbl. 1). The online network
+needs to grow along with the predictor and that cannot hap-
+pen if the predictor is too fast.
+Advantage of weight decay. In the non-collapsed branch
+of ﬁxed points without weight decay (vertical red line in
+Fig. 3,left), the predictor pj takes the exact value τ/(1 +
+Positive effects Negative effects
+Relative predictor lr αp
+#1,#6
+#2
+Weight decay η
+#3,#7
+#4,#5
+EMA β
+#8
+#9,#10
+Table 4. Summarization of positive/negative effects of various hy-
+perparameter choices (EMA β, relative predictor learning rate αp
+and weight decay η). “#1” means (Obs#1) in the text.
+𝑝!"
+∗
+𝑝!$
+∗
+(b)
+(c)
+𝜂<
+𝜏%
+4(1 + 𝜎%)
+𝜂>
+𝜏%
+4(1 + 𝜎%)
+𝑝!$
+∗
+(a)
+𝜂= 0
+O
+O
+O
+Saddle 
+Point
+𝑝
+𝑝
+𝑝
+Figure 4. Fixed point of ˙pj = −pj(pj −p∗
+j−)(pj −p∗
+j+) (see
+Eqn. 16). Stable ﬁxed points are in red, unstable in green and
+saddle in black. When the weight decay η = 0, the trivial solution
+pj = 0 is a saddle. When η > 0, the trivial solution becomes
+stable near to the origin and initial pj needs to be large enough to
+converge to the stable non-collapsed solution p∗
+j+.
+σ2), which models the invariance to augmentation cor-
+rectly: a large data augmentation variance σ2 should lead
+to a small magnitude of the learned representation. Ideally,
+we want sj to have the same property. With weight decay
+η > 0 in Eqn. 14, memory of the initial condition cj fades
+away, yielding convergence to some point on the invariant
+parabola sj = α−1
+p p2
+j. (Obs#3): Therefore, by tying the
+online network to the predictor, weight decay allows sj to
+also model invariance to augmentations correctly if the pre-
+dictor does, regardless of the random initial condition cj.
+Dynamics on the invariant parabola.
+Because weight
+decay forces convergence to the invariant parabola sj =
+α−1
+p p2
+j, we next focus on dynamics along this parabola (i.e.
+cj = 0 in Eqn. 14). In this case, Eqn. 13 has a solution:
+τ(t) = p−1
+j (t)βe−βt
+Z t
+0
+pj(t′)eβt′dt,
+(15)
+with initial condition τ(0) = 0. Inserting the invariant sj =
+α−1
+p p2
+j into Eqn. 11, the dynamics of pj is given by:
+˙pj = p2
+j
+
+τ(t) −(1 + σ2)pj
+
+−ηpj.
+(16)
+We ﬁrst analyze the ﬁxed points where ˙pj = 0 at ﬁxed τ.
+When the weight decay 0 < η ≤
+τ 2
+4(1+σ2), pj has has three
+ﬁxed points (Fig. 4(b)):
+p∗
+j± = τ±
+p
+τ 2 −4η(1 + σ2)
+2(1 + σ2)
+> 0,
+p∗
+j0 = 0
+where both p∗
+j0 and p∗
+j+ are stable and p∗
+j−is unstable,
+as shown in Fig. 4(b). The basin of attraction of the col-
+lapsed ﬁxed point p∗
+j0 = 0 is pj < p∗
+j−while the basin
+of attraction of the useful non-collapsed ﬁxed point p∗
+j+ is
+pj > p∗
+j−, yielding an important constraint on initial con-
+ditions to avoid collapse. Note that p∗
+j−is a decreasing
+function of τ and increasing function of η (see SM). This
+
+===== PAGE 7 =====
+Understanding Self-Supervised Learning Dynamics without Contrastive Pairs
+means that with larger η, p∗
+j−moves right and the basin
+of collapse expands (Obs#4). When η >
+τ 2
+4(1+σ2) there is
+only one stable ﬁxed point p∗
+j0 = 0 (Fig. 4(c)). Under such
+strong weight decay collapse is unavoidable (Obs#5).
+We now discuss the dynamics. First we deﬁne the quantity
+∆j := pj[τ −(1+σ2)pj]−η, which must satisfy two crite-
+ria. Note that Eqn. 16 can be written as ˙pj = pj∆j, so ∆j
+must at some point be positive to drive pj(t) to any posi-
+tive non-collapsed ﬁxed point p∗
+j+. Second, for eigenspace
+alignment in Theorem 3 to remain stable (even if the align-
+ment has already happened), K(t) must be positive deﬁnite
+(PD) in Eqn. 9. Using the eigen-space alignment conditions
+and the invariance sj = α−1
+p p2
+j, the positive deﬁnite condi-
+tion on K(t) can be written as
+∆j < 1
+2
+
+αp(1 + σ2)sj + η
+
+.
+(17)
+This criterion and the criterion ∆j > 0 yield interesting
+insights into the roles of various hyperparameters choices.
+First (Obs#6), larger predictor learning rate αp can play an
+advantageous role by loosening the upper bound in Eqn. 17,
+making it easier to satisfy. Second (Obs#7), increasing η
+also has the same effect.
+Role of EMA. Without EMA, τ ≡1 and (Eqn. 17) may
+not hold initially when pj is small. The reason is ∆j is to
+leading order linear in pj when τ = 1 while the right hand
+side is to leading order sj ∼p2
+j, so the left hand side has a
+larger contribution from pj than the right.
+EMA resolves this as follows. When the training begins, sj
+is often quite small, and τ remains small since W changes
+rapidly. When pj grows to the ﬁxed point p∗
+j+ ∼τ/(1 +
+σ2), the growth of sj stops, making τ larger. This in turns
+sets a higher ﬁxed point goal for pj. This process continues
+until the feature is stabilized and τ = 1 (Fig. 5 for details).
+Therefore, EMA can serve as an automatic curriculum
+(Obs#8): it sets an initial small goal of
+τ
+1+σ2 for pj so ∆j
+need only be small and positive to both drive pj larger and
+satisfy Eqn. 17. Then EMA gradually sets a higher goal
+for pj by increasing τ, so that pj and sj can grow, while
+keeping the eigenspaces of Wp and F aligned.
+As a trade-off, a very slow EMA schedule (β small) yields
+a slow training procedure (Obs#9) (See Fig. 5). Also small
+τ leads to larger p∗
+j−and more eigen modes can be trapped
+in the collapsed basin (Obs#10).
+3.3. Summarizing the effects of hyperparameters
+We summarize the positive and negative effects of multi-
+ple hyperparameters in Tbl. 4. We next provide additional
+ablations and experiments to further justify our reasoning.
+Different weight decay ηp and ηs.
+If we set a higher
+weight decay for the predictor (ηp) than the online net (ηs),
+No predictor bias
+With predictor bias
+sym Wp
+regular Wp
+sym Wp
+regular Wp
+Weight decay only for predictor (¯ηp = 0.0004 and ¯ηs = 0)
+EMA
+71.91±0.70 70.54±0.93 73.67±0.47 70.89±0.98
+no EMA 71.12±0.71 71.34±0.63 73.01±0.37 71.70±0.83
+No weight decay for all (¯ηp = ¯ηs = 0)
+EMA
+71.76±0.28 70.62±1.05 71.86±0.39 70.99±1.01
+no EMA 43.04±2.32 71.36±0.44 41.36±3.33 71.37±0.77
+Table 5. Symmetric weight works without EMA, if we set weight
+decay for the predictor (¯ηp = 0.0004) but not the trunk (¯ηs = 0)
+in BYOL experiment on STL-10. Report Top-1 accuracy after
+100 epochs. If there is no weight decay for all layers, then again
+symmetric weight doesn’t work without EMA.
+then pj grows slower than sj and it is possible that the
+condition of Theorem 3 can still be satisﬁed without using
+EMA. Indeed Tbl. 5 shows this is the case.
+Larger learning rate of the predictor αp > 1. Our analy-
+sis predicts that one way to make symmetric Wp work with
+no EMA is to use αp > 1 (i.e. Theorem 3 is more easily
+satisﬁed). Fig. 6 veriﬁes this prediction. Moreover Table 22
+in Appendix of BYOL (Grill et al., 2020) also shows that
+αp > 1 is required to get BYOL working without EMA.
+As a reference, Table 22 in Appendix I.2 of BYOL (Grill
+et al., 2020) also shows a similar trend: the learning rate of
+the (2-layer) predictor needs to be higher than that of the
+projector for strong performance in ImageNet, when EMA
+is absent.
+4. Optimization-free Predictor Wp
+A direct consequence of our theory is a new method for
+choosing the predictor that avoids gradient descent alto-
+gether. Instead, we estimate the correlation matrix F of
+predictor inputs and directly set Wp to be a function of this,
+thereby avoiding both the need to align the eigenspaces of
+F and Wp through optimization, and the need to initial-
+ize Wp outside the basin of collapse. As we shall see, this
+exceedingly simple, theory motivated method also yields
+better performance in practice compared to gradient-based
+optimization of a linear predictor.
+We call our method DirectPred which simply estimates F,
+computes its eigen-decomposition ˆF = ˆU ˆΛF ˆU ⊺, where
+ˆΛF = diag[s1, s2, . . . , sd], and sets Wp via
+pj = √sj + ϵ max
+j
+sj, Wp = ˆUdiag[pj] ˆU ⊺.
+(18)
+This choice is theoretically motivated by eigenspace-
+alignment between Wp and F (Theorem. 3) and conver-
+gence to the invariant parabola sj ∝p2
+j in Eqn. 14 with
+weight decay (η > 0). Here the estimate correlation matrix
+ˆF can be obtained by a moving average:
+ˆF = ρ ˆF + (1 −ρ)EB [ff ⊺]
+(19)
+where EB [·] is the expectation over a batch.
+Note that
+
+===== PAGE 8 =====
+Understanding Self-Supervised Learning Dynamics without Contrastive Pairs
+0
+20
+40
+60
+80
+100
+Time t
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Eigenvalue pj of Wp
+Eigenvalue pj of Wp
+η=0
+η=0.05
+η=0.1
+η=0.15
+η=0.2
+0
+20
+40
+60
+80
+100
+Time t
+0.0
+0.2
+0.4
+0.6
+0.8
+Eigenvalue sj of F
+Eigenvalue sj of F
+η=0
+η=0.05
+η=0.1
+η=0.15
+η=0.2
+0
+20
+40
+60
+80
+100
+Time t
+0.0
+0.5
+1.0
+1.5
+2.0
+EMA coefficent τ
+EMA coefficent τ
+η=0
+η=0.05
+η=0.1
+η=0.15
+η=0.2
+0
+20
+40
+60
+80
+100
+Time t
+0.0
+0.1
+0.2
+0.3
+0.4
+Eigenvalue of K(t)
+Eigenvalue of K(t)
+η=0
+η=0.05
+η=0.1
+η=0.15
+η=0.2
+0
+20
+40
+60
+80
+100
+Time t
+0.2
+0.4
+0.6
+0.8
+Eigenvalue pj of Wp
+Eigenvalue pj of Wp
+β=0.8
+β=0.4
+β=0.2
+β=0.1
+β=0.05
+0
+20
+40
+60
+80
+100
+Time t
+0.2
+0.4
+0.6
+0.8
+Eigenvalue sj of F
+Eigenvalue sj of F
+β=0.8
+β=0.4
+β=0.2
+β=0.1
+β=0.05
+0
+20
+40
+60
+80
+100
+Time t
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+EMA coefficent τ
+EMA coefficent τ
+β=0.8
+β=0.4
+β=0.2
+β=0.1
+β=0.05
+0
+20
+40
+60
+80
+100
+Time t
+0.0
+0.1
+0.2
+0.3
+0.4
+Eigenvalue of K(t)
+Eigenvalue of K(t)
+β=0.8
+β=0.4
+β=0.2
+β=0.1
+β=0.05
+Figure 5. The role played by weight decay η and EMA β when applying symmetric regularization on Wp on synthetic experiments
+simulating decoupled dynamics (Eqn. 11-13). The learning rate α = 0.01. Both terms boost the eigenvalue of K(t) to above 0 so that
+eigen space alignment could happen (Theorem 3), but also come with different trade-offs. Here β = 0.4 so that αβ = 0.004 = 1 −γa
+where γa = 0.996 as in BYOL. Top row (Weight Decay η): A large η boost the eigenvalue of K(t) up, but substantially decreases the
+ﬁnal converging eigenvalues pj and sj (i.e., the ﬁnal features are not salient), or even drags them to zero (no training happens). Bottom
+row (EMA β). A small EMA β also boost the eigenvalue of K(t), but the training converges much slower. Here η = 0.04 so that ηα
+equals to the weight decay (¯η = 0.0004) in our STL-10 experiments.
+0
+5
+10
+15
+Relative predictor learning rate αp
+40
+50
+60
+70
+80
+90
+Top-1 Accuracy in Linear Evaluation
+CIFAR-10
+0
+5
+10
+15
+Relative predictor learning rate αp
+30
+40
+50
+60
+70
+80
+Top-1 Accuracy in Linear Evaluation
+STL-10
+regular, bias=false
+sym, bias=false
+regular, bias=true
+sym, bias=true
+Figure 6. The effects of relative learning rate αp without EMA.
+If αp > 1, symmetric Wp with no EMA can also work. Exper-
+iments on STL-10 and CIFAR-10 (Krizhevsky et al., 2009) (100
+epochs with 5 random seeds).
+where f is not zero-mean, we keep ˆF a correlation matrix
+(rather than a covariance) without zero-centering f, other-
+wise the performance deteriorates. We also added a regu-
+larization factor proportional to a small ϵ to boost the small
+eigenvalues sj so they can learn faster. In all our experi-
+ments on real-world datasets, we use ℓ2-normalization so
+the absolute magnitude of sj doesn’t matter.
+Hyper-parameter freq. Besides, we also evaluate a hy-
+brid approach by introducing freq, which is how fre-
+quently eigen-decomposition is conducted for matrix ˆF to
+set Wp. For example, freq = 5 means that eigen de-
+composition is run every 5 minibatches. When Wp is not
+set by eigen decomposition, it is updated by regular gradi-
+ent updates. freq = 1 means the eigen-decomposition
+is performed at every minibatch.
+Tbl. 6 shows that directly computing Wp through Direct-
+Pred works better (76.77%) than training via gradient de-
+scent (74.51% in Tbl. 3, regular Wp with EMA). Addi-
+tional regularization through ϵ yields even better perfor-
+Regularization factor ϵ
+0
+0.01
+0.1
+0.5
+ρ = 0.3 76.77±0.24 77.11±0.35 77.86±0.16 75.06±1.10
+ρ = 0.5 76.65±0.20 76.76±0.33 77.56±0.25 75.22±0.81
+Table 6. STL-10 Top-1 after BYOL training for 100 epochs, if
+we use DirectPred (Eqn. 18). It outperforms training Wp using
+gradient descent (74.51% in Tbl. 3, regular Wp with EMA). EMA
+is used in all experiments. No predictor bias. ρ deﬁned in Eqn. 19.
+Initial constant cj
+0.1
+0.05
+−0.05
+−0.1
+freq=1 46.57±18.43 65.31±18.22 77.11±0.66 76.46±0.55
+freq=2 75.01±0.48 75.10±0.35 76.83±0.52 76.31±0.27
+Table 7. STL-10 Top-1 Accuracy after BYOL training for 100
+epochs. With different cj. ρ = 0.3 and ϵ = 0. EMA is used
+in all experiments. No predictor bias.
+mance (77.38%). Different ways to estimate F (moving
+average or simple average) yield only small differences.
+The performance of DirectPred also remains good over
+many more training epochs (Tbl. 8). Moreover, if we allow
+some gradient steps in between directly setting Wp (i.e.,
+freq > 1), performance becomes even better (80.28%).
+This might occur because the estimated ˆF may not be ac-
+curate enough and SGD can help correct it. This also miti-
+gates the computational cost of eigen-decomposition.
+The constant cj. What happens if pj =
+p
+max(sj −cj, 0)
+with cj ̸= 0?
+If cj is small negative, performance is
+still ﬁne but a positive cj leads to very poor performance
+(Tbl. 7), likely due to many small eigen-values sj becom-
+ing zero and therefore trapped in the collapsed basin.
+Feature-dependent Wp. Note one of the advantages of
+
+===== PAGE 9 =====
+Understanding Self-Supervised Learning Dynamics without Contrastive Pairs
+Number of epochs
+100
+300
+500
+STL-10
+DirectPred
+77.86±0.16 78.77±0.97
+78.86±1.15
+DirectPred (freq=5)
+77.54±0.11 79.90±0.66 80.28±0.62
+SGD baseline
+75.06±0.52
+75.25±0.74
+75.25±0.74
+CIFAR-10
+DirectPred
+85.21±0.23 88.88±0.15 89.52±0.04
+DirectPred (freq=5)
+84.93±0.29
+88.83±0.10 89.56±0.13
+SGD baseline
+84.49±0.20
+88.57±0.15
+89.33±0.27
+Table 8. STL-10/CIFAR-10 Top-1 accuracy of DirectPred, after
+training for longer epochs. ρ = 0.3, ϵ = 0.1 with EMA.
+using two layer predictors is that Wp can depend on the in-
+put features. We explored this idea by using a few random
+partitions of the input space, and within each random par-
+tition we estimated a different correlation matrix ˆF. The
+ﬁnal ˆF is the sum of all the correlation matrices. With 6
+random partitions, DirectPred achieves 78.20±0.16 Top-1
+accuracy after 100 epochs, closing performance gap to two-
+layer predictors (78.85% in Tbl. 3). We leave a thorough
+analysis of the two layer setting to future work.
+ImageNet experiments. We conducted additional exper-
+iments on ImageNet (Deng et al., 2009), with our own
+BYOL (Grill et al., 2020) implementation.
+We used
+ResNet-50 (He et al., 2016) as the backbone to produce fea-
+tures for a linear probe, followed by a projector and a pre-
+dictor. The architecture design (e.g., feature dimensions),
+augmentation strategies (e.g., color jittering, blur (Chen
+et al., 2020a), solarization, etc.) and linear classiﬁcation
+protocol strictly follow BYOL (Grill et al., 2020).
+We experimented with two different training settings to
+study the generalization ability of DirectPred. In the ﬁrst
+setting, we employ an asymmetric loss (given two views,
+only one view is used as the prediction target). The loss
+is optimized using standard SGD for 60 epochs with a
+batch size of 256. The second setting follows BYOL more
+closely, where we use a symmetrized loss, 4096 batch size
+and LARS optimizer (You et al., 2017), and train for 300
+epochs.
+The results are summarized in Tbl. 9. Both settings ex-
+hibit similar behaviors in comparison, and we take the 300-
+epoch results as our highlights in the following. As a base-
+line, the default 2-layer predictor from BYOL (with Batch-
+Norm and ReLU, 4096 hidden dimension, 256 input/output
+dimension) achieves 72.5% top-1 accuracy, and 90.8% top-
+5 accuracy with 300-epoch pre-training. This reproduces
+the accuracy reported in BYOL (Grill et al., 2020). We
+ﬁnd DirectPred can match this performance (72.4% top-
+1, and 91.0% top-5) without any gradient-based training
+by instead directly setting the (256×256) linear predictor
+weights every mini-batch. In particular for top-5 Direct-
+Pred is even 0.2% better. For a fair comparison, we also
+BYOL variants
+Accuracy (60 ep)
+Accuracy (300 ep)
+Top-1
+Top-5
+Top-1
+Top-5
+2-layer predictor*
+64.7
+85.8
+72.5
+90.8
+linear predictor
+59.4
+82.3
+69.9
+89.6
+DirectPred
+64.4
+85.8
+72.4
+91.0
+* 2-layer predictor is BYOL default setting.
+Table 9. ImageNet experiments comparing DirectPred with
+BYOL (Grill et al., 2020). Without gradient-based training, Di-
+rectPred is able to match the performance of the default 2-layer
+predictor introduced by BYOL, and signiﬁcantly outperform the
+linear predictor by 5% (60 epoch) and 2.5% (300 epoch).
+run BYOL with a learned linear predictor. We ﬁnd the per-
+formance drops to 69.9%, and 89.6% respectively (2.5%
+gap to our method). The gap is even bigger in 60-epoch
+settings, up to 5.0% in top-1 (59.4% vs. 64.4%). These ex-
+periments demonstrate the success of DirectPred on STL-
+10 and CIFAR can also generalize and scale to ImageNet.
+5. Discussion
+Summary.
+Therefore, remarkably, our theoretical analy-
+sis of non-contrastive SSL, primarily centered around a 3
+dimensional nonlinear dynamical system, not only yields
+conceptual insights into the functional roles of complex in-
+gredients like EMA, stop-gradients, predictors, predictor
+symmetry, diverse learning rates, weight decay and all their
+interactions, but also predicts the performance patterns of
+many ablation studies as well as suggests an exceedingly
+simple DirectPred method that rivals the performance of
+more complex predictor dynamics in real-world settings.
+Two-layer non-linear predictor. With only a linear pre-
+dictor, our results on ImageNet (Tbl. 9) have already shown
+strong performance, on par with a default BYOL setting
+with a 2-layer predictor on ImageNet.
+One interesting
+question is how the dynamics changes if the predictor has
+2 layers. While we don’t provide a formal analysis and the
+math can be quite complicated, the intuition here is that the
+“fat” 2-layer predictor used in practice (e.g., more (4096)
+hidden dimension than input/output dimensions (256), and
+a ReLU in between) essentially provides a large pool of ini-
+tial weight directions to start with, and some of them could
+be “lucky draws”, that make eigen-space alignment faster.
+On the other hand, a 1-layer predictor with gradient up-
+dates may get stuck in local minima. Therefore, with the
+same number of epochs, a 2-layer predictor outperforms 1-
+layer, and is comparable with DirectPred which does not
+suffer from local minima issues.
+Acknowledgements
+We thank Lantao Yu for helpful discussions.
+
+===== PAGE 10 =====
+Understanding Self-Supervised Learning Dynamics without Contrastive Pairs
+References
+Arora, S., Cohen, N., and Hazan, E. On the optimization
+of deep networks: Implicit acceleration by overparame-
+terization. In ICML. PMLR, 2018.
+Arora, S., Khandeparkar, H., Khodak, M., Plevrakis, O.,
+and Saunshi, N. A theoretical analysis of contrastive un-
+supervised representation learning. 2019.
+Bachman, P., Hjelm, R. D., and Buchwalter, W. Learn-
+ing representations by maximizing mutual information
+across views. arXiv preprint arXiv:1906.00910, 2019.
+Bartlett, P., Helmbold, D., and Long, P. Gradient descent
+with identity initialization efﬁciently learns positive def-
+inite linear transformations by deep residual networks.
+In ICML, 2018.
+Bromley, J., Guyon, I., LeCun, Y., S¨ackinger, E., and Shah,
+R. Signature veriﬁcation using a“ siamese” time delay
+neural network. NeurIPS, 1994.
+Brutzkus, A. and Globerson, A. Globally optimal gradient
+descent for a convnet with gaussian inputs. In ICML,
+2017.
+Chen, T., Kornblith, S., Norouzi, M., and Hinton, G. A
+simple framework for contrastive learning of visual rep-
+resentations. arXiv preprint arXiv:2002.05709, 2020a.
+Chen, X. and He, K. Exploring simple siamese representa-
+tion learning. arXiv preprint arXiv:2011.10566, 2020.
+Chen, X., Fan, H., Girshick, R., and He, K.
+Improved
+baselines with momentum contrastive learning.
+arXiv
+preprint arXiv:2003.04297, 2020b.
+Coates, A., Ng, A., and Lee, H. An analysis of single-layer
+networks in unsupervised feature learning. In Interna-
+tional conference on artiﬁcial intelligence and statistics,
+2011.
+Deng, J., Dong, W., Socher, R., Li, L.-J., Li, K., and Fei-
+Fei, L. ImageNet: A Large-Scale Hierarchical Image
+Database. In CVPR, 2009.
+Devlin, J., Chang, M.-W., Lee, K., and Toutanova, K. Bert:
+Pre-training of deep bidirectional transformers for lan-
+guage understanding. arXiv preprint arXiv:1810.04805,
+2018.
+Du, S. and Hu, W. Width provably matters in optimization
+for deep linear neural networks. In ICML, 2019.
+Du, S. S., Hu, W., and Lee, J. D. Algorithmic regularization
+in learning deep homogeneous models: Layers are auto-
+matically balanced. arXiv preprint arXiv:1806.00900,
+2018.
+Du, S. S., Lee, J. D., Li, H., Wang, L., and Zhai, X. Gradi-
+ent descent ﬁnds global minima of deep neural networks.
+ICML, 2019.
+Fetterman, A. and Albrecht, J.
+Understanding self-
+supervised and contrastive learning with ”bootstrap your
+own latent” (byol), 2020.
+https://untitled-ai.github.io/
+understanding-self-supervised-
+contrastive-learning.html.
+Grill, J.-B., Strub, F., Altch´e, F., Tallec, C., Richemond,
+P. H., Buchatskaya, E., Doersch, C., Pires, B. A., Guo,
+Z. D., Azar, M. G., et al. Bootstrap your own latent: A
+new approach to self-supervised learning. arXiv preprint
+arXiv:2006.07733, 2020.
+He, K., Zhang, X., Ren, S., and Sun, J. Deep residual learn-
+ing for image recognition. In CVPR, 2016.
+He, K., Fan, H., Wu, Y., Xie, S., and Girshick, R. Mo-
+mentum contrast for unsupervised visual representation
+learning. In CVPR, 2020.
+Kawaguchi, K. Deep learning without poor local minima.
+NeurIPS, 2016.
+Krizhevsky, A., Hinton, G., et al. Learning multiple layers
+of features from tiny images. 2009.
+Lampinen, A. K. and Ganguli, S. An analytic theory of
+generalization dynamics and transfer learning in deep
+linear networks. In ICLR, 2018.
+Laurent, T. and Brecht, J. Deep linear networks with ar-
+bitrary loss: All local minima are global. In ICML, pp.
+2902–2907. PMLR, 2018.
+Lee, J. D., Lei, Q., Saunshi, N., and Zhuo, J. Predicting
+what you already know helps: Provable self-supervised
+learning. arXiv preprint arXiv:2008.01064, 2020.
+Oord, A. v. d., Li, Y., and Vinyals, O. Representation learn-
+ing with contrastive predictive coding. arXiv preprint
+arXiv:1807.03748, 2018.
+Pennington, J., Schoenholz, S., and Ganguli, S.
+Resur-
+recting the sigmoid in deep learning through dynamical
+isometry: theory and practice. In NeurIPS. 2017.
+Pennington, J., Schoenholz, S. S., and Ganguli, S.
+The
+emergence of spectral universality in deep networks. In
+AISTATS, 2018.
+Safran, I. and Shamir, O. Spurious local minima are com-
+mon in two-layer relu neural networks. In ICML. PMLR,
+2018.
+
+===== PAGE 11 =====
+Understanding Self-Supervised Learning Dynamics without Contrastive Pairs
+Saxe, A. M., McClelland, J. L., and Ganguli, S.
+Exact
+solutions to the nonlinear dynamics of learning in deep
+linear neural networks. arXiv preprint arXiv:1312.6120,
+2013.
+Saxe, A. M., McClelland, J. L., and Ganguli, S. A math-
+ematical theory of semantic development in deep neural
+networks. Proc. Natl. Acad. Sci. U. S. A., 2019.
+Tian, Y. An analytical formula of population gradient for
+two-layered relu network and its applications in conver-
+gence and critical point analysis. In ICML, 2017.
+Tian, Y., Krishnan, D., and Isola, P. Contrastive multiview
+coding. arXiv preprint arXiv:1906.05849, 2019.
+Tosh, C., Krishnamurthy, A., and Hsu, D.
+Contrastive
+learning, multi-view redundancy, and linear models.
+arXiv preprint arXiv:2008.10150, 2020.
+You, Y., Gitman, I., and Ginsburg, B.
+Large batch
+training of convolutional networks.
+arXiv preprint
+arXiv:1708.03888, 2017.
+
+===== PAGE 12 =====
+Supplementary Materials for “Understanding Self-Supervised Learning
+Dynamics without Contrastive Pairs”
+A. Section 2
+Lemma 1 (Dynamics of BYOL/SimSiam). For objective (f1 = Wx1 and f2a = Wax2 where Wa is EMA weight):
+J(W, Wp) := 1
+2Ex∼p(·), x1,x2∼paug(·|x)
+
+∥Wpf1 −StopGrad(f2a)∥2
+2
+
+(20)
+Let X = E [¯x¯x⊺] where ¯x(x) := Ex′∼paug(·|x) [x′] is the average augmented view of a data point x and X′ =
+Ex
+
+Vx′|x[x′]
+
+is the covariance matrix Vx′|x[x′] of augmented views x′ conditioned on x, subsequently averaged over
+the data x. The dynamics is the following:
+˙Wp
+=
+−∂J
+∂Wp
+= −WpW(X + X′)W ⊺+ WaXW ⊺
+(21)
+˙W
+=
+−∂J
+∂W = −W ⊺
+p WpW(X + X′) + W ⊺
+p WaX
+(22)
+Proof. Note that
+(Wpf1 −f2a)⊺(Wpf1 −f2a)
+(23)
+=
+f ⊺
+1 W ⊺
+p Wpf1 −f ⊺
+2aWpf1 −f ⊺
+1 W ⊺
+p f2a + f ⊺
+2af2a
+(24)
+=
+tr(W ⊺
+p Wpf1f ⊺
+1 ) −tr(Wpf1f ⊺
+2a) −tr(W ⊺
+p f2af ⊺
+1 ) + tr(f2af ⊺
+2a)
+(25)
+Let F1 = E [f1f ⊺
+1 ] = W(X + X′)W ⊺where X = Ex [¯x¯x⊺] and X′ = Ex
+
+Vx′|x[x′]
+
+, F1,2a = E [f1f ⊺
+2a], F2a,1 =
+E [f2af ⊺
+1 ] = F ⊺
+1,2a and F2a = E [f2af ⊺
+2a]. This leads to:
+J(W, Wp)
+=
+1
+2
+
+tr(W ⊺
+p WpF1) −tr(WpF1,2a) −tr(F1,2aWp) + tr(F2a)
+
+(26)
+Taking partial derivative with respect to Wp and we get the gradient update rule:
+˙Wp = −∂J
+∂Wp
+= −WpF1 + F ⊺
+1,2a
+(27)
+Now we take the derivative with respect to W. Note that we have stop-gradient in f2a, so we would like to be careful when
+taking derivatives. We ﬁrst compute ∂J/∂F1 and ∂J/∂F1,2a. Note that both F1 and F1,2a contains W, due to the fact that
+we have stop gradient, F1 is a quadratic form of W but F1,2a is a linear form of W. This is critical.
+∂J
+∂F1
+=
+1
+2W ⊺
+p Wp
+(28)
+∂J
+∂F1,2a
+=
+−W ⊺
+p
+(29)
+Let W = [wij] and X = E [¯x¯x⊺] (Xtot and X′ are deﬁned similarly). We have F1 = W(X + X′)W ⊺and F1,2a =
+WXW ⊺
+a . So we have:
+∂J
+∂wij
+=
+X
+kl
+ ∂J
+∂F1
+
+kl
+∂[F1]kl
+∂wij
++
+X
+kl
+
+∂J
+∂F1,2a
+
+kl
+∂[F1,2a]kl
+∂wij
+(30)
+
+===== PAGE 13 =====
+Understanding Self-Supervised Learning Dynamics without Contrastive Pairs
+Let C = X + X′, here we have:
+X
+kl
+ ∂J
+∂F1
+
+kl
+∂[F1]kl
+∂wij
+=
+X
+kl
+ ∂J
+∂F1
+
+kl
+X
+mn
+∂wkmcmnwln
+∂wij
+(31)
+=
+X
+kl
+ ∂J
+∂F1
+
+kl
+ 
+δ(i = k)
+X
+n
+cjnwln + δ(i = l)
+X
+m
+wkmcmj
+!
+(32)
+=
+X
+l
+ ∂J
+∂F1
+
+il
+X
+n
+cjnwln +
+X
+k
+ ∂J
+∂F1
+
+ki
+X
+m
+wkmcmj
+(33)
+=
+ ∂J
+∂F1
+WC⊺+ ∂J
+∂F ⊺
+1
+WC
+
+ij
+(34)
+Similarly (note that we don’t take derivative with respect to Wa):
+X
+kl
+
+∂J
+∂F1,2a
+
+kl
+∂[F1,2a]kl
+∂wij
+=
+
+∂J
+∂F1,2a
+WaX⊺
+
+ij
+(35)
+So we have:
+˙W = −∂J
+∂W = −W ⊺
+p WpW(X + X′) + W ⊺
+p WaX
+(36)
+After some manipulation, we ﬁnally arrive at the following gradient update rule:
+˙Wp
+=
+[−WpW(X + X′) + WaX]W ⊺
+(37)
+˙W
+=
+W ⊺
+p [−WpW(X + X′) + WaX]
+(38)
+Remarks. For symmetric loss:
+J(W, Wp) := 1
+4Ex∼p(·), x1,x2∼paug(·|x)
+
+∥Wpf1 −StopGrad(f2a)∥2
+2 + ∥Wpf2 −StopGrad(f1a)∥2
+2
+
+(39)
+The update rule is done by swapping subscript 1 and 2 in the update rule of Wp (here F2 = E [f2f ⊺
+2 ]):
+˙Wp = −∂J
+∂Wp
+= −1
+2Wp(F1 + F2) + 1
+2(F2a,1 + F1a,2)
+(40)
+Under the large batch limit, it is the same as Eqn. 41.
+Note that the Lemma doesn’t include weight decay. With weight decay η, it is not hard to see that we will arrive at the
+following slightly altered gradient ﬂow:
+˙Wp
+=
+[−WpW(X + X′) + WaX]W ⊺−ηWp
+(41)
+˙W
+=
+W ⊺
+p [−WpW(X + X′) + WaX] −ηW
+(42)
+Theorem 1 (Invariance of the Gradient Update). The gradient update rules (Eqn. 2 and Eqn. 3) has the following invari-
+ance (where the symmetric matrix C depends on initialization):
+W(t)W ⊺(t) = W ⊺
+p (t)Wp(t) + e−2ηtC
+(43)
+Proof. From Eqn. 42 and Eqn. 41, we know that
+α−1
+p W ⊺
+p ˙Wp + α−1
+p ηW ⊺
+p Wp = ˙WW ⊺+ ηWW ⊺
+(44)
+Taking transpose and we have:
+α−1
+p
+˙W ⊺
+p Wp + α−1
+p ηW ⊺
+p Wp = W ˙W ⊺+ ηWW ⊺
+(45)
+
+===== PAGE 14 =====
+Understanding Self-Supervised Learning Dynamics without Contrastive Pairs
+Adding them together and multiply both side with e2ηt:
+α−1
+p
+d
+dt(e2ηtW ⊺
+p Wp) = d
+dt(e2ηtWW ⊺)
+(46)
+This leads to e2ηtWW ⊺= α−1
+p e2ηtW ⊺
+p Wp + C, or WW ⊺= α−1
+p W ⊺
+p Wp + e−2ηtC.
+Lemma 2 (Dynamics of a negative deﬁnite system). Let H(t) be d-by-d time-varying positive deﬁnite (PD) matrices
+whose minimal eigenvalues are bounded away from 0: inft≥0 λmin(H(t)) ≥λ0 > 0, then the following dynamics:
+dw(t)
+dt
+= −H(t)w(t)
+(47)
+satisﬁes ∥w(t)∥2 ≤e−λ0t∥w(0)∥2, which means that w(t) →0.
+Proof. Construct the following Lyapunov function V (w) := 1
+2∥w∥2
+2. For V (w(t)) we have:
+dV
+dt = dV
+dw
+dw
+dt = −w⊺(t)H(t)w(t)
+(48)
+Note that H(t) has eigen-decomposition: H(t) = P
+j λj(t)uj(t)u⊺
+j (t) with all λj(t) ≥λ0 and [u1(t), u2(t), . . . , ud(t)]
+forming an orthonormal bases. Therefore:
+w⊺Hw =
+X
+j
+λjw⊺uju⊺
+j w ≥λ0w⊺
+
+X
+j
+uju⊺
+j
+
+w = λ0∥w∥2
+2
+(49)
+Therefore, we have:
+dV
+dt ≤−λ0∥w(t)∥2
+2 = −2λ0V
+(50)
+which leads to V (t) ≤e−2λ0tV (0). That is ∥w(t)∥2 ≤e−λ0t∥w(0)∥2.
+Theorem 2 (No-stop gradient will not work). With Wa = W (SimSiam case), removing the stop-gradient signal yields a
+gradient update for W given by positive semi-deﬁnite (PSD) matrix H(t) := X′ ⊗(W ⊺
+p Wp + I) + X ⊗˜W ⊺
+p ˜Wp (here
+˜Wp := Wp −I and ⊗is the Kronecker product):
+d
+dtvec(W) = −H(t)vec(W).
+(51)
+If inft≥0 λmin(H(t)) ≥λ0 > 0, then W(t) →0.
+Proof. Note that if we don’t have stop gradient and Wa = W, then we have additional terms (and we also need to compute
+∂J/∂F2). Let ˜Wp = Wp −In2 and we have:
+˙W
+=
+−∂J
+∂W = −W ⊺
+p WpW(X + X′) + (W ⊺
+p + Wp)WX −W(X + X′) −ηW
+(52)
+=
+−(W ⊺
+p Wp + I)WX′ −(W ⊺
+p Wp −W ⊺
+p −Wp + I)WX −ηW
+(53)
+=
+−(W ⊺
+p Wp + I)WX′ −(Wp −I)⊺(Wp −I)WX −ηW
+(54)
+=
+−(W ⊺
+p Wp + I)WX′ −˜W ⊺
+p ˜WpWX −ηW
+(55)
+With vec(AXB) = (B⊺⊗A)vec(X) and we see:
+d
+dtvec(W) = −
+h
+X′ ⊗(W ⊺
+p Wp + I) + X ⊗˜W ⊺
+p ˜Wp + ηIn1n2
+i
+vec(W)
+(56)
+If inft≥0 λmin(H(t)) ≥λ0 > 0, then applying Lemma 2 and we have ∥vec(W(t))∥2 ≤e−λ0t∥vec(W(0))∥2 →0, and
+there is no chance for W to learn any meaningful features.
+
+===== PAGE 15 =====
+Understanding Self-Supervised Learning Dynamics without Contrastive Pairs
+0
+25
+50
+75
+100
+125
+150
+175
+200
+Time t
+0.960
+0.965
+0.970
+0.975
+0.980
+0.985
+0.990
+0.995
+1.000
+Normalized Correlation
+Normalized Correlation between Wa and W ( =0.0)
+a=0.996
+a=0.99
+a=0.95
+a=0.9
+0
+25
+50
+75
+100
+125
+150
+175
+200
+Time t
+0.96
+0.97
+0.98
+0.99
+1.00
+Normalized Correlation
+Normalized Correlation between Wa and W ( =0.01)
+a=0.996
+a=0.99
+a=0.95
+a=0.9
+0
+25
+50
+75
+100
+125
+150
+175
+200
+Time t
+0.90
+0.92
+0.94
+0.96
+0.98
+1.00
+Normalized Correlation
+Normalized Correlation between Wa and W ( =0.1)
+a=0.996
+a=0.99
+a=0.95
+a=0.9
+Figure 7. Check the validity of EMA assumption (Assumption 1) with different EMA coefﬁcients γa for BYOL dynamics with X = I
+and X′ = σ2I (Assumption 2). σ = 0.03. All experiments are run 10 times to get mean and standard derivation (shaded area). We could
+see the EMA assumption is largely correct. Even at the region with γa close to 1 (e.g., 0.996) and large η, the normalized correlation
+between Wa and W are still high (∼0.9). Note that throughout our analysis, the initial value of Wa(0) = 0. Left: weight decay η = 0,
+Middle: η = 0.01, Right: η = 0.1.
+Remark. Note that if Wa = W and we choose not to use the predictor (Wp = I), then no matter whether we choose to
+use stop-gradient or not, W(t) always goes to 0. The theorem above already proved that without stop gradient, it is the
+case. When there is stop gradient, from Eqn. 3, we have:
+˙W = −(X′ + ηI)W
+(57)
+Note that X′ + ηI is a PD matrix and with similar arguments, W(t) →0.
+B. Section 3
+Isometric assumptions. Now we use the assumption that X = I and X′ = σ2I, which leads to
+˙F = ˙WXW ⊺+ WX ˙W ⊺= −(1 + σ2)(W ⊺
+p WpF + FW ⊺
+p Wp) + W ⊺
+p WaW ⊺+ WW ⊺
+a Wp
+(58)
+here F = WXW ⊺= WW ⊺. If we also have weight decay −ηW for W, then we have:
+˙F = −(1 + σ2)(W ⊺
+p WpF + FW ⊺
+p Wp) + W ⊺
+p WaW ⊺+ WW ⊺
+a Wp −2ηF
+(59)
+or using anticommutator {A, B} := AB + BA:
+˙F = −(1 + σ2){F, W ⊺
+p Wp} + W ⊺
+p WaW ⊺+ WW ⊺
+a Wp −2ηF
+(60)
+Similarly, for Wp we have:
+˙Wp = −αp(1 + σ2)WpF + αpτF −ηWp
+(61)
+EMA assumption (Assumption 1). Now we further study the effect of EMA. To model it, we just let Wa = τW where
+τ < 1 is a coefﬁcient that measure how much EMA attenuates W. If τ = 1 then Wa = W and there is no EMA. Note that
+τ is not the same as the EMA parameter 1 −γa, which is often set to be a ﬁxed 0.004 (or 1 −0.996). Instead, τ = τ(t) is
+a changing parameter depends on how quickly W = W(t) grows over time. If W remains stable, then τ ≈1; if W grows
+rapidly, then τ becomes small.
+Fig. 7 shows that this assumption is largely correct.
+Under this condition, using F = WXW ⊺= WW ⊺, the dynamics becomes (Now we also put weight decay for Wp):
+˙Wp
+=
+−αp(1 + σ2)WpF + αpτF −ηWp
+(62)
+˙F
+=
+−(1 + σ2)(W ⊺
+p WpF + FW ⊺
+p Wp) + τ(W ⊺
+p F + FWp) −2ηF
+(63)
+Derivation of Fixed point of Eqn. 2. Given the dynamics Eqn. 62 we now want to check its ﬁxed point:
+−αp(1 + σ2)WpF + αpτF −ηWp = 0
+(64)
+
+===== PAGE 16 =====
+Understanding Self-Supervised Learning Dynamics without Contrastive Pairs
+for some PSD matrix F. For convenience, let η′ = η/αp. Since F is always PSD, we have eigendecomposition F =
+UΛU ⊺. Left-multiplying U and right-multiplying U ⊺, we have:
+(1 + σ2) ¯WpΛ + η′ ¯Wp = τΛ
+(65)
+where ¯Wp := U ⊺WpU. Let Λ′ = (1 + σ2)Λ + η′I is a diagonal matrix with all positive diagonal element since η′ > 0.
+Therefore, we have:
+¯WpΛ′ = τΛ
+(66)
+and thus ¯Wp = τΛ(Λ′)−1 is a symmetric matrix and so does Wp = U ¯WpU ⊺. When η = 0 and F has zero eigenvalues,
+Wp can have inﬁnite solutions (or ﬁxed points), and some of them might not be symmetric.
+Symmetrization of Wp. Now we need to assume Wp is symmetric and also symmetrize its dynamics, which yields (here
+{A, B} := AB + BA):
+˙Wp
+=
+−αp
+2 (1 + σ2){Wp, F} + αpτF −ηWp
+(67)
+˙F
+=
+−(1 + σ2){W 2
+p , F} + τ{Wp, F} −2ηF
+Note that the asymmetric dynamic might be interesting and we will leave it later.
+B.1. Section 3.1
+Theorem 3 (Alignment of Eigenspace). Under the dynamics of Eqn. 67, the commutator [F, Wp] := FWp−WpF satisﬁes:
+d
+dt[F, Wp] = −[F, Wp]K −K[F, Wp]
+(68)
+where
+K = K(t) = (1 + σ2)
+αp
+2 F(t) + W 2
+p (t) −
+τ
+1 + σ2 Wp(t)
+
++ 3
+2ηI
+(69)
+If maxt≥0 λmin[K(t)] = λ0 > 0, then the commutator ∥[F(t), Wp(t)]∥F ≤e−2λ0t∥[F(0), Wp(0)]∥F →0, i.e., the
+eigenspace of Wp gradually aligns with F.
+Proof. Let’s compute the commutator L := [F, Wp] := FWp −WpF and its time derivative. First we have:
+F ˙Wp −˙WpF = −αp
+2 (1 + σ2)(FL + LF) −ηL
+(70)
+Then we have
+˙FWp −Wp ˙F = −(1 + σ2)(W 2
+p L + LW 2
+p ) + τ(WpL + LWp) −2ηL
+(71)
+So we have
+˙L = F ˙Wp + ˙FWp −(Wp ˙F + ˙WpF) = −KL −LK
+(72)
+where
+K = K(t) = (1 + σ2)
+αp
+2 F + W 2
+p −
+τ
+1 + σ2 Wp
+
++ 3
+2ηI
+(73)
+is a symmetric matrix. We can write the dynamics of L(t):
+dvec(L(t))
+dt
+= −[K(t) ⊕K(t)] vec(L(t))
+(74)
+where K(t) ⊕K(t) := I ⊗K(t) + K(t) ⊗I is the Kronecker sum and is a PSD matrix if K is PSD.
+If inft≥0 λmin(K(t)) ≥λ0 > 0 for all t, then inft≥0 λmin[K(t) ⊕K(t)] ≥2λ0. Applying Lemma 2 and we have:
+∥vec(L)∥2 ≤e−2λ0t∥vec(L(0))∥2 →0
+(75)
+This means that Wp and F can commute, and the eigen space of Wp and F will gradually align.
+
+===== PAGE 17 =====
+Understanding Self-Supervised Learning Dynamics without Contrastive Pairs
+0
+250
+500
+750
+1000
+Time t
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+Frobenius Norm
+= 0.1,
+= 0.001
+A
+B
+0
+250
+500
+750
+1000
+Time t
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+1.2
+Frobenius Norm
+= 0.3,
+= 0.001
+A
+B
+0
+250
+500
+750
+1000
+Time t
+0.0
+0.5
+1.0
+1.5
+2.0
+Frobenius Norm
+= 0.5,
+= 0.001
+A
+B
+0
+250
+500
+750
+1000
+Time t
+0
+1
+2
+3
+4
+Frobenius Norm
+= 1,
+= 0.001
+A
+B
+0
+250
+500
+750
+1000
+Time t
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+Frobenius Norm
+= 0.1,
+= 0.01
+A
+B
+0
+250
+500
+750
+1000
+Time t
+0.0
+0.2
+0.4
+0.6
+0.8
+Frobenius Norm
+= 0.3,
+= 0.01
+A
+B
+0
+250
+500
+750
+1000
+Time t
+0.0
+0.5
+1.0
+1.5
+Frobenius Norm
+= 0.5,
+= 0.01
+A
+B
+0
+250
+500
+750
+1000
+Time t
+0
+1
+2
+3
+4
+Frobenius Norm
+= 1,
+= 0.01
+A
+B
+0
+250
+500
+750
+1000
+Time t
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+Frobenius Norm
+= 0.1,
+= 0.05
+A
+B
+0
+250
+500
+750
+1000
+Time t
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+Frobenius Norm
+= 0.3,
+= 0.05
+A
+B
+0
+250
+500
+750
+1000
+Time t
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+0.6
+Frobenius Norm
+= 0.5,
+= 0.05
+A
+B
+0
+250
+500
+750
+1000
+Time t
+0.0
+0.5
+1.0
+1.5
+2.0
+2.5
+3.0
+Frobenius Norm
+= 1,
+= 0.05
+A
+B
+Figure 8. Dynamics of the symmetric A := (Wp + W ⊺
+p )/2 and asymmetric part B := (Wp −W ⊺
+p )/2 of Wp under different time-
+independent τ of Eqn. 62. Each row is a different weight decay η (i.e., η = 0.001, 0.01 and 0.05). When η is large and/or τ is small,
+∥A∥F can also be dragged to zero, which is consistent with analysis in Sec. 3.2 (Obs#4 and Obs#5). On the other hand, ∥B∥F always
+seems to vanish over time. In this numerical simulation, we set F = W ⊺
+p Wp following invariant in Theorem 1 with C = 0.
+Remark. Fig. 9 shows numerical simulation of the symmetrized dynamics (Eqn. 67). If K(t) has negative eigenvalues,
+then even if Wp and F have already approximately aligned, the dynamics is also unstable and might diverge due to noise
+and/or numerical instability.
+Fig. 8 shows a numerical simulation of Eqn. 62 (dynamics with Assumption 1 and Assumption 2 but without the symmetric
+dynamics). We can clearly see that the asymmetric component converges to zero.
+When eigenspace aligns exactly.
+Let U be the common eigenvectors.
+Wp
+=
+UΛWpU ⊺where ΛWp
+=
+diag[p1, p2, . . . , pd], F = UΛF U ⊺where ΛF = diag[s1, s2, . . . , sd].
+In this case, the time derivatives ˙Wp and ˙F can all be written as decoupled form: ˙Wp = UG1U ⊺and ˙F = UG2U ⊺where
+G1 and G2 are diagonal matrices. In other words, they are both decoupled into each eigen mode, and so does the future
+value of Wp and F. Then U won’t change over time.
+To see why, we consider the general case where we have a symmetric matrix M(t) with eigen decomposition M(t) =
+U(t)D(t)U ⊺(t). M follows ˙M = U(t)G(t)U ⊺(t) where G(t) is an arbitrary diagonal matrix.
+To see why ˙U = 0, at each time step we have:
+˙M = ˙UDU ⊺+ U ˙DU ⊺+ UD ˙U ⊺= UGU ⊺
+(76)
+since U is unitary, we have:
+U ⊺˙UD + D ˙U ⊺U = G −˙D
+(77)
+Since U ⊺(t)U(t) = I, we have ˙U ⊺U + U ⊺˙U = 0 so Q := U ⊺˙U is a skew-symmetric matrix and we have
+QD −DQ = G −˙D
+(78)
+Since the right hand side is a diagonal matrix, checking each entry and we have qijdj −qijdi = 0 for i ̸= j. If M
+has distinctive eigenvalues, then we know qij = 0 for i ̸= j. Q is skew-symmetric so qii = 0. So Q = U ⊺˙U = 0
+
+===== PAGE 18 =====
+Understanding Self-Supervised Learning Dynamics without Contrastive Pairs
+0
+20
+40
+Time t
+0
+1
+2
+Frobenius Norm
+1e106
+= 0.1,
+= 0
+[F, Wp]
+0
+2
+4
+6
+Time t
+0.0
+0.5
+Frobenius Norm
+1e109
+= 0.3,
+= 0
+[F, Wp]
+0
+2
+4
+Time t
+0.0
+0.5
+1.0
+1.5
+Frobenius Norm
+1e101
+= 0.5,
+= 0
+[F, Wp]
+0
+1
+2
+Time t
+0
+2
+4
+Frobenius Norm
+1e79
+= 1,
+= 0
+[F, Wp]
+0
+20
+40
+Time t
+0.0000
+0.0025
+0.0050
+0.0075
+Frobenius Norm
+= 0.1,
+= 0.05
+[F, Wp]
+0
+20
+40
+Time t
+0.0000
+0.0025
+0.0050
+0.0075
+Frobenius Norm
+= 0.3,
+= 0.05
+[F, Wp]
+0
+20
+40
+Time t
+0.0000
+0.0025
+0.0050
+0.0075
+Frobenius Norm
+= 0.5,
+= 0.05
+[F, Wp]
+0
+2
+Time t
+0
+2
+4
+6
+Frobenius Norm
+1e87
+= 1,
+= 0.05
+[F, Wp]
+0
+20
+40
+Time t
+0.0000
+0.0025
+0.0050
+0.0075
+Frobenius Norm
+= 0.1,
+= 0.1
+[F, Wp]
+0
+20
+40
+Time t
+0.0000
+0.0025
+0.0050
+0.0075
+Frobenius Norm
+= 0.3,
+= 0.1
+[F, Wp]
+0
+20
+40
+Time t
+0.0000
+0.0025
+0.0050
+0.0075
+Frobenius Norm
+= 0.5,
+= 0.1
+[F, Wp]
+0
+20
+40
+Time t
+0.000
+0.005
+Frobenius Norm
+= 1,
+= 0.1
+[F, Wp]
+Figure 9. The norm of the communicator [F, Wp] over time under different hyper-parameters (different time-independent τ and different
+weight decay η) in symmetrized dynamics Eqn. 67. When weight decay is small or zero, and/or τ is large, the norm of the communicator
+∥[F, Wp]∥F can shoot up (no eigenspace alignment).
+and thus ˙U = 0. If M has duplicated eigenvalues, then we can show qij = 0 for any di ̸= dj. Within high-dimensional
+eigenspace for duplicated eigenvalues, its eigen-decomposition is not unique and we can always pick the eigenspace within
+each duplicated eigenspace so that ˙U = 0.
+Therefore, we just multiply U ⊺and U to Eqn. 67 and the system becomes decoupled. Then after some algebraic manipu-
+lation, we arrive at the following:
+˙pj
+=
+αp(1 + σ2)sj
+
+τ
+1 + σ2 −pj
+
+−ηpj
+(79)
+˙sj
+=
+2(1 + σ2)pjsj
+
+τ
+1 + σ2 −pj
+
+−2ηsj
+(80)
+Multiply Eqn. 79 with 2α−1
+p pj and subtract with Eqn. 80, we get:
+2α−1
+p pj ˙pj −˙sj = −2ηα−1
+p p2
+j + 2ηsj
+(81)
+which gives
+α−1
+p
+ 
+dp2
+j
+dt + 2ηp2
+j
+!
+=
+˙sj + 2ηsj
+(82)
+α−1
+p
+d
+dt(e2ηtp2
+j)
+=
+d
+dt(e2ηtsj)
+(83)
+α−1
+p e2ηtp2
+j
+=
+e2ηtsj −cj
+(84)
+α−1
+p p2
+j(t)
+=
+sj(t) −e−2ηtcj
+(85)
+Therefore, we have integral sj(t) = α−1
+p p2
+j(t) + cje−2ηt. For ﬁnite weight decay (η > 0), we could simply expect
+sj(t) ≈α−1
+p p2
+j(t).
+On the other hand, the dynamics of τ is:
+˙Wa = β(W −Wa)
+(86)
+
+===== PAGE 19 =====
+Understanding Self-Supervised Learning Dynamics without Contrastive Pairs
+Applying our assumption about EMA (Assumption 1) Wa(t) = τ(t)W(t), then we have:
+˙τW + τ ˙W
+=
+β(1 −τ)W
+(87)
+˙τWW ⊺+ τ ˙WW ⊺
+=
+β(1 −τ)WW ⊺
+(88)
+2 ˙τF + τ ˙F
+=
+2β(1 −τ)F
+(89)
+When F and Wp aligns, we have ˙F all in the same eigen space.
+˙F = −(1 + σ2){W 2
+p , F} + τ{Wp, F} −2ηF
+(90)
+So the eigenvectors U won’t change and thus we have:
+2 ˙τsj + τ ˙sj = 2β(1 −τ)sj
+(91)
+or
+˙τ = β(1 −τ) −τ ˙sj
+2sj
+(92)
+which has a close form solution when cj = 0. Note that in the case, we have sj = α−1
+p p2
+j and thus ˙sj = 2α−1
+p pj ˙pj and we
+have:
+˙τ = β(1 −τ) −τ ˙pj
+pj
+(93)
+or
+˙τ + τ
+ ˙pj
+pj
++ β
+
+= β
+(94)
+or
+d
+dt(ef(t)τ) = βef(t)
+(95)
+where f(t) =
+R
+( ˙pj/pj +β)dt = ln pj +βt and thus ef(t) = eβtpj. Take integral on both side and we have (here τ(0) = 0
+is the initial condition):
+eβtpjτ = β
+Z t
+0
+eβt′pj(t′)dt
+(96)
+which is:
+τj(t) = p−1
+j (t)βe−βt
+Z t
+0
+pj(t′)eβt′dt
+(97)
+B.2. Section 3.2
+Monotonicity of p∗
+j−with respect to η and τ. Note that
+p∗
+j−= τ −
+p
+τ 2 −4η(1 + σ2)
+2(1 + σ2)
+(98)
+is the (right) boundary of trivial basin p < p∗
+j−and determines the size of trivial attractive region towards p∗
+j0 = 0. It is
+dependent on η and τ. It is clear that p∗
+j−is a increasing function of η. This means that if the weight decay η is large, so
+does trivial region (and more eigenvalues will be trapped to trivial solution).
+On the other hand, we can compute the derivative of g(x) = x −
+√
+x2 −c for c > 0 and x2 > c:
+dg
+dx = 1 −
+1
+p
+1 −c/x2 < 0
+(99)
+So g(x) is a decreasing function with respect to x. Or p∗
+j−is a decreasing function with respect to τ.
+C. Section 4
+Experiment setup. Unless explicitly stated, in all our experiments, we use ResNet-18 as the backbone network, two-layer
+MLP (with BN and ReLU) as the projector, and a linear predictor. For STL-10 and CIFAR-10, we use SGD as the optimizer
+with learning rate α = 0.03, momentum 0.9, weight decay ¯η = 0.0004 and EMA parameter γa = 0.996. The batchsize is
+128. Each setting is repeated 5 times to compute mean and standard derivation. We report ﬁnal number as “mean±std”.
+
+===== PAGE 20 =====
+Understanding Self-Supervised Learning Dynamics without Contrastive Pairs
+D. Analysis of BYOL and SimSiam learning dynamics without isotropic assumptions on data
+In the main paper we focused on isotropic data assumptions to obtain analytic insights into when and why BYOL and
+SimSiam learning dynamics avoid representational collapse. Here we provide an alternate perspective using a different
+assumption, involving decoupled initial conditions, that enables us to address the case of learning with non-isotropic data.
+First, we recall the data generation and augmentation process. Let x be a data point drawn from the data distribution p(x)
+and let x1 and x2 be two augmented views of x: x1, x2 ∼paug(·|x) where paug(·|x) is the augmentation distribution.
+Let Σs = E [x1x⊺
+1] be the correlation matrix of a single augmented view x1 of the data x, and let Σd = E [x1x⊺
+2] be the
+correlation matrix between two augmented views x1 and x2 of the same data point x. In the notation of the main paper,
+Σs and Σd can be decomposed as Σs = X + X′ and Σd = X, where X = E [¯x¯x⊺] and ¯x(x) := Ex′∼paug(·|x) [x′] is the
+average augmented view of a data point x. In turn X′ = Ex
+
+Vx′|x[x′]
+
+is the covariance matrix Vx′|x[x′] of augmented
+views x′ conditioned on x, subsequently averaged over the data x. Intuitively, X is the correlation matrix of augmentation
+averaged data, while X′ is the augmentation covariance matrix averaged over data.
+Also recall that the BYOL learning dynamics, without weight decay, is given by
+˙W = W ⊺
+p
+ −WpWΣs + WaΣd
+(100)
+˙Wp = αp
+ −WpWΣs + WaΣd
+W ⊺
+(101)
+˙Wa = β(−Wa + W)
+(102)
+SimSiam learning dynamics is a special case in which Wa = W and the ﬁnal equation is ignored.
+We ﬁrst derive exact ﬁxed point solutions to both BYOL and SimSiam learning dynamics in this setting. We then discuss
+speciﬁc models for data distributions and augmentation procedures, and show how the ﬁxed point solutions depend on
+both data and augmentation distributions. We then discuss how our theory reveals a fundamental role for the predictor
+in avoiding collapse in BYOL solutions. Finally, we derive a highly reduced three dimensional description of BYOL and
+SimSiam learning dynamics, assuming decopuled initial conditions, that provides considerable insights into dynamical
+mechanisms enabling both to avoid collapsed solutions without negative pairs to force apart representations of different
+objects.
+D.1. The ﬁxed point structure of BYOL and Simsiam learning dynamics.
+Examining equation 100-equation 102, we ﬁnd sufﬁcient conditions for a ﬁxed point given by WpWΣs = WaΣd and
+W = Wa. Note these are sufﬁcient conditions for ﬁxed points of both BYOL and SimSiam. Inserting the second equation
+into the ﬁrst and right multiplying both sides by [Σs]−1 (assuming Σs is invertible), yields a manifold of ﬁxed point
+solutions in W1 and W2 satisfying the nonlinear equation
+WpW = WΣd[Σs]−1.
+(103)
+This constitutes a set of n1 × n2 nonlinear equations in (n1 × n2) + (n2 × n2) unknowns, yielding generically a nonlinear
+manifold of solutions in W1 and W2 of dimensionality n2 × n2 corresponding to the number of predictor parameters.
+For concreteness, we will assume that n2 ≤n1, so that the online and target networks perform dimensionality reduction.
+Then a special class of solutions to equation 103 can be obtained by assuming the n2 rows of W correspond to n2 left-
+eigenvectors of Σd[Σs]−1 and Wp is a diagonal matrix with the corresponding eigenvalues. This special class of solutions
+can then be generalized by a transformation Wp →SWpS−1 and W →SW where S is any invertible n2 by n2 matrix.
+Indeed this transformation is a symmetry of equation 103, which deﬁnes the solution manifold. In addition to these families
+of solutions, the collapsed solution W = Wp = Wa = 0 also exists.
+D.2. Illustrative models for data and data augmentation
+The above section suggests that the top eigenmodes of Σd[Σs]−1 control the non-collapsed solutions. Here we make
+this result more concrete by giving illustrative examples of data distributions and data augmentation procedures, and the
+resulting properties of Σd[Σs]−1.
+Multiplicative scrambling.
+Consider for example a multiplicative subspace scrambling model. In this model, data aug-
+mentation scrambles a subspace by multiplying by a random Gaussian matrix, while identically preserving the orthogonal
+
+===== PAGE 21 =====
+Understanding Self-Supervised Learning Dynamics without Contrastive Pairs
+complement of the subspace. In applications, the scrambled subspace could correspond to a space of nuisance features,
+while the preserved subspace could correspond to semantically important features. Indeed many augmentation proce-
+dures, including random color distortions and blurs, largely preserve important semantic information, like object identity
+in images.
+More precisely, we consider a random scrambling operator A which only scrambles data vectors x within a ﬁxed k dimen-
+sional subspace spanned by the orthonormal columns of the n0 ×k matrix U. Within this subspace, data vectors are scram-
+bled by a random Gaussian k×k matrix B. Thus A takes the form A = P c +UBU T where P c = I −UU T is a projection
+operator onto the n0 −k dimensional conserved, semantically important, subspace orthogonal to the span of the columns
+of U, and the elements of B are i.i.d. zero mean unit variance Gaussian random variables so that E [BijBkl] = δikδjl.
+Under this simple model, the augmentation average ¯x(x) := Ex′∼paug(·|x) [x′] becomes ¯x(x) = P cx. Thus, intuitively,
+under multiplicative subspace scrambling, the only aspect of a data vector that survives averaging over augmentations is
+the projection of this data vector onto the preserved subspace. Then the correlation matrix of two different augmented
+views is Σd = P cΣxP c while the correlation matrix of two identical views is Σs = Σx where Σx ≡Ex∼p(·)
+
+xxT 
+is
+the correlation matrix of the data distribution. Thus non-collapsed solutions of both BYOL and SimSiam can correspond
+to principal eigenmodes of Σd[Σs]−1 = P cΣxPc[Σx]−1. In the special case in which P c commutes with Σx, we have the
+simple result that Σd[Σs]−1 = P c, which is completely independent of the data correlation matrix Σx. Thus in this simple
+setting BYOL and SimSiam can learn the subspace of features that are identically conserved under data augmentation,
+independent of how much data variance there is in the different dimensions of this conserved subspace.
+Additive scrambling.
+We also consider, as an illustrative example, data augmentation procedures which simply add
+Gaussian noise with a prescribed noise covariance matrix Σn. Under this model, we have Σs = Σx + Σn while Σd = Σx.
+Thus in this setting, BYOL learns principal eigenmodes of Σd[Σs]−1 = Σx[Σx + Σn]−1. Thus intuitively, dimensions
+with larger noise variance are attenuated in learned BYOL representations. On the otherhand, correlations in the data that
+are not attenuated by noise are preferentially learned, but the degree to which they are learned is not strongly inﬂuenced
+by the magnitude of the data correlation (i.e. consider dimensions that lie along small eigenvalues of Σn). Note that in the
+main paper we focused on the case where Σx = I and Σn = σ2I.
+D.3. The importance of the predictor in BYOL and SimSiam.
+Here we note that our theory explains why the predictor plays a crucial role in BYOL and SimSiam learning in this simple
+setting, as is observed empirically in more complex settings. To see this, we can model the removal of the predictor by
+simply setting Wp = I in all the above equations. The ﬁxed point solutions then obey W = WΣd[Σs]−1. This will only
+have nontrivial, non-collapsed solutions if Σd[Σs]−1 has eigenvectors with eigenvalue 1. Rows of W consisting of linear
+combinations of these eigenvectors will then constitute non-collapsed solutions.
+This constraint of eigenvalue 1 yields a much more restrictive condition on data distributions and augmentation procedures
+for BYOL and Simsiam to have non-collapsed solutions. It can however be satisﬁed in multiplicative scrambling if an
+eigenvector of the data matrix Σx lies in the column space of the projection operator P c (in which case it is an eigenvector
+of eigenvalue 1 of Σd[Σs]−1 = P cΣxPc[Σx]−1. This condition cannot however be generically satisﬁed for additive
+scrambling case, in which generically all the eigenvalues of Σd[Σs]−1 = Σx[Σx + Σn]−1 are less than 1. In this case,
+without a predictor, it can be checked that the collapsed solution W = Wa = 0 is stable.
+Thus overall, in this simple setting, our theory provides conceptual insight into how the introduction of a predictor is
+crucial for creating new non-collapsed solutions for both BYOL and SimSiam, even though the predictor confers no new
+expressive capacity in allowing the online network to match the target network.
+D.4. Reduction of BYOL learning dynamics to low dimensions
+The full learning dynamics in equation 100 to equation 102 constitutes a set of high dimensional nonlinear ODEs which
+are difﬁcult to solve from arbitrary initial conditions. However, there is a special class of decoupled initial conditions
+which permits additional insight. Consider the special case in which Σs and Σd commute, and so are simultaneously
+diagonalizable and share a common set of eigenvectors, which we denote by uα ∈Rn0. Consider also a special set of
+initial conditions where each row of W and the corresponding row of Wa are both proportional to one of the eigenmodes
+uα, with scalar proportionality constants wα and wα
+a respectively, and Wp is diagonal, with the corresponding diagonal
+element given by wα
+p . Then it is straightforward to see that under the dynamics in equation 100 to equation 102, that the
+
+===== PAGE 22 =====
+Understanding Self-Supervised Learning Dynamics without Contrastive Pairs
+Figure 10. A visualization of BYOL dynamics in low dimensions. Left: Black arrows denote the vector ﬁeld of the ﬂow in the w and wp
+plane of online and predictor weights in Eqns. 104 and 105 when the target network weight wa is ﬁxed to 1. For all 3 panels, λs = 1,
+λd = 1/2, and αp = β = 1. All ﬂow ﬁeld vectors are normalized to unit length to indicate direction of ﬂow alone. The red curve
+shows the hyperoblic manifold of stable ﬁxed points wpw = waλdλ−1
+s , while the red point at the origin is an unstable ﬁxed point. For
+a ﬁxed target network, the online and predictor weights will cooperatively amplify each other to escape the collapsed solution at the
+origin. Middle: A visualization of the full low dimensional BYOL dynamics in Eqns 104-106 when the online and predictor weights
+are tied so that w = wp. The green curve shows the nullcline wa = w corresponding to dwa
+dt
+= 0 and the blue curve shows part of
+the nullcline dw
+dt = 0 corresponding to w2 = waλdλ−1
+s . The intersection of these two nullclines yields two ﬁxed points (red dots): an
+unstable collapsed solution at the origin w = wa = 0, and a stable non-collapsed solution with wa = w and w = λdλ−1
+s . Right: A
+visualization of dynamics in Eqns 104-106 when the the predictor is removed, so that w2 is ﬁxed to 1. The resulting two dimensional
+ﬂow ﬁeld on w and wa is shown (black arrows). The green curve shows the nullcline w = wa corresponding to dwa
+dt = 0, while the blue
+curve shows the nullcline w = waλdλ−1
+s . The slope of this nullcline is λsλ−1
+d
+> 1. The resulting nullcline structure yields a single
+ﬁxed point at the origin which is stable. Thus there only exists a collapsed solution. In the special case where λsλ−1
+d
+= 1, the two
+nullclines coincide, yielding a one dimensional manifold of solutions.
+structure of this initial condition will remain the same, with only the scalars wα, wα
+a and wα
+p changing over time. Moreover,
+the scalars decouple across the different indices α, and the dynamics are driven by the eigenvalues λα
+s and λα
+d of Σs and
+Σd respectively. Inserting this special class of initial conditions into the dynamics in equation 100 to equation 102, and
+dropping the α index, we ﬁnd the dynamics of the triplet of scalars is given by
+dwp
+dt
+= αp [waλd −wpwλs] w
+(104)
+dw
+dt = wp [waλd −wpwλs]
+(105)
+dwa
+dt = β(−wa + w).
+(106)
+Alternatively, this low dimensional dynamics can be obtained from equation 100 to equation 102 not only by considering
+a special class of decoupled initial conditions, but also by considering the special case where every matrix is simply a 1 by
+1 matrix, making the scalar replacements W →w, Wp →wp, Wa →wa, Σs →λs, and Σd →λd. Note furthermore that
+this 3 dimensional dynamical system is equivalent to that studied in the main paper under the change of variables s = w2
+and τ = wa/w and the special case of λs = 1 + σ2 and λd = 1.
+The ﬁxed point conditions of this dynamics are given by wa = w and wpw = waλdλ−1
+s . Thus the collapsed point
+w = wp = wa = 0 is a solution. Additionally wp = λdλ−1
+s
+and w = wa taking any value is also a family of non-collapsed
+solutions. We can understand the three dimensional dynamics intuitively as follows when β is much less than both 1 and
+αp, so that the dynamics of w and wp are very fast relative to the dynamics of wa. In this case, the target network evolves
+very slowly compared to the online network, as is done in practice. For simplicity we use the same learning rate for the
+predictor as we do for the online network (i.e. αp = 1). In this situation, we can treat wa as approximately constant on the
+fast time scale over which the online and predictor weights w and wp evolve. Then the joint dynamics in equation 104 and
+
+===== PAGE 23 =====
+Understanding Self-Supervised Learning Dynamics without Contrastive Pairs
+equation 105 obeys gradient descent on the error function
+E = λs
+2 (waλdλ−1
+s
+−wpw)2.
+(107)
+Iso-contours of constant error are hyperbolas in the w by wp plane, and for ﬁxed wa, the origin w = wp = 0 is a saddle
+point, yielding an unstable ﬁxed point (see Fig. 10 (left)). From generic initial conditions, w and wp will then cooperatively
+amplify each other to rapidly escape the collapsed solution at the origin, and approach the zero error hyperbolic contour
+wpw = waλdλ−1
+s
+where wa is close to its initial value. Then the slower target network wa will adjust, slowly moving this
+contour until wa = w. The more rapid dynamics of w and wp will hug the moving contour wpw = waλdλ−1
+s
+as wa slowly
+adjusts. In this fashion, the joint fast dynamics of w and wp, combined with the slow dynamics of wa, leads to a nonzero
+ﬁxed point for all 3 values, despite the existence of a collapsed ﬁxed point at the origin. Moreover, the larger the ratio
+λdλ−1
+s , which is determined by the data and augmentation, the larger the ﬁnal values of both w and wp will tend to be.
+We can obtain further insight by noting that the submanifold w = wp, in which the online and predictor weights are tied,
+constitutes an invariant submanifold of the dynamics in Eqns. 104 to 106; if w = wp at any instant of time, then this
+condition holds for all future time. Therefore we can both analyze and visualize the dynamics on this two dimensional
+invariant submanifold, with coordinates w = wp and wa (Fig. 10 (middle)). This analysis clearly shows an unstable
+collapsed solution at the origin, with w = wa = 0, and a stable non-collapsed solution at w = wa = λdλ−1
+s .
+We note again, that the generic existence of these non-collapsed solutions in Fig. 10 depends critically on the presence of a
+predictor with adjustable weights wp. Removing the predictor corresponds to forcing wp = 1, and non-collapsed solutions
+cannot exist unless λd = λs, as demonstrated in Fig. 10 (right). Thus, remarkably, in BYOL in this simple setting, the
+introduction of a predictor network plays a crucial role, even though it neither adds to the expressive capacity of the online
+network, nor improves its ability to match the target network. Instead, it plays a crucial role by dramatically modifying the
+learning dynamics (compare e.g. Fig 10 middle and right panels), thereby enabling convergence to noncollapsed solutions
+through a dynamical mechanism whereby the online and predictor network cooperatively amplify each others’ weights to
+escape collapsed solutions ( Fig. 10 (left)).
+Overall, this analysis of BYOL learning dynamics provides considerable insight into the dynamical mechanisms enabling
+BYOL to avoid collapsed solutions, without negative pairs to force apart representations, in what is likely to be the simplest
+nontrivial setting. Further analysis on this model, in direct analogy to the analysis performed on the equivalent 3 dynamical
+system (derived under different assumptions) studied in the main paper, can yield similar insights into the dynamics of
+BYOL and SimSiam under various conditions on learning rates.
