@@ -1,0 +1,2087 @@
+
+===== PAGE 1 =====
+Understanding the LLM-based gene embeddings
+1
+Yufei Cai1, Dailin Gan1, Hui Zhang2, and Jun Li1*
+2
+1Department of Applied and Computational Mathematics and Statistics, University of Notre Dame, Notre Dame, IN, USA
+3
+2Department of Preventative Medicine, Division of Biostatistics, Northwestern University Feinberg School of Medicine,
+4
+Chicago, IL, USA
+5
+*To whom correspondence should be addressed. Tel: +1 574 631 3429; Fax: +1 574 631 4822; Email: jun.li@nd.edu
+6
+Abstract
+7
+Large language model (LLM)–derived gene embeddings, generated from brief NCBI gene
+8
+descriptions, have shown strong performance in recent biological applications, yet the bi-
+9
+ological information they contain remains unclear. We evaluate these embeddings using
+10
+a Gene Set Enrichment Analysis (GSEA)–based framework that treats each embedding di-
+11
+mension as a potential carrier of pathway-level information. OpenAI’s embeddings recover
+12
+over 93% of Hallmark and C2 pathways, with pathway signals distributed across many di-
+13
+mensions. Even embeddings generated from gene symbols alone recover more than 64% of
+14
+pathways, indicating substantial prior biological knowledge embedded in the model. Com-
+15
+paring 11 small language models reveals that domain-specific models perform best with
+16
+minimal input, but all models approach OpenAI-level coverage when given modest textual
+17
+context. Collectively, these results show that LLM-derived embeddings encode unexpect-
+18
+edly extensive pathway-level information, supporting their use as lightweight, informative
+19
+representations for downstream biological analysis.
+20
+1
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 2 =====
+Introduction
+21
+Transformer-based large language models (LLMs), originally developed for natural lan-
+22
+guage processing, are now being repurposed to analyze biological data, offering new av-
+23
+enues for understanding complex biological systems. In particular, their integration into
+24
+gene-expression data analysis has garnered substantial interest due to their remarkable pre-
+25
+dictive capabilities across diverse applications in fundamental biological problems (see, e.g.,
+26
+[1–7] for a review).
+27
+Current methods for integrating LLMs into gene-expression analysis can be broadly cate-
+28
+gorized into three main approaches. The first approach leverages the question-answering
+29
+capabilities of chatbot models like ChatGPT. For instance, Hou and Ji [8] utilized ChatGPT
+30
+to identify cell types by providing the top ten differentially expressed genes for each cell
+31
+type and directly asking the chatbot to classify the cell. While this strategy is straightforward
+32
+and effective for certain applications, it suffers from key limitations. Specifically, ChatGPT’s
+33
+difficulty in processing and understanding numerical data, coupled with the challenge of
+34
+designing effective prompts for complex tasks, restricts its applicability to more complex
+35
+problems, particularly those involving numerical data.
+36
+The second approach involves training transformer-based foundation models specifically
+37
+for gene-expression data. Examples include scBERT [9], Geneformer [10], scGPT [11], and
+38
+scFoundation [12]. These models are trained on extensive collections of single-cell RNA-seq
+39
+data, typically encompassing thousands of datasets and millions of cells. Once trained, they
+40
+can be fine-tuned on smaller, user-specific datasets to suit particular applications. While this
+41
+method offers substantial predictive power in certain applications, its resource-intensive
+42
+pre-training is inaccessible to most research groups [13], and its performance after fine-
+43
+tuning often depends sensitively on how well the biological conditions represented in the
+44
+pre-training data align with those of the target application—an issue that has contributed
+45
+to the mixed performance reported in recent evaluations [14].
+46
+The third approach, pioneered by GenePT [15], circumvents the need for training foun-
+47
+dation models from scratch by utilizing general-purpose LLMs such as ChatGPT. Specifi-
+48
+cally, GenePT employs OpenAI’s text-embedding function [16] to transform standard NCBI
+49
+gene descriptions [17] into long, dense numeric vectors known as embeddings. These em-
+50
+beddings are presumed to encapsulate the semantic content of the gene descriptions (e.g.,
+51
+functional roles, associated processes, or molecular characteristics), and they can be di-
+52
+rectly used in downstream tasks. For example, the GenePT method demonstrated effective
+53
+cell type labeling using these embeddings, and a subsequent method, scHOTT [18], further
+54
+2
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 3 =====
+optimized this process. More importantly, these embeddings have been successfully applied
+55
+to solve more complex biological problems, such as predicting the outcomes of gene pertur-
+56
+bation experiments, yielding substantial gains in modeling efficiency [19–21]. Related work
+57
+has further incorporated GenePT-style representations—either directly or as a source of in-
+58
+spiration—into broader multimodal frameworks that integrate gene-expression data with
+59
+spatial transcriptomics or histopathological image features, supporting applications such
+60
+as spatial domain identification, cell-state characterization, and disease-related prediction
+61
+[22–25]. Notably, the same embedding paradigm has also been generalized beyond genes
+62
+to other biomedical entities, such as clinical concepts in electronic health records, where
+63
+LLM-derived embeddings of concept descriptions have been used for disease risk prediction
+64
+[26, 27].
+65
+Among these three approaches, the embedding-based strategy offers a particularly practical
+66
+and versatile complement to the others. The text-embedding service of ChatGPT is highly
+67
+cost-efficient—substantially cheaper than the question-answering API—and recent studies
+68
+have shown that it can often be replaced by free, open-source LLMs without a notable loss
+69
+in performance [28]. Moreover, embeddings provide a flexible numerical representation of
+70
+genes, making them compatible with a wide spectrum of machine-learning techniques, from
+71
+traditional methods such as logistic regression and random forests to modern deep-learning
+72
+architectures. These features make the embedding-based approach broadly accessible and
+73
+easy to integrate into diverse analytical pipelines, while remaining complementary to the
+74
+strengths of the other two approaches, which excel in different problem settings.
+75
+However, the advantages of this third approach rest on a critical assumption: that the em-
+76
+beddings, as numeric vectors, encapsulate rich information about the genes they represent.
+77
+While the success of various applications using these embeddings suggests the validity of this
+78
+assumption, it has never been directly validated. In this work, we rigorously investigate this
+79
+assumption by exploring the extent to which these embeddings capture biologically mean-
+80
+ingful information about genes. In particular, we assess this by examining whether genes
+81
+belonging to the same biological pathways exhibit coherent structure within the embedding
+82
+space.
+83
+3
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 4 =====
+Methods
+84
+NCBI Text Descriptions Do Not Automatically Imply Information-Rich
+85
+Embeddings
+86
+This subsection illustrates why short NCBI descriptions cannot be assumed to yield information-
+87
+rich embeddings and therefore motivates the analyses presented in the subsequent sections.
+88
+Figure 1 (A) and (B) present the NCBI descriptions of two well-studied human genes, TP53
+89
+and BRCA1. TP53, often referred to as the “guardian of the genome,” encodes a tumor
+90
+suppressor protein that plays a critical role in regulating the cell cycle, DNA repair, and
+91
+apoptosis. Mutations in TP53 are associated with a broad spectrum of cancers. Similarly,
+92
+BRCA1 encodes another tumor suppressor protein, primarily involved in DNA repair. Muta-
+93
+tions in BRCA1 are strongly linked to an elevated risk of breast, ovarian, and other cancers,
+94
+making it a key target for genetic testing and targeted therapies. Both TP53 and BRCA1
+95
+are foundational to cancer research and clinical care, having been the focus of extensive
+96
+investigations that have revealed a wealth of knowledge about their regulation, interactions
+97
+with other genes, and roles in cancer biology. However, the NCBI descriptions of TP53 and
+98
+BRCA1 are relatively brief. Each gene is described in a single paragraph that, while touch-
+99
+ing upon multiple aspects of the gene’s function, lacks depth and detail. These descriptions
+100
+provide a high-level overview but do not comprehensively capture the genes’ regulatory net-
+101
+works, interactions, or pathway involvement—key aspects crucial for understanding their
+102
+biological roles. Importantly, they are not curated to represent regulatory or pathway-level
+103
+knowledge, making them an imperfect source for downstream inference.
+104
+This lack of detail is not unique to TP53 and BRCA1 but is, in fact, a common characteristic
+105
+of gene descriptions in NCBI. Typically, the NCBI description of a gene is limited to one para-
+106
+graph, containing no more than a few hundred words. For less-characterized genes, these
+107
+descriptions are even more concise. As an illustration, Figure 1 (C) shows the description of
+108
+the human gene A1BG, which appears first in the alphabetical list of human protein-coding
+109
+genes [29]. The description of A1BG is very brief, consisting of only two sentences.
+110
+Given the brevity of these descriptions, it is not immediately evident or intuitive that LLM-
+111
+generated gene embeddings derived from NCBI descriptions can capture comprehensive
+112
+or even adequate information about genes, particularly their regulatory relationships and
+113
+pathway associations. This inherent limitation raises critical questions about the extent to
+114
+which such embeddings can encapsulate biologically meaningful information, warranting a
+115
+rigorous evaluation.
+116
+4
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 5 =====
+Pathway Analysis on OpenAI Text-Embeddings of Human Genes
+117
+We obtained the human gene embeddings generated by the GenePT study from its Zenodo
+118
+repository. These embeddings were produced using OpenAI’s text-embedding-3-small
+119
+model [30]. In generating each embedding, the input to the model was the official gene
+120
+symbol concatenated with its NCBI description (examples shown in Figure 1), and the out-
+121
+put was a 1,536-dimensional embedding vector, as shown in the top row of Table 1.
+122
+The primary objective of this study is to determine whether gene-regulatory pathway infor-
+123
+mation is encoded within the high-dimensional gene embeddings. Our approach is straight-
+124
+forward: for each of the 1,536 dimensions of the embeddings, we apply Gene Set Enrich-
+125
+ment Analysis (GSEA) using pathways from the Human Molecular Signatures Database
+126
+(MSigDB, [31, 32]). For each dimension, genes were ranked by their embedding coordinate
+127
+values, and GSEA was applied to this ranked list. If a pathway is significantly enriched in
+128
+a given dimension, we consider this as evidence that the dimension captures information
+129
+about that pathway. We describe this as the pathway being “reflected” or “represented”
+130
+by the dimension (not implying that the embedding dimension uniquely encodes this path-
+131
+way). We further define “pathway coverage” as the proportion of pathways that are reflected
+132
+by at least one embedding dimension:
+133
+pathway coverage = number of pathways reflected by at least one dimension
+total number of pathways
+× 100%
+Pathway coverage serves as our primary evaluation metric. A higher pathway coverage sug-
+134
+gests that the embeddings capture a broader range of pathway-level biological information.
+135
+This per-dimension analysis allows us to identify which aspects of the embedding space
+136
+align with known biological processes.
+137
+For GSEA, we will focus on two widely used collections of gene sets from the Human
+138
+MSigDB: the 50 hallmark gene sets and the 3,917 canonical pathways in “C2” (curated
+139
+gene sets). The hallmark gene sets [33] are coherently-expressed signatures derived by
+140
+integrating many MSigDB gene sets to represent the most well-defined biological states or
+141
+processes. In contrast, the 3,917 canonical pathways in C2 are curated from various sources,
+142
+including online pathway databases and the biomedical literature. These pathways encom-
+143
+pass six main categories: 292 BioCarta, 658 KEGG Medicus, 196 PID, 1,736 Reactome, 830
+144
+WikiPathways, and 186 KEGG Legacy gene sets. An additional 19 pathways classified as
+145
+“miscellaneous” are excluded from our analysis.
+146
+Further, we retain only the protein-coding genes [29] within each gene set and remove
+147
+any gene sets containing fewer than 10 such genes, as sets with fewer than 10 genes are
+148
+5
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 6 =====
+unlikely to show significant enrichment due to limited statistical power. After this filtering
+149
+step, all 50 Hallmark gene sets and 3,077 C2 canonical pathways (220 BioCarta, 398 KEGG
+150
+Medicus, 196 PID, 1,367 Reactome, 711 WikiPathways, and 185 KEGG Legacy) are retained
+151
+for further analysis.
+152
+GSEA is performed using the R package Fast Gene Set Enrichment Analysis (FGSEA) [34],
+153
+which allows for false discovery rate (FDR) estimation and control at a user-specified thresh-
+154
+old. The analysis is conducted independently for each of the 1,536 embedding dimensions,
+155
+and pathway coverage is then computed by aggregating the statistically significant path-
+156
+ways across all dimensions. To control the overall false positive rate, we adopt a stringent
+157
+multiple-testing correction strategy inspired by the Bonferroni method: for each embed-
+158
+ding dimension, we set the FDR cutoff to p/d, where p = 0.05 and d is the dimension of the
+159
+embedding. This conservative strategy is intended to minimize false discoveries and avoid
+160
+overestimating the extent of pathway-level information captured by the embeddings. We
+161
+choose this highly conservative threshold to avoid inflating pathway coverage due to false
+162
+positives.
+163
+Results
+164
+Results on the Hallmark and C2 Gene Sets
+165
+Of the 50 Hallmark gene sets, 49 are represented by at least one embedding dimension,
+166
+giving a pathway coverage of 98%. Furthermore, as shown in Figure 2(A), all but one of
+167
+these significant gene sets are represented by more than one embedding dimension, with
+168
+an average of 84.36 embedding dimensions per pathway. This redundancy indicates that
+169
+pathway-level information is distributed across multiple dimensions rather than isolated
+170
+within a single axis of the embedding space. The only Hallmark gene set not covered by any
+171
+dimension is HALLMARK_NOTCH_SIGNALING (the prefix “HALLMARK_” has been omitted
+172
+from all gene set names in Figure 2(A) to save space), which contains only 32 protein-coding
+173
+genes—the smallest number among all Hallmark gene sets—whereas all other Hallmark sets
+174
+contain at least 36.
+175
+We observe similar results for the C2 canonical pathways.
+Of the 3,077 C2 pathways,
+176
+2,878 are represented by at least one embedding dimension, yielding a pathway coverage
+177
+of 93.53%. Most (95.55%) of them are represented by more than one dimension, with an
+178
+average of 73.52 dimensions per pathway. Figure 2(B) shows the distribution of the number
+179
+6
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 7 =====
+of embedding dimensions representing each C2 pathway.
+180
+C2 pathways can be further divided into six categories, with their respective sizes shown in
+181
+Figure 2(C). Figure 2(D) displays, for each category, the percentage of pathways that are not
+182
+detected as significant. Three categories—BioCarta, Reactome, and WikiPathways—show
+183
+similar non-detection rates (6–9%). By contrast, KEGG_MEDICUS exhibits a lower rate of
+184
+3.02%, PID shows 2.55%, and KEGG_LEGACY shows no non-detected pathways, with all
+185
+185 pathways detected as significant.
+186
+The variability across categories is interpretable in light of known differences in pathway cu-
+187
+ration and biological coherence. KEGG_LEGACY and PID consist largely of well-established,
+188
+mechanistically coherent pathways that are extensively represented in the biomedical liter-
+189
+ature [35, 36]; such pathways are more likely to exhibit consistent structure in the embed-
+190
+ding space and thus be detected by our analysis. In contrast, Reactome and WikiPathways
+191
+include many hierarchically organized or community-curated pathways whose granularity
+192
+and gene-set coherence vary widely [37, 38], which can dilute enrichment signals and lead
+193
+to higher non-detection rates. BioCarta, an older and partially deprecated collection, also
+194
+contains pathway definitions that vary in specificity and are less consistently used in con-
+195
+temporary analyses [31]. These differences in curation style, pathway stability, and litera-
+196
+ture representation likely contribute to the observed variation in pathway detection across
+197
+categories.
+198
+To summarize, the very high pathway coverage clearly indicates that the OpenAI gene em-
+199
+beddings contain rich biological information—not only for the relatively small and well-
+200
+curated Hallmark gene sets, but also for the much larger and more heterogeneous C2 canon-
+201
+ical pathways collected from diverse sources.
+202
+Quality Check: Results on a Completely Randomized Embedding Matrix
+203
+As mentioned in the Methods section, we employed a stringent strategy to control false
+204
+discoveries by using a very small FDR cutoff for each embedding dimension. Here, we con-
+205
+ducted an empirical assessment to evaluate the actual rate of false discoveries. We randomly
+206
+shuffled all elements of the n×p embedding matrix—where n is the number of genes and p is
+207
+the embedding dimension—and repeated GSEA using the same correction strategy. On this
+208
+shuffled matrix, the pathway coverage should ideally be close to zero if the multiple-testing
+209
+correction is working properly.
+210
+Indeed, the observed pathway coverage on the shuffled matrix was 0.00% for both the
+211
+7
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 8 =====
+Hallmark gene sets and C2 pathways. In other words, there is no pathway found to be
+212
+significant, regardless of pathway collection. This result suggests that the false discovery
+213
+rate is indeed controlled at an extremely low level.
+214
+Assessing the Impact of Using Less Informative Text to Generate Em-
+215
+beddings
+216
+The near-perfect pathway coverage suggests that the OpenAI embeddings derived from
+217
+NCBI gene descriptions encode a substantial amount of pathway-level information. This
+218
+result is remarkable, given that NCBI gene descriptions are typically concise and contain
+219
+limited explicit information about gene–gene regulatory relationships.
+220
+Why might such extensive pathway recovery occur? One possibility is that OpenAI’s text
+221
+embedding model possesses exceptionally strong capabilities—potentially beyond what hu-
+222
+mans can extract from such brief descriptions. Such understanding could arise from the
+223
+model’s ability to compare and contrast descriptions across many genes.
+224
+Another possibility is that the embeddings are not generated solely from the input text (i.e.,
+225
+the NCBI gene description), but rather represent a synthesis of the input and the model’s
+226
+prior knowledge acquired during pre-training. As a transformer-based model trained on
+227
+massive, diverse language corpora—including extensive biomedical literature—OpenAI’s
+228
+embedding model may have been exposed to much richer and more explicit biological con-
+229
+tent than what is available in the NCBI descriptions. This background knowledge could be
+230
+implicitly incorporated into the embeddings, even when the input text is limited.
+231
+While the first hypothesis is difficult to test directly and is left for future investigation, we
+232
+designed an experiment to probe the second hypothesis. Specifically, we generated new em-
+233
+beddings for each gene using only the official gene symbol as input to the OpenAI embedding
+234
+tool. We then performed the same GSEA analysis on these “symbol-only” embeddings and
+235
+compared the results to those obtained using the full NCBI descriptions (hereafter referred
+236
+to as “full-description” embeddings). To complete the comparison, we also evaluated an
+237
+intermediate case: embeddings generated using the gene symbol concatenated with only
+238
+the first half of the NCBI description (defined as the first 50% of words in the description),
+239
+omitting the second half. We refer to these as “half-description” embeddings. In Figure
+240
+3(A), we illustrate the workflow used to generate the full-description, half-description, and
+241
+symbol-only embeddings. Figure 3(B) provides a concrete example using the gene TP53,
+242
+showing the exact text input used to produce each of the three embedding types.
+243
+8
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 9 =====
+The results on Hallmark pathways and C2 pathways are shown in Figure 4 (A) and (B),
+244
+respectively. The symbol-only embeddings yielded pathway coverage of 64% (i.e., 1 −18
+50)
+245
+for the Hallmark gene sets and 72.15% (i.e., 1 −
+857
+3077) for the C2 pathways. While this
+246
+coverage is notably lower than that of the full-description embeddings (98% and 93.53%,
+247
+respectively), the half-description embeddings recovered most of this difference, achieving
+248
+96% (i.e., 1 −2
+50) and 92.10% (i.e., 1 −243
+3077). On the one hand, this confirms that the text
+249
+descriptions contribute substantially to the captured pathway information. On the other
+250
+hand, the fact that symbol-only embeddings alone achieve relatively high coverage suggests
+251
+that a non-trivial portion of the pathway knowledge embedded in the OpenAI embeddings
+252
+likely originates from the model’s prior biological knowledge acquired during pre-training.
+253
+Assessing the Impact of Using Smaller LLMs to Generate Embeddings
+254
+To further investigate why OpenAI embeddings derived from NCBI gene descriptions encode
+255
+such rich pathway-level information—despite the brevity of the input—we examined other
+256
+LLM-based text embedding tools. Comparing these models may help shed light on the source
+257
+of the information captured in the embeddings.
+258
+A recent study by Gan et al. [28] explored the use of embeddings generated by small lan-
+259
+guage models (SLMs) for predictive tasks in gene-expression analysis. Specifically, the study
+260
+evaluated ten open-source SLMs—listed from the second to the eleventh row in Table 1 (i.e.,
+261
+all rows except the first and the last)—each containing only 23 to 55 million parameters.
+262
+For context, OpenAI’s GPT-3 has 175 billion parameters—over a thousand times larger—and
+263
+GPT-4 reportedly contains 1.76 trillion parameters.
+264
+All ten models in the study are general-purpose, with one partial exception: MedEmbed-
+265
+small-v0.1. This model is based on the general-purpose BGE-small model but was fine-
+266
+tuned using contrastive learning on synthetic medical question–answer triplets derived from
+267
+PubMed Central notes. While this fine-tuning improves its performance in clinical and
+268
+biomedical tasks, MedEmbed-small-v0.1 remains usable as a general-purpose model and
+269
+demonstrates strong performance on the Massive Text Embedding Benchmark (MTEB) [39].
+270
+Gan et al. [28] found that embeddings generated by these SLMs from NCBI gene descrip-
+271
+tions performed comparably to OpenAI embeddings in various predictive tasks, including
+272
+the prediction of long-range transcription factors, dosage-sensitive genes, and bivalent chro-
+273
+matin states. This naturally raises a question: Do these smaller models also capture similar
+274
+amounts of gene-pathway information?
+275
+9
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 10 =====
+To explore this, we additionally included a domain-specific SLM, BioBERT-base-cased-v1.1
+276
+(last row in Table 1), in our analysis. Unlike the ten SLMs considered by Gan et al. [28],
+277
+BioBERT contains 110 million parameters and is pre-trained on domain-specific biomedical
+278
+corpora, including 4.5 billion words from PubMed abstracts and 13.5 billion words from
+279
+PMC full-text articles [40]. It is considered a domain-specific model rather than a general-
+280
+purpose one.
+281
+Figure 5 shows the pathway coverage of embeddings generated by these 11 SLMs, as well
+282
+as by OpenAI’s model, when applied to the full NCBI gene descriptions. It also includes
+283
+the results for the symbol-only and half-description embeddings. The rows of the figure
+284
+correspond to different models, ordered by their average pathway coverage across all six
+285
+conditions (two pathway sets × three input types). The name of the only domain-specific
+286
+model, biobert-base-cased-v1.1, is shown in red, whereas the partially domain-adapted
+287
+model, MedEmbed-small-v0.1, is shown in green. Several interesting findings emerge from
+288
+this figure; we summarize them here and discuss them in greater detail in the Discussion
+289
+section.
+290
+Four observations stand out.
+291
+First, there is considerable variation in the pathway coverage of symbol-only embeddings
+292
+across models. For Hallmark pathways, coverage ranges from 26% to 70%; for C2 path-
+293
+ways, from 46.60% to 72.15%. Most SLMs exhibit substantially lower coverage than Ope-
+294
+nAI’s embeddings. However, BioBERT-base-cased-v1.1 achieves the highest coverage on the
+295
+Hallmark pathways—even exceeding OpenAI’s (70.00% vs. 64.00%)—and ranks second on
+296
+C2 pathways, with coverage nearly matching that of OpenAI (70.91% vs. 72.15%).
+297
+Second, in contrast, MedEmbed-small-v0.1, which is fine-tuned on clinical and medical
+298
+texts, performs relatively poorly on both Hallmark and C2 pathways in the symbol-only
+299
+setting. This suggests that fine-tuning on clinical data may not confer an advantage for
+300
+capturing gene-regulatory information from gene symbols alone.
+301
+Third, it is notable that the small general-purpose model stella-base-en-v2 performs surpris-
+302
+ingly well. Its symbol-only embeddings achieve relatively high pathway coverage, especially
+303
+for the Hallmark pathways, outperforming all other small models except BioBERT-base-
+304
+cased-v1.1. For the C2 pathways, both their symbol-only and full-description embeddings
+305
+outperform those of all models except BioBERT-base-cased-v1.1 and OpenAI.
+306
+Fourth, when full NCBI gene descriptions are used, the pathway coverage of all models in-
+307
+creases substantially and approaches that of OpenAI’s embeddings. Specifically, the pathway
+308
+coverage from full-description embeddings exceeds 86% for all models on both Hallmark
+309
+10
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 11 =====
+and C2 pathways. Even with only half of the NCBI description (half-description embed-
+310
+dings), coverage remains above 81% for all models and all kinds of pathways. These find-
+311
+ings suggest that the performance gap between small language models and OpenAI’s model
+312
+narrows quickly with the inclusion of modest textual context from the gene description. This
+313
+provides further support for the hypothesis that the models extract implicit and relational
+314
+cues from even highly compressed text.
+315
+Conclusions and Discussion
+316
+OpenAI’s gene embeddings, generated from NCBI gene descriptions, have demonstrated
+317
+exceptional predictive performance in various biological applications. However, it remains
+318
+unclear how much biologically meaningful information—particularly pathway-level knowl-
+319
+edge—is actually encoded in these embeddings. Moreover, if such rich information is indeed
+320
+present, it raises the intriguing question of how this is possible, given the brevity and limited
+321
+detail of the NCBI gene descriptions. In this study, we provide an initial exploration of these
+322
+questions.
+323
+Using a GSEA-based framework, we found that OpenAI’s embeddings achieve pathway cov-
+324
+erage exceeding 93% for both Hallmark and C2 pathways. Considering the broad and
+325
+heterogeneous nature of the C2 pathways, this level of coverage is striking. It indicates
+326
+that a vast majority of pathway-level information is captured by these embeddings, sug-
+327
+gesting that they are well suited for downstream applications involving gene–gene interac-
+328
+tions and pathway inference. Furthermore, we observed that even the symbol-only embed-
+329
+dings—generated using just the gene symbol—capture over 64% of the Hallmark and C2
+330
+pathways. This result points to the substantial prior biological knowledge retained in the
+331
+OpenAI embedding model, likely acquired during pretraining.
+332
+To better understand why OpenAI’s embeddings capture such a vast amount of pathway-
+333
+level information—despite being derived from relatively short gene descriptions—we ex-
+334
+amined embeddings generated by small language models (SLMs), which differ markedly
+335
+from OpenAI’s model in both scale and pretraining data. While the Results section outlined
+336
+four key empirical findings from this comparison, here we reflect on what these findings
+337
+reveal about the underlying factors contributing to pathway-level knowledge in different
+338
+embedding models.
+339
+First, the strong performance of the symbol-only embeddings from BioBERT-base-cased-v1.1
+340
+is expected. This model is the only one in our study that was pretrained exclusively on a
+341
+11
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 12 =====
+large corpus of biomedical text. As a result, it has learned domain-specific representations
+342
+of genes and their regulatory functions. Thus, even when only given a gene symbol, the
+343
+model can retrieve relevant information from its internal parameters and encode it into
+344
+embeddings. While BioBERT has far fewer parameters than OpenAI’s model, its specialized
+345
+training appears to confer a clear advantage for this task.
+346
+Second, the relatively poor performance of MedEmbed-small-v0.1 is also understandable.
+347
+Although it was fine-tuned on medical text, its training data—clinical note–derived synthetic
+348
+triplets—are primarily patient-facing or oriented toward clinical trials. Consequently, it is
+349
+less well-suited for capturing molecular or pathway-level gene information.
+350
+Third, the surprisingly strong performance of stella-base-en-v2 may be attributed to several
+351
+factors. It is the largest among the general-purpose SLMs evaluated (55 million parame-
+352
+ters) and was trained on a large and diverse corpus (∼200 GB) that includes long-form,
+353
+knowledge-rich sources such as Wikipedia and web articles, many of which likely contain
+354
+general biological content [41]. Additionally, it was trained using contrastive learning with
+355
+hard negatives [42] and LLM-generated question–paragraph pairs [41], some of which may
+356
+implicitly encode biomedical facts. The model’s architecture and training design—including
+357
+document-level training and absence of instruction prefixes—may further enhance its ability
+358
+to generalize factual knowledge across domains [43]. Taken together, these characteristics
+359
+distinguish stella-base-en-v2 from other general-purpose SLMs evaluated in this study, many
+360
+of which are constrained by design choices that prioritize retrieval-oriented objectives over
+361
+factual recall or domain generalization (Table 2).
+362
+Fourth, the observation that all SLMs—despite their much smaller size—approach OpenAI’s
+363
+performance when given the full NCBI gene description (or even just half of it) suggests that
+364
+modern LLMs are highly effective at extracting both explicit and implicit information from
+365
+short texts. Their ability to discern nuanced relationships and semantic signals from limited
+366
+context plays a critical role in embedding quality.
+367
+Taken together, these findings provide insight into a central question: Do LLM-derived gene
+368
+embeddings derive their apparent knowledge from the textual input (i.e., NCBI descrip-
+369
+tions) or from the model’s internalized prior knowledge? Our results suggest that both
+370
+factors contribute, although the relative contribution likely varies across models depending
+371
+on domain specialization and corpus composition. Different LLMs encode different levels
+372
+of pathway knowledge, based on their pretraining corpora. At the same time, all models
+373
+tested in this study demonstrate strong capabilities for inferring and extracting biological
+374
+information even from brief textual inputs.
+375
+12
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 13 =====
+Despite the simplicity of our GSEA-based approach—treating each embedding dimension
+376
+as a potential carrier of pathway information—it has a noteworthy limitation: pathway cov-
+377
+erage is not invariant under rotations of the embedding space. Formally, let A be an n × p
+378
+embedding matrix, where n is the number of genes and p is the embedding dimension.
+379
+Let R be any p × p orthogonal matrix such that R⊤R = RR⊤= I. Then the transformed
+380
+matrix ˜A = AR preserves all pairwise relationships and geometric structure in the embed-
+381
+ding space. However, since GSEA is conducted on individual columns of A (i.e., specific
+382
+dimensions), the pathway coverage depends on the choice of R, which has infinitely many
+383
+possibilities. That is, A and ˜A contain the same total information, yet they may yield differ-
+384
+ent coverage scores. Thus, pathway information encoded by an LLM-generated embedding
+385
+matrix should, in principle, be measured by the maximum pathway coverage achievable
+386
+over all possible rotations R.
+387
+With this in mind, we devoted substantial effort to identifying an optimal rotation R. We
+388
+adopted methods from the Crawford-Ferguson (CF) rotation family [44], commonly used in
+389
+factor analysis to improve interpretability. Inspired by the “word intrusion” task in natural
+390
+language processing, we aimed to rotate the embedding matrix to a form that yields a more
+391
+interpretable and sparse structure. The rotation was obtained by minimizing the following
+392
+cost function:
+393
+f( ˜A) = (1 −κ)Σn
+i=1Σp
+j=1Σp
+l̸=j,l=1λ2
+ijλ2
+il + κΣp
+j=1Σn
+i=1Σn
+l̸=i,l=1λ2
+ijλ2
+lj,
+where λij is the (i, j)-th entry of the rotated embedding matrix ˜A, and κ ∈[0, 1] is a hyper-
+394
+parameter balancing row sparsity (gene-level specificity) and column sparsity (dimension-
+395
+level specificity). Optimization was performed using the gradient projection method [45,
+396
+46], and a GPU-accelerated implementation from [47].
+397
+We experimented with four commonly used κ values—corresponding to the Quartimax,
+398
+Varimax, Parsimax, and FacParsim criteria—and ultimately selected Parsimax based on the
+399
+“distance ratio” metric. We also considered a relaxed version of the problem where R is not
+400
+required to be strictly orthogonal, but this variant yielded poorer distance ratios and was
+401
+not adopted.
+402
+Despite these efforts, we found that the rotated embeddings ˜A = AR did not lead to im-
+403
+proved pathway coverage. Specifically, the rotated matrix yielded 94.00% and 92.79% cov-
+404
+erage for Hallmark and C2 pathways, respectively—slightly lower than the original ma-
+405
+trix (A), which achieved 98.00% and 93.53%. This suggests that, although rotation may
+406
+improve interpretability in some contexts, it offers limited benefit in maximizing pathway
+407
+13
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 14 =====
+representation in our setting. Ultimately, the rotation procedure is an unsupervised opti-
+408
+mization task, and the objective function does not incorporate the biological goal of pathway
+409
+enrichment. As such, the rotated embedding space may be suboptimal for our specific pur-
+410
+pose.
+411
+Nonetheless, our attempt at rotation is carefully documented in the Supplementary Mate-
+412
+rials, including methodology, implementation details, and results. We believe this docu-
+413
+mentation will be valuable for researchers seeking to improve the interpretability of gene
+414
+embeddings or apply similar techniques in other biological contexts.
+415
+Importantly, the lack of improvement through rotation does not diminish the conclusions
+416
+of this study. From a theoretical standpoint, our reported pathway coverage—based on the
+417
+unrotated embedding matrix—is a lower bound on the true pathway coverage achievable
+418
+under optimal rotation. Thus, the true extent of biologically meaningful information en-
+419
+coded in these embeddings may be even higher than what we report here.
+420
+Collectively, our results demonstrate that LLM-derived gene embeddings encode unexpect-
+421
+edly extensive pathway-level information, highlighting their potential as a lightweight yet
+422
+powerful resource for downstream biological analysis and motivating deeper methodologi-
+423
+cal exploration.
+424
+Data availability
+425
+All datasets used in the study have been published and cited in the main body.
+426
+Conflict on Interests
+427
+None.
+428
+References
+429
+[1] Artur Szałata, Karin Hrovatin, Sören Becker, Alejandro Tejada-Lapuerta, Haotian Cui,
+430
+Bo Wang, and Fabian J Theis. Transformers in single-cell omics: a review and new
+431
+perspectives. Nature methods, 21(8):1430–1443, 2024.
+432
+14
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 15 =====
+[2] Mohammad Lotfollahi. Toward learning a foundational representation of cells and
+433
+genes. nature methods, 21(8):1416–1417, 2024.
+434
+[3] Ziyu Chen, Lin Wei, and Ge Gao. Foundation models for bioinformatics. Quantitative
+435
+Biology, 12(4):339–344, 2024.
+436
+[4] Tianyu Liu, Kexing Li, Yuge Wang, Hongyu Li, and Hongyu Zhao.
+Evaluating the
+437
+utilities of foundation models in single-cell data analysis. bioRxiv, pages 2023–09,
+438
+2024.
+439
+[5] Elana Simon, Kyle Swanson, and James Zou. Language models for biological research:
+440
+a primer. Nature Methods, 21(8):1422–1429, 2024.
+441
+[6] Wasif Khan, Seowung Leem, Kyle B See, Joshua K Wong, Shaoting Zhang, and Ruogu
+442
+Fang. A comprehensive survey of foundation models in medicine. IEEE Reviews in
+443
+Biomedical Engineering, 2025.
+444
+[7] Wei Ruan, Yanjun Lyu, Jing Zhang, Jiazhang Cai, Peng Shu, Yang Ge, Yao Lu, Shang
+445
+Gao, Yue Wang, Peilong Wang, et al. Large language models for bioinformatics. arXiv
+446
+preprint arXiv:2501.06271, 2025.
+447
+[8] Wenpin Hou and Zhicheng Ji. Assessing gpt-4 for cell type annotation in single-cell
+448
+rna-seq analysis. Nature methods, 21(8):1462–1465, 2024.
+449
+[9] Fan Yang, Wenchuan Wang, Fang Wang, Yuan Fang, Duyu Tang, Junzhou Huang, Hui
+450
+Lu, and Jianhua Yao. scbert as a large-scale pretrained deep language model for cell
+451
+type annotation of single-cell rna-seq data. Nature Machine Intelligence, 4(10):852–
+452
+866, 2022.
+453
+[10] Christina V Theodoris, Ling Xiao, Anant Chopra, Mark D Chaffin, Zeina R Al Sayed,
+454
+Matthew C Hill, Helene Mantineo, Elizabeth M Brydon, Zexian Zeng, X Shirley Liu,
+455
+et al. Transfer learning enables predictions in network biology. Nature, 618(7965):
+456
+616–624, 2023.
+457
+[11] Haotian Cui, Chloe Wang, Hassaan Maan, Kuan Pang, Fengning Luo, Nan Duan, and
+458
+Bo Wang. scgpt: toward building a foundation model for single-cell multi-omics using
+459
+generative ai. Nature Methods, pages 1–11, 2024.
+460
+[12] Minsheng Hao, Jing Gong, Xin Zeng, Chiming Liu, Yucheng Guo, Xingyi Cheng,
+461
+Taifeng Wang, Jianzhu Ma, Xuegong Zhang, and Le Song. Large-scale foundation
+462
+model on single-cell transcriptomics. Nature Methods, pages 1–11, 2024.
+463
+[13] Rishi Bommasani, Sayash Kapoor, Kevin Klyman, Shayne Longpre, Ashwin Ra-
+464
+maswami, Daniel Zhang, Marietje Schaake, Daniel E Ho, Arvind Narayanan, and Percy
+465
+15
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 16 =====
+Liang. Considerations for governing open foundation models. Science, 386(6718):
+466
+151–153, 2024.
+467
+[14] Kasia Z Kedzierska, Lorin Crawford, Ava P Amini, and Alex X Lu. Zero-shot evaluation
+468
+reveals limitations of single-cell foundation models. Genome Biology, 26(1):101, 2025.
+469
+[15] Yiqun Chen and James Zou. Simple and effective embedding model for single-cell
+470
+biology built from chatgpt. Nature biomedical engineering, 9(4):483–493, 2025.
+471
+[16] OpenAI. New embedding models and api updates. https://openai.com/blog/ne
+472
+w-embedding-models-and-api-updates, 2024. Accessed: 2024-08-08.
+473
+[17] Garth R Brown, Vichet Hem, Kenneth S Katz, Michael Ovetsky, Craig Wallin, Olga
+474
+Ermolaeva, Igor Tolstoy, Tatiana Tatusova, Kim D Pruitt, Donna R Maglott, et al. Gene:
+475
+a gene-centered information resource at ncbi. Nucleic acids research, 43(D1):D36–D42,
+476
+2015.
+477
+[18] Fangfang Guo, Dailin Gan, and Jun Li. Cell-to-cell distance that combines gene ex-
+478
+pression and gene embeddings. Computational and Structural Biotechnology Journal,
+479
+23:3929–3937, 2024.
+480
+[19] Ouyang Zhu and Jun Li. Scouter predicts transcriptional responses to genetic pertur-
+481
+bations with large language model embeddings. Nature Computational Science, pages
+482
+1–8, 2025.
+483
+[20] Yiqun Chen and James Zou. Genepert: Leveraging genept embeddings for gene per-
+484
+turbation prediction. bioRxiv, pages 2024–10, 2024.
+485
+[21] Ana-Maria Istrate, Donghui Li, and Theofanis Karaletsos. scgenept: Is language all
+486
+you need for modeling single-cell perturbations? bioRxiv, pages 2024–10, 2024.
+487
+[22] Tianyu Liu, Tinglin Huang, Tong Ding, Hao Wu, Peter Humphrey, Sudhir Perincheri,
+488
+Kurt Schalper, Rex Ying, Hua Xu, James Zou, et al. spemo: Leveraging multi-modal
+489
+foundation models for analyzing spatial multi-omic and histopathology data. BioRxiv,
+490
+pages 2025–01, 2025.
+491
+[23] Weiqing Chen, Pengzhi Zhang, Tu N Tran, Yiwei Xiao, Shengyu Li, Vrutant V Shah,
+492
+Hao Cheng, Kristopher W Brannan, Keith Youker, Li Lai, et al. A visual–omics foun-
+493
+dation model to bridge histopathology with spatial transcriptomics. Nature Methods,
+494
+pages 1–15, 2025.
+495
+[24] Tianyu Liu, Tinglin Huang, Lijun Wang, Yingxin Lin, Rex Ying, and Hongyu Zhao.
+496
+Unicorn: Towards universal cellular expression prediction with a multi-task learning
+497
+framework. bioRxiv, pages 2025–01, 2025.
+498
+16
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 17 =====
+[25] Robert Chen, Áine Duffy, Joshua K Park, David Stein, Avner Schlessinger, Yuval Itan,
+499
+Benjamin S Glicksberg, Rory J Tinker, Daniel M Jordan, Ghislain Rocheleau, et al. Ge-
+500
+netic evidence informs the direction of therapeutic modulation in drug development.
+501
+npj Drug Discovery, 2(1):24, 2025.
+502
+[26] Jiheum Park, Jason Patterson, Jose M Acitores Cortina, Tian Gu, Chin Hur, and
+503
+Nicholas Tatonetti. Enhancing ehr-based pancreatic cancer prediction with llm-derived
+504
+embeddings. npj Digital Medicine, 8(1):465, 2025.
+505
+[27] Danwei Yao, Chang Liu, Shifan Yan, Jiayi Zhang, Yan V Sun, and Zhaohui S Qin.
+506
+Genphire: Enhancing disease risk prediction using large language model. medRxiv,
+507
+pages 2025–12, 2025.
+508
+[28] Dailin Gan and Jun Li. Small, open-source text-embedding models as substitutes to
+509
+openai models for gene analysis. bioRxiv, 2025.
+510
+[29] Wikipedia contributors. List of human protein-coding genes 1 — wikipedia, the free
+511
+encyclopedia, 2025. URL https://en.wikipedia.org/wiki/List_of_human_protei
+512
+n-coding_genes_1. Accessed: 2025-04-27.
+513
+[30] OpenAI. text-embedding-3-small, 2025. URL https://platform.openai.com/docs
+514
+/guides/embeddings. Accessed: 2025-01-07.
+515
+[31] Aravind Subramanian, Pablo Tamayo, Vamsi K Mootha, Sayan Mukherjee, Benjamin L
+516
+Ebert, Michael A Gillette, Amanda Paulovich, Scott L Pomeroy, Todd R Golub, Eric S
+517
+Lander, et al. Gene set enrichment analysis: a knowledge-based approach for interpret-
+518
+ing genome-wide expression profiles. Proceedings of the National Academy of Sciences,
+519
+102(43):15545–15550, 2005.
+520
+[32] Arthur Liberzon, Aravind Subramanian, Reid Pinchback, Helga Thorvaldsdóttir, Pablo
+521
+Tamayo, and Jill P Mesirov. Molecular signatures database (msigdb) 3.0. Bioinformat-
+522
+ics, 27(12):1739–1740, 2011.
+523
+[33] Arthur Liberzon, Chet Birger, Helga Thorvaldsdóttir, Mahmoud Ghandi, Jill P Mesirov,
+524
+and Pablo Tamayo. The molecular signatures database hallmark gene set collection.
+525
+Cell systems, 1(6):417–425, 2015.
+526
+[34] Gennady Korotkevich, Vladimir Sukhov, Nikolay Budin, Boris Shpak, Maxim N Arty-
+527
+omov, and Alexey Sergushichev.
+Fast gene set enrichment analysis.
+biorxiv, page
+528
+060012, 2016.
+529
+[35] Minoru Kanehisa, Miho Furumichi, Yoko Sato, Mari Ishiguro-Watanabe, and Mao Tan-
+530
+abe. Kegg: integrating viruses and cellular organisms. Nucleic acids research, 49(D1):
+531
+D545–D551, 2021.
+532
+17
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 18 =====
+[36] Carl F Schaefer, Kira Anthony, Shiva Krupa, Jeffrey Buchoff, Matthew Day, Timo Han-
+533
+nay, and Kenneth H Buetow. Pid: the pathway interaction database. Nucleic acids
+534
+research, 37(suppl_1):D674–D679, 2009.
+535
+[37] Antonio Fabregat, Steven Jupe, Lisa Matthews, Konstantinos Sidiropoulos, Marc Gille-
+536
+spie, Phani Garapati, Robin Haw, Bijay Jassal, Florian Korninger, Bruce May, et al. The
+537
+reactome pathway knowledgebase. Nucleic acids research, 46(D1):D649–D655, 2018.
+538
+[38] Martina Kutmon, Anders Riutta, Nuno Nunes, Kristina Hanspers, Egon L Willigha-
+539
+gen, Anwesha Bohler, Jonathan Mélius, Andra Waagmeester, Sravanthi R Sinha, Ryan
+540
+Miller, et al. Wikipathways: capturing the full diversity of pathway knowledge. Nucleic
+541
+acids research, 44(D1):D488–D494, 2016.
+542
+[39] Niklas Muennighoff, Nouamane Tazi, Loïc Magne, and Nils Reimers. Mteb: Massive
+543
+text embedding benchmark. arXiv preprint arXiv:2210.07316, 2022.
+544
+[40] Jinhyuk Lee, Wonjin Yoon, Sungdong Kim, Donghyeon Kim, Sunkyu Kim, Chan Ho So,
+545
+and Jaewoo Kang. Biobert: a pre-trained biomedical language representation model
+546
+for biomedical text mining. Bioinformatics, 36(4):1234–1240, 2020.
+547
+[41] Infgrad. stella-base-en-v2. https://huggingface.co/infgrad/stella-base-en-v2,
+548
+2024. Accessed: 2025-06-19.
+549
+[42] Joshua Robinson, Ching-Yao Chuang, Suvrit Sra, and Stefanie Jegelka. Contrastive
+550
+learning with hard negative samples. In International Conference on Learning Repre-
+551
+sentations (ICLR), 2020. URL https://openreview.net/forum?id=CR1XOQ0UTh.
+552
+[43] Haoran Zhang and Karl Stratos. Understanding hard negatives in contrastive learn-
+553
+ing. In Proceedings of the 59th Annual Meeting of the Association for Computational
+554
+Linguistics (ACL), pages 3232–3241, 2021. URL https://aclanthology.org/2021.
+555
+acl-long.295.
+556
+[44] Charles B Crawford and George A Ferguson. A general rotation criterion and its use
+557
+in orthogonal rotation. Psychometrika, 35(3):321–332, 1970.
+558
+[45] Robert I Jennrich. A simple general procedure for orthogonal rotation. Psychometrika,
+559
+66(2):289–306, 2001.
+560
+[46] Robert I Jennrich. A simple general method for oblique rotation. Psychometrika, 67
+561
+(1):7–19, 2002.
+562
+[47] Sungjoon Park, JinYeong Bak, and Alice Oh. Rotated word vector representations and
+563
+their interpretability. In Proceedings of the 2017 Conference on Empirical Methods in
+564
+Natural Language Processing, pages 401–411, 2017.
+565
+18
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 19 =====
+[48] BAAI. bge-small-en-v1.5. https://huggingface.co/BAAI/bge-small-en-v1.5,
+566
+2023. Accessed: 2025-06-18.
+567
+[49] intfloat. e5-small-v2. https://huggingface.co/intfloat/e5-small-v2, 2023.
+568
+Accessed: 2025-06-18.
+569
+[50] JinaAI. Gist-all-minilm-l6-v2. https://huggingface.co/jinaai/gistr-all-MiniL
+570
+M-L6-v2, 2023. Accessed: 2025-06-18.
+571
+[51] JinaAI. Gist-small-embedding-v0. https://huggingface.co/jinaai/gist-small-e
+572
+mbedding-v0, 2023. Accessed: 2025-06-18.
+573
+[52] The NLP-er. gte-small. https://huggingface.co/thenlper/gte-small, 2023.
+574
+Accessed: 2025-06-18.
+575
+[53] JinaAI. Noinstruct-small-embedding-v0. https://huggingface.co/jinaai/noinst
+576
+ruct-small-embedding-v0, 2023. Accessed: 2025-06-18.
+577
+19
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 20 =====
+Tables
+578
+Models
+Model parameters
+General-purpose
+MTEB Average
+Embedding
+(million)
+Performance
+dimensions
+OpenAI - text-embedding-3-small
+– *
+Yes
+62.3
+1536
+GIST-small-Embedding-v0
+33
+Yes
+76.1
+384
+NoInstruct-small-Embedding-v0
+33
+Yes
+76.0
+384
+stella-base-en-v2
+55
+Yes
+75.3
+768
+e5-small-v2
+33
+Yes
+72.9
+384
+GIST-all-MiniLM-L6-v2
+23
+Yes
+72.7
+384
+gte-small
+33
+Yes
+72.3
+384
+bge-small-en-v1.5
+33
+Yes
+72.2
+384
+MedEmbed-small-v0.1
+33
+Yes (partially **)
+71.8
+384
+gte-tiny
+23
+Yes
+70.4
+384
+e5-small
+33
+Yes
+68.1
+384
+biobert-base-cased-v1.1
+110
+No
+– ***
+768
+Table 1: Information on the OpenAI embedding model and the eleven small language
+models (SLMs) used in this study. Documentation for OpenAI embeddings is available at
+[30]. Information on the evaluated small language models, including training objectives and
+benchmark performance, is compiled from the MTEB benchmark and associated Hugging
+Face model documentation.
+* OpenAI does not disclose the parameter count or architectural details of this model.
+** MedEmbed-small-v0.1 is built on BGE-small and fine-tuned on synthetic medical QA data
+from PubMed Central, yielding improved biomedical performance while remaining broadly
+general-purpose and competitive on MTEB.
+*** As BioBERT-base-cased-v1.1 is not intended as a general-purpose embedding model, it
+is not evaluated on MTEB, which encompasses a broad spectrum of task categories.
+20
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 21 =====
+Model
+Likely Limitation
+Reference
+bge-small-en-v1.5
+Trained primarily for general-purpose semantic retrieval
+using contrastive loss; not optimized for factual recall or
+scientific domain generalization
+[48]
+e5-small
+/
+e5-
+small-v2
+Focused on instruction-tuned embedding for search and
+QA; not exposed to biomedical corpora
+[49]
+GIST-all-MiniLM-
+L6-v2
+Designed for dense passage retrieval and knowledge-
+intensive QA, not factual recall or domain coverage
+[50]
+GIST-small-
+Embedding-v0
+Optimized for semantic similarity and long document
+structure, not factual or domain-specific content
+[51]
+gte-small
+/
+gte-
+tiny
+Extremely compact; trained for retrieval-style tasks using
+MTEB and general-purpose corpora
+[52]
+NoInstruct-small-
+Embedding-v0
+Trained without instruction formatting; optimized for
+instruction-agnostic retrieval rather than domain knowl-
+edge
+[53]
+Table 2: Likely factors contributing to the underperformance of the eight evaluated
+general-purpose SLMs (excluding stella-base-en-v2) on biology-related embedding
+tasks.
+21
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 22 =====
+Figures
+579
+TP53
+This gene encodes a tumor suppressor protein containing transcriptional 
+activation, DNA binding, and oligomerization domains. The encoded protein 
+responds to diverse cellular stresses to regulate expression of target genes, 
+thereby inducing cell cycle arrest, apoptosis, senescence, DNA repair, or 
+changes in metabolism. Mutations in this gene are associated with a variety 
+of human cancers, including hereditary cancers such as Li-Fraumeni 
+syndrome. Alternative splicing of this gene and the use of alternate promoters 
+result in multiple transcript variants and isoforms. Additional isoforms have 
+also been shown to result from the use of alternate translation initiation 
+codons from identical transcript variants (PMIDs: 12032546, 20937277). 
+[provided by RefSeq, Dec 2016]
+BRCA1
+This gene encodes a 190 kD nuclear phosphoprotein that plays a role in 
+maintaining genomic stability, and it also acts as a tumor suppressor. The 
+BRCA1 gene contains 22 exons spanning about 110 kb of DNA. The 
+encoded protein combines with other tumor suppressors, DNA damage 
+sensors, and signal transducers to form a large multi-subunit protein complex 
+known as the BRCA1-associated genome surveillance complex (BASC). This 
+gene product associates with RNA polymerase II, and through the C-terminal 
+domain, also interacts with histone deacetylase complexes. This protein thus 
+plays a role in transcription, DNA repair of double-stranded breaks, and 
+recombination. Mutations in this gene are responsible for approximately 40% 
+of inherited breast cancers and more than 80% of inherited breast and 
+ovarian cancers. Alternative splicing plays a role in modulating the subcellular 
+localization and physiological function of this gene. Many alternatively spliced 
+transcript variants, some of which are disease-associated mutations, have 
+been described for this gene, but the full-length natures of only some of these 
+variants has been described. A related pseudogene, which is also located on 
+chromosome 17, has been identified. [provided by RefSeq, May 2020]
+A1BG
+The protein encoded by this gene is a plasma glycoprotein of unknown 
+function. The protein shows sequence similarity to the variable regions of 
+some immunoglobulin supergene family member proteins. [provided by 
+RefSeq, Jul 2008]
+Gene symbol
+NCBI
+description
+Gene symbol
+Gene symbol
+NCBI
+description
+NCBI
+description
+A
+B
+C
+Figure 1: NCBI descriptions for three human genes: (A) TP53 and (B) BRCA1, which are
+extensively studied yet described only briefly, and (C) A1BG, an example of an even shorter
+description typical for less-characterized genes.
+22
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 23 =====
+357
+265
+183
+214
+180
+170
+169
+168
+152
+149
+146
+131
+128
+128
+128
+120
+119
+118
+112
+111
+110
+104
+84
+80
+75
+68
+45
+44
+35
+35
+30
+30
+29
+25
+23
+21
+20
+17
+17
+13
+13
+12
+10
+9
+6
+6
+4
+4
+1
+0
+NOTCH_SIGNALING
+APICAL_SURFACE
+HEDGEHOG_SIGNALING
+ANDROGEN_RESPONSE
+PANCREAS_BETA_CELLS
+ESTROGEN_RESPONSE_EARLY
+SPERMATOGENESIS
+ANGIOGENESIS
+KRAS_SIGNALING_DN
+UV_RESPONSE_UP
+MYC_TARGETS_V2
+ESTROGEN_RESPONSE_LATE
+HEME_METABOLISM
+WNT_BETA_CATENIN_SIGNALING
+UV_RESPONSE_DN
+P53_PATHWAY
+TGF_BETA_SIGNALING
+UNFOLDED_PROTEIN_RESPONSE
+PROTEIN_SECRETION
+KRAS_SIGNALING_UP
+INTERFERON_ALPHA_RESPONSE
+CHOLESTEROL_HOMEOSTASIS
+REACTIVE_OXYGEN_SPECIES_PATHWAY
+IL2_STAT5_SIGNALING
+MTORC1_SIGNALING
+APOPTOSIS
+PI3K_AKT_MTOR_SIGNALING
+HYPOXIA
+TNFA_SIGNALING_VIA_NFKB
+INTERFERON_GAMMA_RESPONSE
+COMPLEMENT
+APICAL_JUNCTION
+GLYCOLYSIS
+ADIPOGENESIS
+PEROXISOME
+MYOGENESIS
+MITOTIC_SPINDLE
+DNA_REPAIR
+G2M_CHECKPOINT
+INFLAMMATORY_RESPONSE
+COAGULATION
+MYC_TARGETS_V1
+E2F_TARGETS
+XENOBIOTIC_METABOLISM
+EPITHELIAL_MESENCHYMAL_TRANSITION
+BILE_ACID_METABOLISM
+IL6_JAK_STAT3_SIGNALING
+ALLOGRAFT_REJECTION
+FATTY_ACID_METABOLISM
+OXIDATIVE_PHOSPHORYLATION
+0
+100
+200
+300
+400
+A
+B
+C
+D
+199
+128
+296 270
+342
+546
+472
+510
+314
+0
+200
+400
+600
+1
+0
+2~5
+6~10
+11~20
+21~50
+51~100
+101~200
+>=201
+220
+398
+196
+1367
+711
+185
+PID
+BioCarta
+KEGG_MEDICUS
+Reactome
+WikiPathways
+KEGG_LEGACY
+6.82%
+3.02% 2.55%
+7.75%
+8.58%
+0%
+0%
+2.5%
+5%
+7.5%
+BioCarta
+KEGG_MEDICUS
+PID
+Reactome
+WikiPathways
+KEGG_LEGACY
+Figure 2: Pathway coverage of OpenAI gene embeddings. (A) Number of embedding
+dimensions in which each Hallmark pathway is detected as significant. (B) Distribution of
+the number of embedding dimensions representing each C2 pathway. (C) Total number of
+C2 pathways in each of the six MSigDB categories. (D) Percentage of pathways within each
+category that are not detected as significant.
+23
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 24 =====
+Gene symbol
+NCBI description
+Gene symbol
+Gene symbol
+Fist half of
+NCBI description
+Full-description Embedding
+Half-description Embedding
+Symbol-only Embedding
+A
+LLM-based text embedding tool 
+(e.g., OpenAI’s)
+Text input
+Embedding
+Full-description Embedding
+Symbol-only Embedding
+Half-description Embedding
+B
+Text input
+TP53 This gene encodes a tumor suppressor protein containing transcriptional activation, 
+DNA binding, and oligomerization domains. The encoded protein responds to diverse 
+cellular stresses to regulate expression of target genes, thereby inducing cell cycle arrest, 
+apoptosis, senescence, DNA repair, or changes in metabolism. Mutations in this gene are 
+associated with a variety of human cancers, including hereditary cancers such as Li-
+Fraumeni syndrome. Alternative splicing of this gene and the use of alternate promoters 
+result in multiple transcript variants and isoforms. Additional isoforms have also been shown 
+to result from the use of alternate translation initiation codons from identical transcript 
+variants (PMIDs: 12032546, 20937277). [provided by RefSeq, Dec 2016]
+TP53
+TP53 This gene encodes a tumor suppressor protein containing transcriptional activation, 
+DNA binding, and oligomerization domains. The encoded protein responds to diverse 
+cellular stresses to regulate expression of target genes, thereby inducing cell cycle arrest, 
+apoptosis, senescence, DNA repair, or changes in metabolism. Mutations in this gene are 
+associated with a variety
+Figure 3: Generation of gene embeddings under different input settings. (A) Schematic
+illustrating the inputs used to generate the three embedding types: full-description (gene
+symbol + full NCBI description), symbol-only (gene symbol alone), and half-description
+(gene symbol + first half of the NCBI description). Each input is processed by an LLM-based
+text-embedding tool (e.g., OpenAI’s). (B) Example text inputs for the three embedding
+types, shown for the gene TP53.
+24
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 25 =====
+199
+296
+270
+510
+314
+243
+376
+459
+280
+857
+316
+474
+220
+323
+290
+255
+118
+0
+250
+500
+750
+0
+1
+2~5
+6~10
+11~20
+21~50
+51~100
+101~200
+>=201
+B
+1
+1
+2
+4
+6
+10
+4
+19
+3
+2
+2
+6
+4
+7
+3
+12
+12
+2
+18
+3
+8
+8
+4
+5
+3
+1
+0
+0
+5
+10
+15
+20
+0
+1
+2~5
+6~10
+11~20
+21~50
+51~100
+101~200
+>=201
+A
+█
+Full-description         █
+Half-description         █
+Symbol-only
+128
+143
+233
+224
+342 354
+546 537
+472447
+Figure 4: Distribution of pathway detection counts across embedding types. (A) Hall-
+mark pathways. (B) C2 pathways. For each pathway, we record the number of embedding
+dimensions in which it is detected as significant, and group pathways into bins according
+to this count. Bar heights indicate the number of pathways in each bin. Colors correspond
+to embeddings generated from different input texts: full-description, half-description, and
+symbol-only.
+25
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
+
+===== PAGE 26 =====
+Full
+Half
+Symbol
+Full
+Half
+Symbol
+100.00
+100.00
+70.00
+94.70
+91.42
+70.91
+98.00
+96.00
+64.00
+93.53
+92.10
+72.15
+98.00
+94.00
+60.00
+92.17
+90.90
+55.64
+96.00
+94.00
+42.00
+89.21
+86.03
+52.03
+96.00
+96.00
+32.00
+90.48
+86.42
+47.16
+98.00
+92.00
+32.00
+89.02
+86.77
+49.40
+96.00
+86.00
+44.00
+87.33
+81.64
+51.45
+96.00
+92.00
+34.00
+89.89
+85.80
+47.87
+94.00
+94.00
+34.00
+86.61
+83.26
+51.38
+92.00
+88.00
+38.00
+88.33
+84.79
+49.79
+92.00
+86.00
+40.00
+87.16
+84.04
+49.14
+92.00
+90.00
+26.00
+86.48
+82.61
+46.60
+gte-small
+bge-small-en-v1.5
+MedEmbed-small-v0.1
+e5-small-v2
+GIST-small-Embedding-v0
+GIST-all-MiniLM-L6-v2
+e5-small
+NoInstruct-small-Embedding-v0
+gte-tiny
+stella-base-en-v2
+OpenAI
+biobert-base-cased-v1.1
+Percentage
+40
+60
+80
+100
+Hallmark pathways
+C2 pathways
+Figure 5: Pathway coverage of embeddings generated by different language mod-
+els. Shown are OpenAI’s embedding model, nine general-purpose small language models
+(SLMs), one partially domain-adapted SLM (model name shown in green), and one domain-
+specific biomedical SLM (model name shown in red). For each model, three types of em-
+beddings are generated: full-description (“Full”), half-description (“Half”), and symbol-only
+(“Symbol”). The left three columns report pathway coverage for the Hallmark pathways, and
+the right three columns report coverage for the C2 pathways. Higher percentages indicate
+that a greater proportion of pathways are detected as significant by at least one embedding
+dimension.
+26
+.
+CC-BY-NC-ND 4.0 International license
+available under a
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted December 22, 2025. 
+; 
+https://doi.org/10.64898/2025.12.19.695582
+doi: 
+bioRxiv preprint 
