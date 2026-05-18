@@ -1,0 +1,1569 @@
+
+===== PAGE 1 =====
+Enhancing Radiology Report Generation and Visual
+Grounding using Reinforcement Learning
+Benjamin Gundersen1∗
+benjamin.gundersen@uzh.ch
+Nicolas Deperrois1∗
+nicolas.deperrois@uzh.ch
+Samuel Ruiperez-Campillo2
+samuel.ruiperezcampillo@inf.ethz.ch
+Thomas M. Sutter2
+thomas.sutter@inf.ethz.ch
+Julia E. Vogt2
+julia.vogt@inf.ethz.ch
+Michael Moor3
+michael.moor@bsse.ethz.ch
+Farhad Nooralahzadeh1,4†
+farhad.nooralahzadeh@uzh.ch
+Michael Krauthammer1†
+michael.krauthammer@uzh.ch
+1 Department of Quantitative Biomedicine, University of Zurich, Zurich, Switzerland
+2 Department of Computer Science, ETH Zurich, Zurich, Switzerland
+3 Department of Biosystems Science and Engineering, ETH Zurich, Basel, Switzerland
+4 Institute of Computer Science, Zurich University of Applied Sciences, Zurich, Switzerland
+Abstract
+Recent advances in vision–language models (VLMs) have improved Chest X-ray (CXR)
+interpretation in multiple aspects. However, many medical VLMs rely solely on supervised
+fine-tuning (SFT), which optimizes next-token prediction without evaluating answer qual-
+ity. In contrast, reinforcement learning (RL) can incorporate task-specific feedback, and its
+combination with explicit intermediate reasoning (“thinking”) has demonstrated substan-
+tial gains on verifiable math and coding tasks. To investigate the effects of RL and thinking
+in a CXR VLM, we perform large-scale SFT on CXR data to build an updated RadVLM
+based on Qwen3-VL, followed by a cold-start SFT stage that equips the model with basic
+thinking ability. We then apply Group Relative Policy Optimization (GRPO) with clini-
+cally grounded, task-specific rewards for report generation and visual grounding, and run
+matched RL experiments on both domain-specific and general-domain Qwen3-VL variants,
+with and without thinking. Across these settings, we find that while strong SFT remains
+crucial for high base performance, RL provides additional gains on both tasks, whereas
+explicit thinking does not appear to further improve results. Under a unified evaluation
+pipeline, the RL-optimized RadVLM models outperform their baseline counterparts and
+reach state-of-the-art performance on both report generation and grounding, highlighting
+clinically aligned RL as a powerful complement to SFT for medical VLMs1.
+Keywords: Vision Language Models, Group Relative Policy Optimization, Reinforcement
+Learning, Radiology, Chest X-ray
+∗Contributed equally.
+† Shared senior authorship.
+1. Code is available at https://github.com/uzh-dqbm-cmi/RadVLM-GRPO and the updated SFT and RL
+models will be released under a new version at https://physionet.org/content/radvlm-model
+arXiv:2512.10691v1  [cs.AI]  11 Dec 2025
+
+===== PAGE 2 =====
+Gundersen et al.
+RadVLM
+(CXR VLM)
+The cardiac silhouette is enlarged. The
+left pacemaker is seen with leads in the
+right atrium and right ventricle. There is
+mild prominence of the pulmonary
+vascular markings. No pleural effusion is
+seen. There is no pneumothorax.
+Cardiomegaly at [0.35, 0.51, 0.75, 0.64]
+Cardiomegaly at [0.84, 0.34, 0.91, 0.50]
+The cardiac silhouette is enlarged. The
+left pectoral pacemaker is present.
+There is no pulmonary edema or pleural
+effusion. There is no pneumothorax.
+Please offer a detailed analysis based on
+this image.
+Identify where the cardiomegaly is on this
+Chest X-ray, please.
+soft-F1 = 0.6
+Cardiomegaly at
+[0.38, 0.47, 0.76, 0.62]
+Sample N times
+Sample N times
+-RadCliQ = -0.59
+Mild vascular congestion is
+demonstrated. Pacemaker
+leads terminate in right atrium
+and ventricle as expected.
+Report Generation
+Visual Grounding
+soft-F1 = 0.0
+-RadCliQ = -1.56
+?
+Figure 1: Optimization of RadVLM with GRPO. We optimize RadVLM with GRPO
+by sampling N outputs from the model conditioned on an image-instruction pair. We then
+compare the outputs to the ground truth with a task-specific reward: RadCliQ for report
+generation and IoU-based metric (soft-F1) for visual grounding. These rewards provide an
+update signal to optimize RadVLM.
+1. Introduction
+Reinforcement learning has emerged as a central paradigm in modern reasoning-focused
+foundation models (Guo et al., 2025; Zheng et al., 2025a). Recent work in large language
+models (LLMs) has shown that RL, combined with explicit intermediate reasoning (”think-
+ing”), can substantially improve performance on math and coding tasks (Shao et al., 2024;
+Guo et al., 2025; Yang et al., 2025; Yu et al., 2025). Rather than solely relying on su-
+pervised fine-tuning (SFT), these methods employ RL algorithms such as Group Relative
+Policy Optimization (GRPO) (Shao et al., 2024) to reward outputs. However, current med-
+ical VLMs specialized in CXR interpretation are typically optimized via image-instruction
+SFT-only (Chen et al., 2024; Sellergren et al., 2025; Deperrois et al., 2025b). Recent work
+applied GRPO in the medical and CXR domain on closed-ended tasks, such as visual ques-
+tion answering (VQA) and classification with predefined labels (Lai et al., 2025; Pan et al.,
+2025; Fan et al., 2025).
+In contrast, the workflow of radiologists centers on producing open-ended, free-text
+reports, which could in principle be supported by VLMs trained directly on report genera-
+tion (Tanno et al., 2025). However, the SFT objective – next-token prediction – is agnostic
+to the clinical utility of the generated report: it optimizes local likelihood rather than
+sequence-level, clinically meaningful criteria that RL could potentially optimize. For visual
+grounding, which plays a crucial role for radiology assistance (Lee et al., 2022), a similar
+limitation arises: token-level SFT-only matches coordinate strings, while the true objective
+is a geometric overlap between predicted and reference bounding boxes. These gaps moti-
+vate moving beyond SFT-only optimization and systematically studying post-training RL
+for report generation and visual grounding.
+2
+
+===== PAGE 3 =====
+RadVLM-GRPO
+In that regard, previous work has explored RL for CXR report generation through
+offline direct preference optimization (DPO) (Hein et al., 2024; Liang et al., 2025), and
+more recently through online GRPO (Lin et al., 2025). Yet, the benefits of task-aligned RL
+for open-ended reporting and grounding remain insufficiently understood. In particular, it
+is unclear (i) how to best design rewards that jointly reflect lexical similarity and clinical
+correctness for reports, and continuous overlap-based feedback for grounding; (ii) whether
+performance gains arise from the RL objective alone or from its combination with preceding
+thinking; and (iii) to what extent SFT on domain-specific data is necessary when performing
+RL on that same domain.
+To address these questions, we build an updated version of the state-of-the-art multitask
+conversational CXR-VLM RadVLM (Deperrois et al., 2025b), based on Qwen3-VL (Bai
+et al., 2025a) and focus on its GRPO-based optimization for report generation and visual
+grounding, as visualized in Figure 1. For report generation, we employ a clinically grounded
+reward, RadCliQ (Yu et al., 2023), while for visual grounding, we design a continuous
+IoU-based reward. We further synthesize thinking data, thereby equipping RadVLM with
+explicit thinking and non-thinking variants, and optimize both with GRPO. In addition, we
+apply the same RL procedure to out-of-domain Qwen3-VL-8B Instruct and Thinking models
+to assess how what extent a general-domain VLM can be adapted to the CXR domain
+by using RL alone. Under a unified evaluation pipeline, we find that training RadVLM
+with GRPO for grounding and report generation consistently improves all metrics over its
+SFT counterpart and outperforms state-of-the-art baselines on most metrics, while explicit
+thinking yields at best marginal additional gains over direct-answer variants.
+2. Related Work
+2.1. RL and thinking for LLMs
+Recent advances in LLM research show that RL can markedly improve performance, espe-
+cially when combined with explicit thinking and verifiable rewards. The OpenAI thinking
+series (OpenAI, 2024), open-weight models such as DeepSeek-R1 (Liu et al., 2024; Guo
+et al., 2025), and Qwen3 (Yang et al., 2025) typically combine a cold-start SFT stage,
+which teaches the model how to explicitly reason before providing an answer, followed by
+online RL. These RL-with-verifiable-reward (RLVR) pipelines yield large gains on tasks
+such as math and code, particularly when encouraging chain-of-thought reasoning before
+providing the final answers (Guo et al., 2025; Muennighoff et al., 2025; Hu et al., 2025).
+However, their success strongly depends on reliable reward signals; for open-ended tasks, re-
+ward design is more challenging, and improvements are less consistent between tasks (Cheng
+et al., 2025).
+2.2. RL and thinking for VLMs
+Inspired by text-based results, the combination of RL and thinking has also been explored
+for VLMs, with a strong emphasis on visual-math tasks. Vision-R1 (Huang et al., 2025) syn-
+thesizes multimodal chain-of-thought data and applies GRPO to Qwen2.5-VL (Bai et al.,
+2025b), while VL-Rethinker (Wang et al., 2025) augments training with replay and ”re-
+thinking” triggers to improve visual-math. Beyond math, online RL also helps perception
+3
+
+===== PAGE 4 =====
+Gundersen et al.
+and grounding: Visual-RFT (Liu et al., 2025) and VLM-R1 (Shen et al., 2025) report
+improved localization and visual understanding over SFT with limited additional data.
+Still, it remains unclear how much benefit currently comes from explicit thinking versus
+reward shaping and exploration across different domains. Experiments on VLMs of similar
+size as RadVLM indicate that, for some tasks, applying GRPO to models with explicit
+chain-of-thought can even underperform models that directly produce the final answer (Li
+et al., 2025a; Lai et al., 2025). Moreover, Qwen3-VL (Bai et al., 2025a) is obtained through
+multi-stage training (including RL), and its instruct (non-thinking) variant outperforms the
+thinking variant on some tasks, including Document Understanding, 2D / 3D Grounding,
+Perception with Tools, and Multi-Modal Coding (see Appendix Table 9).
+2.3. VLMs for radiology
+Many CXR VLMs are trained via supervised instruction tuning on multi-task radiology
+data. General medical models such as LLaVA-Med (Li et al., 2023), MedGemma (Sellergren
+et al., 2025), as well as CXR-focused systems such as CheXagent (Chen et al., 2024),
+MAIRA-2 (Bannur et al., 2024), and RadVLM (Deperrois et al., 2025b), rely on a large
+instruction corpora covering report generation, classification, and grounding (Deperrois
+et al., 2025a).
+Med-R1 (Lai et al., 2025), MedVLM-R1 (Pan et al., 2025), and ChestX-Reasoner (Fan
+et al., 2025) apply GRPO-style training to close-ended CXR/medical VQA, demonstrating
+gains in diagnostic accuracy and structured reasoning. For open-ended report generation,
+RL has so far predominantly been used in the form of offline direct preference optimization
+(DPO): CheXalign (Hein et al., 2024) and CheXPO (Liang et al., 2025) automatically con-
+struct preference pairs but do not study online RL or explicit thinking. DeepMedix-R1 (Lin
+et al., 2025) is the closest to our setting, applying online GRPO with thinking to report
+generation; however, it optimizes a combination of lexical rewards without incorporating
+an explicit clinical signal, and does not disentangle gains due to GRPO versus explicit
+chain-of-thought.
+3. Methods
+We build upon standard components used in modern VLMs and combine SFT and GRPO-
+based RL (Shao et al., 2024; Guo et al., 2025). A brief summary is provided in Appendix A.
+3.1. Training data
+We use two types of datasets: an instruction dataset and a cold-start dataset. The in-
+struction dataset is the RadVLM dataset Deperrois et al. (2025b), a multimodal corpus
+of over one million image-text pairs. Each sample consists of a single frontal CXR image
+paired with a user-assistant interaction. The dataset spans four complementary instruc-
+tion types: (i) free-text report generation, where the assistant produces the findings section
+from a single image; (ii) abnormality classification; (iii) visual grounding with bounding-
+box supervision, covering anatomical, abnormality, and phrase-level localization; and (iv)
+multi-turn conversations generated with GPT-4o. These components jointly support the
+4
+
+===== PAGE 5 =====
+RadVLM-GRPO
+SFT RadVLM Dataset (1M)
+Qwen3-VL
+Qwen3-VL-Thinking
+SFT Cold Start Dataset (28k)
+RL (154k)
+RadVLM
+RadVLM-Thinking
+RadVLM-Thinking+RL
+RadVLM+RL
+Qwen3-VL+RL
+Qwen3-VL-Thinking+RL
+RL (154k)
+RL (154k)
+RL (154k)
+Figure 2: Overview of Model Checkpoints and Training Pipeline. The diagram
+illustrates how different model variants are initialized and refined with SFT and RL.
+training of models with fine-grained visual understanding and robust conversational behav-
+ior in radiology. Full details on the dataset construction and preprocessing are provided
+in Deperrois et al. (2025a,b).
+In addition, we create a cold-start dataset consisting of thinking examples. We prompt
+Qwen3-VL-235B-Instruct (Bai et al., 2025a) to generate a thinking trajectory given the
+image and ground truth for both report generation and grounding (see Appendix I for
+prompt details). We then separate the thinking part from the final answer using </think>
+and collect a total of around 28k such data points.
+3.2. Model Training
+We train multiple models in stages.
+We first create SFT checkpoints (RadVLM and
+RadVLM-Thinking) and then enhance these checkpoints with RL. Figure 2 summarizes
+the SFT and RL pipeline. Throughout, Qwen3-VL refers to the 8B Instruct model.
+We begin by performing SFT on the RadVLM dataset (see Section 3.1). Starting from
+Qwen3-VL-8B-Instruct, we finetune on the question-answer pairs, yielding an updated ver-
+sion of RadVLM, as visualized in Figure 2 (see Appendix 5 for comparison to the original
+RadVLM model). Based on this SFT checkpoint, we perform a second SFT stage, where we
+combine datapoints from the cold-start dataset with a small subset of direct question-answer
+datapoints, resulting in RadVLM-Thinking. The cold-start datapoints have a /think suffix
+to differentiate them. The data mix between cold-start and SFT datapoints in that phase
+is designed to prevent potential catastrophic forgetting.
+Following the SFT phase, we continue with RL to further optimize our model and align it
+with radiology-specific objectives. We perform GRPO training on continuous, task-specific
+rewards. For all models, the reward is computed on the final answer. For thinking models,
+the final answer is defined as the text following the </think> delimiter; if no such final
+answer is produced, a reward of 0 is assigned, unless noted otherwise. For non-thinking
+models, the entire model output is treated as the final answer.
+Given our multitask setting (report generation and visual grounding), we design rewards
+aligned with both tasks. For report generation, we use as a reward RadCliQ (Yu et al.,
+2023), a composite metric consisting of BERTScore (Zhang et al., 2020), CheXbert (Smit
+et al., 2020) vector similarity, and RadGraph-F1 (Jain et al., 2021; Delbrouck et al., 2024),
+which has been shown to align better with experts than any of these alone
+(Yu et al.,
+2023). For visual grounding, we use a Hungarian-matched soft-F1 reward that provides
+smooth, per-example feedback for bounding-box alignment. For each image, we compute
+5
+
+===== PAGE 6 =====
+Gundersen et al.
+pairwise IoUs between predicted and reference boxes and obtain a one-to-one assignment via
+the Hungarian algorithm. Matched predictions contribute proportionally to their IoU (soft
+true positives), while unmatched predictions and ground-truth boxes act as false positives
+and false negatives. In contrast to mAP, which counts a prediction as correct only if its
+IoU exceeds a fixed threshold, this reward gives partial credit for close matches and avoids
+discontinuities, offering a more stable and informative signal for RL. Our design follows
+DETR’s matching strategy (Carion et al., 2020) and draws inspiration from IoU-weighted
+metrics such as Panoptic Quality (Kirillov et al., 2019).
+4. Experiments
+4.1. Training settings
+We start with Qwen3-VL-8B-Instruct (Bai et al., 2025a) and perform SFT on the entire
+RadVLM instruction dataset for two epochs with a learning rate of 1e −5, train batch size
+of 8 ∗64 (64 GPUs), using LLaMA-Factory (Zheng et al., 2024), resulting in an updated
+RadVLM. Next we add thinking capabilities to RadVLM by performing another round of
+SFT with the same settings on a mix of the cold-start dataset and RadVLM instruct dataset
+to prevent catastrophic forgetting.
+Finally, we perform GRPO individually for each task and model variant, with 300 steps
+and a batch size of 512 prompts, processing a total of 154k processed prompt-image pairs.
+We create 8 rollouts per prompt-image pair, the KL penalty coefficient is 0.01, and we
+use asymmetric clipping (Yu et al., 2025).
+Please refer to Appendix Table 7 for a de-
+tailed overview of hyperparameters. To apply GRPO (Shao et al., 2024) we use the verl
+library (Sheng et al., 2024). As rewards, we use RadCliQ for report generation and soft-F1
+for grounding.
+We use the RadCliQ implementation provided in RadEval (Xu et al., 2025), with
+RadGraph-XL (Delbrouck et al., 2024) as our chosen RadGraph model. Since lower is bet-
+ter for RadCliQ, we use -RadCliQ as a reward. Note that −RadCliQ frequently computes
+values lower than 0 and thus we provide a reward of −3 if there is no final answer. Since
+RadGraph does not support batch inference, we spin up 32 individual copies of RadCliQ
+such that the reward computation does not become a bottleneck.
+4.2. Baseline models
+We evaluate a broad set of baseline models, including Qwen3-VL variants (Yang et al., 2025),
+CheXagent-2 (Chen et al., 2024), MedGemma (Sellergren et al., 2025), DeepMedix-R1 (Lin
+et al., 2025), MAIRA-2 (Bannur et al., 2024), and Llava-Rad (Zambrano Chaves et al.,
+2025). We denote our GRPO-trained variants with “+RL”, and “Thinking” models generate
+intermediate reasoning before providing the final answer. The prompts and Hugging Face
+(HF) links are provided in Appendix G and D respectively.
+4.3. Evaluation
+We evaluate on the report generation test set of RadVLM, derived from MIMIC-CXR (De-
+perrois et al., 2025a). The test set consists of single frontal chest X-rays paired with findings,
+6
+
+===== PAGE 7 =====
+RadVLM-GRPO
+with references to prior studies removed. We use various NLP and clinical metrics to evalu-
+ate report generation (see Appendix B for details). To quantify textual similarity, we report
+BERTScore (Zhang et al., 2020) and ROUGE-L (Lin, 2004). To evaluate clinical correct-
+ness, we report RadGraph F1 (Jain et al., 2021) using RadGraph-XL (Delbrouck et al.,
+2024), CheXbert F1 (Smit et al., 2020), RadCliQ (Yu et al., 2023) and GREEN (Ostmeier
+et al., 2024).
+For the grounding task, we report mAP@0.5, computed by considering a prediction
+correct if its IoU with an unmatched reference box exceeds 0.5, in line with previous work
+on object detection benchmarks (Everingham et al., 2010; Lin et al., 2014). In particu-
+lar, we report this metric on the test splits for anatomical grounding (Chest Imagenome
+dataset), abnormality grounding (VinDr-CXR dataset) and phrase grounding (MS-CXR
+and PadChest-GR datasets), following the same procedure as in Deperrois et al. (2025b).
+For thinking models, we extract the final answer following </think> and evaluate it using
+the same procedure as for direct answers.
+4.4. Results
+4.4.1. GRPO Consistently improves RadVLM and Qwen3-VL Performance
+For report generation (Table 1), GRPO substantially improves performance for both Rad-
+VLM and Qwen3-VL models. Notably, the held-out metric GREEN improves, indicating
+robustness with respect to the reward signal. Among all evaluated models, GRPO-optimized
+RadVLM variants achieve the strongest overall performance. However, despite these gains,
+RadVLM models remain behind in terms of CheXbert-macro.
+For Qwen3-VL variants,
+applying GRPO alone leads to large improvements, even outperforming the SFT-only Rad-
+VLM variant in some metrics. Comparing thinking and non-thinking variants, thinking
+models generally perform slightly worse than their instruct counterparts, with the exception
+of RadVLM+RL in report generation where both variants achieve comparable performance.
+For visual grounding (Table 2), general-domain models perform poorly on CXR ground-
+ing, with a small but consistent advantage for the non-thinking variant – in line with
+Qwen3-VL’s grounding performance reported in Bai et al. (2025a). After GRPO training,
+both variants improve across all tasks, again with the non-thinking model ahead, indicat-
+ing that RL alone can strongly enhance out-of-domain grounding – yet they still remain
+slightly below SFT-only RadVLM. Applying RL on top of RadVLM further increases mAP,
+showing that even a well-trained in-domain model benefits from task-aligned RL. In con-
+trast, the RL-optimized thinking variant of RadVLM does not outperform its direct-answer
+counterpart.
+4.4.2. Reward choice influences report generation quality and length
+We explore the impact of the reward function on the report generation task, comparing
+RadCliQ, BERTScore, RadGraph-F1, and GLEU (Wu et al., 2016) in Table 3. We evaluate
+the obtained RL-optimized RadVLM models on all report generation metrics.
+We find
+that RadCliQ, BERTScore, and GLEU rewards improve all metrics, with RadCliQ ranking
+highest in 4 out of the 7 metrics. However, training with RadGraph-F1 only improves the
+corresponding metric itself and leads to very short reports, revealing strong signs of reward
+hacking. Since GREEN is prone to length reward-hacking (Hein et al., 2024), the higher
+7
+
+===== PAGE 8 =====
+Gundersen et al.
+Table 1:
+Report generation performance.
+ROUGE-L (R-L), BERTScore (B-S),
+CheXbert micro and macro (CXb), RadGraph F1 (RGF1), GREEN (GRN), and RadCliQ
+(RCQ) are evaluated on the report generation test set of RadVLM, derived from MIMIC-
+CXR. For RadCliQ, lower is better (↓); for all other metrics, higher is better. RL denotes
+training with GRPO. All models are evaluated using our pipeline. Bold values indicate
+the highest performance, while underlined values represent the second-best performance.
+Evaluation prompts are listed in Appendix G.
+Model
+Size
+(B)
+R-L
+B-S
+CXb-
+micro
+CXb-
+macro
+RGF1 GRN
+RCQ↓
+MedGemma-pt
+4
+20.7
+47.7
+49.8
+32.5
+15.5
+21.9
+1.37
+MedGemma-it
+27
+15.9
+31.3
+47.0
+31.5
+12.0
+23.3
+1.79
+MAIRA-2
+7
+17.7
+46.6
+52.1
+35.8
+12.9
+21.3
+1.42
+CheXagent-2
+3
+22.5
+37.4
+54.5
+38.7
+20.1
+29.9
+1.45
+DeepMedix-R1
+7
+22.3
+52.8
+48.2
+28.3
+18.6
+30.0
+1.23
+LLaVA-Rad
+7
+22.2
+48.9
+53.3
+39.2
+16.8
+28.6
+1.34
+Qwen3-VL
+8
+14.0
+42.0
+35.3
+20.4
+10.8
+21.9
+1.67
+Qwen3-VL-Thinking
+8
+15.0
+43.1
+34.6
+18.5
+10.9
+18.5
+1.63
+Qwen3-VL+RL
+8
+24.7
+55.8
+47.4
+22.3
+22.5
+25.8
+1.05
+Qwen3-VL-Thinking+RL
+8
+23.3
+55.0
+44.4
+22.4
+21.0
+24.7
+1.12
+RadVLM
+8
+26.0
+53.3
+49.0
+30.5
+19.0
+29.1
+1.14
+RadVLM+RL
+8
+29.9
+59.2
+57.0
+33.4
+25.8
+32.7
+0.86
+RadVLM-Thinking+RL
+8
+30.0
+59.0
+56.3
+33.6
+25.7
+32.9
+0.87
+GREEN scores of BERTScore and GLEU might be partially attributable to longer answers.
+Together, these results indicate that the choice of reward to optimize report generation via
+GRPO is crucial to avoid reward hacking and to improve performance in both lexical and
+clinical aspects.
+4.4.3. Thinking Models Show Slower Reward Convergence
+We plot the evolution of the reward and response length during the RL training of RadVLM
+and Qwen3-VL models in Figure 3. We observe that the rewards of the Thinking variant
+(orange and red curves) remain slightly lower than the non-thinking versions, before even-
+tually catching up. The RadVLM models (red and green) start out with a higher reward
+than Qwen3-VL models due to their initial in-domain SFT stage. For report generation,
+we notice that Qwen3-VL+RL (Figure 3c, blue curve) initially generates long reports and
+become shorter after a few RL steps, due to the RadCliQ optimization that discourages
+unwanted statements. Finally, thinking models tend to generate a relatively stable amount
+of tokens over RL steps (Figure 3c-d).
+8
+
+===== PAGE 9 =====
+RadVLM-GRPO
+Table 2: Visual grounding performance measured in mAP (%).
+Mean average
+precision (mAP@0.5) scores for anatomical (Chest-Imagenome test dataset), abnormality
+(VinDr-CXR), and phrase grounding (PhraseMS for MS-CXR and PhrasePad for PadChest-
+GR) tasks across various models.
+Bold values indicate the highest performance, while
+underlined values represent the second-best performance. For Qwen3-VL, we specify in the
+prompt that the model should output boxes in the expected format (see Appendix G).
+Model
+Anatomy
+Abnorm.
+PhraseMS
+PhrasePad
+MAIRA-2
+19.8
+11.3
+80.1
+38.8
+Qwen3-VL
+11.1
+5.1
+19.0
+10.7
+Qwen3-VL-Thinking
+8.7
+1.2
+14.6
+10.7
+Qwen3-VL+RL
+79.0
+36.0
+79.4
+55.3
+Qwen3-VL-Thinking+RL
+68.8
+27.6
+76.1
+42.0
+RadVLM
+82.1
+44.2
+84.6
+59.0
+RadVLM+RL
+84.5
+45.9
+87.9
+63.0
+RadVLM-Thinking+RL
+84.9
+43.9
+86.4
+60.5
+Table 3: Effect of reward choice on report generation performance. We compare
+RadVLM+RL with four different rewards, namely RadCliQ (RCQ), BERTScore (B-S),
+RadGraph-F1 (complete; RGF1-C), and GLEU across all evaluation metrics. The setting
+is the same as in Table 1, with the addition of the average number of characters in the
+response (ANC). Bold values indicate the highest performance, while underlined values
+represent the second-best performance, and ∗indicates that the evaluated metric is used as
+a training reward.
+Model
+R-L
+B-S
+CXb-
+micro
+CXb-
+macro
+RGF1 GRN
+RCQ↓ANC
+RadVLM
+26.0
+53.3
+49.0
+30.5
+19.0
+29.1
+1.14
+207
++ RCQ
+29.9
+59.2
+57.0
+33.4
+25.8
+32.7
+0.86*
+171
++ B-S
+29.0
+61.6*
+56.5
+35.1
+23.9
+33.1
+0.93
+206
++ RGF1-C
+22.8
+48.8
+34.1
+18.4
+20.1*
+23.5
+1.20
+93
++ GLEU
+29.8
+59.2
+56.0
+35.1
+25.3
+33.7
+0.92
+209
+5. Conclusion, Discussion, Future Work
+In this work, we explored how RL can enhance the report generation and visual grounding
+capabilities of a foundation model for radiology. We show that by careful choice of rewards,
+the GRPO algorithm can further optimize RadVLM on tasks on which the SFT version
+was already performing well. This demonstrates that medical VLMs can be subjected to
+clinically relevant optimization enabled by modern RL techniques, overcoming limitations
+9
+
+===== PAGE 10 =====
+Gundersen et al.
+0
+50
+100
+150
+200
+250
+300
+Step
+−2.0
+−1.5
+−1.0
+-RadCliQ reward
+a
+Qwen3-VL+RL
+Qwen3-VL-Thinking+RL
+RadVLM+RL
+RadVLM-Thinking+RL
+0
+50
+100
+150
+200
+250
+300
+Step
+0.2
+0.4
+0.6
+0.8
+Soft-F1 reward
+b
+0
+50
+100
+150
+200
+250
+300
+Step
+0
+0.5k
+1.0k
+1.5k
+2.0k
+2.5k
+Response length (tokens)
+c
+0
+50
+100
+150
+200
+250
+300
+Step
+0
+0.5k
+1.0k
+1.5k
+2.0k
+2.5k
+Response length (tokens)
+d
+Figure 3: Training dynamics with GRPO. Training rewards and response lengths are
+shown for report generation (a, c) and visual grounding (b, d) as a function of RL steps.
+of SFT. Using the same optimization process, we also explored the potential benefits of
+thinking and found that in our settings, direct answers provide similar or better performance
+with lower inference cost.
+A potential limitation of our study is the choice of cold-start generation strategy. We
+chose to generate CoT by providing the prompt combined with the image and the expected
+ground truth, potentially biasing the model toward generating CoT that directly leads to
+that specific answer. However, we also explored other strategies that do not provide the
+ground truth and filter generated CoT-answer pairs based on the performance of the answer
+(see Appendix I). We observed that the thinking model underperforms compared to the
+non-thinking variant, consistent with Qwen3-VL on some tasks such as 2D/3D grounding
+(Table 9, Bai et al., 2025a) and related work (Li et al., 2025a; Lai et al., 2025). Many
+factors could be at play here: initial performance degradation due to cold-start fine-tuning,
+the thinking traces could be non-informative for the tasks at hand, a lack of vision modality
+in the thinking process, or the pre-training and post-training processes of VLMs such as
+Qwen3-VL lack radiology data compared to math and code (Cheng et al., 2025). In this vein,
+future work could involve curating examples of thinking designed by expert radiologists and
+optimizing multi-turn conversations that include questions, feedback, and tools with which
+the model can manipulate images (cropping, zooming, drawing) and re-observe (Zheng
+et al., 2025b; Su et al., 2025; Bai et al., 2025a).
+Another path for further exploration is LLM-as-Judge rewards, such as GREEN (Ost-
+meier et al., 2024). LLM-as-Judge approaches require additional care to prevent reward
+hacking (Hein et al., 2024; Zhao et al., 2025), to design robust prompts, and to select
+appropriate models (Li et al., 2025b). Yet, LLM-as-Judge is a powerful tool and could po-
+tentially enable optimization of multi-turn conversations by simultaneously serving as the
+reward mechanism and a conversational partner for the model under optimization.
+Overall, by performing large-scale training on CXR data, our study highlights the im-
+portance of cooperation between fine-tuning and reinforcement learning in the development
+of medical VLMs. Although some questions remain open, we hope that our findings offer a
+solid foundation for future work on optimizing clinically aligned multimodal models.
+10
+
+===== PAGE 11 =====
+RadVLM-GRPO
+Acknowledgments
+This work was supported as part of the Swiss AI Initiative by a grant from the Swiss
+National Supercomputing Centre (CSCS) under project ID a135 on Alps.
+BG received
+support from the Swiss National Science Foundation (SNSF) grant 10003518. ND received
+support from RADICAL (Project-Call 2024.1, ID:9), funded by the DIZH.
+References
+Shuai Bai, Yuxuan Cai, Ruizhe Chen, Keqin Chen, Xionghui Chen, Zesen Cheng, Lianghao
+Deng, Wei Ding, Chang Gao, Chunjiang Ge, Wenbin Ge, Zhifang Guo, Qidong Huang,
+Jie Huang, Fei Huang, Binyuan Hui, Shutong Jiang, Zhaohai Li, Mingsheng Li, Mei
+Li, Kaixin Li, Zicheng Lin, Junyang Lin, Xuejing Liu, Jiawei Liu, Chenglong Liu, Yang
+Liu, Dayiheng Liu, Shixuan Liu, Dunjie Lu, Ruilin Luo, Chenxu Lv, Rui Men, Lingchen
+Meng, Xuancheng Ren, Xingzhang Ren, Sibo Song, Yuchong Sun, Jun Tang, Jianhong Tu,
+Jianqiang Wan, Peng Wang, Pengfei Wang, Qiuyue Wang, Yuxuan Wang, Tianbao Xie,
+Yiheng Xu, Haiyang Xu, Jin Xu, Zhibo Yang, Mingkun Yang, Jianxin Yang, An Yang,
+Bowen Yu, Fei Zhang, Hang Zhang, Xi Zhang, Bo Zheng, Humen Zhong, Jingren Zhou,
+Fan Zhou, Jing Zhou, Yuanzhi Zhu, and Ke Zhu. Qwen3-vl technical report, 2025a. URL
+https://arxiv.org/abs/2511.21631.
+Shuai Bai, Keqin Chen, Xuejing Liu, Jialin Wang, Wenbin Ge, Sibo Song, Kai Dang,
+Peng Wang, Shijie Wang, Jun Tang, et al. Qwen2.5-vl technical report. arXiv preprint
+arXiv:2502.13923, 2025b.
+Shruthi Bannur, Kenza Bouzid, Daniel C Castro, Anton Schwaighofer, Anja Thieme, Sam
+Bond-Taylor, Maximilian Ilse, Fernando P´erez-Garc´ıa, Valentina Salvatelli, Harshita
+Sharma, Felix Meissen, Mercy Ranjit, Shaury Srivastav, Julia Gong, Noel C F Codella,
+Fabian Falck, Ozan Oktay, Matthew P Lungren, Maria Teodora Wetscherek, Javier
+Alvarez-Valle, and Stephanie L Hyland.
+MAIRA-2: Grounded radiology report gen-
+eration. arXiv [cs.CL], June 2024.
+Nicolas Carion, Francisco Massa, Gabriel Synnaeve, Nicolas Usunier, Alexander Kirillov,
+and Sergey Zagoruyko.
+End-to-end object detection with transformers.
+In European
+conference on computer vision, pages 213–229. Springer, 2020.
+Zhihong Chen, Maya Varma, Justin Xu, Magdalini Paschali, Dave Van Veen, Andrew
+Johnston, Alaa Youssef, Louis Blankemeier, Christian Bluethgen, Stephan Altmayer,
+Jeya Maria Jose Valanarasu, Mohamed Siddig Eltayeb Muneer, Eduardo Pontes Reis,
+Joseph Paul Cohen, Cameron Olsen, Tanishq Mathew Abraham, Emily B. Tsai, Christo-
+pher F. Beaulieu, Jenia Jitsev, Sergios Gatidis, Jean-Benoit Delbrouck, Akshay S. Chaud-
+hari, and Curtis P. Langlotz. A vision-language foundation model to enhance efficiency
+of chest x-ray interpretation, 2024. URL https://arxiv.org/abs/2401.12208.
+Zhoujun Cheng, Shibo Hao, Tianyang Liu, Fan Zhou, Yutao Xie, Feng Yao, Yuexin Bian,
+Yonghao Zhuang, Nilabjo Dey, Yuheng Zha, et al. Revisiting reinforcement learning for
+llm reasoning from a cross-domain perspective. arXiv preprint arXiv:2506.14965, 2025.
+11
+
+===== PAGE 12 =====
+Gundersen et al.
+Jean-Benoit Delbrouck, Pierre Chambon, Zhihong Chen, Maya Varma, Andrew Johnston,
+Louis Blankemeier, Dave Van Veen, Tan Bui, Steven Truong, and Curtis Langlotz.
+Radgraph-xl: A large-scale expert-annotated dataset for entity and relation extraction
+from radiology reports.
+In Findings of the Association for Computational Linguistics
+ACL 2024, pages 12902–12915, 2024.
+N. Deperrois, H. Matsuo, S. Ruiperez-Campillo, M. Vandenhirtz, S. Laguna, A. Ryser,
+K. Fujimoto, M. Nishio, T. Sutter, J. Vogt, J. Kluckert, T. Frauenfelder, C. Bluethgen,
+F. Nooralahzadeh, and M. Krauthammer. Radvlm instruction dataset. PhysioNet, version
+1.0.0, 2025a. URL https://doi.org/10.13026/et5g-h222. RRID: SCR 007345.
+Nicolas Deperrois, Hidetoshi Matsuo, Samuel Ruip´erez-Campillo, Moritz Vandenhirtz, So-
+nia Laguna, Alain Ryser, Koji Fujimoto, Mizuho Nishio, Thomas M Sutter, Julia E Vogt,
+et al. Radvlm: A multitask conversational vision-language model for radiology. arXiv
+preprint arXiv:2502.03333, 2025b.
+Mark Everingham, Luc Van Gool, Christopher K. I. Williams, John Winn, and Andrew
+Zisserman. The PASCAL visual object classes (VOC) challenge. International Journal
+of Computer Vision, 2010.
+Ziqing Fan, Cheng Liang, Chaoyi Wu, Ya Zhang, Yanfeng Wang, and Weidi Xie. Chestx-
+reasoner: Advancing radiology foundation models with reasoning through step-by-step
+verification. arXiv preprint arXiv:2504.20930, 2025.
+Daya Guo, Dejian Yang, Haowei Zhang, Junxiao Song, Peiyi Wang, Qihao Zhu, Runxin
+Xu, Ruoyu Zhang, Shirong Ma, Xiao Bi, et al. Deepseek-r1 incentivizes reasoning in llms
+through reinforcement learning. Nature, 645(8081):633–638, 2025.
+Dennis Hein, Zhihong Chen, Sophie Ostmeier, Justin Xu, Maya Varma, Eduardo Pontes
+Reis, Arne Edward Michalson, Christian Bluethgen, Hyun Joo Shin, Curtis Langlotz,
+et al. Chexalign: Preference fine-tuning in chest x-ray interpretation models without
+human feedback. arXiv preprint arXiv:2410.07025, 2024.
+Jingcheng Hu, Yinmin Zhang, Qi Han, Daxin Jiang, Xiangyu Zhang, and Heung-Yeung
+Shum. Open-reasoner-zero: An open source approach to scaling up reinforcement learning
+on the base model. arXiv preprint arXiv:2503.24290, 2025.
+Wenxuan Huang, Bohan Jia, Zijie Zhai, Shaosheng Cao, Zheyu Ye, Fei Zhao, Zhe Xu, Yao
+Hu, and Shaohui Lin. Vision-r1: Incentivizing reasoning capability in multimodal large
+language models. arXiv preprint arXiv:2503.06749, 2025.
+Saahil Jain, Ashwin Agrawal, Adriel Saporta, Steven QH Truong, Du Nguyen Duong, Tan
+Bui, Pierre Chambon, Yuhao Zhang, Matthew P Lungren, Andrew Y Ng, et al. Rad-
+graph: Extracting clinical entities and relations from radiology reports. arXiv preprint
+arXiv:2106.14463, 2021.
+Alexander Kirillov, Kaiming He, Ross Girshick, Carsten Rother, and Piotr Doll´ar. Panop-
+tic segmentation. In Proceedings of the IEEE/CVF conference on computer vision and
+pattern recognition, pages 9404–9413, 2019.
+12
+
+===== PAGE 13 =====
+RadVLM-GRPO
+Yuxiang Lai, Jike Zhong, Ming Li, Shitian Zhao, and Xiaofeng Yang.
+Med-r1: Rein-
+forcement learning for generalizable medical reasoning in vision-language models. arXiv
+preprint arXiv:2503.13939, 2025.
+Sun Yeop Lee, Sangwoo Ha, Min Gyeong Jeon, Hao Li, Hyunju Choi, Hwa Pyung Kim,
+Ye Ra Choi, Hoseok I, Yeon Joo Jeong, Yoon Ha Park, et al.
+Localization-adjusted
+diagnostic performance and assistance effect of a computer-aided detection system for
+pneumothorax and consolidation. npj Digital Medicine, 5(1):107, 2022.
+Chunyuan Li, Cliff Wong, Sheng Zhang, Naoto Usuyama, Haotian Liu, Jianwei Yang, Tris-
+tan Naumann, Hoifung Poon, and Jianfeng Gao. Llava-med: Training a large language-
+and-vision assistant for biomedicine in one day. arXiv preprint arXiv:2306.00890, 2023.
+Ming Li, Jike Zhong, Shitian Zhao, Yuxiang Lai, Haoquan Zhang, Wang Bill Zhu, and
+Kaipeng Zhang. Think or not think: A study of explicit thinking in rule-based visual
+reinforcement fine-tuning. arXiv preprint arXiv:2503.16188, 2025a.
+Songze Li, Chuokun Xu, Jiaying Wang, Xueluan Gong, Chen Chen, Jirui Zhang, Jun Wang,
+Kwok-Yan Lam, and Shouling Ji. Llms cannot reliably judge (yet?): A comprehensive
+assessment on the robustness of llm-as-a-judge. arXiv preprint arXiv:2506.09443, 2025b.
+Xiao Liang, Jiawei Hu, Di Wang, Zhi Ma, Lin Zhao, Ronghan Li, Bo Wan, and Quan Wang.
+Chexpo: Preference optimization for chest x-ray vlms with counterfactual rationale. arXiv
+preprint arXiv:2507.06959, 2025.
+Chin-Yew Lin. Rouge: A package for automatic evaluation of summaries. In Text summa-
+rization branches out, pages 74–81, 2004.
+Qika Lin, Yifan Zhu, Bin Pu, Ling Huang, Haoran Luo, Jingying Ma, Zhen Peng, Tianzhe
+Zhao, Fangzhi Xu, Jian Zhang, et al.
+A foundation model for chest x-ray inter-
+pretation with grounded reasoning via online reinforcement learning.
+arXiv preprint
+arXiv:2509.03906, 2025.
+Tsung-Yi Lin, Micha¨el Maire, Serge Belongie, James Hays, Pietro Perona, Deva Ramanan,
+Piotr Doll´ar, and C. Lawrence Zitnick. Microsoft COCO: Common objects in context.
+In European Conference on Computer Vision (ECCV), 2014.
+Aixin Liu, Bei Feng, Bing Xue, Bingxuan Wang, Bochao Wu, Chengda Lu, Chenggang
+Zhao, Chengqi Deng, Chenyu Zhang, Chong Ruan, et al. Deepseek-v3 technical report.
+arXiv preprint arXiv:2412.19437, 2024.
+Ziyu Liu, Zeyi Sun, Yuhang Zang, Xiaoyi Dong, Yuhang Cao, Haodong Duan, Dahua
+Lin, and Jiaqi Wang.
+Visual-rft:
+Visual reinforcement fine-tuning.
+arXiv preprint
+arXiv:2503.01785, 2025.
+Niklas Muennighoff, Zitong Yang, Weijia Shi, Xiang Lisa Li, Li Fei-Fei, Hannaneh Hajishirzi,
+Luke Zettlemoyer, Percy Liang, Emmanuel Cand`es, and Tatsunori Hashimoto. s1: Simple
+test-time scaling. arXiv preprint arXiv:2501.19393, 2025.
+13
+
+===== PAGE 14 =====
+Gundersen et al.
+OpenAI.
+Learning
+to
+reason
+with
+llms.
+https://openai.com/index/
+learning-to-reason-with-llms/, 2024.
+Published Sep 12, 2024. Accessed 2025-
+10-07.
+Sophie Ostmeier, Justin Xu, Zhihong Chen, Maya Varma, Louis Blankemeier, Christian
+Bluethgen, Arne Edward Michalson, Michael Moseley, Curtis Langlotz, Akshay S Chaud-
+hari, et al. Green: Generative radiology report evaluation and error notation. arXiv
+preprint arXiv:2405.03595, 2024.
+Jiazhen Pan, Che Liu, Junde Wu, Fenglin Liu, Jiayuan Zhu, Hongwei Bran Li, Chen Chen,
+Cheng Ouyang, and Daniel Rueckert. Medvlm-r1: Incentivizing medical reasoning ca-
+pability of vision-language models (vlms) via reinforcement learning. In International
+Conference on Medical Image Computing and Computer-Assisted Intervention, pages
+337–347. Springer, 2025.
+Andrew Sellergren, Sahar Kazemzadeh, Tiam Jaroensri, Atilla Kiraly, Madeleine Traverse,
+Timo Kohlberger, Shawn Xu, Fayaz Jamil, C´ıan Hughes, Charles Lau, et al. Medgemma
+technical report. arXiv preprint arXiv:2507.05201, 2025.
+Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Xiao Bi, Haowei Zhang,
+Mingchuan Zhang, YK Li, Y Wu, et al. Deepseekmath: Pushing the limits of mathemat-
+ical reasoning in open language models. arXiv preprint arXiv:2402.03300, 2024.
+Haozhan Shen, Peng Liu, Jingcheng Li, Chunxin Fang, Yibo Ma, Jiajia Liao, Qiaoli Shen,
+Zilun Zhang, Kangjia Zhao, Qianqian Zhang, et al. Vlm-r1: A stable and generalizable
+r1-style large vision-language model. arXiv preprint arXiv:2504.07615, 2025.
+Guangming Sheng, Chi Zhang, Zilingfeng Ye, Xibin Wu, Wang Zhang, Ru Zhang, Yanghua
+Peng, Haibin Lin, and Chuan Wu. Hybridflow: A flexible and efficient rlhf framework.
+arXiv preprint arXiv: 2409.19256, 2024.
+Akshay Smit, Saahil Jain, Pranav Rajpurkar, Anuj Pareek, Andrew Y Ng, and Matthew P
+Lungren. Chexbert: combining automatic labelers and expert annotations for accurate
+radiology report labeling using bert. arXiv preprint arXiv:2004.09167, 2020.
+Zhaochen Su, Linjie Li, Mingyang Song, Yunzhuo Hao, Zhengyuan Yang, Jun Zhang, Guan-
+jie Chen, Jiawei Gu, Juntao Li, Xiaoye Qu, et al. Openthinkimg: Learning to think with
+images via visual tool reinforcement learning. arXiv preprint arXiv:2505.08617, 2025.
+Ryutaro Tanno, David GT Barrett, Andrew Sellergren, Sumedh Ghaisas, Sumanth
+Dathathri, Abigail See, Johannes Welbl, Charles Lau, Tao Tu, Shekoofeh Azizi, et al.
+Collaboration between clinicians and vision–language models in radiology report genera-
+tion. Nature Medicine, 31(2):599–608, 2025.
+Haozhe Wang, Chao Qu, Zuming Huang, Wei Chu, Fangzhen Lin, and Wenhu Chen. Vl-
+rethinker: Incentivizing self-reflection of vision-language models with reinforcement learn-
+ing. arXiv preprint arXiv:2504.08837, 2025.
+14
+
+===== PAGE 15 =====
+RadVLM-GRPO
+Yonghui Wu, Mike Schuster, Zhifeng Chen, Quoc V. Le, Mohammad Norouzi, Wolfgang
+Macherey, Maxim Krikun, Yuan Cao, Qin Gao, Klaus Macherey, Jeff Klingner, Apurva
+Shah, Melvin Johnson, Xiaobing Liu,  Lukasz Kaiser, Stephan Gouws, Yoshikiyo Kato,
+Taku Kudo, Hideto Kazawa, Keith Stevens, George Kurian, Nishant Patil, Wei Wang,
+Cliff Young, Jason Smith, Jason Riesa, Alex Rudnick, Oriol Vinyals, Greg Corrado,
+Macduff Hughes, and Jeffrey Dean. Google’s neural machine translation system: Bridging
+the gap between human and machine translation, 2016.
+Justin Xu, Xi Zhang, Javid Abderezaei, Julie Bauml, Roger Boodoo, Fatemeh Haghighi,
+Ali Ganjizadeh, Eric Brattain, Dave Van Veen, Zaiqiao Meng, David Eyre, and Jean-
+Benoit Delbrouck.
+Radeval: A framework for radiology text evaluation, 2025.
+URL
+https://arxiv.org/abs/2509.18030.
+An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu,
+Chang Gao, Chengen Huang, Chenxu Lv, et al. Qwen3 technical report. arXiv preprint
+arXiv:2505.09388, 2025.
+Feiyang Yu, Mark Endo, Rayan Krishnan, Ian Pan, Andy Tsai, Eduardo Pontes Reis,
+Eduardo Kaiser Ururahy Nunes Fonseca, Henrique Min Ho Lee, Zahra Shakeri Hossein
+Abad, Andrew Y Ng, et al. Evaluating progress in automatic chest x-ray radiology report
+generation. Patterns, 4(9), 2023.
+Qiying Yu, Zheng Zhang, Ruofei Zhu, Yufeng Yuan, Xiaochen Zuo, Yu Yue, Weinan Dai,
+Tiantian Fan, Gaohong Liu, Lingjun Liu, et al. Dapo: An open-source llm reinforcement
+learning system at scale. arXiv preprint arXiv:2503.14476, 2025.
+Juan Manuel Zambrano Chaves, Shih-Cheng Huang, Yanbo Xu, Hanwen Xu, Naoto
+Usuyama, Sheng Zhang, Fei Wang, Yujia Xie, Mahmoud Khademi, Ziyi Yang, et al.
+A clinically accessible small multimodal radiology model and evaluation metric for chest
+x-ray findings. Nature Communications, 16(1):3108, 2025.
+Tianyi Zhang, Varsha Kishore, Felix Wu, Kilian Q. Weinberger, and Yoav Artzi. Bertscore:
+Evaluating text generation with bert. In International Conference on Learning Repre-
+sentations, 2020. URL https://openreview.net/forum?id=SkeHuCVFDr.
+Yulai Zhao, Haolin Liu, Dian Yu, Sunyuan Kung, Meijia Chen, Haitao Mi, and Dong Yu.
+One token to fool llm-as-a-judge. arXiv preprint arXiv:2507.08794, 2025.
+Hongling Zheng, Li Shen, Anke Tang, Yong Luo, Han Hu, Bo Du, Yonggang Wen, and
+Dacheng Tao. Learning from models beyond fine-tuning. Nature Machine Intelligence, 7
+(1):6–17, 2025a.
+Yaowei Zheng, Richong Zhang, Junhao Zhang, Yanhan Ye, Zheyan Luo, Zhangchi Feng,
+and Yongqiang Ma. Llamafactory: Unified efficient fine-tuning of 100+ language models.
+In Proceedings of the 62nd Annual Meeting of the Association for Computational Lin-
+guistics (Volume 3: System Demonstrations), Bangkok, Thailand, 2024. Association for
+Computational Linguistics. URL http://arxiv.org/abs/2403.13372.
+15
+
+===== PAGE 16 =====
+Gundersen et al.
+Ziwei Zheng, Michael Yang, Jack Hong, Chenxiao Zhao, Guohai Xu, Le Yang, Chao Shen,
+and Xing Yu. Deepeyes: Incentivizing” thinking with images” via reinforcement learning.
+arXiv preprint arXiv:2505.14362, 2025b.
+16
+
+===== PAGE 17 =====
+RadVLM-GRPO
+Appendix A. Preliminaries
+A.1. Vision-Language Model
+Vision-language models (VLMs) jointly model the visual and textual features in an autore-
+gressive manner. Given an image v and a text t, the visual input is encoded into a sequence
+of visual embeddings xv = (xv,1, . . . , xv,Lv) using a vision encoder and the text is tokenized,
+resulting in Lt tokens xt = (xt,1, . . . , xt,Lt).
+The model predicts the next textual token conditioned on all preceding text tokens and
+the visual embeddings, defining the joint probability of the text sequence as
+p(xt | xv) =
+L
+Y
+i=1
+p(xt,i | xv, xt,<i),
+(1)
+where xt,<i denotes all text tokens preceding position i.
+A.2. Supervised fine-tuning
+During fine-tuning, the model continues training to predict each assistant token. Given
+an image–question–answer triple (v, q, a), the inputs are processed as follows: the image is
+encoded into visual tokens xv = fvision(v), the question into text tokens xq = ftokenize(q),
+and the answer into target tokens xa = ftokenize(a).
+The model predicts each assistant token xa,i conditioned on the visual embeddings, the
+question tokens, and all previously generated assistant tokens:
+p(xa | xv, xq) =
+La
+Y
+i=1
+p(xa,i | xv, xq, xa,<i),
+(2)
+where La is the number of assistant tokens. The supervised fine-tuning objective mini-
+mizes the negative log-likelihood of the reference assistant tokens:
+LSFT = −
+La
+X
+i=1
+log p(xa,i | xv, xq, xa,<i).
+(3)
+A.3. Group Relative Policy Optimization
+For a question-answer pair (q, a), G responses {oi}G
+i=1 are independently sampled from the
+old policy model πθold. Every response gets rewarded individually resulting in {Ri}G
+i=1. The
+advantage ˆAi,t is computed with respect to the group as described in Equation (6). The
+GRPO objective is described in Equation (4).
+LGRPO(θ) = E(q,a)∼D, {oi}G
+i=1∼πθold(·|q)
+"
+1
+G
+G
+X
+i=1
+1
+|oi|
+|oi|
+X
+t=1
+
+min
+ ri,t(θ) ˆAi,t, clip(ri,t(θ), 1 −ϵ, 1 + ϵ) ˆAi,t
+
+−β DKL(πθ∥πref)
+#
+,
+(4)
+17
+
+===== PAGE 18 =====
+Gundersen et al.
+where
+ri,t(θ) =
+πθ(oi,t | q, oi,<t)
+πθold(oi,t | q, oi,<t),
+(5)
+ˆAi,t = Ri −mean({Ri}G
+i=1)
+std({Ri}G
+i=1)
+,
+(6)
+We follow previous work (Yu et al., 2025) and use asymmetric clipping.
+Appendix B. Evaluation Metrics Details
+• BERTScore (Zhang et al., 2020): computes token-level semantic similarity using
+contextual embeddings from a pretrained model (see Table 8).
+• ROUGE-L (Lin, 2004): evaluates the longest common subsequence between gener-
+ated and reference texts.
+• RadGraph F1 (Jain et al., 2021; Delbrouck et al., 2024): measures structural over-
+lap between predicted and ground-truth entities and their relations. We employ the
+RadGraph-XL (Delbrouck et al., 2024) model and report the partial reward variant
+of the metric.
+• CheXbert F1 We report the macro F1 over the 14 labels.
+• RadCliQ (Yu et al., 2023) is a composite metric which first standardizes and then
+linearly combines RadGraph F1, CheXbert vector similarity, BERTScore, and BLEU
+to align better with radiologists. We use RadGraph-XL (Delbrouck et al., 2024) as
+our chosen RadGraph model.
+• GREEN (Generative Radiology Report Evaluation and Error Notation) (Ostmeier
+et al., 2024): an LLM-as-Judge metric that identifies clinically significant errors and
+matched findings in generated reports.
+18
+
+===== PAGE 19 =====
+RadVLM-GRPO
+Appendix C. Comparison between orignal and our updated RadVLM.
+We compare our update RadVLM to the original RadVLM in Table 4 and Table 5. The
+updated RadVLM, based on Qwen3-VL, outpeforms the original RadVLM in all metrics
+except for the anatomy visual grounding.
+Table 4: Updated RadVLM comparison Report Generation. We compare the orig-
+inal RadVLM (Deperrois et al., 2025b) to the updated RadVLM based on Qwen3-VL on
+report generation.
+Model
+Size
+(B)
+R-L
+B-S
+CXb-
+micro
+CXb-
+macro
+RGF1 GRN
+RCQ↓
+RadVLM (original)
+7
+25.4
+51.9
+46.4
+28.9
+18.2
+27.7
+1.16
+RadVLM (ours)
+8
+26.0
+53.3
+49.0
+30.5
+19.0
+29.1
+1.14
+Table 5: Updated RadVLM comparison Visual Grounding.. We compare the original
+RadVLM (Deperrois et al., 2025b) to the updated RadVLM based on Qwen3-VL on visual
+grounding.
+Model
+Anatomy
+Abnorm.
+PhraseMS
+RadVLM (original)
+85.8
+34.6
+81.8
+RadVLM (ours)
+82.1
+44.2
+84.6
+19
+
+===== PAGE 20 =====
+Gundersen et al.
+Appendix D. Hugging Face Links
+We link to the model weights in Table 6.
+Table 6: Model Links. Huggingface links for the models we use.
+Model
+Hugging Face
+Qwen3-VL-8B-Instruct
+https://huggingface.co/Qwen/
+Qwen3-VL-8B-Instruct
+Qwen3-VL-8B-Thinking
+https://huggingface.co/Qwen/
+Qwen3-VL-8B-Thinking
+Qwen3-VL-235B-A22B-Instruct
+https://huggingface.co/Qwen/
+Qwen3-VL-235B-A22B-Instruct-FP8
+CheXagent-2-3b
+https://huggingface.co/StanfordAIMI/
+CheXagent-2-3b
+MedGemma-4b-pt
+https://huggingface.co/google/medgemma-4b-pt
+MedGemma-27b-it
+https://huggingface.co/google/medgemma-27b-it
+DeepMedix-R1
+https://huggingface.co/Qika/DeepMedix-R1
+MAIRA-2
+https://huggingface.co/microsoft/maira-2
+Llava-Rad
+https://huggingface.co/microsoft/llava-rad
+20
+
+===== PAGE 21 =====
+RadVLM-GRPO
+Appendix E. verl parameters
+We list the parameters we use for verl in Table 7.
+Table 7: Parameters used with verl.. If there are two values then the first one is for no
+thinking and the second one is for with thinking.
+Group
+Name
+Value
+Data
+batch size
+512
+max prompt length
+4096
+max response length
+1024 / 4096
+min pixel
+1024
+max pixel
+451584
+Actor
+lr
+1e-6
+ppo mini batch size
+128
+ppo micro batch size per gpu
+4
+use kl loss
+True
+kl loss coef
+0.01
+kl loss type
+low var kl
+clip ratio low
+0.20
+clip ratio high
+0.28
+Rollout
+log prob micro batch size per gpu
+16
+n: group size per prompt
+8
+log prob micro batch size per gpu (ref)
+16
+Trainer
+n gpus per node
+4
+nnodes
+8
+save freq
+20
+test freq
+20
+21
+
+===== PAGE 22 =====
+Gundersen et al.
+Appendix F. BERTScore settings
+We list the BERTScore setting in Table 8.
+Table 8: Settings used with BERTScore.
+Name
+Value
+model type
+distilbert-base-uncased
+num layers
+5
+all layers
+False
+idf
+False
+lang
+en
+rescale with baseline
+True
+22
+
+===== PAGE 23 =====
+RadVLM-GRPO
+Appendix G. Prompts for Models
+We list the prompts we use for the various models. Summary of the input prompts (or
+templates / description of how the inputs are processed) employed for inference by each
+compared model. These templates were obtained from released material (paper, GitHub
+repo, etc.) when available; otherwise, RadVLM’s prompts were used (for LLaVA-OV and
+LLaVA-Med).
+“HF” denotes HuggingFace.
+For all RadVLM variants and for the RL
+training of Qwen3-VL models we use the corresponding RadVLM prompts.
+G.1. Report Generation
+CheXagent-2
+Write an example findings section for the CXR
+MAIRA-2
+HF template: processed inputs passed directly to model (no explicit prompt)
+DeepMedix-R1
+<image> Please act as an experienced radiologist and generate the “FINDINGS”
+section of an X-ray report based on the provided image(s). Carefully examine the
+image(s) and describe all observed anatomical structures and abnormalities in a sys-
+tematic and objective manner. You FIRST think about the reasoning process as
+an internal monologue and then provide the final answer.
+The reasoning process
+MUST BE enclosed within <think> </think> tags.
+During this reasoning pro-
+cess, prioritize analyzing the local regions of the image by leveraging the bound-
+ing box coordinates in the format [x min, y min, x max, y max].
+The final an-
+swer MUST BE put in \boxed{}. An example is like: <think> reasoning process 1
+with [x min1, y min1, x max1, y max1]; reasoning process 2 with [x min2, y min2,
+x max2, y max2] </think>. The answer is: \boxed{answer}.
+LLaVA-Rad
+<image>\nDescribe the findings of the chest x-ray.\n
+google/medgemma-27b-it
+<image> You are an expert radiologist. Please succinctly describe the findings for
+the above chest x-ray.
+23
+
+===== PAGE 24 =====
+Gundersen et al.
+google/medgemma-4b-pt
+<image> findings:
+Qwen3-VL-8B-Instruct and Qwen3-VL-8B-Thinking
+<image>\nPlease write a radiology report for this Chext X-ray.\n\nIt should be one
+unstructured paragraph of findings only: concise, natural clinical language, objective,
+declarative sentences describing visible features only, suitable for a radiology findings
+report using standard radiology phrasing.
+G.2. Visual Grounding
+MAIRA-2
+HF template: processed inputs passed directly to model
+Qwen3-VL-8B-Instruct and Qwen3-VL-8B-Thinking
+<image>\nCan you tell me where [abnormality] is? Answer with bounding boxes
+only in the format [xmin, ymin, xmax, ymax], values normalized between 0 and 1 and
+rounded to two decimals. Multiple boxes should be separated by ’and’.
+24
+
+===== PAGE 25 =====
+RadVLM-GRPO
+Appendix H. Qwen3-VL-235B Performance on Tasks
+We create an overview of the performance of Qwen3-VL-235B models listed in the Qwen3-
+VL technical report (Bai et al., 2025a) in Table 9.
+Table 9: Summary of Qwen3-VL-235B-Thinkng and -Instruct results across benchmark
+groups. Scores are taken from the Qwen3-VL technical report (Bai et al., 2025a) and directly
+averaged directly within each group to provide a high level overview, despite differences in
+scales across benchmarks. Further, number of individual benchmarks that favor Instruct,
+Thinking, or Tie respectively are listed.
+Benchmark
+Instruct
+Thinking Favor
+In-
+struct
+Favor
+Think-
+ing
+Ties
+STEM Puzzle
+62.31
+66.49
+1
+13
+0
+General VQA
+79.76
+79.74
+3
+2
+0
+Alignment
+54.33
+55.97
+0
+2
+1
+Document Understanding
+131.25
+128.11
+6
+5
+2
+2D/3D Grounding
+57.13
+54.77
+4
+2
+0
+Embodied/Spatial Understanding
+66.40
+68.12
+1
+4
+0
+Multi-Image
+71.85
+73.60
+1
+1
+0
+Video Understanding
+73.61
+73.74
+5
+2
+0
+Perception with Tool
+87.17
+82.27
+3
+0
+0
+Multi-Modal Coding
+80.77
+79.20
+2
+1
+0
+Multi-Modal Agent
+50.58
+52.46
+2
+3
+0
+Average
+79.26
+79.43
+28
+35
+3
+25
+
+===== PAGE 26 =====
+Gundersen et al.
+Appendix I. Cold-Start Prompt
+I.1. Report Generation
+We provide the prompt to generate the cold-start dataset. The “guide“ (GUIDE) is adapted
+based on sections 1.2 - 1.10 of https://www.ncbi.nlm.nih.gov/books/NBK553874/ with
+tables converted into markdown.
+The guide and ground truth are substituted into the
+prompt in their respective placeholders. Note that some whitespace has been removed in
+this box.
+Report Generation Cold-Start Prompt
+You are an expert thoracic radiologist analyzing a chest radiograph.
+Your task is to perform a **structured, detailed, and systematic reasoning process**
+based on the GUIDE below and the GROUND TRUTH report.
+—
+### INSTRUCTIONS
+1. **Follow the GUIDE carefully and comprehensively.** - Proceed systematically
+through every anatomic and technical category described in the GUIDE. - For each
+category, analyze findings in a detailed, clinically reasoned manner.
+2. **Use of the Ground Truth** - Treat each *positive* finding explicitly stated in
+the Ground Truth as present with the same certainty level. - Treat each *negative*
+finding explicitly stated in the Ground Truth as absent with the same certainty level.
+- Treat each *uncertain* finding in the Ground Truth as indeterminate with the same
+certainty level. - You must explicitly mention each item in the Ground Truth in the
+appropriate section. Do not skip any item, even if it seems incidental. - **Crucially:
+if a finding is *not mentioned* in the Ground Truth, do *not* assume absence.**
+Silence in the Ground Truth means the status is unknown until you assess the image. -
+Base your reasoning primarily on the image. If the image evidence is insufficient, label
+the finding as **indeterminate** rather than inferring from Ground Truth silence. -
+The output must not mention or allude to having access to the Ground Truth.
+3.
+**Certainty Language** - When appropriate, qualify statements as one of: -
+**Present (positive)** — clear imaging evidence supports the finding. - **Absent
+(negative)** — clear imaging evidence supports absence. - **Indeterminate/uncer-
+tain** — imaging is equivocal, limited, or non-diagnostic for that point. - **Not
+assessable** — technical factors preclude evaluation. - Choose the least speculative
+label when evidence is limited.
+4. **Output Requirements** - Provide **only your structured reasoning process**,
+not a final radiology report. - The reasoning should be clear, logically structured,
+and clinically grounded. - Do not mention instructions, the GUIDE, or any external
+references. - Do not reference the ground truth in the structured reasoning process.
+Write as if directly interpreting the image. - Discuss the following in order, using
+paragraph form (not lists): - **Technical quality** (positioning, penetration, mo-
+tion, lung volumes, artifacts) - **Support and monitoring devices and other foreign
+bodies/surgical materials** - **Chest wall** - **Mediastinum** (heart, great ves-
+26
+
+===== PAGE 27 =====
+RadVLM-GRPO
+sels, masses, lines/stripes/interfaces, calcification, pneumomediastinum) - **Hila**
+- **Lungs** (volumes, atelectasis, air space opacities, interstitial changes, nodules/-
+masses, abnormal lucency) - **Airways** - **Pleura and diaphragm**
+5. **Tone and Style** - Be explicit, methodical, and clinically precise. - Use full
+sentences and natural medical phrasing. - Demonstrate radiologic reasoning rather
+than just listing facts.
+—
+### GUIDE
+{GUIDE}
+—
+### GROUND TRUTH
+{GROUND TRUTH}
+I.2. Visual Grounding
+We provide the prompt to generate the cold-start dataset for visual grounding. The relevant
+parts are substituted into the prompt in their respective placeholders.
+Note that some
+whitespace has been removed in this box.
+Report Generation Cold-Start Prompt
+### System You are an expert chest-radiology vision–language model specialized in
+**visual grounding**. Your main goal is to produce an extensive, detailed reasoning
+trace that describes **how you locate the visual evidence** in the chest X-ray that
+supports the question, before revealing the answer.
+For every case you will receive - one chest X-ray image - a clinical question about
+that image - the ground-truth answer to that question
+**Your task**
+1.
+Carefully examine the image and reason **step-by-step** about the **spatial
+evidence** related to the question. - Focus on **where** the relevant anatomical
+structure or abnormality is located. - Describe **which region(s)** of the image you
+examine, how you navigate the X-ray, and how you narrow down to specific areas. -
+Explain spatial relationships (left/right, upper/mid/lower zones, central/peripheral,
+anterior/posterior) and link findings to nearby anatomical landmarks (diaphragm,
+heart border, ribs, hilum, costophrenic angles, etc.). - Discuss the **bounding-box
+level reasoning**: which portion of the image would contain the key feature.
+-
+Mention what visual patterns guide your search (opacity, lucency, silhouette loss,
+contour shape, asymmetry). - Consider alternative locations or causes and justify
+why you include or exclude them. - Be **very detailed and verbose** — the reasoning
+should read like a radiologist’s internal monologue mapping the image to bounding
+boxes. - You must complete this reasoning **fully** before revealing the answer.
+2.
+Write this full reasoning inside one continuous block that ends with
+**‘</think>‘**. - Do **not** output the answer or hint at it before this token.
+- The reasoning block should be long, coherent, and spatially rich.
+27
+
+===== PAGE 28 =====
+Gundersen et al.
+3. Immediately after ‘</think>‘, output the **gold answer exactly as given** in the
+input (copy it verbatim). - Do not add any commentary or text outside these two
+blocks.
+—
+### User
+Question: {QUESTION}
+Gold Answer (copy verbatim after the thinking block): {ANSWER GT}
+—
+### Assistant <!– your richly detailed spatial reasoning trace describing how you
+identify the relevant region(s) –> </think> {ANSWER GT}
+28
+
+===== PAGE 29 =====
+RadVLM-GRPO
+Appendix J. Distilling Cold-Start from Qwen3-VL-32B-Thinking
+We also tried distilling from Qwen3-VL-32B-Thinking. While these results are preliminary,
+we think they might be helpful for future work.
+J.1. Report Generation
+In addition to the cold-start generation method where we provide the ground truth, we also
+tried to distill from Qwen3-VL-32B-Thinking, by sampling 8 times per image (the ground
+truth is not provided) and then selecting the best answer (with corresponding thinking)
+according to RadCliQ. First, we tried a “One-Stage” approach, where we directly ask the
+model to output the findings in a format that is similar to the findings in our dataset.
+This appeared to bias the model, so we tried another approach. Second, we tried a “Two-
+Stage” approach.
+We visualize the rewards in Figure 4 and observe that the approach
+that is provided the guide and ground truth (“RadVLM-Thinking”) performs has higher
+rewards than the “Two-Stage” approach, which in return has higher rewards than the “One-
+Stage” approach. Please keep in mind, that a small percentage of the Thinking outputs get
+assigned a score of −3 because they do not produce a final answer and this. The evolution
+of the response length is shown in Figure 5. We describe the “One-Stage” and“Two-Stage”
+approaches next.
+Figure 4: Comparison of Cold-Starts: RadCliQ reward.
+J.1.1. One-Stage
+For image i, we generate 8 responses from Qwen3-VL-32B-Thinking with the RadVLM
+prompts, resulting in thinkingi,j and an answeri,j.
+For image i we then select the best
+answeri,j over j, according to RadCliQ, resulting in the best answeri, and the corresponding
+thinkingi. We then use (thinkingi, answeri) as a “One-Stage” cold-start datapoint.
+29
+
+===== PAGE 30 =====
+Gundersen et al.
+Figure 5: Comparison of Cold-Starts: evolution of response Length.
+One-Stage Prompt
+You are an expert thoracic radiologist analyzing a chest radiograph.
+After finishing your reasoning, close it with </think> and then produce the
+final answer:
+- One unstructured paragraph of Findings only: concise, natural clinical language,
+objective, declarative sentences describing visible features only, suitable for a
+radiology findings report using standard radiology phrasing.
+- Include positives and relevant negatives that are visually supported.
+- Use concise, compact, natural phrasing consistent with real radiology reports, keep
+Findings descriptive (no differential diagnoses, management, no overall judgment).
+- Do not include headers, bullets, impressions, recommendations, or any mention of
+your thinking process.
+J.1.2. Two-Stage
+For image i, we generate 8 responses from Qwen3-VL-32B-Thinking with the RadVLM
+prompts, resulting in thinkingi,j and an answeri,j,1. The answer might look totally different
+than what we would expect, so for every response we let Qwen3-VL-32B-Instruct rewrite
+answeri,j,1 into answeri,j,2 with the following Two-Stage Rewriting Prompt. For image i we
+then select the best answeri,j,2 over j, according to RadCliQ, resulting in the best answeri,
+and the corresponding thinkingi. We then use (thinkingi, answeri) as a “Two-Stage“ cold-
+start datapoint.
+30
+
+===== PAGE 31 =====
+RadVLM-GRPO
+Two-Stage Rewriting Prompt
+You are a radiology expert.
+You are given a full radiology report.
+Your task is to generate the Findings
+only.
+Requirements for the Findings:
+- Output exactly one unstructured paragraph of Findings text only.
+- Do not include any label such as ”Findings:”, no headers, no section titles, no
+bullets, no tables.
+- Do not include explanations.
+- Use concise, natural clinical language with objective, declarative sentences.
+- Describe only visible imaging features. Do not include differential diagnoses, do
+not include disease labels that are not explicitly present in the original report, do
+not include management, do not include overall impressions.
+- Lead with devices and any urgent or acute abnormalities when present.
+- Include salient positive findings and relevant negatives that are documented in the
+original report.
+- Use standard radiology phrasing consistent with real radiology reports.
+- Write the Findings in the same language as the input report.
+- Do not add information that is not supported by the original report.
+Do not
+hallucinate findings.
+Radiology report:
+“““
+{answeri,j,1}
+“““
+31

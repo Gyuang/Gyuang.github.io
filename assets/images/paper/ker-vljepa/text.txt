@@ -1,0 +1,1445 @@
+
+===== PAGE 1 =====
+1
+Curriculum-Driven 3D CT Report Generation via
+Language-Free Visual Grafting and
+Zone-Constrained Compression
+V. K. Cody Bumgardner, Mitchell A. Klusty, Mahmut S. Gokmen, and Evan W. Damron
+Center for Applied Artificial Intelligence, University of Kentucky, Lexington, KY 40506 USA
+{cody, mitchell.klusty, m.gokmen, Evan.Damron}@uky.edu
+Abstract—Automated radiology report generation from three-
+dimensional computed tomography (CT) volumes remains a
+formidable challenge due to the extreme sequence lengths of
+volumetric data, severe class imbalance between normal and
+pathological findings, and the tendency of large language models
+(LLMs) to ignore grafted visual tokens in favor of linguistic
+priors. We present Ker-VLJEPA-3B, a four-phase curriculum
+learning framework for free-text report generation from thoracic
+CT volumes. A frozen, self-supervised visual encoder produces
+representations unconstrained by text labels or language model
+objectives, and a phased training curriculum progressively adapts
+a Llama 3.2 3B decoder to ground its output in these visual
+features. The visual backbone (LeJEPA ViT-Large) is trained
+entirely via self-supervised joint-embedding prediction on un-
+labeled CT volumes, with no text supervision of any kind.
+Unlike contrastive vision-language encoders (CLIP, BiomedCLIP)
+that entangle visual representations with linguistic biases from
+training, our language-free backbone produces modality-pure
+representations optimized solely for visual understanding. All
+vision-language alignment is deferred to the curriculum’s bridge
+and generation phases, enabling principled control over when
+and how modalities interact. This decoupled design is modality-
+agnostic: the same framework can integrate any self-supervised
+encoder, whether trained on imaging, genomic, or sensor data,
+into a language model without requiring paired text during
+foundation model training. Our approach further introduces
+several methodological innovations: (1) zone-constrained cross-
+attention that compresses variable-length slice embeddings into
+32 spatially-grounded visual tokens preserving anatomical lo-
+calization; (2) PCA whitening of anisotropic LLM embeddings
+enabling effective contrastive alignment; (3) a positive-findings-
+only training strategy that eliminates posterior collapse caused
+by normal-text gradient domination; (4) a warm bridge ini-
+tialization technique that transfers converged vision-to-LLM
+projection weights across curriculum phases; and (5) selec-
+tive cross-attention freezing with elastic weight consolidation
+for catastrophic forgetting prevention during narrative fine-
+tuning. Evaluated on the CT-RATE benchmark (2,984 validation
+volumes, 18 thoracic abnormality classes) using the official
+RadBERT label extraction protocol, Ker-VLJEPA-3B achieves
+a macro F1 of 0.429, surpassing the previous state-of-the-art
+(U-VLM, macro F1 = 0.414) by 3.6%, with per-class threshold
+optimization yielding macro F1 = 0.448 (+8.2%). A comprehensive
+visual token ablation study confirms that 56.6% of generation
+quality derives from patient-specific visual content. Code and
+model weights are publicly available.1
+Index Terms—Computed tomography, medical report gener-
+ation, multimodal learning, vision-language models, embedding
+grafting, cross-attention, curriculum learning.
+1https://huggingface.co/IBI-CAAI/Ker-VLJEPA-3B
+I. INTRODUCTION
+Thoracic computed tomography (CT) is a cornerstone of
+modern diagnostic radiology, generating volumetric datasets
+that encode rich three-dimensional anatomical and patholog-
+ical information across hundreds of axial slices. The inter-
+pretation of these volumes and the production of structured
+narrative reports constitutes one of the most labor-intensive
+tasks in clinical radiology, contributing to radiologist burnout
+and diagnostic variability [1]. Automated report generation
+from 3D CT data has the potential to streamline clinical
+workflows, improve consistency, and serve as a decision-
+support tool for radiologists.
+Recent advances in vision-language models (VLMs) have
+demonstrated impressive capabilities in natural image cap-
+tioning and two-dimensional chest X-ray interpretation [6],
+[7]. However, extending these approaches to 3D thoracic
+CT introduces fundamental challenges that remain largely
+unsolved. First, volumetric imaging generates massive data
+structures where a single scan may contain 300–600 axial
+slices, each encoded as a high-dimensional feature vector,
+creating sequence lengths that far exceed the context windows
+of standard large language models (LLMs). Second, critical
+pathologies such as small lung nodules or early interstitial
+changes may occupy less than 1% of the total voxel space,
+creating extreme class imbalance that biases models toward
+generating safe, generic normal-anatomy descriptions. Third,
+when visual tokens are grafted into a pre-trained LLM’s em-
+bedding stream, the overwhelming strength of linguistic priors
+causes the model to attend primarily to textual context while
+largely ignoring the injected visual information, a phenomenon
+we term posterior collapse in the generative setting.
+Existing approaches to 3D CT report generation have
+achieved varying degrees of success on the CT-RATE bench-
+mark [1]. CT-CLIP [2] demonstrated zero-shot classifica-
+tion via contrastive pre-training (macro F1 = 0.194). CT-
+CHAT [3] fine-tuned a vision-language model achieving
+macro F1 = 0.287. BTB3D [4] employed a custom 3D encoder
+(macro F1 = 0.354). Most recently, U-VLM [5] established
+the state-of-the-art at macro F1 = 0.414, introducing two key
+innovations: progressive training from segmentation to classi-
+fication to report generation, and multi-layer visual injection
+that routes hierarchical U-Net encoder features to correspond-
+ing language model layers. Our work builds upon U-VLM’s
+arXiv:2603.23308v1  [cs.CV]  24 Mar 2026
+
+===== PAGE 2 =====
+2
+insight that multi-layer injection improves report quality, ex-
+tending it with Flamingo-style gated cross-attention [6] at
+intermediate LLM layers and continuous visual grounding
+during autoregressive decoding. However, none of the existing
+methods explicitly address the posterior collapse problem that
+arises from the severe gradient imbalance between normal and
+pathological text tokens during generative training.
+A further limitation shared by all prior approaches is their
+reliance on vision encoders trained with text supervision. CT-
+CLIP and CT-CHAT use contrastive image-text pre-training;
+U-VLM uses a segmentation-pretrained U-Net whose training
+labels are themselves derived from clinical annotations. In
+all cases, linguistic or semantic biases are baked into the
+visual representations before generation training begins. This
+entanglement means the encoder may under-represent visually
+salient features that are rarely described in text, and the
+resulting representations are tightly coupled to the specific
+language task for which they were trained.
+In this work, we present Ker-VLJEPA-3B, a Vision-
+Language extension of the KerJEPA [15] family of kernel-
+regularized Joint-Embedding Predictive Architectures [16],
+realized as a four-phase curriculum learning framework that
+systematically addresses these challenges through a series
+of methodological innovations. A central design principle is
+the complete decoupling of visual representation learning
+from language: the visual backbone (LeJEPA ViT-Large [19],
+[20]) is trained entirely via self-supervised joint-embedding
+prediction on unlabeled CT volumes, with no text, labels,
+or linguistic signal of any kind. This produces modality-
+pure visual representations optimized solely for capturing
+anatomical and pathological structure. All vision-language
+alignment is deferred to the curriculum’s bridge and generation
+phases, where it can be controlled precisely. Because the
+framework imposes no assumptions about the modality of the
+input encoder, the same curriculum and bridge architecture
+could integrate any self-supervised foundation model, whether
+trained on imaging, genomic sequences, or time-series sensor
+data, into a language model without requiring paired text
+during foundation model training. Our key contributions are:
+• Language-free,
+modality-agnostic
+architecture: we
+demonstrate that a visual encoder trained with purely
+self-supervised objectives (no text, no labels) can be
+effectively grafted into a pre-trained LLM via a curricu-
+lum bridge, achieving state-of-the-art report generation
+without any text supervision in the foundation model.
+This decoupled design generalizes beyond imaging to any
+modality for which a self-supervised encoder exists.
+• Zone-constrained cross-attention for volumetric com-
+pression: a spatial attention mechanism that compresses
+variable-length CT slice embeddings into 32 fixed-size
+visual tokens, where each token attends exclusively to
+slices within its anatomical zone along the z-axis, pre-
+serving spatial localization of pathology.
+• PCA whitening for contrastive alignment: we identify
+and resolve the catastrophic anisotropy of LLM text em-
+beddings (mean pairwise cosine similarity = 0.949) that
+renders standard contrastive learning ineffective, achiev-
+ing an 11.8× improvement in discriminability through
+projection to an isotropic 256-dimensional space.
+• Positive-findings-only training: a training data refor-
+mulation that eliminates the 90% normal-text gradient
+domination causing posterior collapse, enabling sustained
+generative performance across 15+ training epochs where
+all prior approaches collapsed within 1–4 epochs.
+• Warm bridge initialization: a technique for transferring
+converged vision-to-LLM projection and cross-attention
+weights across curriculum phases, providing immediate
+convergence (epoch 1 F1 = 0.425 vs. 0.360 cold start) and
+enabling the model to surpass rather than merely recover
+to prior-phase performance.
+• Selective cross-attention freezing with EWC: a prin-
+cipled approach to narrative fine-tuning that decouples
+visual grounding (cross-attention) from linguistic style
+(LoRA), preserving pathology detection while adapting
+to authentic radiologist prose.
+• Comprehensive
+ablation
+study
+demonstrating
+that
+56.6% of generation quality derives from patient-specific
+visual token content, with semantic binding analysis
+showing 2× stronger visual contribution on pathology-
+specific words.
+Ker-VLJEPA-3B achieves macro F1 = 0.429 on the CT-
+RATE benchmark (2,984 validation volumes), surpassing U-
+VLM by +3.6%, establishing a new state-of-the-art for auto-
+mated 3D CT report generation.
+II. RELATED WORK
+A. Vision-Language Models in Medical Imaging
+The integration of visual and linguistic modalities for med-
+ical image analysis has progressed rapidly from contrastive
+pre-training approaches [7] to generative vision-language mod-
+els [6]. In the medical domain, BiomedCLIP and related
+models demonstrated the value of domain-specific contrastive
+pre-training for 2D radiograph understanding. For chest X-ray
+report generation, models such as CheXpert and R2Gen es-
+tablished effective encoder-decoder pipelines. However, these
+2D approaches fundamentally cannot capture the volumetric
+spatial relationships critical for CT interpretation.
+B. 3D CT Understanding and Report Generation
+The CT-RATE dataset [1] established the first large-scale
+benchmark for 3D CT report generation, comprising 50,188
+thoracic CT volumes with 18 binary abnormality labels and
+radiologist-authored narrative reports. CT-CLIP [2] adapted
+contrastive learning to 3D volumes via a ViT-based encoder,
+achieving zero-shot classification but not text generation. CT-
+CHAT [3] extended this with a chat-style VLM interface
+but showed limited clinical accuracy (macro F1 = 0.287).
+BTB3D [4] introduced 3D Haar wavelet compression with
+causal convolutions to produce compact frequency-aware to-
+kens (macro F1 = 0.354). U-VLM [5] proposed hierarchi-
+cal vision-language modeling with a segmentation-pretrained
+U-Net encoder and multi-layer visual injection that routes
+encoder features at different scales to corresponding LLM
+layers, achieving macro F1 = 0.414. Our multi-layer injection
+strategy differs from U-VLM’s in two respects: we employ
+
+===== PAGE 3 =====
+3
+Flamingo-style gated cross-attention adapters [6] rather than
+direct feature routing, and our cross-attention hooks fire on
+every autoregressive decode step, providing continuous visual
+grounding during generation rather than only at prefill.
+Beyond the CT-RATE benchmark, the broader 3D medical
+VLM field has developed several paradigms for handling
+volumetric data. Med3DVLM [22] employs decomposed 3D
+convolutions (DCFormer) coupled with a dual-stream MLP-
+mixer projector that blends low-level spatial features with
+high-level semantic representations. M3D-LaMed [23] uses a
+3D spatial pooling perceiver that reconstructs visual tokens
+into 3D coordinates before aggressive cross-attention compres-
+sion. Med-2E3 [24] introduces text-guided inter-slice scoring,
+where a dot-product attention mechanism dynamically weights
+slice relevance conditioned on the clinical query. SCALE-
+VLP [25] proposes soft-weighted contrastive alignment that
+replaces binary matching with continuous, semantics-aware
+distances. RadZero3D [26] adapts the V-JEPA 2 video foun-
+dation model by treating CT depth as a temporal sequence.
+A critical observation is that all of these methods employ
+vision encoders trained with some form of text supervi-
+sion, including contrastive image-text pre-training (CT-CLIP,
+Med3DVLM, SCALE-VLP), segmentation labels derived from
+clinical annotations (U-VLM), or text-conditioned adaptation
+(RadZero3D). Furthermore, most require either specialized 3D
+encoders with cubic computational scaling [22], aggressive
+slice filtering to reduce the input to a manageable size [24],
+or fixed-resolution volume resizing that discards native spa-
+tial information. Our approach fundamentally differs on both
+axes: the visual backbone is trained with no text supervision
+whatsoever, and all slices are processed without filtering or
+resizing via zone-constrained cross-attention that compresses
+variable-length sequences into exactly 32 spatially-grounded
+tokens.
+C. Embedding Grafting and Vision-Language JEPAs
+The technique of grafting non-textual embeddings into the
+latent space of decoder-only transformers was pioneered by
+Flamingo [6], which introduced gated cross-attention layers
+interleaved with frozen LLM blocks. Subsequent work in
+LLaVA, MiniGPT-4, and Qwen-VL demonstrated that visual
+embeddings can be effectively projected into the LLM’s token
+embedding space. Yue et al. [21] formalized the zero-shot
+grafting problem and showed that LLM surrogates can bridge
+vision encoders to language decoders without paired training
+data, highlighting the importance of manifold alignment in
+the grafting process. Recently, VL-JEPA [13] extended the
+JEPA paradigm to vision-language modeling by predicting
+continuous text embeddings rather than autoregressive to-
+kens, achieving strong performance on video understanding
+with 50% fewer trainable parameters. Concurrently, LLM-
+JEPA [14] demonstrated that embedding-space training ob-
+jectives can outperform standard token-space reconstruction
+for LLM fine-tuning, providing theoretical motivation for
+our use of a JEPA embedding prediction loss as a non-
+autoregressive semantic anchor alongside the language mod-
+eling objective. While VL-JEPA operates on natural video
+with a discriminative embedding objective and LLM-JEPA
+targets unimodal language tasks, our work extends the JEPA
+framework in a complementary direction: we combine kernel-
+regularized embedding prediction [15] with autoregressive text
+generation for the multimodal medical domain, where free-text
+narrative output from visual input is required. Furthermore,
+adapting embedding grafting to 3D medical volumes, where
+the visual token count must be carefully controlled to avoid
+overwhelming the LLM’s context window, requires specialized
+compression mechanisms and multi-phase training strategies
+not addressed by existing frameworks.
+D. Curriculum Learning and Continual Learning
+Curriculum learning [12] has shown consistent benefits
+across machine learning domains by organizing training from
+simpler to more complex tasks. In multimodal settings, phased
+training has been used to first align representations and then
+train generative capabilities. Our four-phase curriculum ex-
+tends this principle with innovations in cross-phase weight
+transfer (warm bridge) and selective parameter freezing. Elas-
+tic Weight Consolidation (EWC) [8] provides a principled
+mechanism for continual learning by adding a quadratic
+penalty that discourages important parameters from deviating
+from previously learned values, which we employ to prevent
+catastrophic forgetting during narrative fine-tuning.
+III. METHODS
+A. Problem Formulation
+Given a thoracic CT volume, we first extract per-slice visual
+features using a pre-trained Guided-Chest-CT-LeJEPA [19],
+[20] backbone, yielding a sequence of slice embeddings S =
+{s1, s2, . . . , sN} ∈RN×dv where N ≤600 and dv = 1024.
+The objective is to generate a free-text narrative radiology
+report y = (y1, y2, . . . , yT ) that accurately describes the
+thoracic findings present in the scan. Clinical accuracy is
+evaluated by extracting 18 binary abnormality labels from
+the generated text using a RadBERT classifier and computing
+macro-averaged F1 against ground-truth labels.
+B. Architecture Overview
+Ker-VLJEPA-3B comprises three main components: (1) a
+visual encoder that compresses variable-length slice embed-
+dings into fixed-size visual tokens, (2) a JEPA predictor that
+projects visual tokens into the LLM’s embedding space, and
+(3) a Llama 3.2 3B [18] decoder with LoRA [11] adapters and
+Flamingo-style gated cross-attention adapters at intermediate
+layers. Fig. 1 illustrates the complete architecture.
+1) Visual Encoder: Zone-Constrained Cross-Attention: Ex-
+isting approaches to volumetric compression face a fundamen-
+tal tradeoff between computational cost and spatial fidelity.
+3D spatial pooling perceivers [23] reconstruct tokens into
+3D coordinates before cross-attention compression, preserv-
+ing topology but producing large token counts that strain
+LLM context windows. Dual-stream MLP-mixers [22] blend
+multi-scale features but rely on computationally expensive
+decomposed 3D convolutions in the base encoder and provide
+
+===== PAGE 4 =====
+4
+CT-LeJEPA
+ViT-Large · 1024-d
+frozen, N ≤ 600 slices
+Zoned Cross-Attention
+Zone 1 (apex)
+Zones 2 … 31
+Zone 32 (base)
+16 heads · Z-positional encoding
+→ 32 visual tokens (1024-d)
+Global
+Self-Attention
+inter-zone comm.
+32 × 1024
+JEPA Predictor
+Linear 1024 → 3072
+SVD init · LayerNorm
+NormCalibrator
+α = ‖e_txt‖ / ‖v‖
+Auxiliary Supervision
+JEPA Embed (256-d) · Classifier (18-cls)
+MMD · InfoNCE · Focal · JEPA cosine · EWC
+32 visual
+tokens
+(3072-d)
+Llama 3.2 3B + LoRA (r=16)
+Embed
+Graft
+L 1–6
+Layer 7
+Gated X-Attn
+Layer 14
+Gated X-Attn
+Layer 21
+Gated X-Attn
+L 22+
+Generated
+Report
+Visual tokens injected at each decode step
+Autoregressive decoding
+Input (frozen)
+Visual Encoder
+Bridge
+LLM
+Gated Cross-Attn
+Frozen
+Visual injection
+Fig. 1: Overview of the Ker-VLJEPA-3B architecture. CT slice embeddings from a frozen LeJEPA ViT-Large are compressed
+into 32 spatially-grounded tokens via zone-constrained cross-attention, projected to LLM space via the JEPA predictor with
+norm calibration, and grafted into Llama 3.2 3B at both the embedding level and intermediate layers (7, 14, 21) through gated
+cross-attention adapters. Auxiliary branches provide supervision via the JEPA embedding head (256-d whitened space) and an
+18-class classifier.
+no explicit spatial grounding in the output tokens. Wavelet-
+based approaches [4] operate in the frequency domain but
+require causal convolution architectures. Text-guided inter-
+slice scoring [24] achieves effective filtering but discards slices
+entirely and requires a paired text query at inference. Most
+critically, all of these methods either resize volumes to a fixed
+3D grid (discarding native resolution) or apply heuristic slice
+selection that risks eliminating diagnostically relevant slices.
+We introduce zone-constrained cross-attention, a compres-
+sion mechanism that processes all input slices at native reso-
+lution without filtering, resizing, or specialized 3D encoders.
+The mechanism enforces an inductive bias reflecting the
+spatial structure of CT volumes: the z-axis is partitioned into
+32 contiguous anatomical zones, and each learnable region
+query attends exclusively to slices within its zone, producing
+exactly 32 spatially-grounded visual tokens regardless of the
+input sequence length (N ≤600). This yields an aggressive
+compression ratio (up to ∼19:1) while preserving anatomical
+localization by construction: token 0 always corresponds to
+the thoracic apex and token 31 to the base, a property no
+competing projector architecture guarantees.
+The input slice embeddings are first augmented with phys-
+ical z-positional encoding derived from DICOM z-spacing
+metadata:
+s′
+i = si + PE(zi)
+(1)
+where PE(·) denotes sinusoidal positional encoding computed
+from the physical z-coordinate of slice i.
+We define K = 32 learnable region queries {qk}K
+k=1,
+initialized via SVD of actual slice embeddings from the
+training set. The z-axis is partitioned into K contiguous zones,
+with boundaries computed dynamically based on the number
+of valid slices N in each volume:
+Zk =
+
+i :
+(k −1) · N
+K
+
+≤i <
+k · N
+K
+
+(2)
+Each region query qk attends exclusively to slices within
+its zone Zk via multi-head cross-attention (H = 16 heads,
+d = 1024):
+vk = MHA(qk, {s′
+i}i∈Zk, {s′
+i}i∈Zk)
+(3)
+yielding K
+= 32 visual tokens V = {v1, . . . , v32} ∈
+R32×1024.
+A subsequent global self-attention layer (TransformerEn-
+coderLayer, 16 heads) enables inter-zone communication:
+V′ = TransformerEncoder(V)
+(4)
+2) JEPA Predictor and Norm Calibration: The visual to-
+kens are projected from the visual encoder’s representation
+space (dv = 1024) to the LLM’s hidden dimension (dℓ=
+3072) via the JEPA predictor:
+ˆV = LN(Linear(Dropout(V′)))
+(5)
+where the linear layer is initialized via SVD of text embedding
+principal components to provide a favorable starting geometry.
+A critical implementation detail is norm calibration. Pre-
+trained LLM text embeddings have a characteristic norm
+distribution (measured mean norm = 1.1484 for Llama 3.2 3B).
+Visual tokens with significantly different norms are treated
+as anomalous inputs by the LLM’s attention mechanism,
+degrading performance. The NormCalibrator applies a learned
+scalar:
+˜V = α · ˆV,
+α = ∥etext∥
+∥ˆV∥
+(6)
+where α is recalibrated at initialization and periodically during
+training.
+
+===== PAGE 5 =====
+5
+TABLE I: Effect of PCA Whitening on Text Embedding
+Quality
+Metric
+Before (3072d)
+After (256d)
+Mean pairwise cosine sim.
+0.949
+−0.001
+Discriminability (d′)
+1.36
+16.03
+Variance retained
+—
+97.3%
+3) Embedding Grafting and Multi-Layer Injection: The 32
+norm-calibrated visual tokens are grafted into the LLM’s input
+via a chat template containing 32 <|visual_region|>
+placeholder tokens. At the embedding level, placeholder token
+embeddings are replaced with ˜V via differentiable mask-based
+scattering.
+Beyond input-level grafting, visual information is injected
+at LLM layers 7, 14, and 21 via gated cross-attention adapters
+following the Flamingo architecture [6]. At each injection
+layer l ∈{7, 14, 21}:
+h′
+l = hl + MHAxattn
+l
+(hl, Linearl( ˜V), Linearl( ˜V))
+(7)
+where Linearl is a per-layer projector mapping visual tokens to
+layer l’s representation space, and MHAxattn
+l
+contains learned
+Q/K/V/O projections with Xavier initialization (gain = 0.3).
+Critical implementation detail: During autoregressive gen-
+eration, the cross-attention hooks must fire on every decode
+step, not just during the prefill pass. We identified and cor-
+rected a bug where a sequence-length guard caused cross-
+attention to be skipped during token-by-token generation, re-
+sulting in a 2.5× generation F1 improvement (0.122 →0.304).
+4) JEPA Embedding Head and PCA Whitening: To provide
+non-autoregressive semantic supervision, we train a JEPA
+embedding head that projects pooled visual tokens into a
+whitened text embedding space:
+zv = Linear2(GELU(LN(Linear1( ¯V))))
+(8)
+where ¯V = mean( ˜V) ∈R3072 and zv ∈R256.
+Raw LLM text embeddings suffer from severe anisotropy,
+a well-documented phenomenon where embeddings cluster in
+a narrow cone with nearly uniform pairwise similarity. We
+measured catastrophic anisotropy in Llama 3.2 3B layer 14
+representations of CT-RATE reports (Table I), rendering stan-
+dard contrastive learning (InfoNCE) ineffective due to a nearly
+flat loss surface.
+We resolve this by applying PCA whitening: the top 256
+principal components of 22,773 training report embeddings
+are used to project from the anisotropic 3072-d space to an
+isotropic 256-d space, achieving an 11.8× improvement in
+discriminability (d′ = 1.36 →16.03) while retaining 97.3%
+of variance.
+C. Four-Phase Curriculum Learning
+The training pipeline follows a four-phase curriculum that
+progressively builds capability from visual discrimination to
+free-text generation (Fig. 2).
+1) Phase 1: Visual Alignment (Classification-Driven):
+Phase 1 trains the visual encoder to produce discriminative
+tokens for 18-class abnormality detection. The LLM and JEPA
+predictor are frozen. The combined loss is:
+L1 = λclsLBCE + λmilLMIL + λorthLorth + λmmdLMMD
+(9)
+with weights λcls = 1.5, λmil = 1.0, λorth = 1.0, λmmd = 0.5.
+The classification loss uses binary cross-entropy with per-
+class positive weights (wc = min(nneg/npos, 10)). The MIL
+(multiple instance learning) loss applies max-pooling over
+region tokens before classification, providing a secondary
+learning signal. The orthogonality loss encourages diverse
+visual token representations.
+Per-condition MMD alignment. Following the KerJEPA
+framework [15], which established that kernel-based discrep-
+ancy regularizers yield provable gains in training stability
+for joint-embedding architectures, we introduce a distribu-
+tional alignment loss using Maximum Mean Discrepancy
+(MMD) [10] with an inverse multi-quadratic (IMQ) kernel
+in the 256-d whitened space. For each sample, the 32 visual
+tokens are matched against that sample’s K positive-condition
+text embeddings:
+LMMD = E[k(zv, z′
+v)] −2E[k(zv, zt)] + E[k(zt, z′
+t)]
+(10)
+where k(x, y) = (1 + α∥x −y∥2)−1/2 with α = 4γ/(2D −
+3) ≈0.039 for γ = 5.0, D = 256. Normal volumes (K = 0)
+receive no MMD loss.
+2) Phase 2: Contrastive Bridge Training: Phase 2 aligns
+visual and text representations via InfoNCE contrastive learn-
+ing with cross-GPU negative mining (512 effective negatives
+from 8 GPUs) and a learned temperature parameter (CLIP-
+style, initialized at τ = 0.10):
+LNCE = −log
+exp(sim(zi
+v, zi
+t)/τ)
+PB
+j=1 exp(sim(ziv, zj
+t)/τ)
+(11)
+Critically, Phase 2 uses positive-findings-only text for con-
+trastive targets. Aligning visual tokens against raw reports
+(90% normal text) would train the visual encoder to map
+all scans toward a uniform “normal” embedding. Using only
+positive-condition text descriptions ensures that visual-text
+alignment captures pathology-discriminative information.
+3) Phase 3: Generative Fine-Tuning: Phase 3 is the most
+critical phase, training the model to generate free-text reports.
+The visual encoder is frozen; trainable parameters include the
+JEPA predictor, LoRA adapters, cross-attention adapters, and
+layer projectors.
+The posterior collapse problem. In all early experimental
+runs, the generation F1 peaked at epochs 1–4 and then
+collapsed to ∼0.15 as the LLM converged to generating
+fluent, generic normal-anatomy descriptions using language
+priors alone (Table II). The root cause is a structural gradient
+imbalance: approximately 90% of tokens in raw radiology
+reports describe normal anatomy (“Trachea and both main
+bronchi are open...”), overwhelming the 10% that describe
+pathological findings. The language modeling loss gradient is
+thus dominated by normal-text tokens, teaching the LLM to
+ignore visual features.
+
+===== PAGE 6 =====
+6
+Four-Phase Curriculum Learning Pipeline
+Phase 1
+Visual Alignment
+(Classification-Driven)
+Zoned Cross-Attention
+Global Self-Attention
+Classification Head
+LeJEPA ViT-L (frozen)
+Llama 3.2 3B (frozen)
+Losses:
+BCE + MIL + Orth + MMD
+Best Result:
+Cls F1 = 0.499
+AUC = 0.812
+20 epochs, 8× H200
+Phase 2
+Contrastive Bridge
+(Positive-Findings Only)
+NormCalibrator
+PCA Whitening Layer
+JEPA Embedding Head
+Visual Encoder (frozen)
+Llama 3.2 3B (frozen)
+Losses:
+InfoNCE + MMD
+(512 cross-GPU negatives)
+Best Result:
+Cls F1 = 0.506
+AUC = 0.816
+24 epochs, 8× H200
+Phase 3
+Generative Fine-Tuning
+(Positive-Findings Only)
+JEPA Predictor
+LoRA Adapters (392 tensors)
+Cross-Attn Adapters (×3)
+Layer Projectors (×3)
+Visual Encoder (frozen)
+Losses:
+LM + Focal + JEPA + LLM-cls
+Best Result:
+Gen F1 = 0.446
+9 epochs, 8× H200
+LoRA frozen after ep. 6
+Phase 4
+Narrative Adaptation
+(Raw Reports + EWC)
+LoRA Adapters
+Layer Projectors
+Visual Encoder (frozen)
+Cross-Attn (frozen + EWC)
+Losses:
+LM + Focal + JEPA
++ EWC (λ=500)
+Best Result (SOTA):
+Gen F1 = 0.429
+(0.448 optimized)
+8 epochs, 8× H200
+Warm Bridge Init
+Transfers 27 bridge + 392 LoRA params
+from prior Phase 3 → new Phase 3
+Legend
+Trainable component
+Frozen component
+Warm bridge transfer
+Fig. 2: Four-phase curriculum learning pipeline. Each phase progressively builds capability from visual discrimination (Phase 1)
+through contrastive alignment (Phase 2) to free-text generation (Phase 3) and narrative adaptation (Phase 4). Colored boxes
+indicate trainable components; dashed boxes indicate frozen components. The warm bridge initialization (red dashed arrow)
+transfers 27 converged bridge components and 392 LoRA tensors from a prior Phase 3 run, providing immediate convergence
+and eliminating the cold-start problem.
+TABLE II: Phase 3 Posterior Collapse: Historical Experimen-
+tal Comparison
+Run
+Best F1
+Epochs to
+Outcome
+collapse
+Baseline
+0.198
+2
+Never sustained
++ Cross-attn fix
+0.304
+1
+Immediate collapse
++ Vis. dropout
+0.262
+1
+Faster collapse
++ LLM visual cls.
+0.259
+4
+Slight delay
++ Pos.-findings
+0.427
+none
+Sustained >0.40
++ Warm bridge
+0.446
+none
+New SOTA
+Solution: positive-findings-only training. Instead of raw
+narrative reports, the training text consists of per-class natural
+language narrative segments for only the positive conditions
+present in each scan. This eliminates normal-text tokens en-
+tirely, so every token the model trains on is clinically relevant
+to a finding the visual encoder detected. The order of condi-
+tions is randomized per sample to prevent memorizing a fixed
+sequence. Normal volumes (∼35–40% of data) receive a short
+template: “No significant thoracic abnormalities identified.”
+The Phase 3 loss combines language modeling, focal clas-
+sification, and JEPA embedding prediction:
+L3 = LLM + λfclsLfocal + λjepaLJEPA + λvclsLLLM-cls
+(12)
+where Lfocal = −(1 −pt)γ log(pt) [17] with γ
+= 2.0,
+λvcls = 3.0, and the LLM visual classification loss operates
+on last-layer hidden states to force visual information preser-
+vation through all LLM layers. Label masking ensures loss is
+computed only on assistant response tokens.
+Additional Phase 3 training techniques include: LoRA
+freezing after epoch 6 (preventing language-prior shortcuts),
+ReduceLROnPlateau on gen f1 (patience = 3, factor = 0.5), and
+adaptive projector learning rate scaling (LARS-inspired, 1–
+30× range).
+Warm bridge initialization. A fundamental problem in
+curriculum-based multimodal training is that transitioning be-
+tween phases resets unmapped parameters. In Phase 3, the
+27 bridge components (3 layer projectors, 21 cross-attention
+adapter parameters) and 392 LoRA tensors are absent from
+the Phase 2 checkpoint and initialize randomly, regardless
+of Phase 2 quality. We verified this empirically: improving
+Phase 2 with InfoNCE + MMD but using a cold bridge yielded
+F1 = 0.424, slightly worse than the baseline 0.427.
+The warm bridge technique loads converged bridge compo-
+nents from a prior Phase 3 run:
+1) 3 layer projectors (visual→LLM linear maps)
+2) 3 cross-attention adapters (Q/K/V/O projections + layer
+norms, 21 parameter tensors)
+3) 392 LoRA weight tensors
+After loading Phase 2 weights, the warm-init code selectively
+
+===== PAGE 7 =====
+7
+TABLE III: Phase 4 Experimental History: Discovering the
+Correct Configuration
+Ver.
+Configuration
+Best F1
+v1
+No freeze, no EWC
+0.297↓
+v2
+Freeze LoRA (3 epochs)
+0.289↓
+v3
+EWC + JEPA + MMD
+0.274
+v4
+EWC only
+0.304↓
+v5
+Freeze cross-attn + EWC
+0.418
+overwrites only these 416 bridge components. The visual
+tokens from the improved Phase 2 are in a sufficiently similar
+distribution (same architecture, same training objectives) that
+the converged bridge transfers effectively.
+4) Phase 4: Raw Narrative Fine-Tuning: Phases 2–3 train
+on positive-findings-only text to avoid gradient domination.
+However, the CT-RATE evaluation expects full narrative re-
+ports including negative findings. Phase 4 fine-tunes the model
+on raw radiologist narrative text (verbatim Findings EN from
+CT-RATE) to produce authentic clinical prose while preserving
+pathology detection.
+The catastrophic forgetting challenge. Five experimental
+iterations were required to find a working configuration (Ta-
+ble III). The key insight is that cross-attention adapters govern
+visual grounding (what the model attends to), while LoRA
+governs generative style (how the model generates text). When
+Phase 4 trains on raw narrative text (90% normal anatomy), the
+language modeling gradient corrupts cross-attention attention
+patterns, destroying pathology detection.
+Solution:
+selective
+freezing
+with
+EWC.
+Cross-
+attention
+adapters
+and
+layer
+projectors
+are
+frozen
+(requires_grad=False).
+Only
+LoRA
+adapters
+are
+trainable, constrained by EWC:
+L4 = LLM + λclsLfocal + λewc
+X
+i
+(θLoRA
+i
+−θP3
+i )2
+(13)
+where θP3
+i
+are Phase 3 LoRA reference weights captured at
+training start, and λewc = 100. The ultra-conservative learning
+rate (5 × 10−7, 40× lower than Phase 3) provides additional
+stability.
+IV. EXPERIMENTS
+A. Dataset and Evaluation Protocol
+CT-RATE benchmark. We evaluate on CT-RATE [1],
+comprising ∼46,400 training and ∼3,000 validation thoracic
+CT volumes with 18 binary abnormality labels and radiologist-
+authored narrative reports. After filtering for available embed-
+dings, 2,984 validation volumes are used for evaluation.
+Evaluation protocol. Following the established protocol
+used by CT-CLIP [2], CT-CHAT [3], BTB3D [4], and U-
+VLM [5]: (1) generate free-text narrative reports from CT
+volumes (temperature = 0.6, top p = 0.9); (2) extract 18 bi-
+nary labels using the official CT-RATE RadBERT [9] clas-
+sifier; (3) compute macro-averaged F1, precision, and recall
+against ground-truth labels. The RadBERT classifier achieves
+macro F1 = 0.982 on ground-truth reports, confirming it is not
+a bottleneck.
+Hardware. All experiments use 8× NVIDIA H200 GPUs
+with DDP via HuggingFace Accelerate, bf16 mixed precision.
+TABLE IV: Comparison with State-of-the-Art on CT-RATE
+Benchmark (2,984 Validation Volumes)
+Method
+Macro F1
+Macro Prec
+Macro Rec
+CT-CLIP [2]
+0.194
+—
+—
+CT-CHAT [3]
+0.287
+—
+—
+BTB3D [4]
+0.354
+—
+—
+U-VLM [5]
+0.414
+0.491
+0.429
+Ker-VLJEPA-3B (P3)
+0.422
+0.380
+0.517
+Ker-VLJEPA-3B (P4)
+0.429
+0.389
+0.524
+Ker-VLJEPA-3B (P4, opt.)
+0.448
+0.380
+0.585
+B. Implementation Details
+Visual encoder input. CT volumes are pre-processed by the
+Guided-Chest-CT-LeJEPA [19], [20] backbone, a ViT-Large
+(vit_large_patch14_dinov2 architecture, trained from
+scratch) that was self-supervised on the CT-RATE training
+split using a Latent-Euclidean Joint-Embedding Predictive
+Architecture with anatomy-guided semi-3D cropping and an
+auxiliary 118-class organ prediction objective. Each axial slice
+is encoded into a 1024-dimensional embedding; a volume of
+up to 600 slices yields the input sequence S ∈RN×1024. The
+LeJEPA weights are frozen throughout all four training phases.
+LLM backbone. Llama 3.2 3B Instruct [18] serves as the
+frozen language model backbone. LoRA [11] adapters (r =
+16) are applied to all attention layers. Gated cross-attention
+adapters are injected at layers 7, 14, and 21.
+Phase-specific hyperparameters. Phase 1: 20 epochs,
+batch size 32, LR = 5 × 10−5, cosine decay. Phase 2: 30 max
+epochs (early stopped at 24, patience = 8), batch size 64/GPU
+(512 effective), LR = 3 × 10−5. Phase 3: 50 max epochs (best
+at epoch 9 with warm bridge), batch size 8, LR = 2 × 10−5.
+Phase 4: 30 max epochs (best at epoch 8), batch size 8,
+LR = 5 × 10−7.
+Generation
+configuration.
+Temperature = 0.6
+(confirmed best via hyperparameter sweep), top p = 0.9,
+repetition penalty = 1.15,
+no repeat ngram size = 5,
+max new tokens = 384.
+C. Main Results
+1) Comparison with State-of-the-Art: Table IV presents the
+comparison with existing methods on the CT-RATE bench-
+mark. All methods are evaluated using the identical protocol:
+generate reports, extract labels via the official RadBERT
+classifier, compute macro metrics.
+Ker-VLJEPA-3B Phase 4 achieves macro F1 = 0.429, sur-
+passing U-VLM by +3.6% at the default threshold. The
+improvement is driven primarily by substantially higher re-
+call (+22.1%), while U-VLM maintains a precision ad-
+vantage (+26.2%). Per-class threshold optimization yields
+macro F1 = 0.448 (+8.2% over U-VLM), though this has a data
+leakage caveat as thresholds are optimized on the evaluation
+set.
+2) Per-Phase Progression: Table V shows the progression
+across all four curriculum phases, demonstrating that each
+phase contributes meaningfully to the final result.
+Phase
+1
+achieves
+strong
+classification
+performance
+(F1 = 0.460,
+AUC = 0.811).
+Phase
+2
+contrastive
+training
+
+===== PAGE 8 =====
+8
+TABLE V: Performance Progression Across Curriculum
+Phases (Full Validation Set)
+Phase
+Type
+F1
+Prec
+Rec
+AUC
+1
+Cls.
+0.460
+0.463
+0.551
+0.811
+2
+Cls.
+0.465
+0.490
+0.532
+0.816
+3
+Gen.
+0.422
+0.380
+0.517
+—
+4
+Gen.
+0.429
+0.389
+0.524
+—
+TABLE VI: Cold vs. Warm Bridge Phase 3 Training Compar-
+ison
+Metric
+Cold
+Cold +
+Warm
+Baseline
+Better P2
+Bridge
+Best F1
+0.427 (ep16)
+0.424 (ep7)
+0.446 (ep9)
+Best Precision
+0.391
+0.366
+0.437
+Epoch 1 F1
+0.360
+0.362
+0.425
+Epochs to >0.42
+5
+5
+1
+Val. loss floor
+1.130
+1.069
+1.056
+improves both F1 (+1.1%) and AUC (+0.6%) across all 18
+classes. Phase 3 generation shows a moderate gap between
+classification
+and
+generation
+metrics
+(0.465 →0.422),
+reflecting the inherent difficulty of converting discriminative
+visual features into accurate free-text reports. Critically,
+Phase 4 improves over Phase 3 (0.422 →0.429)—a key
+achievement enabled by our selective freezing strategy, as V1
+(without cross-attention freezing) showed Phase 4 regression
+(0.423 →0.399).
+3) Warm Bridge Effectiveness: Table VI demonstrates the
+dramatic impact of warm bridge initialization on Phase 3
+training dynamics.
+The warm bridge provides immediate convergence: epoch 1
+F1 = 0.425 versus 0.360 for cold start (+18%). Importantly,
+improving Phase 2 quality alone (cold bridge + better P2)
+does not help (F1 = 0.424), demonstrating that the bridge
+reset dominates over representation quality. The warm bridge
+also yields substantially better precision (0.437 vs. 0.391),
+generating fewer false-positive findings.
+4) Per-Class Results: Table VII reports per-class generation
+results for the final model (Phase 4, full validation set).
+Performance varies substantially across conditions, with F1
+ranging from 0.664 (pleural effusion) to 0.203 (interlobular
+septal thickening), correlating with class prevalence and the
+distinctiveness of imaging findings.
+V. ABLATION STUDIES
+We conduct a comprehensive three-part visual token abla-
+tion study to verify that the model achieves genuine visual
+grounding, rather than generating reports from language priors
+alone.
+A. Linear Probe: Information Preservation
+Linear probe classification (5-fold CV logistic regression
+on mean-pooled visual tokens, 2,984 samples) measures how
+much pathology information is preserved across the pipeline
+(Table VIII).
+Key findings: (1) the visual encoder adds +10.7% discrimi-
+native information beyond raw slice features (0.447 →0.495);
+TABLE VII: Per-Class Results (Phase 4, 2,984 Validation
+Volumes)
+Class
+Prec
+Rec
+F1
+Support
+Pleural effusion
+0.574
+0.789
+0.664
+370
+Art. wall calcification
+0.642
+0.660
+0.651
+849
+Coronary artery calc.
+0.580
+0.585
+0.582
+752
+Cardiomegaly
+0.437
+0.743
+0.550
+315
+Lung nodule
+0.491
+0.560
+0.523
+1344
+Lung opacity
+0.545
+0.453
+0.494
+1173
+Emphysema
+0.346
+0.667
+0.456
+588
+Lymphadenopathy
+0.393
+0.532
+0.452
+769
+Pulm. fibrotic sequela
+0.384
+0.505
+0.436
+819
+Atelectasis
+0.369
+0.496
+0.423
+698
+Consolidation
+0.430
+0.389
+0.408
+576
+Pericardial effusion
+0.238
+0.614
+0.343
+215
+Mosaic atten. pattern
+0.256
+0.494
+0.337
+245
+Hiatal hernia
+0.257
+0.397
+0.312
+413
+Peribronchial thick.
+0.271
+0.354
+0.307
+347
+Medical material
+0.194
+0.722
+0.305
+306
+Bronchiectasis
+0.238
+0.328
+0.276
+326
+Interlob. septal thick.
+0.357
+0.142
+0.203
+246
+Macro average
+0.389
+0.524
+0.429
+TABLE VIII: Linear Probe F1 Across Pipeline Stages
+Stage
+Dim
+F1 (macro)
+Raw LeJEPA embeddings
+1024
+0.447
+Phase 1 (visual context)
+1024
+0.459
+Phase 1 (norm-matched)
+3072
+0.488
+Phase 2 (norm-matched)
+3072
+0.495
+Phase 3 (norm-matched)
+3072
+0.495
+Phase 4 (norm-matched)
+3072
+0.495
+(2) Phase 2 contrastive training improves representations
+(+1.4%); (3) freezing the visual encoder in Phases 3–4 per-
+fectly preserves probe F1 (0.495 in Phase 2, 3, and 4),
+validating the frozen encoder design.
+B. Generation Ablation: Visual Token Contribution
+Generation F1 under four visual token conditions (304
+samples, Table IX):
+Zeroing visual tokens destroys 56.6% (Phase 3) and 44.9%
+(Phase 4) of generation F1. Crucially, shuffled tokens (from a
+different patient) perform no better than random noise, proving
+the LLM reads patient-specific pathology content from the
+visual tokens, not merely their statistical properties. Precision
+collapses from 0.408 to 0.114 without visual tokens, indicating
+the model over-generates findings indiscriminately when it
+cannot “see” what is present.
+C. NLL Ablation: Semantic Binding
+Teacher-forced negative log-likelihood analysis (200 sam-
+ples, Table X) reveals that visual tokens provide 2× stronger
+contribution on pathology-specific words (∆NLL = +0.020)
+compared to generic text (∆NLL = +0.011), confirming that
+cross-attention adapters inject pathology information at seman-
+tically appropriate positions.
+Notably, shuffled tokens cause a 5.3% NLL increase,
+substantially larger than the 0.9–1.1% increase from zeroed
+tokens. This is because zeroed tokens represent a “known
+unknown” (the model learns cautious generation), while wrong
+tokens actively mislead the model.
+
+===== PAGE 9 =====
+9
+TABLE IX: Generation Ablation: F1 Under Different Visual
+Token Conditions
+Condition
+P3 F1
+P3 Prec
+P4 F1
+P4 Prec
+Normal
+0.222
+0.408
+0.190
+0.298
+Zeroed
+0.096
+0.114
+0.104
+0.146
+Random
+0.121
+0.156
+0.121
+0.129
+Shuffled
+0.122
+0.204
+0.119
+0.137
+TABLE X: NLL Ablation: Impact of Visual Token Manipula-
+tion
+Condition
+P3 NLL
+∆
+P4 NLL
+∆
+Correct
+1.200
+—
+1.196
+—
+Zeroed
+1.211
++0.9%
+1.209
++1.1%
+Shuffled
+1.264
++5.3%
+1.259
++5.3%
+D. Component Ablation
+Table XI summarizes the contribution of each key method-
+ological innovation.
+The positive-findings-only strategy provides the largest sin-
+gle improvement (+0.123 F1), followed by warm bridge initial-
+ization (+0.019 over cold-start positive-findings). The cross-
+attention generation fix was foundational, providing 2.5×
+improvement from the pre-fix baseline.
+VI. DISCUSSION
+A. Recall-Precision Trade-off
+Ker-VLJEPA-3B achieves substantially higher recall than
+U-VLM (+22.1%) at the cost of lower precision (−20.8%).
+This reflects a design philosophy prioritizing sensitivity: in
+clinical settings, failing to mention a finding (false negative)
+is generally more consequential than mentioning one that is
+equivocal (false positive), as radiologists can readily dismiss
+over-reported findings but cannot evaluate omitted ones. The
+warm bridge substantially improved precision over the V1
+baseline (0.389 vs. 0.329), indicating this gap is narrowing.
+Future work could explore precision-oriented training signals,
+calibrated confidence thresholds, or ensemble methods.
+B. Why Positive-Findings-Only Training Works
+The positive-findings-only strategy addresses a fundamental
+architectural asymmetry in vision-language models for ra-
+diology. When training on raw reports, the LLM receives
+two sources of signal for generating normal-anatomy text:
+(1) language priors from pre-training, and (2) the visual tokens.
+For pathological findings, only the visual tokens provide the
+relevant signal. Since language priors are overwhelmingly
+strong (Llama 3.2 3B was pre-trained on trillions of tokens),
+the gradient from normal-text tokens reinforces language
+priors rather than visual attention. By removing normal-text
+tokens, every gradient update necessarily engages the visual
+pathway, preventing the model from learning a visual-token-
+ignoring shortcut.
+TABLE XI: Component Ablation: Impact of Key Innovations
+Configuration
+F1
+∆vs. Base
+Cross-attn fix only
+0.304
+—
++ Positive-findings-only
+0.427
++0.123
++ Warm bridge
+0.446
++0.142
++ Phase 4 (freeze xattn + EWC)
+0.429∗
++0.125
+∗Phase 4 generates raw narrative; direct comparison with
+positive-findings Phase 3 reflects task difference, not regression.
+C. The Bridge Reset Problem
+Our finding that improving Phase 2 representation qual-
+ity
+does
+not
+translate
+to
+Phase
+3
+generation
+quality
+(when using cold bridge initialization) has broad implica-
+tions for curriculum-based multimodal training. The 416
+randomly-initialized bridge parameters (projectors, cross-
+attention adapters, LoRA) at Phase 3 start represent a bot-
+tleneck that is independent of upstream representation quality.
+The warm bridge technique resolves this by decoupling rep-
+resentation learning from bridge training, allowing each to be
+optimized independently and then composed.
+D. Limitations
+Several limitations should be noted. First, evaluation is
+performed on a single benchmark (CT-RATE); multi-center
+validation across different scanner manufacturers and clinical
+populations would strengthen generalizability claims. Sec-
+ond, the pre-computed LeJEPA slice embeddings are treated
+as fixed inputs; end-to-end training from raw voxels may
+capture finer-grained features. Third, the per-class threshold
+optimization (F1 = 0.448) involves data leakage and should
+be interpreted as an upper bound. Fourth, the current model
+requires 8× H200 GPUs for training, limiting accessibility.
+Fifth, we do not include a formal observer study with clinical
+radiologists, which would strengthen the clinical validation.
+E. Clinical Implications
+While macro F1 = 0.429 is not sufficient for autonomous
+report generation, it demonstrates meaningful progress toward
+clinically useful decision support. The model’s high recall
+profile makes it particularly suited as a “safety net” that flags
+potential findings for radiologist review. The zone-constrained
+architecture provides implicit spatial grounding (token 0 maps
+to the thoracic apex, token 31 to the base), potentially enabling
+future localization of findings.
+VII. CONCLUSION
+We presented Ker-VLJEPA-3B, a four-phase curriculum
+learning framework for automated 3D CT report genera-
+tion that achieves state-of-the-art performance on the CT-
+RATE benchmark (macro F1 = 0.429, +3.6% over U-VLM).
+A defining characteristic of our approach is the complete
+separation of visual representation learning from language:
+the LeJEPA backbone is trained via purely self-supervised
+joint-embedding prediction on unlabeled CT volumes, with
+no text supervision whatsoever. This stands in contrast to
+all prior work on this benchmark, which relies on vision
+
+===== PAGE 10 =====
+10
+encoders shaped by text, whether through contrastive image-
+text pre-training or semantically-derived segmentation labels.
+Our results demonstrate that language-free visual representa-
+tions, when connected to a language model through a well-
+designed curriculum bridge, not only match but surpass text-
+supervised alternatives. This decoupled design is inherently
+modality-agnostic: because the bridge and curriculum impose
+no assumptions about the input encoder’s training objective,
+the same framework can integrate any self-supervised foun-
+dation model, whether trained on medical imaging, genomic
+sequences, audio, or sensor data, into a language model for
+narrative generation. Our further contributions, including zone-
+constrained cross-attention, PCA whitening, positive-findings-
+only training, warm bridge initialization, and selective freezing
+with EWC, address fundamental challenges in grafting non-
+linguistic representations into pre-trained language models.
+The comprehensive ablation study confirms genuine visual
+grounding with 56.6% of generation quality deriving from
+patient-specific visual content. We believe this language-free,
+modality-agnostic paradigm opens a path toward multimodal
+AI systems that can leverage the rapidly growing landscape
+of self-supervised foundation models across domains without
+requiring paired text for each new modality.
+REFERENCES
+[1] I. Hamamci, S. Kumez, S. Atal, A. Beyaz, S. Mese, D. Dogan,
+M. F. Dasdelen, B. Gundogdu, and E. Simsek, “A foundation model
+and a large-scale dataset for 3D computed tomography,” Nature Biomed.
+Eng., 2025.
+[2] I. Hamamci et al., “Generalist foundation models from a multimodal
+dataset for 3D computed tomography,” Nature Biomed. Eng., 2025.
+[3] I. Hamamci et al., “CT-CHAT: Chat-based radiology report generation
+from 3D CT volumes,” arXiv preprint arXiv:2403.XXXXX, 2024.
+[4] J. Song et al., “BTB3D: 3D CT report generation,” arXiv preprint
+arXiv:2501.XXXXX, 2025.
+[5] P. Shi, M. Zhang, K. Song, J. Liu, Y. Gu, and X. Zhang, “U-VLM:
+Hierarchical vision language modeling for report generation,” arXiv
+preprint arXiv:2603.00479, 2026.
+[6] J.-B. Alayrac et al., “Flamingo: A visual language model for few-shot
+learning,” in Proc. Adv. Neural Inf. Process. Syst. (NeurIPS), vol. 35,
+2022, pp. 23716–23736.
+[7] A. Radford et al., “Learning transferable visual models from natural lan-
+guage supervision,” in Proc. Int. Conf. Mach. Learn. (ICML), vol. 139,
+2021, pp. 8748–8763.
+[8] J. Kirkpatrick et al., “Overcoming catastrophic forgetting in neural
+networks,” Proc. Nat. Acad. Sci. USA, vol. 114, no. 13, pp. 3521–3526,
+Mar. 2017.
+[9] A. Yan, J. McAuley, X. Lu, J. Du, E. Y. Chang, A. Gentili, and C.-
+N. Hsu, “RadBERT: Adapting transformer-based language models to
+radiology,” Radiology: Artif. Intell., vol. 4, no. 4, Art. no. e210258,
+Jul. 2022.
+[10] A. Gretton, K. M. Borgwardt, M. J. Rasch, B. Sch¨olkopf, and A. Smola,
+“A kernel two-sample test,” J. Mach. Learn. Res., vol. 13, no. 1, pp. 723–
+773, Mar. 2012.
+[11] E. J. Hu, Y. Shen, P. Wallis, Z. Allen-Zhu, Y. Li, S. Wang, L. Wang,
+and W. Chen, “LoRA: Low-rank adaptation of large language models,”
+in Proc. Int. Conf. Learn. Represent. (ICLR), 2022.
+[12] Y. Bengio, J. Louradour, R. Collobert, and J. Weston, “Curriculum
+learning,” in Proc. Int. Conf. Mach. Learn. (ICML), 2009, pp. 41–48.
+[13] A. Bardes, Q. Garrido, J. Ponce, X. Chen, M. Rabbat, Y. LeCun, M. Ass-
+ran, and N. Ballas, “VL-JEPA: A vision-language model built on a joint
+embedding predictive architecture,” arXiv preprint arXiv:2512.10942,
+2025.
+[14] H. Huang, Y. LeCun, and R. Balestriero, “LLM-JEPA: Large language
+models meet joint embedding predictive architectures,” arXiv preprint
+arXiv:2509.14252, 2025.
+[15] E. Zimmermann, H. Wiltzer, J. Szeto, D. Alvarez-Melis, and L. Mackey,
+“KerJEPA: Kernel discrepancies for Euclidean self-supervised learning,”
+arXiv preprint arXiv:2512.19605, 2025.
+[16] M. Assran et al., “Self-supervised learning from images with a joint-
+embedding predictive architecture,” in Proc. IEEE/CVF Conf. Comput.
+Vis. Pattern Recognit. (CVPR), 2023, pp. 15619–15629.
+[17] T.-Y. Lin, P. Goyal, R. Girshick, K. He, and P. Doll´ar, “Focal loss for
+dense object detection,” in Proc. IEEE Int. Conf. Comput. Vis. (ICCV),
+2017, pp. 2980–2988.
+[18] A. Grattafiori et al., “The Llama 3 herd of models,” arXiv preprint
+arXiv:2407.21783, 2024.
+[19] H. Wiltzer, E. Zimmermann, J. Szeto, L. Mackey, and D. Alvarez-Melis,
+“LeJEPA: Provable and scalable self-supervised learning without the
+heuristics,” arXiv preprint arXiv:2511.08544, 2025.
+[20] Institute for Biomedical Informatics Center for Applied AI (IBI-CAAI),
+University of Kentucky, “Guided-Chest-CT-LeJEPA,” 2026. [Online].
+Available: https://huggingface.co/IBI-CAAI/Guided-Chest-CT-LeJEPA
+[21] Y. Yue et al., “Zero-shot vision encoder grafting via LLM surrogates,”
+in Proc. IEEE/CVF Int. Conf. Comput. Vis. (ICCV), 2025.
+[22] L. Fan, Z. Wei, Y. Wang, and Y. Wang, “Med3DVLM: An efficient
+vision-language model for 3D medical image analysis,” IEEE Trans.
+Med. Imag., 2025.
+[23] F. Bai et al., “M3D: Advancing 3D medical image analysis with multi-
+modal large language models,” arXiv preprint arXiv:2404.00578, 2024.
+[24] Y. Xia et al., “Med-2E3: A 2D-enhanced 3D medical multimodal large
+language model,” arXiv preprint arXiv:2411.12783, 2024.
+[25] Y. Fan et al., “SCALE-VLP: Soft-weighted contrastive volumetric
+vision-language pre-training with spatial-knowledge semantics,” arXiv
+preprint arXiv:2511.02996, 2025.
+[26] S. Park et al., “RadZero3D: Bridging self-supervised video models and
+medical vision-language alignment for zero-shot chest CT interpreta-
+tion,” in Proc. IEEE/CVF Int. Conf. Comput. Vis. Workshops (ICCVW),
+2025.

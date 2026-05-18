@@ -1,0 +1,724 @@
+
+===== PAGE 1 =====
+Brain3D: Brain Report Automation via Inflated
+Vision Transformers in 3D
+Mariano Baronea, Francesco Di Serioa, Giuseppe Riccioa, Antonio Romanoa,
+Marco Postiglioneb, Antonino Ferraroc Member, IEEE, Vincenzo Moscatoa
+University of Naples Federico II, Department of Electrical Engineering and Information Technology, Italy
+Northwestern University, Dept. of Computer Science, McCormick School of Engineering and Applied Science, United States
+Pegaso University, Department of Information Science and Technology, Italy
+a{mariano.barone, francesco.diserio, giuseppe.riccio3, antonio.romano5, vincenzo.moscato}@unina.it
+b{marco.postiglione}@northwestern.edu, c{antonino.ferraro}@unipegaso.it
+Abstract—Current medical vision-language models (VLMs)
+process volumetric brain MRI using 2D slice-based approx-
+imations, fragmenting the spatial context required for accu-
+rate neuroradiological interpretation. We developed Brain3D,
+a staged vision-language framework for automated radiology
+report generation from 3D brain tumor MRI. Our approach
+inflates a pretrained 2D medical encoder into a native 3D
+architecture and progressively aligns it with a causal language
+model through three stages: contrastive grounding, supervised
+projector warmup, and LoRA-based linguistic specialization.
+Unlike generalist 3D medical VLMs, Brain3D is tailored to
+neuroradiology, where hemispheric laterality, tumor infiltration
+patterns, and anatomical localization are critical. Evaluated on
+468 subjects (BraTS pathological cases plus healthy controls),
+our model achieves a Clinical Pathology F1 of 0.951 versus 0.413
+for a strong 2D baseline while maintaining perfect specificity on
+healthy scans. The staged alignment proves essential: contrastive
+grounding establishes visual-textual correspondence, projector
+warmup stabilizes conditioning, and LoRA adaptation shifts
+output from verbose captions to structured clinical reports1.
+Index Terms—Medical Vision-Language Models, Radiology
+Report Generation, 3D Deep Learning, Brain MRI, Multimodal
+Alignment.
+I. INTRODUCTION
+Automated radiology report generation has advanced rapidly
+with the emergence of large vision-language models (VLMs).
+Systems such as Med-Flamingo [1], LLaVA-Med [2] and
+MedGemma [3] demonstrate strong descriptive capabilities;
+however, their clinical reliability remains limited by halluci-
+nations and weak adherence to diagnostic structure.
+In neuro-oncology, this limitation is amplified by a funda-
+mental volumetric gap. Brain MRI interpretation, particularly
+FLAIR, requires coherent 3D spatial reasoning to assess tumor
+infiltration, hemispheric laterality, and periventricular signal
+changes [4]. Yet most medical VLMs operate natively on 2D
+images, resorting to slice-wise decomposition when processing
+volumetric scans. This strategy disrupts spatial continuity and
+frequently leads to lateralization errors and false lesion attri-
+bution [5]. Recent 3D multimodal models (e.g., Med3DVLM
+[6], M3D-LaMed [7]) introduce native volumetric encoders.
+However, these systems are typically trained as generalist
+1Our code is publicly available for transparency and reproducibility: https:
+//github.com/PRAISELab-PicusLab/BrainGemma3D
+assistants across heterogeneous modalities and lack domain-
+specific grounding for neuroradiology. Moreover, training 3D
+foundations from scratch is computationally demanding and
+constrained by limited high-quality volume-text datasets.
+In this work, we propose Brain3D, a specialized framework
+for report generation from volumetric Brain MRI. Rather than
+relying on slice decomposition or computationally intensive
+generalist 3D backbones, we adapt a 2D medical encoder
+via inflation to extract native spatial features. We further
+identify a crucial bottleneck in the tendency of VLMs to
+generate verbose, “caption-like” descriptions rather than fac-
+tual diagnostic reports. We address this via a Staged Vision-
+Language Grounding protocol. By progressively moving from
+latent contrastive alignment to supervised projector warmup,
+and finally to Low-Rank Adaptation (LoRA) [8] of the LLM,
+we guide the model from generic visual recognition to expert
+neuroradiological syntax. Our contribution is threefold. First,
+we introduce an Inflated Volumetric Architecture, an efficient
+3D adaptation of 2D Vision Encoder that enables native spatial
+processing. Second, we validate a three-stage learning strategy,
+demonstrating its necessity for minimizing hallucinations and
+achieving optimal specificity on healthy controls, thereby over-
+coming a historical limitation of generative VLMs. Finally,
+we propose a new benchmark for Clinical Efficacy, achieving
+a +130% gain in the Clinical Pathology F1 score over 2D
+and generalist baselines (0.951 vs. 0.413), confirming that
+volumetric modeling is a necessary condition for diagnostic
+factualness.
+II. RELATED WORK
+We review prior work along three axes: (i) medical report
+generation with 2D VLMs, (ii) volumetric 3D multimodal
+models and neuroradiology-specific challenges, and (iii)
+efficient transfer from 2D foundations to 3D via inflation.
+Automated
+Medical
+Report
+Generation.
+Early
+report
+generation systems relied on encoder–decoder pipelines,
+where Convolutional Neural Networks (CNNs) extracted
+visual features and Long Short-Term Memory (LSTM)
+networks generated text [9], [10], often producing repetitive
+and locally coherent outputs. The advent of the Transformer
+arXiv:2602.22098v1  [cs.CV]  25 Feb 2026
+
+===== PAGE 2 =====
+architecture
+revolutionized the
+field
+by enabling
+global
+dependency
+modeling.
+Recent
+Medical
+Vision–Language
+Models (VLMs) leverage pretrained Large Language Models
+(LLMs) to enhance coherence and clinical accuracy. For
+instance, R2GenGPT [11] introduces a visual alignment
+module,
+Med-Flamingo
+[1]
+extends
+OpenFlamingo
+for
+medical few-shot learning, and LLaVA-Med [2] adapts
+instruction tuning to the clinical domain. Despite strong
+linguistic fluency, most state-of-the-art VLMs operate natively
+on 2D images. When applied to volumetric MRI, they require
+slice-wise decomposition, potentially disrupting 3D spatial
+coherence and impairing neuroradiological reasoning.
+Volumetric 3D Multimodal Models and Neuroradiology.
+Native 3D VLMs have emerged to overcome slice-based
+limitations.
+CT2Rep
+[12]
+and
+CT-CHAT
+[13]
+extend
+multimodal frameworks to 3D chest CT, while M3D-LaMed
+[7] proposes a generalist 3D multimodal LLM with token
+compression strategies. However, these systems are typically
+general-purpose or CT-focused. Brain MRIs pose distinct
+challenges: hyperintense lesion patterns, periventricular signal
+alterations, hemispheric symmetry, and infiltration topology
+require coherent volumetric reasoning [4]. Generic pooling or
+slice aggregation may fragment lesion topology and degrade
+laterality consistency [5]. Thus, current 3D VLMs work poorly
+on brain MRIs.
+Transferring 2D Foundations to 3D via Inflation. Training
+large 3D encoders from scratch is computationally demanding.
+Inflation strategies (I3D) [14], which extend 2D kernels along
+the depth axis, provide an efficient alternative and have
+shown effectiveness in video and medical imaging [15].
+This paradigm preserves pretrained inductive biases from 2D
+models (e.g., SigLIP [16], MedGemma [3]) while enabling
+volumetric
+processing.
+However,
+current
+state-of-the-art
+approaches
+primarily
+emphasize
+architectural
+transfer
+and scalability, without explicitly ensuring tight alignment
+between volumetric spatial grounding and clinically structured
+language generation. This limitation may hinder consistent
+reasoning
+and
+fine-grained
+anatomical
+localization
+in
+neuroradiological report generation.
+Our Contribution. Motivated by these gaps, we introduce
+Brain3D, a domain-specific framework that combines 3D
+weight inflation with staged vision–language alignment. This
+design explicitly separates volumetric grounding from linguis-
+tic adaptation for structured brain MRI report generation.
+III. METHODOLOGY
+We introduce Brain3D, a multimodal architecture specifi-
+cally designed for automated radiology report generation from
+volumetric brain MRI scans. The framework adapts a pre-
+trained 2D vision encoder to a native 3D encoder via a weight
+inflation strategy [14] and aligns it to a causal language model
+through a progressive three-stage vision–language alignment
+pipeline.
+A. Task Formulation
+Let X ∈RC×D×H×W denote a volumetric brain MRI
+scan, where C represents the intensity channel (for grayscale
+MRI C = 1), and D, H, and W correspond to the depth,
+height, and width of the resampled volume, respectively. Let
+Y
+= (y1, . . . , yT ) be the associated radiology report and
+Yprompt = (t1, . . . , tS) the instruction prompt, represented as
+a sequence of T and S discrete tokens, respectively, drawn
+from the language model vocabulary V. Report generation is
+formulated as conditional autoregressive decoding:
+p(Y | X, Yprompt) =
+T
+Y
+t=1
+p(yt | X, t1, . . . , tS, y<t).
+(1)
+where y<t denotes the previously generated token prefix.
+B. Volumetric Data Preprocessing
+To standardize heterogeneous MRI inputs (Xraw), we apply
+skull-stripping, canonical reorientation (RAS) [17], percentile-
+based intensity clipping (1st-99th) to the [0, 1] interval, and
+resampling to a fixed grid of 64 × 128 × 128, yielding a final
+MRI Xprep ∈R1×64×128×128.
+C. Model Architecture
+The model architecture is composed of three functional
+modules: (i) an inflated 3D vision encoder, (ii) a token com-
+pression and projection mechanism, and (iii) a Large Language
+Model (LLM). The overall pipeline is illustrated in Fig. 1.
+1) 3D Vision Encoder via Inflation: We initialize the vi-
+sion backbone from a 2D Transformer pretrained on medical
+image–text pairs and extend it to volumetric inputs using
+weight inflation [14]. Given a 2D patch embedding kernel
+W2D trained on RGB inputs, we adapt it to single-channel
+MRI volumes by collapsing the input channel dimension
+and replicating the kernel along the depth axis to obtain a
+3D kernel W3D. Inflated weights are normalized to preserve
+activation scale, enabling volumetric feature extraction while
+retaining pretrained inductive biases. To incorporate spatial
+awareness in 3D, we replace 2D positional embeddings with
+a decomposed formulation:
+P3D(z, y, x) = Pdepth(z) + Pspatial(y, x),
+(2)
+where Pdepth is learnable and Pspatial reuses pretrained 2D
+embeddings broadcast along depth. The final output of the
+encoder is a sequence of volumetric patch embeddings Zenc ∈
+RN×dv, where N is the total number of patches, and dv is the
+hidden dimension of the Vision Transformer.
+2) Visual Token Compression: Processing the full sequence
+Zenc (all N volumetric tokens) would be computationally
+expensive for the LLM. We therefore apply adaptive average
+pooling along the sequence dimension, producing a fixed set
+of K visual tokens (with K = 32 in our setup):
+Zpool = AdaptiveAvgPool1D(Zenc) ∈RK×dv.
+(3)
+This operation decouples the volumetric resolution from the
+LLM context length.
+
+===== PAGE 3 =====
+Fig. 1. Brain3D Architecture. A standardized MRI volume X is processed by an inflated 3D Transformer encoder, producing N volumetric patch tokens
+Zenc. These tokens are compressed via Vision Token Compression into a fixed set of K = 32 tokens Zcmp. The compressed visual tokens are projected into
+the language embedding space (Zproj) and scaled to obtain conditioning tokens Zcond, which are prepended to the textual embeddings and used to guide
+autoregressive report generation by the causal LLM.
+3) Vision-Language Projection: To align visual features
+(dv) with the LLM embedding space (dllm), we use a two-
+layer MLP with GELU activation. A learnable scalar gate s
+(vis_scale) modulates the strength of visual conditioning:
+Zvis = s · MLP(Zpool) ∈RK×dllm.
+(4)
+A lower scalar s enables gradual visual conditioning of the
+LLM during training.
+4) Textual Embedding Extraction: In parallel, the instruc-
+tion prompt Yprompt is tokenized as t and then mapped
+into embeddings via the LLM input matrix as: Ztxt
+=
+Embedding(t) ∈RT ×dllm.
+5) LLM Conditioning and Generation: Instead of using
+additional cross-attention layers, we adopt a soft-prompting
+approach. The projected visual tokens Zvis are prepended
+directly to the text embeddings Ztxt in the input sequence:
+Zin = Concat(Zvis, Ztxt) ∈R(K+T )×dllm. The LLM then
+performs autoregressive decoding to generate the report Y
+conditioned on Zin.
+D. Staged Vision-Language Alignment
+Training is performed in three stages: (i) contrastive ground-
+ing, (ii) supervised projector training, and (iii) supervised fine-
+tuning with LoRA. (see Fig. 2)
+Prompting Policy. We use a single immutable canonical
+instruction prompt: “Generate a radiology report
+for this brain MRI FLAIR scan” during all train-
+ing process. During Phase 1 alignment, no prompt is
+prepended to the report (as shown in Fig. 2).
+1) Phase 1: Image-Text Grounding via Contrastive Learn-
+ing: Phase 1 aligns visual and textual representations via a
+symmetric bidirectional InfoNCE [18], averaging the image-
+to-text (Lv→t) and text-to-image (Lt→v) losses. The LLM and
+vision backbone are frozen; gradients update only the inflated
+3D patch embedding P3D, MLP projector θproj, and scalar s.
+Let vi and ti denote L2-normalized global visual and textual
+embeddings for sample i in a batch of size B. We minimize:
+LP hase1 = 1
+2 (Lv→t + Lt→v) , where Lv→t = LInfoNCE(v, t).
+(5)
+This stage establishes a shared multimodal embedding space
+prior to generative training.
+2) Phase 2A: Projector Warmup (Supervised Generation):
+In this phase, with the vision encoder and LLM frozen, we
+optimize only the MLP projector θproj and the gate s using
+masked next-token prediction [19]. We construct the input
+sequence U by concatenating the visual tokens Zvis, the
+canonical prompt tokens Ztxt, and the ground-truth report
+tokens ZY as: U = Concat(Zvis, Ztxt, ZY ). The loss is
+computed using a binary mask M to ensure gradients are
+calculated only on the report tokens, effectively ignoring the
+visual and prompt tokens (set to −100 in our implementation).
+We minimize:
+LP hase2A = Mt · Lnext token(U; θproj, s).
+(6)
+This “warmup” stage stabilizes visual conditioning before
+adapting the language model.
+3) Phase 2B: Linguistic Fine-Tuning with LoRA: After
+projector stabilization, we freeze the 3D Vision Encoder and
+jointly optimize the MLP projector θproj and LoRA adapters [8]
+injected into LLM attention layers. The optimization objective
+remains the masked next token prediction loss of Phase 2A,
+now jointly optimized over the Projector θproj and LoRA
+parameters LoRAparam, as follows:
+LP hase2B = Mt · Lnext token(U; θproj, LoRAparam).
+(7)
+This final stage adapts the linguistic space to neuroradiological
+reporting while preserving volumetric grounding.
+E. Inference Strategy
+During inference, the model operates in autoregressive gen-
+eration mode as described in Eq. 1. We employ conservative
+
+===== PAGE 4 =====
+Fig. 2. Staged Training Strategy The framework employs a progressive three-phase alignment pipeline. Phase 1: Contrastive Image-Text Grounding aligns
+the 3D representations (Zvis) with report semantics (Zt) using a symmetric InfoNCE loss. Phase 2A: Projector Warmup performs supervised generation
+with a frozen LLM to stabilize the visual-language mapping. Phase 2B: Linguistic Adaptation fine-tunes the projector and LoRA adapters jointly to capture
+neuroradiology syntax. Legend: Modules marked with Ice () are frozen; modules marked with Fire (\) are trainable.
+stochastic decoding (temperature T = 0.1, top-p = 0.9) with
+repetition penalty (θ = 1.2) and trigram blocking to prevent
+redundancy while maintaining diagnostic stability.
+IV. EXPERIMENTS
+A. Experimental Setup
+Experiments were conducted on a single NVIDIA A100
+(64GB VRAM) using PyTorch and HuggingFace frameworks.
+We initialize the 2D vision backbone from MedSigLIP [3]
+and adopt MedGemma 1.5-4B-IT2 as the causal language
+model (LLM) for text generation. Training employed bfloat16
+mixed precision with gradient accumulation (effective batch
+size 128). Optimization used AdamW with linear warmup
+and cosine decay; early stopping was applied after 15 epochs
+without validation improvement. LoRA [8] was configured
+with rank r = 16 and scaling factor α = 32.
+B. Datasets and Preprocessing
+We constructed a 3D dataset comprising pathological cases
+and healthy controls to model both tumoral and normal brain
+anatomy. The final dataset includes N = 468 subjects, de-
+tailed as follows: Pathological Cohort (BraTS). We selected
+369 FLAIR volumes from the BraTS2020 training set [20],
+using TextBraTS annotations [21] to derive structured reports
+(location, edema, necrosis). Laterality distribution is balanced
+(42.5% left, 40.7% right, 14.6% bilateral; 2.2% undefined).
+Healthy Controls. We included 99 healthy brain MRIs from
+OpenNeuro/Brainlife [22] (21.2% of total dataset) to prevent
+pathological bias and allow the model to internalize the rep-
+resentation of healthy anatomy. We performed strict subject-
+level splitting (70/10/20 train/val/test) to prevent data leakage,
+stratified by class and lesion laterality.
+C. Baselines
+To validate our model, we compare against state-of-the-art
+2D and 3D medical VLMs to isolate the impact of native vol-
+umetric encoding. We evaluate: MedGemma 1.5-4B-IT2
+[3], a 2D medical VLM adapted via a sequence-based strat-
+egy, where all 64 axial slices are processed as independent
+2https://huggingface.co/google/medgemma-1.5-4b-it
+images within the context window. This baseline evaluates
+whether a powerful 2D model can implicitly learn 3D spatial
+relationships solely through prompt sequencing, or if explicit
+volumetric encoding (as in our approach) is required for
+accurate lesion localization; Med3DVLM3 [6], a generalist 3D
+VLM pretrained on large-scale M3D-Data. This comparison
+isolates the contribution of domain-specific staged alignment
+beyond generic 3D pretraining.
+D. Evaluation Metrics
+We report all metrics with 95% confidence intervals. Lin-
+guistic quality and similarity is assessed against ground truth
+references using BLEU-1/4 [23], ROUGE-1/2/L [24], ME-
+TEOR [25], BERTScore [26], and CIDEr [27]. However,
+these metrics often fail to capture factual medical correctness
+(e.g., misidentifying the lesion side minimally affects BLEU
+but constitutes a critical clinical error). Therefore, we imple-
+mented a rule-based extraction module to calculate the F1-
+score for the following specific clinical categories: Clinical
+Laterality F1: Measures accuracy in detecting the lesion side
+(Left, Right, Bilateral); Clinical Anatomy F1: Evaluates spe-
+cific anatomical localization (e.g., Frontal, Parietal, Ventricle);
+Clinical Pathology F1: Assesses the correct identification of
+pathological descriptors (e.g., Edema, Necrosis, Enhancement,
+Compression).
+E. Quantitative Analysis and Ablation Study
+Tab. I highlights a clear divergence between linguistic
+fluency and clinical correctness. MedGemma 1.5 achieves
+strong semantic similarity (BERTScore 0.859) but low Clinical
+Pathology F1 (0.413), reflecting slice-based spatial inconsis-
+tencies and laterality errors. Med3DVLM underperforms on
+both linguistic and clinical metrics, indicating that generic
+3D pretraining alone is insufficient for neuroradiological re-
+porting. In contrast, our final model (Phase 2b) achieves
+0.951 Clinical Pathology F1 (+130% over MedGemma 1.5),
+confirming that native volumetric encoding combined with
+staged alignment is necessary for robust spatial grounding.
+The ablation study reveals progressive specialization: Phase
+3https://huggingface.co/MagicXin/Med3DVLM-Qwen-2.5-7B
+
+===== PAGE 5 =====
+TABLE I
+MAIN RESULTS & ABLATION. TOP: COMPARISON AGAINST MED3DVLM AND MEDGEMMA 1.5 4B BASELINES. BOTTOM: EVOLUTION OF OUR
+FRAMEWORK THROUGH TRAINING PHASES. NOTE THE MASSIVE GAIN IN CLINICAL EFFICACY (F1) OF OUR FINAL MODEL (PHASE 2B) COMPARED TO
+THE STRONG 2D BASELINE (MEDGEMMA 1.5). BEST RESULTS PER COLUMN ARE IN BOLD. VALUES: MEAN (95% CI).
+Model
+Natural Language Generation (NLG)
+Semantics
+Clinical Efficacy (F1)
+B-1
+B-4
+R-1
+R-2
+R-L
+MTR
+BERT
+CIDEr
+Lat
+Anat
+Path
+State-of-the-Art Baselines
+Med3DVLM [6]
+0.051
+0.005
+0.108
+0.018
+0.083
+0.055
+0.836
+0.007
+0.300
+0.225
+0.119
+(3D Generalist)
+[0.04, 0.06]
+[0.00, 0.01]
+[0.09, 0.13]
+[0.01, 0.02]
+[0.07, 0.10]
+[0.05, 0.06]
+[0.83, 0.84]
+[0.00, 0.00]
+[0.22, 0.40]
+[0.15, 0.30]
+[0.08, 0.18]
+MedGemma 1.5 [3]
+0.245
+0.024
+0.326
+0.077
+0.189
+0.190
+0.859
+0.029
+0.526
+0.461
+0.413
+(2D Slice-based)
+[0.22, 0.27]
+[0.02, 0.03]
+[0.30, 0.35]
+[0.07, 0.09]
+[0.17, 0.20]
+[0.18, 0.20]
+[0.86, 0.86]
+[0.02, 0.03]
+[0.45, 0.60]
+[0.39, 0.53]
+[0.36, 0.46]
+Brain3D Framework (Ours)
+Phase 1: Alignment
+0.122
+0.005
+0.177
+0.018
+0.113
+0.128
+0.800
+0.003
+0.243
+0.141
+0.211
+(Zero-shot / No Projector)
+[0.11, 0.13]
+[0.00, 0.01]
+[0.17, 0.19]
+[0.02, 0.02]
+[0.11, 0.12]
+[0.12, 0.14]
+[0.79, 0.81]
+[0.00, 0.00]
+[0.16, 0.32]
+[0.08, 0.21]
+[0.15, 0.28]
+Phase 2a: Warmup
+0.280
+0.099
+0.382
+0.158
+0.285
+0.250
+0.884
+0.504
+0.658
+0.503
+0.711
+(Projector Trained Only)
+[0.25, 0.32]
+[0.07, 0.14]
+[0.35, 0.42]
+[0.13, 0.20]
+[0.25, 0.32]
+[0.21, 0.29]
+[0.88, 0.89]
+[0.49, 0.51]
+[0.58, 0.74]
+[0.43, 0.57]
+[0.66, 0.76]
+Phase 2b: Full Model
+0.302
+0.098
+0.407
+0.155
+0.289
+0.253
+0.898
+0.293
+0.689
+0.691
+0.951
+(Projector + LoRA)
+[0.28, 0.33]
+[0.08, 0.13]
+[0.38, 0.44]
+[0.13, 0.19]
+[0.27, 0.32]
+[0.23, 0.28]
+[0.89, 0.90]
+[0.29, 0.30]
+[0.61, 0.76]
+[0.64, 0.74]
+[0.91, 0.98]
+LIME Overlay
+Original
+Slice 24/64
+Slice 32/64
+Slice 40/64
+Fig. 3. 3D LIME Attribution Maps. Volumetric grounding visualized via
+3D LIME over SLIC supervoxels for a representative test case. Red regions
+indicates positive attribution (supporting the report), blue regions negative
+attribution. The tumor-bearing hemisphere is correctly highlighted; however,
+diffuse and partially contralateral supervoxels are also activated, suggesting
+reliance on both lesion-centered and global contextual patterns, potentially
+contributing to lateralization errors.
+1 (Latent Alignment) establishes latent alignment but is not
+optimized for generation (low NLG scores); Phase 2a (Pro-
+jector Warmup) maximizes descriptive fluency (CIDEr: 0.504;
+ROUGE-L: 0.285); Phase 2b shifts toward structured, clini-
+cally precise reporting, sacrificing caption-style verbosity for
+factual accuracy (Clinical Pathology F1: 0.951).
+F. Qualitative Analysis and Interpretability
+Beyond quantitative metrics, we conduct a qualitative as-
+sessment to evaluate grounding fidelity and systematically
+characterize residual failure modes.
+Qualitative Answer Comparison. Tab. II shows that slice-
+based models exhibit spatial inconsistencies, while generalist
+3D models lack domain specialization. Brain3D correctly
+identifies lesion location and pathology, with negligible hallu-
+cinations on healthy scans. Residual errors primarily involve
+edema–necrosis ambiguities in complex cases.
+Interpretability (3D LIME over Supervoxels). We apply
+3D LIME over SLIC supervoxels (Fig. 3). This analysis is
+exploratory and not intended as a definitive attribution study;
+despite known limitations in high-dimensional settings, LIME
+provides a lightweight sanity check of lesion-level grounding.
+Attribution maps demonstrate predominantly lesion-centered
+attribution within the tumor-bearing hemisphere. However, oc-
+casional diffuse or partially contralateral attribution indicates
+reliance on both focal and global contextual cues.
+Error Analysis. The most frequent failure mode is laterality
+inversion (≈15% of pathological cases), where morphology
+is correct but hemispheric positioning is flipped. In diffuse
+gliomas, peripheral infiltration may be under-reported. Under
+uncertainty, mild distributional bias toward frequent anatom-
+ical patterns is observed (e.g., “left parietal and occipital
+lobes”). Overall, errors stem from positional ambiguity rather
+than random hallucination.
+V. CONCLUSION AND FUTURE WORK
+The work presents Brain3D, a volumetric vision-language
+framework for neuroradiological report generation that bridges
+the 2D-to-3D adaptation gap through weight inflation and
+staged alignment. Unlike slice-based models that achieve
+high lexical scores yet fail clinically, our approach prioritizes
+diagnostic factuality, reaching 0.951 Clinical Pathology F1 and
+perfect specificity on healthy controls. Results demonstrate
+that decoupling visual grounding from linguistic specializa-
+tion is critical for reducing hallucinations in medical VLMs.
+Future work will investigate anatomically informed positional
+embeddings to mitigate lateralization errors, correcting distri-
+butional bias using DPO/RLHF to encourage accurate spatial
+descriptions, and scaling pretraining to larger, multi-sequence
+MRI datasets (T1, T2, FLAIR) to enable broader multi-modal
+neuroradiology assistance.
+REFERENCES
+[1] M. Moor, Q. Huang, S. Wu, M. Yasunaga, Y. Dalmia, J. Leskovec,
+C. Zakka, E. P. Reis, and P. Rajpurkar, “Med-flamingo: a multimodal
+medical few-shot learner,” in Machine learning for health (ML4H).
+PMLR, 2023, pp. 353–367.
+
+===== PAGE 6 =====
+TABLE II
+QUALITATIVE COMPARISON. VISUAL COMPARISON OF GENERATED REPORTS FOR A REPRESENTATIVE TEST SAMPLE. OUR MODEL IDENTIFIES THE
+LESION LOCATION AND PATHOLOGIES, WHEREAS BASELINES HALLUCINATE OR FAIL.
+Qualitative Comparison of Generated Reports
+<Ground Truth>: The lesion area is in the frontal and parietal regions of the left hemisphere with mixed signal intensities
+of varying levels and speckled high-intensity signal areas. Edema is primarily concentrated in the peripheral regions of the left
+frontal and parietal lobes, indicating moderate to severe swelling of the tissues surrounding the lesions. Necrosis is observed in
+some lesion areas displaying low signal intensity interspersed within regions of high and isointense signals, showing a certain
+mottled appearance. Ventricular compression is mild deformation of the ventricles, suggesting pressure effects of the lesions
+on these regions.
+<Brain3D (Ours)>: The lesion area is in the left parietal and frontal lobes with mixed high-signal areas. Edema signals are
+mainly observed around these lesions, indicating significant edema presence affecting parts of both frontal and temporal regions
+as well as some portions within the parietal lobe. Necrosis may be present at low signal intensity or scattered throughout
+certain sections of the brain tissue affected by edema but shows no clear concentration. Ventricular compression effects on
+adjacent ventricles can occur due to pressure from surrounding tissues near the ventricular system.
+<MedGemma Baseline>: There is a large, irregular, mixed signal intensity mass centered in the right frontal lobe, extending
+into the right temporal lobe and involving the right lateral ventricle. There is significant mass effect on the right lateral
+ventricle, causing mild to moderate effacement of the adjacent sulci.
+<Med3D-VLM>: No intracranial hemorrhage. No evidence of acute infarction. No mass effect or midline shift. Normal
+grey-white matter differentiation.
+[2] H. Liu, C. Li, Q. Wu, and Y. J. Lee, “Visual instruction tuning,”
+Advances in neural information processing systems, vol. 36, pp. 34 892–
+34 916, 2023.
+[3] A. e. a. Sellergren, “Medgemma technical report,” arXiv preprint
+arXiv:2507.05201, 2025. [Online]. Available: https://arxiv.org/abs/2507.
+05201
+[4] M. Filippi, M. A. Rocca, O. Ciccarelli, N. De Stefano, N. Evangelou,
+L. Kappos, A. Rovira, J. Sastre-Garriga, M. Tintor´e, J. L. Frederiksen,
+C. Gasperini, J. Palace, D. S. Reich, B. Banwell, X. Montalban,
+F. Barkhof, and M. S. Group, “Mri criteria for the diagnosis of mul-
+tiple sclerosis: Magnims consensus guidelines,” The Lancet Neurology,
+vol. 15, no. 3, pp. 292–303, 2016.
+[5] A. Bink, J. Benner, J. Reinhardt, A. De Vere-Tyndall, B. Stieltjes,
+N. Hainc, and C. Stippich, “Structured reporting in neuroradiology:
+Intracranial tumors,” Frontiers in Neurology, vol. 9, p. 32, 2018.
+[6] Y. Xin, G. C. Ates, K. Gong, and W. Shao, “Med3dvlm: An efficient
+vision-language model for 3d medical image analysis,” 2025.
+[7] F. Bai, Y. Du, T. Huang, M. Q.-H. Meng, and B. Zhao, “M3d: Advancing
+3d medical image analysis with multi-modal large language models,”
+2024.
+[8] E. J. Hu, Y. Shen, P. Wallis, Z. Allen-Zhu, Y. Li, S. Wang, L. Wang,
+W. Chen et al., “Lora: Low-rank adaptation of large language models.”
+Iclr, vol. 1, no. 2, p. 3, 2022.
+[9] J. Yuan, H. Liao, R. Luo, and J. Luo, “Automatic radiology report
+generation based on multi-view image fusion and medical concept
+enrichment,” in International conference on medical image computing
+and computer-assisted intervention.
+Springer, 2019, pp. 721–729.
+[10] Z. Wang, L. Zhou, L. Wang, and X. Li, “A self-boosting framework
+for automated radiographic report generation,” in Proceedings of the
+IEEE/CVF conference on computer vision and pattern recognition, 2021,
+pp. 2433–2442.
+[11] Z. Wang, L. Liu, L. Wang, and L. Zhou, “R2gengpt: Radiology report
+generation with frozen llms,” Meta-Radiology, vol. 1, no. 3, p. 100033,
+2023.
+[12] I. E. Hamamci, S. Er, and B. Menze, “Ct2rep: Automated radiology
+report generation for 3d medical imaging,” in International Conference
+on Medical Image Computing and Computer-Assisted Intervention.
+Springer, 2024, pp. 476–486.
+[13] I. E. Hamamci, S. Er, C. Wang, F. Almas, A. G. Simsek, S. N.
+Esirgun, I. Dogan, O. F. Durugol, B. Hou, S. Shit et al., “Developing
+generalist foundation models from a multimodal dataset for 3d computed
+tomography,” arXiv preprint arXiv:2403.17834, 2024.
+[14] J. Carreira and A. Zisserman, “Quo vadis, action recognition? a new
+model and the kinetics dataset,” in proceedings of the IEEE Conference
+on Computer Vision and Pattern Recognition, 2017, pp. 6299–6308.
+[15] L. Blankemeier, J. P. Cohen, A. Kumar, D. Van Veen, S. J. S. Gardezi,
+M. Paschali, Z. Chen, J.-B. Delbrouck, E. Reis, C. Truyts et al., “Merlin:
+A vision language foundation model for 3d computed tomography,”
+2024.
+[16] X. Zhai, B. Mustafa, A. Kolesnikov, and L. Beyer, “Sigmoid loss for
+language image pre-training,” 2023.
+[17] V. Viswan, N. Shaffi, K. Subramanian, and F. Hajamohideen, “Optimiz-
+ing medical imaging quality: an in-depth examination of preprocessing
+methods for brain mris,” in International Conference on Applied Intel-
+ligence and Informatics.
+Springer, 2023, pp. 65–81.
+[18] T. Chen, S. Kornblith, M. Norouzi, and G. Hinton, “A simple framework
+for contrastive learning of visual representations,” in International
+conference on machine learning.
+PmLR, 2020, pp. 1597–1607.
+[19] F. Gloeckle, B. Y. Idrissi, B. Rozi`ere, D. Lopez-Paz, and G. Synnaeve,
+“Better & faster large language models via multi-token prediction,” arXiv
+preprint arXiv:2404.19737, 2024.
+[20] B. H. e. a. Menze, “The multimodal brain tumor image segmentation
+benchmark (brats),” IEEE Transactions on Medical Imaging, vol. 34,
+no. 10, pp. 1993–2024, 2015.
+[21] X. Shi, R. K. Jain, Y. Li, R. Hou, J. Cheng, J. Bai, G. Zhao, L. Lin,
+R. Xu, and Y. wei Chen, “Textbrats: Text-guided volumetric brain tumor
+segmentation with innovative dataset development and fusion module
+exploration,” 2025. [Online]. Available: https://arxiv.org/abs/2506.16784
+[22] A. Babayan, M. Erbey, D. Kumral, J. Reinelt, A. Reiter, J. R¨obbig,
+H. Schaare, M. Uhlig, A. Anwander, P.-L. Bazin, A. Horstmann,
+L. Lampe, V. Nikulin, H. Okon-Singer, S. Preusser, A. Pampel, C. Rohr,
+J. Sacher, A. Thoene-Otto, and A. Villringer, “A mind-brain-body dataset
+of mri, eeg, cognition, emotion, and peripheral physiology in young and
+old adults,” Scientific Data, vol. 6, p. 180308, 02 2019.
+[23] K. Papineni, S. Roukos, T. Ward, and W.-J. Zhu, “Bleu: a method for
+automatic evaluation of machine translation,” in Proceedings of the 40th
+annual meeting of the Association for Computational Linguistics, 2002,
+pp. 311–318.
+[24] C.-Y. Lin, “Rouge: A package for automatic evaluation of summaries,”
+in Text summarization branches out, 2004, pp. 74–81.
+[25] S. Banerjee and A. Lavie, “Meteor: An automatic metric for mt evalua-
+tion with improved correlation with human judgments,” in Proceedings
+of the acl workshop on intrinsic and extrinsic evaluation measures for
+machine translation and/or summarization, 2005, pp. 65–72.
+[26] T. Zhang, V. Kishore, F. Wu, K. Q. Weinberger, and Y. Artzi, “Bertscore:
+Evaluating text generation with bert,” arXiv preprint arXiv:1904.09675,
+2019.
+[27] R. Vedantam, C. Lawrence Zitnick, and D. Parikh, “Cider: Consensus-
+based image description evaluation,” in Proceedings of the IEEE confer-
+ence on computer vision and pattern recognition, 2015, pp. 4566–4575.

@@ -1,0 +1,1635 @@
+
+===== PAGE 1 =====
+Standardizing Longitudinal Radiology Report
+Evaluation via Large Language Model Annotation
+Xinyi Wang1, Grazziela Figueredo2, Ruizhe Li1, Xin Chen1*
+1School of Computer Science, The University of Nottingham,
+Nottingham, NG7 2RD, United Kingdom.
+2School of Medicine, The University of Nottingham, Nottingham, NG7
+2RD, United Kingdom.
+*Corresponding author(s). E-mail(s): Xin.Chen@nottingham.ac.uk;
+Contributing authors: Xinyi.Wang4@nottingham.ac.uk;
+G.Figueredo@nottingham.ac.uk; Ruizhe.Li@nottingham.ac.uk;
+Abstract
+Longitudinal information in radiology reports refers to the sequential tracking of
+findings across multiple imaging-based examinations over time, which is crucial
+for monitoring disease progression and guiding clinical decisions. Many recent
+automated radiology report generation methods are designed to capture longitu-
+dinal information; however, validating their performance is challenging. There is
+no proper tool to consistently label temporal changes in both ground-truth and
+model-generated texts for meaningful comparisons. Existing annotation meth-
+ods are typically labor-intensive, relying on the use of manual lexicons and rules.
+Complex rules are closed-source, domain specific and hard to adapt, whereas
+overly simple ones tend to miss essential specialised information. Large language
+models (LLMs) offer a promising annotation alternative, as they are capable of
+capturing nuanced linguistic patterns and semantic similarities without exten-
+sive manual intervention. They also adapt well to new contexts. In this study, we
+therefore propose an LLM-based pipeline to automatically annotate longitudinal
+information in radiology reports. The pipeline first identifies sentences containing
+relevant information and then extracts the progression of diseases. We evalu-
+ate and compare five mainstream LLMs on these two tasks using 500 manually
+annotated reports. Considering both efficiency and performance, Qwen2.5-32B
+was subsequently selected and used to annotate another 95,169 reports from the
+public MIMIC-CXR dataset. Our Qwen2.5-32B-annotated dataset provided us
+with a standardized benchmark for evaluating report generation models. Using
+this new benchmark, we assessed seven state-of-the-art report generation models.
+Our LLM-based annotation method outperforms existing annotation solutions,
+1
+arXiv:2601.16753v1  [cs.CL]  23 Jan 2026
+
+===== PAGE 2 =====
+achieving 11.3% and 5.3% higher F1-scores for longitudinal information detec-
+tion and disease tracking, respectively. In conclusion, this work demonstrates the
+potential of LLMs for efficient and effective medical report annotation and estab-
+lishes a standardized framework to evaluate the capability of report generation
+models in producing longitudinal information.
+Keywords: Automated annotation, large language model, longitudinal information,
+deep learning, radiology report generation and evaluation
+1 Introduction
+Radiological imaging is a key non-invasive tool used in routine clinical practice to assess
+patient condition and guide clinical decisions [1]. In clinical practice, serial images of a
+specific anatomical region are often acquired at multiple time points to monitor known
+conditions or detect new findings. Information derived from comparing such images
+over time is termed longitudinal information, which is essential for tracking progression
+of diseases and injuries, for instance, and for evaluating treatment response [2–6].
+Radiologists often summarize longitudinal information in unstructured free-text
+reports. This leads to follow-up radiology reports containing two sentence types. Cross-
+sectional statements describe findings derived from a single time-point visit, while
+longitudinal sentences integrate information across sequential studies. Figure 1a illus-
+trates a follow-up report that includes a cross-sectional sentence on lung inflation (i.e.,
+sentence A) and a longitudinal sentence documenting the improvement in opacity
+compared to the initial study (i.e., sentence B).
+Given the substantial workload associated with manual radiology report writing,
+the development of automatic report generation models has been widely researched
+[7]. Early report generation models primarily processed single time-point images,
+overlooking the sequential changes intrinsic to longitudinal image series. Recent auto-
+mated models capture this longitudinal information by leveraging multiple sequential
+images or reports [5, 6, 8–12, 12–18]. There is however a gap in the current literature,
+which is the lack of a standardized framework for assessing longitudinal report gener-
+ation [17]. This gap precludes systematic comparison of models and their constituent
+methodological components.
+Quantitative and reproducible assessment requires automated annotation tools
+that can reliably annotate changes over time in both ground-truth and model-
+generated reports for valid comparisons. Specifically, the coherency of longitudinal
+descriptions can be evaluated by extracting and comparing longitudinal sentences in
+clinical and generated reports, while the capturing of disease changes can be assessed
+by extracting disease progression labels. Such assessments are very common for cross-
+sectional content. For instance, prevalent Clinical Efficacy metrics employ automated
+labelers (e.g., CheXbert [19]) to detect the presence of 14 specific diseases in both
+reference and generated reports for comparison [7]. However, the assessment of lon-
+gitudinal information has received scant attention, largely because existing tools are
+2
+
+===== PAGE 3 =====
+Example Sentences in the Report
+>       The lungs are well inflated. 
+>       There has been significant interval improvement
+in the diffuse alveolar opacities previously seen. 
+A
+B
+A
+B
+Longitudinal Information
+a
+b
+1st
+2nd
+3rd
+Patient Visit Record
+Existing Annotation Methods
+Our LLM-based Annotation Methods
+Heavy reliance on manual review & expertise
+Missing critical information
+Closed-source methods
+Limited scalability and generalizability
+Rigid, rule-based understanding of nuance
+Longitudinal or cross-
+sectional sentence
+Disease
+Progression
+Cross-sectional
+Longitudinal
+Opacity
+Improved
+_
+_
+Fully automated & intelligent processing
+Comprehensive contextual understanding &
+flexible, deep semantic comprehension
+Performance that surpasses  traditional methods
+Open & accessible ecosystem
+Exceptional scalability & generalizability
+Fig. 1
+The longitudinal information in the report and the advantages of LLM-based annotation.
+a. Take sentences from the second-visit report of a patient to illustrate cross-sectional sentences
+and longitudinal information in free-text reports. b. Comparing existing longitudinal information
+annotation methods with large model-based annotation methods.
+inadequate for establishing a standardized evaluation framework. In addition, an effi-
+cient longitudinal annotation tool can help structure reports and provide annotated
+training data for deep learning models particularly in medical image analysis. Structur-
+ing reports avoids problems like ambiguous expressions and inconsistent terminology
+in unstructured text, reducing diagnostic and potential therapeutic errors caused by
+misinterpretation; the annotated data can be used for model pre-training or auxiliary
+tasks to facilitate model learning.
+Existing longitudinal annotation tools mainly include MS-CXR-T [20], ImaGenome
+silver [3], MIMIC-Diff-VQA [21], and the Temporal Entity Matching (TEM) score
+[13]. Among them, MS-CXR-T, ImaGenome silver and MIMIC-Diff-VQA refer to the
+methods used in annotating these three datasets. MS-CXR-T is manually annotated,
+making it infeasible to keep pace with the newly generated reports continuously pro-
+duced by report generation models. ImaGenome silver provides structured annotations
+for objects, attributes, and disease status changes in reports. However, it only releases
+the annotation results on MIMIC-CXR [22] and does not open-source the underlying
+methodology. Consequently, the tool cannot be applied to annotate generated or other
+reports, which severely limits its usability. As for MIMIC-Diff-VQA [21], it presents
+information in unstructured question-answer pairs (e.g., Question: “What has changed
+in the right lung area?” Answer: “The level of pleural effusion has changed from small
+to moderate”), which lacks the structured labels necessary for automated evaluation.
+3
+
+===== PAGE 4 =====
+The TEM score [13] evaluates generated reports by matching temporal expres-
+sions against ground-truth reports. It extracts these expressions using both temporal
+lexicon matching and a deep-learning-based entity recognition model. A key limita-
+tion of this approach is its focus on extracting temporal expressions (TE) rather than
+summarizing disease progression (DP). While TE captures discrete descriptions of
+medical states (e.g., “nodule increased”), DP requires the analytical synthesis of such
+information to characterize clinical change (e.g., “nodule worsened”). Consequently, it
+penalizes semantically equivalent expressions that differ lexically (e.g., “enlarged” vs.
+“increased in size”). Furthermore, temporal keyword matching is too rigid to capture
+all longitudinal descriptions. For example, the changing positions of support devices
+across sequential imaging cannot be captured by the TEM lexicon.
+Beyond the limitations in evaluating generated reports, current longitudinal infor-
+mation annotation approaches also face scalability and generalizability issues because
+they depend on either manual annotation [20] or lexicon-based rule-driven methods
+[3, 13, 21]. Both manual annotation and the development of lexicons/rules require
+extensive specialized human effort from medically trained annotators, making the pro-
+cess costly, time-consuming, and difficult to adapt to other diseases. For instance, the
+ImaGenome silver constructed an initial vocabulary of 8,752 phrases for chest X-rays
+[3, 23], which need to be refined through a semi-automatic filtering process.
+Recent advances in large language models (LLMs) offer a scalable alternative for
+automated radiology report annotation. Unlike previous methods, LLMs are capa-
+ble of both summarizing disease progression and generalizing across diverse linguistic
+expressions without predefined lexicons or task-specific rules. These capabilities make
+LLMs particularly suitable for performing longitudinal annotation of reports and, sub-
+sequently, facilitating the evaluation of generated reports based on these annotations.
+Prior studies have applied LLMs to transfer free-text reports into structured templates
+for cross-sectional findings [24–26] or specific disease-diagnosis tasks [27–29], but their
+potential for extracting longitudinal clinical information remains unexplored.
+In this work, we propose an LLM-based framework for extracting longitudinal
+information from radiology reports. The framework comprises two main tasks: (1)
+longitudinal sentence identification, which determines whether a sentence contains
+longitudinal information, and (2) disease progression tracking, which categorizes the
+change in the medical condition described in longitudinal sentences as “improved”,
+“no change”, or “worsened”. Figure 1b illustrates the superiority of the LLM-based
+approach over existing methods, and Table 1 presents a detailed comparison between
+our annotation method and existing annotation methods.
+Table 1 Our longitudinal information annotation method compared with other annotation
+methods. TDM: traditional deep-learning model; TE: temporal expressions; DP: disease
+progression. Eval refers to whether this method can be used for generated report evaluation.
+Annotation method
+Lexicon
+Manual review
+TDM
+LLM
+TE or DP
+Eval
+TEM
+✓
+–
+✓
+–
+TE
+✓
+MIMIC-Diff-VQA
+✓
+–
+–
+–
+TE
+–
+MS-CXR-T
+–
+✓
+–
+–
+DP
+–
+ImaGenome silver
+✓
+–
+–
+–
+DP
+–
+Ours
+–
+–
+–
+✓
+DP
+✓
+4
+
+===== PAGE 5 =====
+To find the most suitable LLMs for this given task, we compare the perfor-
+mance of five mainstream LLMs on a subset of the Chest ImaGenome dataset [3].
+The selected models vary in size and application scenario, including both general-
+purpose models and those fine-tuned for medical applications: MedGemma-27B [30],
+MedResearcher-R1-32B [31], Qwen2.5-32B [32], LLama3.3-70B [33], and Qwen2.5-72B
+[32]. The evaluation subset comprises 1,975 manually annotated sentences extracted
+from 500 reports. Subsequently, to establish an evaluation benchmark for report gen-
+eration models, we annotate the follow-up reports in the MIMIC-CXR dataset [22, 34]
+using Qwen2.5-32B based on its annotation effectiveness and efficiency. We termed the
+resulting annotated dataset L-MIMIC. Details of the model selection and new bench-
+mark dataset construction processes are provided in Appendix A.2 and Section 2.1.3,
+respectively.
+Based on the LLM annotation pipeline, we developed an evaluation framework to
+assess whether report generation models can effectively capture longitudinal informa-
+tion. This evaluation examines performance along two key aspects: (1) the coherency
+of longitudinal descriptions, and (2) the capability to accurately capture disease
+progression. Finally, we evaluated seven mainstream report generation models (i.e.,
+R2Gen[35], MedVersa[11], L R2Gen[16], MLRG[14], HC-LLM[17], Maira2[12], and
+Libra[5]) on the L-MIMIC test dataset using the evaluation framework.
+Our work makes three key contributions:
+• First LLM-based longitudinal annotation: We leverage LLMs to automati-
+cally identify longitudinal content and disease progression in radiology reports. We
+compare five mainstream LLMs and show substantial improvements over traditional
+methods through comprehensive validation.
+• A unified evaluation framework for longitudinal report generation: We
+created a longitudinal annotation for the MIMIC-CXR dataset and named this
+newly annotated dataset L-MIMIC, which serves as a benchmark for evaluating how
+well report generation models capture longitudinal information. Based on the LLM-
+driven annotation framework, we also propose a set of metrics specifically designed
+for this assessment.
+• Evaluation of automated report generation models: We assessed seven main-
+stream models, highlighting their strengths and limitations in capturing longitudinal
+information.
+2 Method
+This section describes the proposed pipeline for using LLMs to automatically anno-
+tate radiology reports, including LLM model selection, prompt design, and evaluation
+methodology. Based on a comparative evaluation, the best-performing LLM is selected
+to generate a large benchmark dataset, referred to as L-MIMIC. The second part of
+the method outlines the evaluation pipeline and metrics used to assess the perfor-
+mance of seven state-of-the-art radiology report generation models on the L-MIMIC
+dataset. The code and L-MIMIC dataset will be released upon paper acceptance.
+5
+
+===== PAGE 6 =====
+2.1 LLM-based longitudinal annotation
+2.1.1 Large language model selection
+We selected five widely used LLMs, covering both medical-specialized and general-
+purpose
+families:
+MedGemma-27B
+[30](link),
+MedResearcher-R1-32B
+[31](link),
+Qwen2.5-32B
+[32](link),
+Llama3.3-70B
+[33](link),
+and
+Qwen2.5-72B
+[32](link).
+MedGemma-27B and MedResearcher-R1-32B represent clinically adapted models
+trained on substantial medical corpora, whereas Qwen2.5-32B, Llama3.3-70B, and
+Qwen2.5-72B serve as state-of-the-art general LLM baselines. All models are released
+as open-source and freely available. All experiments used deterministic greedy
+decoding and were run on NVIDIA A100 GPUs.
+2.1.2 Report annotation pipeline and LLM prompt design
+Reports were first segmented into sentences using Stanza [36]. Each sentence was
+subsequently classified by an LLM into either a cross-sectional sentence, describing
+the patient’s static condition without temporal comparison, or a longitudinal sentence.
+For sentences identified as longitudinal, the model extracted disease-related keywords
+(e.g., atelectasis) and assigned a progression label. The design of the progression label
+follows previous work [3, 5, 13, 20] and annotates three categories, i.e., improved, no
+change and worsened. An additional unmentioned label is introduced to account for
+irrelevant content potentially generated by generative models. The overall processing
+workflow is summarized in Fig. 2a.
+Following previous works [29], prompts were designed by combining concise task
+descriptions with illustrative examples. The prompts used for longitudinal classifi-
+cation, keyword extraction, and progression labeling are provided below. Bold text
+indicates placeholders that are replaced with task-specific content.
+“You are a medical AI assistant. Given a radiology report sentence sentence, determine
+if it compares the current image with prior studies (e.g., remain, compare, similar, stable,
+increased, still, new, again). If yes, return <1>. If no, return <0>. Examples: “Cardiac
+and mediastinal silhouettes are stable.” returns <1>, “No larger pleural effusions.” returns
+<1>,“Increased retrocardiac opacity may reflect atelectasis.” returns <1>.”
+“Which item in the list most related to the following sentence sentence? The list is disease
+list. Please reply with the answer enclosed in <>, for example <spinal fracture>. Return
+<support devices> for any changes in support device positions.
+“The following sentence sentence describes the status of disease as <no change>(e.g.,
+similar, unchanged), <improved>(e.g., resolved), or <worsened>. Return the answer in
+the form of <no change>, <improved>, or <worsened>. If this condition is not mentioned,
+return <unmentioned>. Note that if ‘change’ or ‘new’ is mentioned along with a newly
+appearing lesion, it usually implies worsening. Example: in cases of ‘pleural effusion’, ‘New
+small bilateral pleural effusions.’ means <worsened>. In cases of ‘low lung volumes’, ‘lower’
+means <worsened>; ‘increased’ means <improved>.
+6
+
+===== PAGE 7 =====
+> There is no pneumothorax.
+> Bilateral pleural effusions are
+small.
+> Bibasilar atelectasis have
+improved, larger on the right. 
+Each Sentence in Report
+LLM
+> Bilateral pleural effusions are small.
+> Bibasilar atelectasis have improved,
+larger on the right. 
+Ground
+truth 
+report
+Generated
+report
+Longitudinal
+annotation prompt
+> Bibasilar
+atelectasis have
+improved, larger
+on the right. 
+a
+b
+Longitudinal
+sentences
+BLEU/
+METEOR/
+ROUGE-L/
+Keyword
+annotation
+Disease
+progression 
+annotation
+Disease progression 
+annotation
+Accuracy/
+Precision/
+Recall/
+F1 score
+> There is no pneumothorax.
+<Improved>
+<No change>
+<Worsened>
+<Unmentioned>
+Longitudinal
+sentences
+<Keyword>
+<Status>
+<Status>
+<cross-sectional>
+<longitudinal>
+Longitudinal
+annotation
+Longitudinal
+annotation
+<cross-sectional>
+Keyword 
+annotation prompt
+LLM
+LLM
+<Atelectasis>
+Disease
+progression
+annotation prompt
+Fig. 2
+Annotation and evaluation pipeline. a. Longitudinal, keyword, and disease progression anno-
+tations. Longitudinal annotation identifies sentences containing longitudinal information; keyword
+annotation captures the main content; disease progression annotation captures changes in status (i.e.,
+improved, no change, worsened, or unmentioned) related to the main content. b. An evaluation frame-
+work for the report generation model based on the proposed annotation method.
+The above prompts apply to all models, except that MedGemma requires “Please
+output <0> or <1>.” at the end of the prompt when performing longitudinal anno-
+tation to enforce binary outputs. The disease list design is provided in Appendix
+A.1.
+2.1.3 Dataset and evaluation metrics
+The test set for assessing LLMs annotation performance was derived from ImaGenome.
+Longitudinal annotations in ImaGenome were provided in two forms: manually curated
+(i.e., gold) and automatically generated (i.e., silver). The gold subset included only
+longitudinal sentences from second-visit reports of 500 patients, whereas the silver
+annotations covered the majority of sentences across all reports. We constructed a
+combined dataset of 1,975 sentences sourced from 500 reports. Specifically, this dataset
+comprises all sentences from the gold subset, augmented with non-longitudinal sen-
+tences sampled from the same reports in the silver annotations. Model performance
+for both longitudinal annotation and disease-progression annotation was quantified
+using standard evaluation metrics, including accuracy, precision, recall, and the F1
+score. The evaluation results are presented in Figure 3, and Qwen2.5-32B was selected
+to construct a benchmark dataset (i.e. L-MIMIC) for report generation method
+evaluation.
+7
+
+===== PAGE 8 =====
+2.2 Evaluation of report generation models
+2.2.1 L-MIMIC Dataset
+The L-MIMIC dataset was constructed by annotating radiology reports from the
+MIMIC-CXR database using Qwen2.5-32B, which was chosen for its favorable balance
+between performance and computational efficiency (Appendix A.2). Following Zhu et
+al. [16], we selected reports containing a “Findings” section from patients’ second or
+later visits, and retaining all images for each patient across scan positions. We also
+separated report sections into “Indication”, “Comparison”, “Findings”, “Impression”,
+“Technique”, “History”, and “Examination”, leveraging the official MIMIC-CXR code.
+Each sentence in the “Findings” section was then annotated with Qwen2.5-32B to
+identify longitudinal information, relevant clinical keywords, and indications of disease
+progression. Overall, the L-MIMIC dataset consists of 73,093 training, 588 validation,
+and 1,863 test reports, which can be used as a benchmark for method comparison.
+2.2.2 Radiology report generation models
+We assessed seven radiology report generation models, including two baselines:
+R2Gen, representing conventional deep-learning approaches, and MedVersa, represent-
+ing large-scale models (≥7B parameters). Neither baseline incorporates prior clinical
+history. The other five models—L R2Gen, MLRG, HC-LLM, Maira2 and Libra—are
+designed to exploit patients’ historical information to generate longitudinally informed
+reports. Among them, L R2Gen and MLRG do not incorporate LLMs, whereas
+HC-LLM includes a frozen LLM; all remaining models are LLM-based. This set com-
+prehensively spans models of varying scales, architectures, and capacities to leverage
+longitudinal clinical data. Full model configurations are provided in Appendix B.1.
+2.2.3 Evaluation pipeline and metrics
+Figure 2b summarizes the evaluation framework for assessing whether the report-
+generation models faithfully capture longitudinal disease progression. Using the
+generated L-MIMIC dataset as an example, ground-truth reports were first anno-
+tated with longitudinal sentences, disease-specific keywords, and progression labels.
+Generated reports were then processed to extract longitudinal sentences, which were
+matched to their ground-truth counterparts. Linguistic similarity was quantified using
+standard natural-language metrics [7]—BLEU-1–4, ROUGE-L, and METEOR—to
+evaluate the fluency and lexical correspondence of the generated longitudinal descrip-
+tions. For each disease instance with a reference progression label, progression status
+was inferred from the generated longitudinal sentences. Notably, progression labels
+excluded support devices. Given that changes in support devices are predominantly
+positional, their progression trends (improved, worsened or no change) cannot be reli-
+ably classified, and no corresponding annotations were provided by ImaGenome. Model
+performance in predicting progression was then evaluated using accuracy, precision,
+recall, and F1-score against the ground-truth annotations.
+8
+
+===== PAGE 9 =====
+3 Results
+3.1 LLM-based annotation performance
+We compared the annotation performance of the five LLMs (i.e. MedGemma-27B [30],
+MedResearcher-R1-32B [31], Qwen2.5-32B [32], LLama3.3-70B [33], and Qwen2.5-72B
+[32]) with ImaGenome silver [3] (traditional rule-based method used as baseline),
+as shown in Figure 3. On the task of identifying sentences containing longitudinal
+information, all LLMs substantially outperformed ImaGenome silver. LLaMA3.3-70B
+achieved the highest F1 score of 94.0%, representing an 11.3% improvement over
+ImaGenome silver (82.7%). MedGemma-27B and Qwen2.5-32B also showed signifi-
+cant gains, with F1 scores of 93.2% (+10.5%) and 91.8% (+9.1%), respectively, while
+MedResearcher-R1-32B and Qwen2.5-72B scored 90.5% (+7.8%) and 89.5% (+6.8%)
+respectively.
+The gains in F1 were primarily driven by increased recall rather than precision.
+The rule-based method exhibited very high precision (98.5%) but extremely low recall
+(71.2%), resulting in many missed positive cases. In contrast, LLaMA3.3-70B achieved
+a recall of 96.8% (+25.6%) while maintaining high precision (91.4%). Similar recall
+improvements were observed across other LLMs, including MedGemma-27B (93.7%,
++22.5%) and Qwen2.5-32B (88.8%, +17.6%), showing that LLMs improve sensitivity
+without sacrificing precision to a degree that harms overall performance. Consistent
+with this trend, LLM-based models also showed higher accuracy than the rule-based
+method (90.2%), with LLaMA3.3-70B reaching 95.9% (+5.7%) and MedGemma-27B
+95.5% (+5.3%).
+89.5
+85.1
+94.4
+93.4
+94
+96.8
+91.4
+95.9
+91.8
+88.8
+95.1
+94.8
+90.5
+86
+95.4
+94
+93.2
+93.7
+92.7
+95.5
+82.7
+71.2
+98.5
+90.2
+95.8
+98.4
+95.8
+91.2
+94.9
+97.3
+93.7
+90.5
+95.4
+98.7
+95.3
+91.9
+95.1
+97.7
+94.4
+90.1
+96.3
+97.7
+95.6
+91.4
+95.7
+97.8
+94.5
+88.7
+76.2
+83.7
+87.7
+83.8
+77.4
+79.4
+79.8
+78.9
+72.2
+87.1
+87
+83.2
+70.4
+74.9
+84.6
+79.5
+79.6
+76
+87.9
+83.7
+72.5
+76.6
+82.1
+78.5
+F1
+Recall
+Precision
+Accuracy
+70
+80
+90
+100
+Longitudinal annotation
+ ImaGenome silver 
+ MedGemma-27B 
+ MedResearcher-R1-32B 
+ Qwen2.5-32B 
+ LLama3.3-70B 
+ Qwen2.5-72B
+Disease progression annotation
+Worsened
+Improved
+No change
+Average
+90
+100
+Accuracy
+Worsened
+Improved
+No change
+Average
+70
+80
+90
+F1 score
+Fig. 3
+Performance of large language models on longitudinal annotation and disease progression
+annotation. For disease progression annotation, the average refers to the micro-average across three
+classes: no change, improved, and worsened.
+9
+
+===== PAGE 10 =====
+In disease progression prediction, LLMs consistently outperformed rule-based
+ImaGenome silver. Overall, micro-average accuracy ranged from 90.1–91.9%, rep-
+resenting improvements of 1.4–3.2% over ImaGenome Silver (88.7%). Qwen2.5-
+32B achieved the highest accuracy (91.9%). Micro-average F1 scores ranged from
+78.9–83.8%, corresponding to gains of 0.4–5.3% over ImaGenome Silver (78.5%).
+Qwen2.5-72B (83.8%) showed the strongest performance.
+Different models excelled in different categories. In the “no change” category,
+MedGemma-27B achieved an F1 score of 87.9%, outperforming ImaGenome by 5.8%
+(82.1%), while Qwen2.5-32B reached 87%, an improvement of 4.9%. In the “improved”
+category, Qwen2.5-32B performed the best, achieving 87.1% and leading ImaGenome
+by 10.5%. In the “worsened” category, Qwen2.5-32B, which performed well in the first
+two categories, is comparable to ImaGenome, whereas MedGemma-27B outperformed
+ImaGenome by 7.1%.
+3.2 L-MIMIC for Report Generation Evaluation
+The follow-up reports in the MIMIC-CXR dataset comprise 92,374 reports for training,
+737 for validation, and 2,058 for testing, following its official split. Figure 4 shows its
+annotation statistics. While most follow-up reports include disease progression infor-
+mation. About 20% of training/validation and 10% of test reports lack such details
+(Figure 4a). Among disease progression, 59%, 10%, and 11% indicate “no change”,
+“improved”, and “worsened”, respectively. Furthermore, variations in the support
+device, such as its position, accounted for 18% (Figure 4b). We extracted cases whose
+reports were labeled as containing longitudinal information, forming the L-MIMIC
+dataset with 73,093 training, 588 validation, and 1,863 test cases. The training and
+validation sets include longitudinal annotations to support the development of medical
+image analysis models, and are suitable for tasks such as pre-training, hyperparame-
+ter setting, and fine-tuning. The test set is designed for evaluating model performance
+particularly in report generation and disease progression tracking. Detailed application
+scenarios for longitudinal annotation are discussed in Section 4.4.
+Train dataset
+#Reports: 92,374 
+#Sentences (L_report): 409,194
+Validation dataset
+#Reports: 737 
+#Sentences (L_report): 3226
+Test dataset
+#Reports: 2058 
+#Sentences (L_report): 11004
+L_report
+C_report
+L_sentence
+C_sentence
+79.1%
+79.8%
+90.5%
+20.9%
+20.2%
+9.5%
+58.8%
+58.1%
+57%
+43%
+41.9%
+41.2%
+a
+No change
+Worsened
+Improved
+Unmentioned
+59%
+18%
+10%
+2%
+11%
+Support
+devices
+b
+Fig. 4 Annotation statistics for follow-up reports in MIMIC-CXR. a. Proportion of sentences and
+reports with longitudinal information. L report/L sentence: reports/sentences with longitudinal infor-
+mation. C report/C sentence: reports/sentences that convey only cross-sectional information and
+exclude any longitudinal information. b. Proportion of disease progression categories in L-MIMIC.
+10
+
+===== PAGE 11 =====
+We evaluated seven report-generation systems (i.e., R2Gen[35], MedVersa[11],
+L R2Gen[16], MLRG[14], HC-LLM[17], Maira2[12], and Libra[5]) on the L-MIMIC test
+set to assess their ability to capture longitudinal information, therefore demonstrating
+the advantages of using L-MIMIC for method evaluation. Table 2 summarizes the key
+metrics: BLEU-4 [37] and METEOR [38] for language quality, micro-average F1 for
+disease diagnosis, and both micro-average and class-level F1 for disease-progression
+categories. The table also indicates whether models use prior imaging (P I) or tex-
+tual inputs (P T). Full model configurations and all language and clinical metrics are
+provided in Appendix B.
+Table 2 Performance of report generation models on the L-MIMIC test set. P I, prior image
+input; P T, prior text input; A F1, micro-average F1 score; N F1, I F1, W F1, F1 scores for
+no-change, improved, and worsened classes, respectively. Higher values are better for all indicators.
+Models
+Inputs
+Language-based metrics
+Medical correctness-based metrics (%)
+P I
+P T
+Whole report
+Longitudinal
+sentences
+Diagnosis
+Progression
+BLEU-
+4
+MET
+EOR
+BLEU-
+4
+MET
+EOR
+F1
+A F1 N F1 I F1
+W F1
+R2Gen
+✗
+✗
+9.3
+13.3
+2.4
+5.9
+32.5
+33.6
+44.6
+0.2
+2.7
+MedVersa
+✗
+✗
+15.0
+16.5
+2.9
+7.3
+52.8
+33.9
+41.4
+9.4
+14.0
+L R2Gen
+✓
+✓
+9.0
+12.9
+3.4
+6.5
+42.1
+38.8
+51.5
+2.3
+2.1
+MLRG
+✓
+✓
+15.0
+16.8
+6.9
+9.7
+52.8
+35.7
+44.4
+10.5
+12.5
+HC-LLM
+✓
+✓
+11.6
+15.6
+5.4
+9.0
+43.4
+38.0
+48.6
+11.2
+5.3
+Maira2
+✓
+✓
+18.9
+19.5
+9.6
+12.5
+58.2
+41.4
+49.7
+17.7
+18.3
+Libra
+✓
+✗
+23.6
+22.6
+12.7
+13.9
+57.6
+41.0
+50.5
+13.9
+14.9
+All report-generation models exhibited considerable scope for improvement in cap-
+turing longitudinal information. Libra outperformed counterparts on language-based
+metrics, achieving BLEU-4 and METEOR scores of 23.6 and 22.6 for full reports
+versus only 12.7 and 13.9 for longitudinal sentences. Maira2, meanwhile, topped all
+models in diagnostic and overall disease progression prediction, with a diagnostic F1
+of 58.2% versus a substantially lower 41.4% micro-average F1 for progression. Other
+models performed even poorer on longitudinal sentence language metrics and pro-
+gression micro-average F1; most yielded a progression F1<40%, METEOR<10, and
+BLEU-4<7.
+Models with longitudinal priors achieved higher performance on longitudinal infor-
+mation generation than models without priors. R2Gen and MedVersa, which lack input
+of prior information (text report and/or images), obtained BLEU-4 scores of 2.4 and
+2.9, METEOR scores of 5.9 and 7.3, and progression F1 scores of 33.6% and 33.9%.
+The other methods with priors reached BLEU-4 scores of 3.4–12.7, METEOR scores of
+6.5–13.9, and progression F1 scores of 35.7–41.4%. The longitudinally enhanced vari-
+ant L R2Gen achieved higher scores on longitudinal sentences (BLEU-4: 3.4 vs. 2.4;
+METEOR: 6.5 vs. 5.9) and progression F1 (38.8% vs. 33.6%) compared with R2Gen,
+while its overall report performance was lower (BLEU-4: 9.0 vs. 9.3; METEOR: 12.9
+vs. 13.3).
+Across the three progression categories, all models show substantial imbalance,
+with the no-change class consistently outperforming the improved and worsened
+11
+
+===== PAGE 12 =====
+classes. R2Gen and L R2Gen exhibit the largest performance difference between
+the no-change (44.6% and 51.5%) class and the improved/worsened classes (<3%).
+Other models mitigate this imbalance, yet gaps still remain. For example, Maira2
+achieves 17.7% and 18.3% on the improved and worsened classes, respectively, while
+maintaining a score of 49.7% on the no-change class.
+4 Discussion
+In this study, we benchmark LLMs’ ability to annotate longitudinal information in
+radiology reports, and further scale this annotation pipeline to annotate a large public
+dataset. Building on this validated LLM-based annotation methodology, we develop a
+systematic evaluation framework tailored to assessing the capacity of radiology report
+generation models to capture longitudinal information, and apply this framework to
+evaluate seven mainstream report generation models, revealing their limitations. In
+the following discussion, we elaborate the advantages of LLM-based annotation, the
+influence of LLM scale and training dataset, potential application scenarios of auto-
+mated longitudinal information extraction, and the performance of report generation
+models. Finally, we discuss the limitations and future work of this study.
+4.1 Advantages of LLM-based longitudinal information
+annotation
+We evaluated five mainstream LLMs on their ability to identify longitudinal descrip-
+tions and track disease progression. In the task of identifying longitudinal descrip-
+tions, all LLMs significantly outperformed the conventional rule-based method (i.e.,
+ImaGenome silver), with MedGemma-27B, LLaMA3.3-70B, and Qwen2.5-32B achiev-
+ing the highest performance. For disease progression, MedGemma-27B, Qwen2.5-72B,
+and Qwen2.5-32B demonstrated a clear advantage over traditional approaches,
+whereas other models achieved only modest improvements. Considering both anno-
+tation accuracy and efficiency, Qwen2.5-32B was selected as a practical tool for
+large-scale annotation of the MIMIC-CXR dataset, facilitating the construction of
+a longitudinally labeled resource for downstream studies of longitudinal description
+identification and disease progression.
+Large models offer advantages for medical annotation beyond performance met-
+rics. Conventional annotation methods typically rely on extensive manually curated
+vocabularies, which require labor-intensive human verification. Meanwhile, these
+vocabularies are often disease-specific, which limits their general applicability. While
+LLMs enable automatic and scalable annotation by interpreting context-rich clinical
+narratives without reliance on predefined lexicons, thereby reducing manual effort and
+enhancing adaptability across diverse clinical domains.
+Some existing approaches, such as TEM and MIMIC-Diff-VQA, extract temporal
+descriptive terms directly from radiology reports, but do not summarize information
+on disease progression. This limitation restricts their utility across diverse application
+scenarios. In contrast, LLMs, with their strong language comprehension and flexibility
+in understanding clinical narratives, offer a promising avenue for summarizing disease
+progression from radiology reports.
+12
+
+===== PAGE 13 =====
+In conclusion, our experiments show that LLMs significantly outperform traditional
+rule-based methods in identifying longitudinal descriptions and disease progression in
+radiology reports. Unlike conventional approaches that require laborious construction
+and maintenance of large domain-specific lexicons, LLMs reduce human resource costs
+and enhance task scalability, making them a promising and robust tool for this task.
+4.2 Influence of LLMs scale and training dataset
+Larger LLMs do not necessarily outperform smaller ones in terms of both longitudinal
+annotation and disease progression. Within the Qwen2.5 series, Qwen2.5-32B and
+Qwen2.5-72B achieved comparable performance, while across series, LLaMA3.3-70B
+slightly underperformed compared with Qwen2.5-32B and MedGemma-27B. These
+findings show that 32B-scale LLMs are sufficient to meet the demands of specific
+clinical scenarios, offering strong performance alongside greater ease of deployment
+and lower GPU requirements.
+Consistent with the observations of Kim et al. [27] in disease diagnosis, medically
+fine-tuned language models did not outperform their base models in our annotation
+tasks. MedResearcher-R1-32B, a medically fine-tuned variant of Qwen2.5-32B, showed
+lower performance than its base model, suggesting that domain-specific fine-tuning
+does not always enhance task-specific capabilities. This may reflect limitations in the
+design of fine-tuning tasks or the coverage of domain-specific data.
+4.3 Evaluation of medical report generation models
+We evaluate the progress and limitations of current report generation models in
+longitudinal information generation by validating seven mainstream models on the L-
+MIMIC dataset, based on our evaluation framework (Table 2). Overall, recent models
+have incorporated prior image and text data via diverse strategies, achieving notable
+progress in longitudinal information capture. However, considerable room for enhance-
+ment remains, specifically in the coverage and fluency of longitudinal sentences, and
+the ability to identify disease improvement and deterioration.
+Report generation models typically exhibit three types of errors when handling lon-
+gitudinal information: missing comparison, redundant comparison, and wrong trend
+prediction. A missing comparison occurs when documented lesion changes are omitted;
+a redundant comparison introduces unreported alterations; and a wrong trend pre-
+diction misrepresents the direction of disease progression. Our evaluation framework
+can detect all these errors. Specifically, progression metrics provide an intuitive reflec-
+tion of wrong trend errors and missing comparison errors. Language-based metrics
+for longitudinal sentences can distinguish linguistic descriptive discrepancies, thereby
+capturing redundant comparisons and missing comparison errors, as well as partially
+indicating wrong trend errors.
+Trend errors stem from the limitations of the model’s capabilities, whereas redun-
+dant and missing comparisons arise when the model fails to recognize the target
+disease. Even radiologists interpreting identical imaging data may produce reports
+with inconsistent documentation priorities without explicit guidance—this underscores
+13
+
+===== PAGE 14 =====
+the necessity of integrating keyword guidance into report generation models to delin-
+eate required information for extraction. While keyword-driven information retrieval
+has been embedded in general report generation frameworks [39, 40], analogous
+research focusing on longitudinal information capture remains sparse.
+Report generation models show a significant performance gap in longitudinal
+metrics compared with language-based and diagnostic metrics for full reports. This
+suggests that the models can capture clinical findings; however, they struggle to cor-
+relate these with patients’ historical records. Previous report generation models (e.g.,
+R2Gen and MedVersa) typically take single-time-point images as input, which do not
+contain longitudinal information. Longitudinal descriptions generated by these models
+are hallucinations that lack clinical value.
+Recent models for medical report generation incorporate prior images and reports
+as inputs, achieving improved performance on longitudinal metrics compared to base-
+line approaches. However, existing fusion strategies remain rudimentary. Most methods
+rely on cross-attention mechanisms to retrieve relevant information in prior inputs
+[5, 14, 16]. Yet, none of these methods introduce constraints when associating cur-
+rent observations with historical patient data. Liu et al. [17] attempt to compare the
+current image with prior images, as well as the current report with prior reports, by
+imposing consistency constraints, but they keep the LLM frozen and only train a linear
+projection layer, potentially limiting expressive power.
+In conclusion, our evaluation of the longitudinal information generation capabil-
+ity refines the assessment framework for report generation models and identifies the
+limitations of current models. Incorporating additional constraints, such as keywords,
+to better integrate prior images and reports into the training process represents a
+promising direction for future report generation research.
+4.4 Other application scenarios of automated longitudinal
+information annotation in radiology reports
+Besides the evaluation scenario, automated longitudinal information extraction has
+two primary application scenarios that support both clinical practice and research.
+First, it enables structured characterization of disease trajectories from free-text radi-
+ology reports by converting narrative descriptions into progression categories (e.g.,
+improved, no change, worsened). Structuring longitudinal and disease-tracking infor-
+mation can support quantification of population-level trends, identification of clinically
+meaningful temporal changes, and retrieval of cases for large-scale analysis.
+Second, automatic longitudinal annotation can enhance the training of automated
+report generation models by providing additional supervisory signals that indicate
+whether prior examinations should be referenced, more accurately reflecting real-world
+clinical workflows. Current models treat longitudinal and cross-sectional sentences
+identically, using the same input. In reality, longitudinal sentences require reference to
+previous images and reports, whereas cross-sectional sentences can be generated from
+single time-point images. Zhu et al. [16] selected longitudinal reports from patients
+with more than two visits, assuming these contain longitudinal information. However,
+our annotations (Figure 4) reveal that 10–20% of such reports lack longitudinal content
+and around 58% of sentences in longitudinal reports are cross-sectional sentences.
+14
+
+===== PAGE 15 =====
+Therefore, explicit differentiation of cross-sectional from true longitudinal sentences is
+critical to enabling models to prioritize high-value input data.
+Additionally, automatic longitudinal annotation supplies high-quality training data
+for model pre-training, which is crucial for deep learning, especially for large-scale
+models. Pre-training transforms model parameters from random initialization into a
+semantically informed starting point, laying a robust foundation for effective fine-
+tuning. For example, Zhang et al. [5] utilized VQA annotations from MIMIC-Diff-VQA
+[21] to pre-train their report generation model.
+4.5 Limitations and future works
+When tracking longitudinal disease progression, LLMs performed suboptimally in
+identifying “worsened” cases. A key limitation was their tendency to misinterpret
+sentences describing worsened status as cross-sectional status, due to difficulty dis-
+cerning whether terms like “increased” referred to the current scan alone or implied
+a comparison with prior imaging. For instance, Qwen2.5-32B failed to identify 46 out
+of 190 longitudinal sentences describing “worsened” cases, compared to missing only
+9 sentences describing “improved” cases. Additionally, LLMs often overlooked newly
+emerged diseases as “worsened” progression indicators. Future improvements could
+involve more nuanced prompt engineering, such as integrating prior reports to provide
+essential clinical context.
+The validation in this study is limited to chest X-ray reports. Research on longitudi-
+nal progression in radiology remains nascent, and datasets with expert annotations for
+other imaging modalities and anatomical regions are scarce. Therefore, constructing
+the necessary datasets and further evaluating the reliability of LLM-based annotations
+across a broader range of clinical scenarios are critical next steps.
+The reliability of LLMs is constrained by their inherent tendencies toward hallu-
+cination and bias, particularly in domains like rare diseases where training data is
+limited. Recent advances, such as enabling LLMs to access the internet, have helped
+mitigate hallucinations and outdated knowledge. Thus, a promising research direc-
+tion lies in developing LLM-based annotation methods that allow online querying or
+real-time knowledge updates without compromising patient privacy or significantly
+increasing inference time. Finally, it is worth noting that our annotation and evalu-
+ation framework is sufficiently flexible and general to accommodate newly developed
+LLMs.
+References
+[1] Liao, Y., Liu, H., Spasi´c, I.: Deep learning approaches to automatic radiology
+report generation: A systematic review. Informatics in Medicine Unlocked 39,
+101273 (2023)
+[2] Kalil, A.C., Metersky, M.L., Klompas, M., Muscedere, J., Sweeney, D.A., Palmer,
+L.B., Napolitano, L.M., O’Grady, N.P., Bartlett, J.G., Carratal`a, J., et al.: Man-
+agement of adults with hospital-acquired and ventilator-associated pneumonia:
+15
+
+===== PAGE 16 =====
+2016 clinical practice guidelines by the infectious diseases society of america and
+the american thoracic society. Clinical infectious diseases 63(5), 61–111 (2016)
+[3] Wu, J., Agu, N., Lourentzou, I., Sharma, A., Paguio, J., Yao, J.S., Dee, E.C.,
+Mitchell, W., Kashyap, S., Giovannini, A., et al.: Chest imagenome dataset.
+Physio Net (2021)
+[4] Li, M.D., Chang, K., Bearce, B., Chang, C.Y., Huang, A.J., Campbell, J.P.,
+Brown, J.M., Singh, P., Hoebel, K.V., Erdo˘gmu¸s, D., et al.: Siamese neural net-
+works for continuous disease severity evaluation and change detection in medical
+imaging. NPJ digital medicine 3(1), 48 (2020)
+[5] Zhang, X., Meng, Z., Lever, J., Ho, E.S.L.: Libra: Leveraging temporal images for
+biomedical radiology analysis. In: Findings of the Association for Computational
+Linguistics: ACL 2025, pp. 17275–17303. Association for Computational Linguis-
+tics, Vienna, Austria (2025). https://aclanthology.org/2025.findings-acl.888/
+[6] Hou, W., Cheng, Y., Xu, K., Li, W., Liu, J.: Recap: Towards precise radiology
+report generation via dynamic disease progression reasoning. In: 2023 Findings
+of the Association for Computational Linguistics: EMNLP 2023, pp. 2134–2147
+(2023). Association for Computational Linguistics (ACL)
+[7] Wang, X., Figueredo, G., Li, R., Zhang, W.E., Chen, W., Chen, X.: A sur-
+vey of deep-learning-based radiology report generation using multimodal inputs.
+Medical Image Analysis, 103627 (2025)
+[8] Nicolson, A., Dowling, J., Anderson, D., Koopman, B.: Longitudinal data and
+a semantic similarity reward for chest x-ray report generation. Informatics in
+Medicine Unlocked 50, 101585 (2024)
+[9] Wang, F., Du, S., Yu, L.: Hergen: Elevating radiology report generation with
+longitudinal data. In: European Conference on Computer Vision, pp. 183–200
+(2024). Springer
+[10] Dalla Serra, F., Wang, C., Deligianni, F., Dalton, J., O’Neil, A.Q.: Controllable
+chest x-ray report generation from longitudinal representations. In: The 2023
+Conference on Empirical Methods in Natural Language Processing (2023)
+[11] Zhou, H.-Y., Acosta, J.N., Adithan, S., Datta, S., Topol, E.J., Rajpurkar, P.:
+Medversa: A generalist foundation model for medical image interpretation. arXiv
+preprint arXiv:2405.07988 (2024)
+[12] Bannur, S., Bouzid, K., Castro, D.C., Schwaighofer, A., Thieme, A., Bond-Taylor,
+S., Ilse, M., P´erez-Garc´ıa, F., Salvatelli, V., Sharma, H., et al.: Maira-2: Grounded
+radiology report generation. arXiv preprint arXiv:2406.04449 (2024)
+[13] Bannur, S., Hyland, S., Liu, Q., Perez-Garcia, F., Ilse, M., Castro, D.C., Boecking,
+16
+
+===== PAGE 17 =====
+B., Sharma, H., Bouzid, K., Thieme, A., et al.: Learning to exploit temporal struc-
+ture for biomedical vision-language processing. In: Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recognition, pp. 15016–15027
+(2023)
+[14] Liu, K., Ma, Z., Kang, X., Li, Y., Xie, K., Jiao, Z., Miao, Q.: Enhanced contrastive
+learning with multi-view longitudinal data for chest x-ray report generation. In:
+Proceedings of the Computer Vision and Pattern Recognition Conference, pp.
+10348–10359 (2025)
+[15] Wang, Z., Sun, Y., Li, Z., Yang, X., Chen, F., Liao, H.: Llm-rg4: Flexible and
+factual radiology report generation across diverse input contexts. In: Proceedings
+of the AAAI Conference on Artificial Intelligence, vol. 39, pp. 8250–8258 (2025)
+[16] Zhu, Q., Mathai, T.S., Mukherjee, P., Peng, Y., Summers, R.M., Lu, Z.: Utilizing
+longitudinal chest x-rays and reports to pre-fill radiology reports. In: International
+Conference on Medical Image Computing and Computer-Assisted Intervention,
+pp. 189–198 (2023). Springer
+[17] Liu, T., Wang, J., Hu, Y., Li, M., Yi, J., Chang, X., Gao, J., Yin, B.: Hc-llm:
+Historical-constrained large language models for radiology report generation. In:
+Proceedings of the AAAI Conference on Artificial Intelligence, vol. 39, pp. 5595–
+5603 (2025)
+[18] Yang, Y., You, X., Zhang, K., Fu, Z., Wang, X., Ding, J., Sun, J., Yu, Z., Huang,
+Q., Han, W., et al.: Spatio-temporal and retrieval-augmented modelling for chest
+x-ray report generation. IEEE Transactions on Medical Imaging (2025)
+[19] Smit, A., Jain, S., Rajpurkar, P., Pareek, A., Ng, A.Y., Lungren, M.P.: Chexbert:
+Combining automatic labelers and expert annotations for accurate radiology
+report labeling using bert. In: EMNLP 2020-2020 Conference on Empirical
+Methods in Natural Language Processing, Proceedings of the Conference, pp.
+1500–1519 (2020)
+[20] Bannur, S., Hyland, S., Liu, Q., P´erez-Garc´ıa, F., Ilse, M., Castro, D.C., Boecking,
+B., Sharma, H., Bouzid, K., Schwaighofer, A., et al.: MSCXR-T: Learning to
+exploit temporal structure for biomedical vision-language processing. PhysioNet
+(2023)
+[21] Hu, X., Gu, L., An, Q., Zhang, M., Liu, L., Kobayashi, K., Harada, T., Summers,
+R.M., Zhu, Y.: Expert knowledge-aware image difference graph representation
+learning for difference-aware medical visual question answering. In: Proceedings
+of the 29th ACM SIGKDD Conference on Knowledge Discovery and Data Mining,
+pp. 4156–4165 (2023)
+[22] Johnson, A.E., Pollard, T.J., Berkowitz, S.J., Greenbaum, N.R., Lungren, M.P.,
+Deng, C.-y., Mark, R.G., Horng, S.: Mimic-cxr, a de-identified publicly available
+17
+
+===== PAGE 18 =====
+database of chest radiographs with free-text reports. Scientific data 6(1), 317
+(2019)
+[23] Wu, J.T., Syed, A., Ahmad, H., Pillai, A., Gur, Y., Jadhav, A., Gruhl, D., Kato,
+L., Moradi, M., Syeda-Mahmood, T.: Ai accelerated human-in-the-loop structur-
+ing of radiology reports. In: AMIA Annual Symposium Proceedings, vol. 2020, p.
+1305 (2021)
+[24] Wo´znicki, P., Laqua, C., Fiku, I., Hekalo, A., Truhn, D., Engelhardt, S., Kather,
+J., Foersch, S., D’Antonoli, T.A., Santos, D., et al.: Automatic structuring of
+radiology reports with on-premise open-source large language models. European
+Radiology 35(4), 2018–2029 (2025)
+[25] Hein, D., Christie, A., Holcomb, M., Xie, B., Jain, A., Vento, J., Rakheja, N.,
+Shakur, A.H., Christley, S., Cowell, L.G., et al.: Iterative refinement and goal
+articulation to optimize large language models for clinical information extraction.
+npj Digital Medicine 8(1), 301 (2025)
+[26] Grothey, B., Odenkirchen, J., Brkic, A., Sch¨omig-Markiefka, B., Quaas, A.,
+B¨uttner, R., Tolkach, Y.: Comprehensive testing of large language models for
+extraction of structured data in pathology. Communications Medicine 5(1), 96
+(2025)
+[27] Kim, S.H., Schramm, S., Adams, L.C., Braren, R., Bressem, K.K., Keicher, M.,
+Platzek, P.-S., Paprottka, K.J., Zimmer, C., Hedderich, D.M., et al.: Benchmark-
+ing the diagnostic performance of open source llms in 1933 eurorad case reports.
+npj Digital Medicine 8(1), 97 (2025)
+[28] Le Guellec, B., Lef`evre, A., Geay, C., Shorten, L., Bruge, C., Hacein-Bey, L.,
+Amouyel, P., Pruvo, J.-P., Kuchcinski, G., Hamroun, A.: Performance of an open-
+source large language model in extracting information from free-text radiology
+reports. Radiology: Artificial Intelligence 6(4), 230364 (2024)
+[29] Nowak, S., Wulff, B., Layer, Y.C., Theis, M., Isaak, A., Salam, B., Block, W.,
+Kuetting, D., Pieper, C.C., Luetkens, J.A., et al.: Privacy-ensuring open-weights
+large language models are competitive with closed-weights gpt-4o in extract-
+ing chest radiography findings from free-text reports. Radiology 314(1), 240895
+(2025)
+[30] Sellergren, A., Kazemzadeh, S., Jaroensri, T., Kiraly, A., Traverse, M.,
+Kohlberger, T., Xu, S., Jamil, F., Hughes, C., Lau, C., et al.: Medgemma technical
+report. arXiv preprint arXiv:2507.05201 (2025)
+[31] Yu, A., Yao, L., Liu, J., Chen, Z., Yin, J., Wang, Y., Liao, X., Ye, Z., Li, J., Yue,
+Y., et al.: Medreseacher-r1: Expert-level medical deep researcher via a knowledge-
+informed trajectory synthesis framework. arXiv preprint arXiv:2508.14880 (2025)
+18
+
+===== PAGE 19 =====
+[32] Team, Q.: Qwen2.5: A Party of Foundation Models (2024). https://qwenlm.
+github.io/blog/qwen2.5/
+[33] Dubey, A., Jauhri, A., Pandey, A., Kadian, A., Al-Dahle, A., Letman, A., Mathur,
+A., Schelten, A., Yang, A., Fan, A., et al.: The llama 3 herd of models. arXiv
+e-prints, 2407 (2024)
+[34] Johnson, A.E., Pollard, T.J., Greenbaum, N.R., Lungren, M.P., Deng, C.-y., Peng,
+Y., Lu, Z., Mark, R.G., Berkowitz, S.J., Horng, S.: Mimic-cxr-jpg, a large publicly
+available database of labeled chest radiographs. arXiv preprint arXiv:1901.07042
+(2019)
+[35] Chen, Z., Song, Y., Chang, T.-H., Wan, X.: Generating radiology reports via
+memory-driven transformer. arXiv preprint arXiv:2010.16056 (2020)
+[36] Qi, P., Zhang, Y., Zhang, Y., Bolton, J., Manning, C.D.: Stanza: A python natural
+language processing toolkit for many human languages. In: Proceedings of the
+58th Annual Meeting of the Association for Computational Linguistics: System
+Demonstrations, pp. 101–108 (2020)
+[37] Papineni, K., Roukos, S., Ward, T., Zhu, W.-J.: Bleu: a method for automatic
+evaluation of machine translation. In: Proceedings of the 40th Annual Meeting of
+the Association for Computational Linguistics, pp. 311–318 (2002)
+[38] Banerjee, S., Lavie, A.: Meteor: An automatic metric for mt evaluation with
+improved correlation with human judgments. In: Proceedings of the Acl Workshop
+on Intrinsic and Extrinsic Evaluation Measures for Machine Translation And/or
+Summarization, pp. 65–72 (2005)
+[39] Tanida, T., M¨uller, P., Kaissis, G., Rueckert, D.: Interactive and explainable
+region-guided radiology report generation. In: Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recognition, pp. 7433–7442 (2023)
+[40] M¨uller, P., Kaissis, G., Rueckert, D.: Chex: Interactive localization and region
+description in chest x-rays. In: European Conference on Computer Vision, pp.
+92–111 (2024). Springer
+Appendix A
+Details on longitudinal information
+annotation with LLMs
+A.1
+Design of the disease list for prompt construction
+The disease list was generated by deduplicating all disease annotations in the
+ImaGenome gold set, yielding 51 unique terms. The terms “normal” and “abnormal”
+were excluded because they do not correspond to specific disease entities. A category
+for support devices was subsequently added. Changes in support devices, particularly
+19
+
+===== PAGE 20 =====
+positional changes, do not indicate disease progression and are therefore not anno-
+tated as disease status changes in ImaGenome. Nevertheless, information on changes
+in support devices often requires reference to prior cases, justifying its inclusion.
+The final list contains 50 terms, as follows:
+[‘support devices’,‘airspace opacity’, ‘alveolar hemorrhage’, ‘aspiration’, ‘atelec-
+tasis’, ‘bone lesion’, ‘bronchiectasis’, ‘calcified nodule’, ‘clavicle fracture’, ‘consoli-
+dation’, ‘copd/emphysema’, ‘costophrenic angle blunting’, ‘elevated hemidiaphragm’,
+‘enlarged cardiac silhouette’, ‘enlarged hilum’, ‘fluid overload/heart failure’, ‘goiter’,
+‘granulomatous disease’, ‘hernia’, ‘hydropneumothorax’, ‘increased reticular mark-
+ings/ild pattern’, ‘infiltration’, ‘interstitial lung disease’, ‘lobar/segmental collapse’,
+‘low lung volumes’, ‘lung cancer’, ‘lung lesion’, ‘lung opacity’, ‘mass/nodule (not
+otherwise specified)’, ‘mediastinal displacement’, ‘mediastinal widening’, ‘opacity’,
+‘pericardial effusion’, ‘pleural effusion’, ‘pleural/parenchymal scarring’, ‘pneumonia’,
+‘pneumothorax’, ‘pulmonary edema/hazy opacity’, ‘rib fracture’, ‘scoliosis’, ‘shoul-
+der osteoarthritis’, ‘spinal degenerative changes’, ‘spinal fracture’, ‘sub-diaphragmatic
+air’, ‘subcutaneous air’, ‘superior mediastinal mass/enlargement’, ‘tortuous aorta’,
+‘vascular calcification’, ‘vascular congestion’, and ‘vascular redistribution’].
+A.2
+Analysis of large models selection
+Deep learning models typically require large-scale datasets for effective training and
+evaluation. Therefore, when selecting a LLM for report annotation, it is essential to
+balance accuracy and inference efficiency: accuracy determines the reliability of anno-
+tations, whereas efficiency affects the feasibility of deployment in real-world clinical
+workflows.
+As shown in Figure 3, Qwen2.5-32B and MedGemma-27B outperform other evalu-
+ated models as described in Section 3. In this section, we benchmarked their inference
+speeds using the longitudinal annotation task as an example (Table A1). Specifically,
+100 sentences were randomly sampled from the test set, and all experiments were
+conducted on NVIDIA A100 GPUs with FlashAttention2 acceleration under identical
+configurations.
+The results indicate that MedGemma-27B generates substantially longer reasoning
+chains per query, resulting in an overall runtime 15.7× longer than that of Qwen2.5-
+32B. This finding suggests that Qwen2.5-32B offers a more favorable trade-off between
+accuracy and efficiency, making it the more practical choice for real-world applications.
+Appendix B
+Report generation model configurations
+and full performance results
+B.1
+Model configurations
+Generated reports used in this study were obtained in three ways: (1) officially provided
+generated outputs, (2) running inference from provided model checkpoints, and (3)
+reimplementing models using the provided code. Table B2 lists the official links, the
+sources of generated reports, and details of the model inputs. All experiments were
+run on one NVIDIA A100 GPU.
+20
+
+===== PAGE 21 =====
+Table A1 Inference speed of each model on the longitudinal annotation task. Time and tokens are
+averages per query.
+Model
+GPU#
+Speed (tokens/s)
+Tokens#
+Time (s)
+MedGemma-27B
+1
+11.34
+358.58
+31.62
+MedResearcher-R1-
+32B
+1
+19.38
+67.79
+3.50
+Qwen2.5-32B
+1
+18.45
+38.23
+2.07
+LLama3.3-70B
+1
+0.42
+276.73
+658.88
+2
+24.53
+11.28
+Qwen2.5-72B
+1
+0.13
+56.02
+430.9
+2
+9.40
+5.96
+Table B2 Summary of models, links, generated-report sources, image inputs, and text inputs.
+* indicates that, given the model’s large and diverse training corpus, only sources relevant to
+report generation are listed.
+Models
+Links
+Generated-
+report sources
+Image inputs
+Text inputs
+R2Gen
+GitHub
+Checkpoint
+Current frontal or lateral view
+–
+L R2Gen
+GitHub
+Reproduced
+results
+Current frontal or lateral view,
+previous frontal or lateral view
+Previous report
+MLRG
+GitHub
+Released results
+Current frontal and lateral view,
+previous frontal view
+Previous report,
+indication
+HC-
+LLM
+GitHub
+Reproduced
+results
+Current frontal or lateral view,
+previous frontal or lateral view
+Previous report
+Libra
+GitHub
+Checkpoint
+Current frontal view,
+previous frontal view
+Indication,
+history,
+comparison,
+technology
+Maira2*
+Hugging
+Face
+Checkpoint
+Current frontal and lateral view,
+previous frontal view
+Previous report,
+indication,
+comparison,
+technology
+MedVersa* Hugging
+Face
+Checkpoint
+Current frontal or lateral view
+Indication,
+comparison
+Prior to language-based evaluation, data are typically preprocessed to remove
+irrelevant information, which can substantially affect evaluation outcomes. To ensure
+consistency across models, we adopted the preprocessing procedures used in R2Gen
+for all models, to enable fair comparisons. Detailed preprocessing steps are provided
+in Table B3.
+B.2
+Full performance results
+The following tables provide detailed evaluation results of the report generation mod-
+els on the L-MIMIC dataset. Table B4 presents comparisons based on language-based
+metrics, including BLEU1-4, ROUGE-L, and METEOR. Table B5 summarizes model
+21
+
+===== PAGE 22 =====
+Table B3 Text Data Preprocessing Strategy in R2Gen.
+Processing Steps
+Description
+Example
+Remove line breaks
+Replace all newline characters
+with spaces to form a single
+continuous text.
+Original: "heart size normal\nlungs clear"
+Processed: "heart size normal lungs clear"
+Normalize
+underscores
+Replace consecutive underscores
+with a single underscore.
+Original: "right lung"
+Processed: "right lung"
+Collapse multiple
+spaces
+Replace consecutive spaces with
+a single space.
+Original: "heart
+size
+normal"
+Processed: "heart size normal"
+Normalize periods
+Replace consecutive periods
+with a single period.
+Original: "opacity.. noted"
+Processed: "opacity. noted"
+Remove numbering
+Remove common section or list
+numbers (e.g., “1.”, “2.”).
+Original: "1. lungs clear. 2. heart normal."
+Processed: "lungs clear. heart normal."
+Lowercasing
+Convert all characters to
+lowercase for normalization.
+Original: "Heart Size Normal"
+Processed: "heart size normal"
+Sentence
+segmentation
+Split text into sentences using “.
+” as the delimiter.
+Original: "heart size normal. lungs clear."
+Processed: ["heart size normal", "lungs clear"]
+Remove
+punctuation
+Remove punctuation and special
+characters.
+Original: "no acute disease!"
+Processed: "no acute disease"
+Trim whitespace
+Remove leading and trailing
+spaces in each sentence.
+Original: " lungs clear "
+Processed: "lungs clear"
+Reconstruct report
+Rejoin cleaned sentences using
+periods.
+Original: ["lungs clear", "heart normal"]
+Processed: "lungs clear . heart normal ."
+performance according to clinical efficacy metrics, including precision, recall, and F1-
+score for both disease diagnosis and overall disease progression tracking. Table B6
+reports detailed results of disease progression tracking across individual classes, cor-
+responding to three progression states: improved, no change, and worsened, reflecting
+the models’ performance on different disease progression states. Together, these tables
+provide a comprehensive overview of model performance from both linguistic and
+clinical perspectives.
+Table B4 Comparisons of model performance on the L-MIMIC dataset based on the
+language-based metric. B1, B2, B3, B4, RL, ME denote BLEU-1, BLEU-2, BLEU-3, BLEU-4,
+ROUGE-L and METEOR, respectively.
+Paper
+Whole report
+Longitudinal sentences
+B1
+B2
+B3
+B4
+RL
+ME
+B1
+B2
+B3
+B4
+RL
+ME
+R2Gen
+35.1
+20.6
+13.3
+9.3
+25.8
+13.3
+9.3
+4.9
+3.3
+2.4
+17.0
+5.9
+MedVersa
+39.0
+26.6
+19.6
+15.0
+30.8
+16.5
+7.5
+4.9
+3.7
+2.9
+18.3
+7.3
+L R2Gen
+31.5
+19.3
+12.8
+9.0
+26.1
+12.9
+11.6
+6.6
+4.5
+3.4
+18.3
+6.5
+MLRG
+39.4
+26.5
+19.4
+15.0
+31.6
+16.8
+17.6
+11.5
+8.7
+6.9
+22.6
+9.7
+HC-LLM
+40.2
+24.8
+16.5
+11.6
+27.2
+15.6
+19.6
+11.4
+7.5
+5.4
+19.7
+9.0
+Maira2
+43.2
+30.9
+23.7
+18.9
+35.1
+19.5
+23.9
+16.1
+12.1
+9.6
+26.0
+12.5
+Libra
+49.7
+36.9
+29.0
+23.6
+38.1
+22.6
+28.6
+20.2
+15.7
+12.7
+28.1
+13.9
+22
+
+===== PAGE 23 =====
+Table B5 Comparisons of report generation model performance on the L-MIMIC dataset based
+on clinical efficacy metrics.
+Paper
+Disease diagnosis (%)
+Disease progression (%)
+Precision
+Recall
+F1
+Precision
+Recall
+F1
+R2Gen
+44.1
+25.7
+32.5
+33.6
+33.7
+33.6
+MedVersa
+59.1
+47.7
+52.8
+35.3
+32.5
+33.9
+L R2Gen
+54.3
+34.4
+42.1
+38.5
+39.0
+38.8
+MLRG
+59.0
+47.9
+52.8
+33.0
+39.0
+35.7
+HC-LLM
+50.6
+38.0
+43.4
+34.4
+42.5
+38.0
+Maira2
+61.5
+55.3
+58.2
+35.2
+50.4
+41.4
+Libra
+60.7
+54.8
+57.6
+35.1
+49.3
+41.0
+Table B6 Comparison of report generation model performance on the L-MIMIC dataset across
+different classes of disease progression metrics based on disease progression metrics.
+Paper
+No change (%)
+Improved (%)
+Worsened (%)
+Precision
+Recall
+F1
+Precision
+Recall
+F1
+Precision
+Recall
+F1
+R2Gen
+44.9
+44.3
+44.6
+0.2
+0.2
+0.2
+2.8
+2.7
+2.7
+MedVersa
+43.4
+39.5
+41.4
+9.9
+8.9
+9.4
+14.4
+13.6
+14.0
+L R2Gen
+51.8
+51.2
+51.5
+2.2
+2.3
+2.3
+2.0
+2.1
+2.1
+MLRG
+41.6
+47.6
+44.4
+9.4
+11.9
+10.5
+11.0
+14.4
+12.5
+HC-LLM
+44.6
+53.5
+48.6
+10.0
+12.8
+11.2
+4.7
+6.1
+5.3
+Maira2
+42.5
+59.8
+49.7
+14.8
+21.9
+17.7
+15.5
+22.1
+18.3
+Libra
+43.8
+59.5
+50.5
+11.7
+17.1
+13.9
+12.5
+18.4
+14.9
+23
