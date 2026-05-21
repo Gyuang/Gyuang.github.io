@@ -1,0 +1,1352 @@
+
+===== PAGE 1 =====
+Aligning Modalities in Vision Large Language Models via Preference Fine-tuning
+Yiyang Zhou * 1 Chenhang Cui * 1 Rafael Rafailov 2 Chelsea Finn 2 Huaxiu Yao 1
+Abstract
+Instruction-following Vision Large Language
+Models (VLLMs) have achieved significant
+progress recently on a variety of tasks. These ap-
+proaches merge strong pre-trained vision models
+and large language models (LLMs). Since these
+components are trained separately, the learned rep-
+resentations need to be aligned with joint training
+on additional image-language pairs. This proce-
+dure is not perfect and can cause the model to
+hallucinate - provide answers that do not accu-
+rately reflect the image, even when the core LLM
+is highly factual and the vision backbone has suffi-
+ciently complete representations. In this work, we
+frame the hallucination problem as an alignment
+issue, tackle it with preference tuning. Specifi-
+cally, we propose POVID to generate feedback
+data with AI models. We use ground-truth instruc-
+tions as the preferred response and a two-stage
+approach to generate dispreferred data. First, we
+prompt GPT-4V to inject plausible hallucinations
+into the correct answer. Second, we distort the
+image to trigger the inherent hallucination behav-
+ior of the VLLM. This is an automated approach,
+which does not rely on human data generation
+or require a perfect expert, which makes it eas-
+ily scalable. Finally, both of these generation
+strategies are integrated into an RLHF pipeline
+via Direct Preference Optimization. In experi-
+ments across broad benchmarks, we show that we
+can not only reduce hallucinations, but improve
+model performance across standard benchmarks,
+outperforming prior approaches. Our data and
+code are available at https://github.com/
+YiyangZhou/POVID.
+1. Introduction
+Vision Large Language Models (VLLMs) have achieved sig-
+nificant success in various vision understanding tasks, such
+*Equal contribution, authorship order determined by coin flip.
+Work was done during Chenhang Cui and Yiyang Zhou’s remote
+internship at UNC. 1UNC-Chapel Hill 2Stanford University. Cor-
+respondence to: Huaxiu Yao <huaxiu@cs.unc.edu>.
+Preprint
+SciQA-IMG
+MMBench
+MM-Vet
+LLaVA-Bench
+100 - CHAIRS
+100 - CHAIRi
+POPE
+MMHal
+62.5
+65.0
+67.5
+43.75
+52.5
+61.25
+27.25 29.5
+31.75
+63.0
+66.0
+69.0
+43.75
+57.5
+71.25
+88.25
+91.5
+94.75
+78.75
+82.5
+86.25
+1.5
+2.0
+2.5
+N/A
+LLaVA-1.5
++ Vlfeedback
++ Human-Preference
++ RLHF-V
+POVID (ours)
+Figure 1. An overall performance comparison between POVID and
+other VLLM preference learning approaches.
+as image captioning (Vinyals et al., 2015; Li et al., 2022;
+2023c) and vision question answering (Ye et al., 2023; An-
+tol et al., 2015). These VLLM models fuse larger-scale
+pre-trained vision models into the representation space of
+a large language models (LLM), allowing the LLM access
+to the visual representations. However, such VLLMs are
+not perfect and even suffer from “hallucinations”, a phe-
+nomenon in which the language model generates content
+that is not grounded in the image, such as imagined objects
+and even scenes, wrong spatial relationships or categories,
+etc. Such artifacts are present even when both the vision
+backbone produces high-quality visual features and the lan-
+guage model itself is factual and accurate. These issues
+can pose significant risks when VLLMs are deployed in
+high-stakes scenarios, such as medical domains (Li et al.,
+2023b) or autonomous driving (Dewangan et al., 2023).
+As discussed by Cui et al. (2023), the potential reason for
+hallucinations in VLLMs lies in their tendency to priori-
+tize common sense or stereotypes present in the training
+language data, often disregarding the actual visual input
+information. In this paper, we attribute this issue to the
+lack of alignment between the image and text modalities,
+resulting in a reduced focus on input image information.
+Recent research efforts have sought to enhance the align-
+ment between modalities through preference fine-tuning
+techniques, such as reinforcement learning from human
+feedback (RLHF) (Sun et al., 2023). Concurrent works (Li
+et al., 2023d; Zhao et al., 2023) also use the Direct Pref-
+erence Optimization (DPO) framework, but they rely on
+the traditional preference data generation process in LLMs,
+1
+arXiv:2402.11411v1  [cs.LG]  18 Feb 2024
+
+===== PAGE 2 =====
+Aligning Modalities in Vision Large Language Models via Preference Fine-tuning
+where both preferred and dispreferred responses may po-
+tentially be incorrect. However, in VLLMs, the produced
+responses are centered around the image data rather than
+being generated freely like in LLMs. When comparing two
+responses, both of which may be incorrect for the given task,
+the model may struggle to accurately align the image with
+the correct generated response. In (Yu et al., 2023a) the
+authors propose to solve this issue by collection corrective
+feedback, which shows strong results, but relies on costly
+human data gathering.
+Unlike prior works that generate both preferred and dispre-
+ferred data, we propose Preference Optimization in VLLM
+with AI-Generated Dispreferences (POVID) framework,
+aiming to exclusively generate dispreferred feedback data
+using AI models. In POVID we employ a high-quality
+ground truth multi-modal instruction as the preferred an-
+swer and employ two strategies to generate dispreferred
+responses. First, we utilize GPT-4V to introduce plausible
+hallucinations into the answer, which we then use as the
+dispreferred response. Second, we aim to provoke inherent
+hallucination patterns and subsequently correct them within
+the target VLLM that requires fine-tuning. We achieve this
+goal by introducing noise, triggering inherent hallucination
+patterns within the VLLMs. The introduction of noise dis-
+rupts the VLLM’s comprehension of the image, leading it
+to generate uncertain responses that rely more on textual
+context or the knowledge it has acquired from the training
+data. Given that the inherent hallucination patterns of the tar-
+get VLLM evolve during the training process, the response
+generation with the noisy image occurs in real-time during
+training, and this is treated as dispreference. Finally, we
+integrate both forms of dispreference into the DPO opti-
+mization framework, specifically targeting the alignment of
+language generation with the image.
+The primary contribution of this paper is POVID, which
+utilizes AI-generated dispreference to align the image and
+text modalities in VLLMs. This approach explicitly con-
+trasts a hallucinatory answer with a truthful one, eliminating
+the need for gathering human feedback and making it eas-
+ily deployable at scale. Our empirical results demonstrate
+the promise of our framework in reducing hallucinations
+and enhancing other VLLM-related tasks. In particular, as
+shown in Figure 1, our approach significantly improves per-
+formance compared to other preference tuning methods in
+VLLMs, achieving an average improvement of 12.4% im-
+provements on average. Additionally, we demonstrate that
+POVID can redirect the attention of VLLMs towards the
+image modality, resulting in better modality alignment.
+2. Preliminaries
+Our approach aims to fine-tune VLLMs for better aligning
+the image and text modalities uses the framework of prefer-
+ence tuning from preferences over responses. In this section,
+we will provide some notations of VLLMs and an overview
+of direct preference optimization (Rafailov et al., 2023).
+Vision Large Language Models. VLLMs is an multimodal
+extension of large language models, which can generate sen-
+tences in an autoregressive manner, aiming to progressively
+predict the probability distribution of the next token. Here,
+the input prompt x contains both images and text prompts,
+and the output contains text response y. A typical applica-
+tion scenario for VLLMs is image captioning and Vision
+Question Answering (VQA).
+Direct Preference Optimization. Reinforcement learn-
+ing (RL) has shown its effectiveness in fine-tuning LLMs
+and align the LLMs behavior with human behavior. Typ-
+ically, give an input x and an output text response y, a
+language model policy πθ can produce a conditional dis-
+tribution πθ(y | x). RL aims to maximize the average
+reward of outputs generated by the policy, where the reward
+function is defined as r(x, y). To further avoid overoptimiza-
+tion (Gao et al., 2023) happens when directly optimizing
+the reward function, the objective loss typically contains a
+KL-divergence term to control the divergence between the
+language model policy and its reference policy πref(y | x)
+(e.g., the result after performing some supervised fine-tuning
+on LLMs). Thus, the overall objective is formulated as:
+max
+πθ Ex∼D,y∼πθ(y|x)
+
+r(x, y) −α log πθ(y | x)
+πref(y | x)
+
+(1)
+where D is a dataset of prompts and β is a coefficient to
+control both terms. However, optimizing the above loss term
+with common strategies like proximal policy optimization
+(PPO) (Schulman et al., 2017) is complex to tune.
+Recently, direct preference optimization (DPO) (Rafailov
+et al., 2023) simplifies the above process by leveraging pref-
+erence data for optimization. Here, the preference data is
+defined as D = {x(i), y(i)
+w , y(i)
+l }N
+i=1, where y(i)
+w and y(i)
+l
+rep-
+resent preferred and dispreferred responses given an input
+prompt x. Following a Bradley-Terry model (Bradley &
+Terry, 1952), the probably of obtaining each preference pair
+is:
+p(yw ≻yl) = σ(r(x, yw) −r(x, yl)),
+(2)
+where we omit the superscript (i) for simplicity and σ(·) is
+defined as a sigmoid function. In DPO, the optimization of
+Eqn. (1) can be formulated as classification loss over the
+preference data as:
+LDPO(πθ; πref) = −E(x,yw,yl)∼D
+
+log σ
+
+α log πθ(yw|x)
+πref(yw|x) −α log πθ(yl|x)
+πref(yl|x)
+
+.
+(3)
+DPO enables learning πθ from a fixed dataset of preferences,
+which is lightweight. However, the key challenge lies in gen-
+2
+
+===== PAGE 3 =====
+Aligning Modalities in Vision Large Language Models via Preference Fine-tuning
+Prompt: Describe this image.
+Answer: The picture shows a table
+with ….. The sun is shining in from
+outside and everything is peaceful.
+Prompt: Describe this image.
+Answer: The picture shows a table with a fruit knife (hallucinatory
+entity)
+…twenty oranges
+(entity attributes)... The moon
+(logical
+relationship) is shining in from outside and everything is peaceful.
+Preferred data
+Injected dis-preferred 
+response 𝑦!
+"
+Image
+Distorted image
+Hallucination
+Injection
+Step 1: Hallucinating Textual Responses
+Step 2: Mitigating Inherent Hallucination Patterns
+𝑦!
+"
+Triggered 
+dis-preferred 
+response
+A fruit knife, apples (internal hallucination). …
+Real-time 
+triggering process
+𝑦!
+"
+𝑦𝑤
+>
+𝑦!
+#
+LLaVA-1.5
+Preference optimization
+Final model
+)
+(
+Figure 2. The framework of POVID. The preference generation process is divided into two steps: hallucinating textual responses and
+trigger dispreference during training. Here, different types of triggered hallucinations are labeled in (types of hallucinations).
+erating effective preference data for fine-tuning and aligning
+image and text modalities in VLLMs.
+3. Constructing Preferences to Aligning
+Modalities in VLLMs
+While preference learning approaches (e.g., DPO) facili-
+tate the lightweight and stable training of VLLMs, they
+require data in the form of preferences. In contrast to LLMs,
+which support more freestyle generation in many scenarios,
+VLLMs used in various applications, such as VQA or image
+captioning, produce responses linked to input images. This
+inherent image-centricity presents distinct challenges in the
+preference data generation process for VLLMs, setting it
+apart from the process in LLMs. Specifically, in VLLMs,
+when comparing two responses, neither of which is correct
+for the required task (e.g., image captioning), the model may
+not be able to accurately align the image with the response.
+To address this challenge,
+we propose Preference
+Optimization in VLLM with AI-Generated Dispreferences
+(POVID), a novel approach aimed at better aligning im-
+age and text modalities. As illustrated in Figure 2, POVID
+leverages AI models to generate dispreferred responses with-
+out the need for human labeling efforts. These generated
+dispreferred responses, when combined with groundtruth
+image descriptions (treated as preferred responses), form the
+preference data pairs. Specifically, we employ two strate-
+gies to generate the dispreferred response: (1) Firstly, we
+manipulate the groundtruth text response by transforming
+the groundtruth response into hallucinated response, which
+serves as the dispreferred response; (2) Secondly, we in-
+troduce distortion to the image input during the training
+process, intending to trigger inherent hallucination patterns
+within the VLLMs. These patterns are then formalized as
+the dispreferred response, motivating the model to correct its
+inherent dispreferred patterns. In the remainder of this sec-
+tion, we will provide detailed explanations of both strategies
+and demonstrate how to integrate them into the preference
+training framework.
+3.1. Hallucinating Textual Responses
+In our first strategy, we aim to generate dispreferred hallu-
+cinatory responses by hallucinating the groundtruth correct
+response. We construct the hallucinatory response based
+on a subset with 17K examples that are randomly sampled
+from LLaVA-Instruct-150K (Liu et al., 2023b) dataset. Here,
+the LLaVA-Instruct-150K datasets is used to train LLaVA
+LLaVA with supervised fine-tuning. The 17K examples
+includes various task types, including image captioning,
+simple VQA and logical reasoning.
+To construct the preferences, we treat the original answers
+in the 17K examples as preferred responses. In terms of con-
+structing dispreferred responses, we hallucinate the original
+answers using GPT-4V (OpenAI, 2023). Here, we adopt
+two hallucinating approaches tailored to different tasks:
+I. Hallucinating Image Captioning Tasks. First, we hal-
+lucinate the image captioning tasks by considering three
+fundamental causes of hallucination in VLLMs: (1) Object
+Co-occurrence: This phenomenon arises when the training
+data contains spurious co-occurring patterns between ob-
+jects, leading VLLMs to generate objects based on these
+3
+
+===== PAGE 4 =====
+Aligning Modalities in Vision Large Language Models via Preference Fine-tuning
+The image shows two men in a small boat on the water. One 
+man is standing near the center of the boat, while the other is 
+seated and rowing. The man wearing a headscarf is watching 
+television, which is placed on the boat, adding an interesting 
+element to the scene. There are a few other boats visible in the 
+background, indicating that they might be in a city river or a 
+busy waterway. The presence of the television in the boat 
+adds a unique touch to their leisurely activity.
+The image shows two men in a small boat on the water, 
+equipped with fishing poles (hallucinatory entity) for their 
+leisurely activity. One man is sitting near the center of the 
+boat (entity attributes), fishing with his fishing pole 
+(hallucinatory entity) , while the other is seated and rowing. 
+They are both watching a television (logical relationship), 
+which is placed on the boat, adding an interesting element to 
+the scene. There are a few other boats visible in the 
+background, indicating that they might be in a city river or a 
+busy waterway. The presence of the fishing poles and the 
+television in the boat adds a unique touch to their relaxing day 
+on the water.
+Preferred response
+Dis-preferred response
+Prompt: Describe this image.
+Reasoning: The picture depicts a sunset scene in which I see 
+a lake and open sky.
+Answer: Yes, there is a person standing next to some blue 
+water in the image.
+Reasoning: The image depicts a sunset scene with a man 
+standing on an open ice field (false reasoning, hallucinatory 
+entities) with what appears to be a few buildings visible in 
+the distance.
+Answer: No, the person is standing next to a vast snowy 
+field, not water (incorrect answer).
+Prompt: Is there a person standing next 
+to water in the image?
+a. Hallucinating Image Captioning Tasks
+b. Hallucinating Reasoning Tasks
+Dis-preferred response
+Preferred response
+Figure 3. Two examples extracted from hallucinated image captioning tasks and reasoning tasks. Different types of hallucinations are
+labeled in (types of hallucinations).
+learned spurious correlations. In this context, we aim to
+leverage GPT-4V to deduce object co-occurrence within the
+given image and subsequently revise the original responses
+accordingly; (2) Logical Relationships Between Entities:
+This involves using GPT-4V to modify the relationships
+between the original objects; (3) Incorrect Attributes: In
+this case, we employ GPT-4V to alter the attributes of var-
+ious objects, such as changing their colors. We illustrate
+these three distinct hallucination scenarios with an example
+provided in Figure 3(a). In addition, the prompt we used to
+generate the dispreferred response is in Appendix A.2.
+II. Hallucinating Reasoning Tasks. Secondly, when deal-
+ing with tasks involving reasoning, such as VQA and logical
+reasoning, we task GPT-4V with modifying the reasoning
+process. This entails introducing errors related to logical
+relationships, entity information, entity attributes, and more.
+Additionally, we recommend that GPT-4V attempts to make
+subtle changes to the reasoning process, ensuring it remains
+independent of factual reasoning results, meaning that an
+incorrect reasoning process may still yield correct results.
+However, if the introduction of errors necessitates alterations
+to the reasoning results, we instruct GPT-4V to adjust the
+results accordingly. Likewise, in Figure 3(b), we provide an
+example to demonstrate both the original and the generated
+dispreferred responses. The prompt we used is detailed in
+Appendix A.2.
+3.2. Mitigating Inherent Hallucination Patterns
+In addition to generating the dispreferred response using
+powerful external AI models like GPT-4V, we also aim to
+provoke inherent hallucination patterns within the VLLM
+to be finetuned. Our second strategy introduces noise into
+the image to trigger inherent hallucination patterns in the
+VLLMs. This noise disrupts the VLLM’s understanding of
+the image, leading it to produce uncertain responses that
+rely more on textual context or acquired knowledge from
+the training data. This occurs because, in the presence of
+noisy images, the model tends to prioritize inherent object
+associations over visual information. Notably, the noise step
+should remain within a reasonable range, ensuring that the
+image remains easily recognizable by humans. For example,
+as depicted in Figure 4, when presented with the context
+“There are a knife and ”, under specific noisy conditions, the
+likelihood of “fork” surpasses that of “plate” (ground truth).
+This may occur because “plate” is more likely to co-occur
+with “fork” in the training data. With an increase in noise
+steps, the term “pixel” becomes predominant, owing to the
+noticeable noise patterns within the image. Consequently,
+establishing an appropriate noise step to activate inherent
+hallucination patterns is a reasonable approach.
+To achieve this goal, we introduce diffusion noise into the
+original image. We define the noise step as k, and the noised
+image with step k can be expressed as follows:
+x(k) =
+q
+¯ξk · x +
+q
+1 −¯ξk · ϵ,
+(4)
+where ¯ξt = Qk
+i=0 ξi and ξk ∈(0, 1) is a hyperparameter
+chosen prior to model training. Detailed settings can be
+found in Appendix A.1. After obtaining the noised image,
+in order to more effectively capture changes in inherent
+hallucination patterns during the fine-tuning process of the
+4
+
+===== PAGE 5 =====
+Aligning Modalities in Vision Large Language Models via Preference Fine-tuning
+Plate
+<Input image>
+Question: Describe this image.
+Answer: In the image, there are knief and ___.
+Fork
+Pixel
+Noise 
+steps
+0
+500
+999
+Figure 4. Illustration of logits for the next token generation with
+“In the image, there are knife and ”. This figure shows the predic-
+tive uncertainty in token generation, emphasizing the influence of
+visual cues from objects identified as “knife” and “plate”.
+VLLM, we integrate the image noising process into the DPO
+fine-tuning process. Specifically, for each input prompt
+x, we take into account the dispreferred responses from
+both the hallucinated text responses discussed in Section 3.1
+and the responses triggered by distorted images. We then
+reformulate the DPO loss as follows:
+LPOVID(πθ; πref) = −E(x,yw,yl)∼D
+"
+log σ
+ 
+α log πθ(yw|x)
+πref(yw|x)
+−
+
+β1 log πθ(yt
+l|x)
+πref(yt
+l|x) + β2 log πθ(yn
+l |xn)
+πref(yn
+l |xn)
+ !#
+,
+(5)
+where α, β1 and β2 are coefficients that balance preferred
+and dispreferred terms. yg
+l represents the dispreferred re-
+sponse generated using the approach outlined in Section 3.1.
+Additionally, xn represents the noisy image, which triggers
+the generation of the dispreferred response yn
+l . It’s impor-
+tant to note that for each token i in the sequence yn
+l , the
+value of yn
+l,i is determined by selecting the maximum proba-
+bility from the set πθ(· | xn, yw,<i). Here, each generated
+token in the dispreferred response yn
+l,i is conditioned on the
+prior tokens from the preferred response yw,<i. This condi-
+tioning allows us to control the reliability of the triggered
+dispreferred response. As a result, we aim to capture the
+most significant changes between the preferred and dispre-
+ferred responses, since a substantial portion of dispreferred
+response overlaps with preferred response. The training
+process of our method is detailed in Algorithm 1.
+Algorithm 1 POVID Training Process
+Require: D: Dataset of paired images and text context.
+πθ: Parameters of the VLLM. πref: Parameters of the
+reference model. α, β1, β2: Hyperparameters. ξk:
+Noise hyperparameter for each timestep. T: Noise
+Steps
+1: AddNoiseToImage(x0, k)
+ϵ ∼N(0, 1)
+x(k) ←
+p¯ξk · x0 +
+p
+1 −¯ξk · ϵ
+2: Generate disprefered data and place it in D
+3: Initialize reference policy πθ
+4: for epochs do
+5:
+for (x, yw, yt
+l) ∈D do
+6:
+for k = 0 to T do
+7:
+x(k) ←AddNoiseToImage(x, k)
+8:
+end for
+9:
+Update πθ through Eqn. (5)
+10:
+end for
+11: end for
+4. Experiment
+In this section, we empirically investigate the effectiveness
+of POVID in aligning image and text modalities in VLLMs
+and reducing hallucination. We aim to answer the following
+questions: (1) Can POVID effectively reduce hallucina-
+tion in VLLMs compared to other preference fine-tuning
+strategies? (2) Does POVID improve performance com-
+pared to other benchmarks and tasks like VQA? (3) Can
+hallucinating textual responses and image distortion ben-
+efit performance? (4) How does POVID change attention
+weights to align image and text modalities?
+4.1. Experimental Setups
+In this section, we briefly introduce the implementation
+details, baselines, and evaluation settings.
+Implementation Details. Following concurrent VLLM
+preference tuning studies (Yu et al., 2023b; Li et al., 2023d),
+we have chosen LLaVA-1.5 (7B) as our backbone model
+for all experiments and have applied POVID to fine-tune
+LLaVA-1.5 (7B). The overall training process is divided
+into two stages. In the first stage, we exclusively utilize the
+preferences generated through the hallucinating textual re-
+sponses, as discussed in Section 3.1, to fine-tune LLaVA-1.5
+using DPO. In the second stage, we employ image distor-
+tion to rectify the model’s inherent hallucinatory behaviors
+using the loss defined in Eqn. (5). The first stage involves
+training for 3 epochs, and the second stage for 1 epoch.
+5
+
+===== PAGE 6 =====
+Aligning Modalities in Vision Large Language Models via Preference Fine-tuning
+Table 1. Comparison between POVID and other preferences construction approaches in both hallucination and comprehensive evaluation
+benchmarks. We bold the best results and underline the second best results.
+Hallucination Benchmark
+Comprehensive Benchmark
+Method
+CHAIRS ↓
+CHAIRi ↓
+POPE ↑
+MMHal ↑
+SciQA-IMG ↑
+MM-Vet ↑
+MMBench ↑
+LLaVA-Bench ↑
+LLaVA-1.5
+66.8
+12.7
+85.90
+2.42
+66.8
+30.5
+63.0
+63.4
++ Vlfeedback
+56.3
+11.4
+83.72
+2.62
+66.2
+31.2
+63.9
+62.1
++ Human-Preference
+54.0
+9.3
+81.50
+2.53
+65.8
+31.1
+60.4
+63.7
++ RLHF-V
+44.6
+7.9
+86.20
+2.59
+67.1
+30.9
+63.6
+65.4
+POVID (ours)
+31.8
+5.4
+86.90
+2.69
+68.8
+31.8
+64.9
+68.7
+Table 2. Comparison between POVID and other state-of-the-art VLLMs across both hallucination and comprehensive evaluation bench-
+marks. We bold the best results and underline the second best results.
+Method
+Vision Encoder
+Language Model
+CHAIRS ↓
+CHAIRi ↓
+POPE ↑
+MMHal ↑
+Avg. ranking ↓
+InstructBLIP
+ViT-g (1.3B)
+Vicuna (7B)
+40.0
+8.0
+77.83
+2.10
+3.00
+Qwen-VL-Chat
+ViT-G (1.9B)
+Qwen (7B)
+48.2
+9.1
+87.07
+2.89
+2.50
+mPLUG-Owl2
+ViT-L (0.3B)
+LLaMA (7B)
+54.4
+12.0
+86.20
+2.17
+4.00
+POVID (ours)
+ViT-L (0.3B)
+Vicuna (7B)
+31.8
+5.4
+86.29
+2.69
+1.50
+Method
+Vision Encoder
+Language Model
+SciQA-IMG ↑
+MM-Vet ↑
+MMBench ↑
+LLaVA-Bench ↑
+Avg. ranking ↓
+InstructBLIP
+ViT-g (1.3B)
+Vicuna (7B)
+60.5
+26.2
+36.0
+60.9
+4.00
+Qwen-VL-Chat
+ViT-G (1.9B)
+Qwen (7B)
+68.2
+41.2
+60.6
+67.7
+2.25
+mPLUG-Owl2
+ViT-L (0.3B)
+LLaMA (7B)
+64.5
+36.2
+64.5
+59.9
+3.00
+POVID (ours)
+ViT-L (0.3B)
+Vicuna (7B)
+68.8
+31.8
+64.9
+68.7
+1.75
+The entire training process requires a single A100 80GB
+GPU and takes approximately 6 hours. For a more detailed
+description, please refer to Appendix A.1.
+Baseline Approaches. We first compare the proposed ap-
+proach with other VLLM preference tuning methods, which
+include Silkie (Li et al., 2023d), LLaVA-RLHF (Sun et al.,
+2023), and RLHF-V (Yu et al., 2023b). These methods
+share a common goal of enhancing model performance by
+creating curated datasets and subsequently applying pref-
+erence tuning techniques to fine-tune the model based on
+these datasets. To ensure a fair and equitable comparison,
+we utilize the same curated datasets employed by these
+approaches and apply DPO to fine-tune LLaVA-1.5 (7B).
+Furthermore, we compare the performance with other open
+source VLLMs, including InstructBLIP (Dai et al., 2023),
+Qwen-VL-Chat (Bai et al., 2023) and mPLUG-Owl2 (Ye
+et al., 2023).
+Evaluation Benchmark. To evaluate the performance of
+POVID and other baselines, we first adopt VLLM hallucina-
+tion evaluation benchmarks, including CHAIR (Rohrbach
+et al., 2018), POPE (Li et al., 2023f), and MMHal (Sun et al.,
+2023). Here, CHAIR, including CHAIRS and CHAIRI, is
+a metric used in image captioning tasks to evaluate the ac-
+curacy of object descriptions in captions. It compares the
+objects mentioned in a caption with those present in the
+image. MMHal (Sun et al., 2023) assesses hallucinations
+and response informativeness by utilizing GPT-4V to com-
+pare model output with human responses and various object
+labels, determining the scores accordingly. POPE (Li et al.,
+2023f) uses a set of binary classification tasks, prompting
+VLLMs with simple Yes-or-No questions about the exis-
+tence of certain objects in images.
+We further evaluate all approaches on comprehensive VLLM
+evaluation benchmarks, including SciQA-IMG (Lu et al.,
+2022), MME (Fu et al., 2023), MMbench (Liu et al., 2023c),
+MM-Vet (Yu et al., 2023c) and LLaVA-bench(Liu et al.,
+2023b). Each benchmark contains tasks to evaluate percep-
+tion, cognition, and reasoning abilities of VLLMs. More
+detailed descriptions of these baselines are in Appendix B.
+4.2. Results
+Comparison with Different Preferences in VLLMs. In
+Table 1, we present the results of a comparison between
+various VLLM preferences, evaluating both hallucination
+and comprehensive benchmarks. Firstly, in the hallucina-
+tion benchmarks, POVID effectively enhances performance
+by creating dispreferred preferences through textual data
+manipulation and image distortion. We achieve a signifi-
+cant improvement of 31.78% across all hallucination bench-
+6
+
+===== PAGE 7 =====
+Aligning Modalities in Vision Large Language Models via Preference Fine-tuning
+Table 3. Results of ablation study. Text disprefer means we only using hallucinated textual response to train DPO. Image distortion means
+that we use distorted images to trigger inherent hallucination patterns.
+Hallucination Benchmarks
+Comprehensive Benchmarks
+Text disprefer
+Image distortion
+CHAIRS ↓
+CHAIRi ↓
+POPE ↑
+MMHal ↑
+SciQA-IMG ↑
+MM-Vet ↑
+MMBench ↑
+LLaVA-Bench ↑
+×
+×
+66.8
+12.7
+85.90
+2.42
+66.2
+31.2
+63.9
+62.1
+✓
+×
+39.6
+6.3
+86.04
+2.65
+67.2
+30.9
+64.7
+67.5
+×
+✓
+50.4
+9.6
+85.19
+2.54
+66.9
+30.7
+64.3
+66.9
+✓
+✓
+31.8
+5.4
+86.90
+2.69
+68.8
+31.8
+64.9
+68.7
+marks, effectively reducing hallucinations in the generated
+responses. This outcome aligns with our expectations, as
+constructing dispreferences from the ground-truth correct re-
+sponses maximally enables the model to discern differences
+between correct and incorrect responses while optimizing
+alignment between the image and text modalities within
+the model. Moreover, in more comprehensive evaluation
+benchmarks, which encompass not only factuality and hal-
+lucination assessment but also other aspects, POVID contin-
+ues to demonstrate superior performance when compared to
+other preference data collection methods. This further indi-
+cates our model’s capacity to enhance VLLM performance
+through improved modality alignment.
+Comparison with Open-Sourced VLLMs Models. We
+present a comparison between POVID and other open-
+sourced VLLMs in Table 2. Although various approaches
+utilize different image and text encoders, POVID outper-
+forms other popular VLLMs in five out of eight bench-
+marks. In contrast, the second-best baseline, Qwen-VL-
+Chat, achieves the best performance in only two out of eight
+benchmarks. This underscores the superiority of POVID
+and further corroborates its effectiveness in aligning image
+and text modalities to improve the performance of VLLMs.
+4.3. Analysis
+In this section, we provide a comprehensive analysis to
+demonstrate how different components contribute to the
+performance of POVID and illustrate how POVID enhances
+overall performance.
+Ablation Studies. To further demonstrate the essential role
+of the key components of POVID in contributing to perfor-
+mance improvement, we conducted ablation experiments
+on both hallucination and comprehensive benchmarks, and
+present the results in Table 3. In this ablation study, we
+evaluate the effectiveness of two aspects: (1) hallucinating
+groundtruth responses and (2) image distortion. According
+to the results, we initially observe that image distortion can
+enhance performance across all benchmarks. This indicates
+its effectiveness in aligning multimodalities by compelling
+the model to rectify inherent hallucination patterns. Ad-
+ditionally, generating dispreference from groundtruth re-
+sponses significantly enhances performance, underscoring
+the effectiveness of the AI-generated dispreference strategy.
+Finally, when combining both strategies, POVID achieves
+the best performance, further affirming its effectiveness in
+enhancing VLLMs through improved modality alignment.
+Fine-grained Performance Analysis. Table 4 presents a
+fine-grained performance analysis of different preference
+collection strategies on the LLaVA-Bench benchmark. This
+analysis encompasses a spectrum of multi-modal reasoning
+and perception dimensions, such as Conversation, Detail
+Description, and Complex Reasoning. According to Table 4,
+it is evident that, when compared with other preference data
+collection approaches, POVID excels in image captioning
+and providing detailed descriptions for a given image. This
+outcome aligns with our expectations, as our training data
+includes various long-form captions, and such comprehen-
+sive preference comparisons result in improved alignment
+and stronger image captioning results. Moreover, across
+other categories, our approach consistently outperforms al-
+ternative preference collection strategies, underscoring its
+effectiveness across various tasks.
+Table 4. Fine-grained performance comparison of various models
+on LLaVA-Bench, where we adopt the following abbreviation:
+Convo for Conversation, Captioning for Detail description, Rea-
+soning for Complex reasoning.
+Method
+Convo
+Captioning
+Reasoning
+Overall
+LLaVA-1.5
+53.3
+53.4
+79.6
+63.4
++ Vlfeedback
+51.3
+49.3
+78.5
+62.1
++ Human-Preference
+49.6
+43.3
+81.3
+63.7
++ RLHF-V
+55.8
+56.1
+80.3
+65.4
+POVID (ours)
+55.9
+60.1
+81.5
+68.7
+Modality Alignment Analysis. We assess the impact of
+POVID on modality alignment by comparing the attention
+maps generated by POVID with those of the original LLaVA-
+1.5 model, with a specific focus on image captioning and
+VQA tasks. We illustrate two cases in Figure 5, where these
+attention maps reveal the distribution of attention scores
+assigned to generated textual tokens within the input image-
+text sequence throughout the VLLM’s output generation
+phase. Our findings reveal that the original LLaVA-1.5
+model tends to overemphasize the context of the text, which
+can result in hallucinations. In contrast, POVID increas-
+ingly prioritizes attention towards the image, indicating a
+strong alignment between image and text modalities. One
+potential explanation for this phenomenon is that, through
+7
+
+===== PAGE 8 =====
+Aligning Modalities in Vision Large Language Models via Preference Fine-tuning
+The image shows a man sitting down and brushing 
+the teeth of a cat with his fingers. The cat appears 
+to be reacting to or accepting the tooth brushing 
+process. The man and the cat are the main focus of 
+the scene.
+The setting appears to be indoors, as there is a 
+person visible in the image along with the close 
+interaction between the man and the cat. The cat is 
+located near the center of the scene, while the man 
+is positioned on the left side of the image.
+Visual tokens
+Textual tokens
+Textual tokens
+LLaVA-1.5
+POVID (Ours)
+LLaVA 1.5
+Prompt: Describe this image.
+Visual tokens
+The image features a person brushing an open mouth 
+cat‘s teeth with a small electric toothbrush. They are in 
+a kitchen (hallucinatory entity) setting, focused on 
+maintaining good oral hygiene. An oven (hallucinatory 
+entity) is visible in the background, adding to the cozy 
+kitchen environment entity attributes. 
+There is also a tie (hallucinatory entity)  in the scene, 
+likely placed on or hung up nearby, possibly indicating 
+that someone's clothing is being attended to or is 
+hanging out to be worn.
+No, there is no fruit knife in the picture. There are 
+oranges and a glass of orange juice in the image.
+Yes (incorrect answer), there is a fruit 
+knife(hallucinatory entities) in the picture.
+Visual tokens
+Visual tokens
+Textual tokens
+Textual tokens
+POVID (ours)
+LLaVA-1.5
+POVID (Ours)
+LLaVA 1.5
+Prompt: Is there someone in this picture?
+POVID (ours)
+Captioning Task
+VQA Task
+Figure 5. Comparison of attention map between POVID and LLaVA-1.5 at different tasks. The red box region is labeled with the image
+attentions that can be significantly improved by POVID.
+a comparison between the ground truth and the generated
+dispreferred data, along with the mitigation of internal hal-
+lucination patterns, POVID redirects the VLLM’s attention,
+leading to a greater focus on the image tokens.
+5. Related Work
+VLLMs and VLLM Hallucination. The advent of autore-
+gressive large-scale language models (LLMs), highlighted
+in works by (Touvron et al., 2023a;b; Taori et al., 2023), has
+led to the development of Vision-Large Language Models
+(VLLMs). To align the image and text modalities, recent
+research has concentrated on instruction tuning (Li et al.,
+2023a), scaling up training dataset (Jia et al., 2021), and
+better alignment between image and text with local feature
+enhancement (Cha et al., 2023). These advancements have
+successfully combined LLMs with image inputs and ex-
+cel in image comprehension. However, such VLLMs are
+not perfect and even suffer from “hallucinations”, generat-
+ing outputs that may not accurately or faithfully represent
+the content of a user-provided image. There are various
+sources of hallucinations in VLLMs, including biased data
+(Chuang et al., 2023; Tu et al., 2023), insufficient train-
+ing (Chen et al., 2023), and imperfect inference (Huang
+et al., 2023). Recently, addressing hallucination in LVLMs
+is primarily achieved through various techniques such as
+decoding approaches (Leng et al., 2023; Huang et al., 2023),
+post-processing (Zhou et al., 2023; Yin et al., 2023) and
+the construction of higher-quality dataset (Liu et al., 2023a;
+Li et al., 2023e). While these approaches can mitigate hal-
+lucination to some extent, they often fail to directly guide
+VLLMs to align image and text modalities.
+Preference Alignment Aligning with human preferences
+for large models has emerged as a critical issue due to the
+limitations imposed by safety and ethical considerations
+in real-world applications. Preference alignment can be
+broadly categorized into two main approaches: alignment
+through feedback, which encompasses both human (Bai
+et al., 2022; Rafailov et al., 2023) and AI-generated feed-
+back (Lee et al., 2023) and alignment via prompt guid-
+ance (Wei et al., 2022). Initial investigations into preference
+alignment for VLLMs have recently been conducted. Sun
+et al. (2023) introduced LLaVA-RLHF, which utilizes a
+preference dataset annotated by humans to decrease halluci-
+nations in LLaVA. Li et al. (2023d) proposed a method for
+distilling preferences into VLLMs to enhance their ability
+to generate relevant and accurate responses based on visual
+context. Yu et al. (2023b) collected human preferences in
+the form of segment-level corrections to hallucinatory con-
+tent and optimizing the model’s behavior based on dense,
+direct feedback. While these initial results are promising,
+these works heavily rely on the traditional preference data
+generation process in LLMs, which generate both preferred
+and dispreferred responses, but none of them are guaran-
+teed to be correct. In VLLMs, when both responses prove
+incorrect for the given task, accurately aligning the image
+with the correct generated response becomes challenging. In
+contrast, POVID directly generates dispreferred responses,
+effectively addressing this challenge.
+6. Conclusion
+In this work, we introduce a novel approach, Preference
+Optimization in VLLM with AI-Generated Dispreferences
+(POVID) to address the challenges in modality alignment
+for large vision-language models. In POVID, we adopt
+two strategies to generate disprefered responses: first, we
+use synthetic data from GPT-4V to inject plausible halluci-
+nations into the correct answer. Second, we use distorted
+images to trigger the inherent hallucination behavior of
+the VLLM. Then both of these answers are integrated into
+an RLHF framework via Direct Preference Optimization.
+Empirical evaluations across multiple benchmarks reveal
+that POVID not only mitigates hallucination effectively but
+boosts the overall performance of model.
+8
+
+===== PAGE 9 =====
+Aligning Modalities in Vision Large Language Models via Preference Fine-tuning
+Broader Impact Statement
+This paper presents work whose goal is to advance the field
+of machine learning and multimodal learning. There are
+many potential societal consequences of our work, none
+which we feel must be specifically highlighted here.
+Acknowledgement
+We thank the Center for AI Safety for supporting our com-
+puting needs.
+References
+Antol, S., Agrawal, A., Lu, J., Mitchell, M., Batra, D.,
+Zitnick, C. L., and Parikh, D. Vqa: Visual question
+answering. In Proceedings of the IEEE international
+conference on computer vision, pp. 2425–2433, 2015.
+Bai, J., Bai, S., Yang, S., Wang, S., Tan, S., Wang, P., Lin, J.,
+Zhou, C., and Zhou, J. Qwen-vl: A frontier large vision-
+language model with versatile abilities. arXiv preprint
+arXiv:2308.12966, 2023.
+Bai, Y., Jones, A., Ndousse, K., Askell, A., Chen, A., Das-
+Sarma, N., Drain, D., Fort, S., Ganguli, D., Henighan, T.,
+et al. Training a helpful and harmless assistant with rein-
+forcement learning from human feedback. arXiv preprint
+arXiv:2204.05862, 2022.
+Bradley, R. A. and Terry, M. E. Rank analysis of incom-
+plete block designs: I. the method of paired comparisons.
+Biometrika, 39(3/4):324–345, 1952.
+Cha, J., Kang, W., Mun, J., and Roh, B. Honeybee: Locality-
+enhanced projector for multimodal llm. arXiv preprint
+arXiv:2312.06742, 2023.
+Chen, G., Shen, L., Shao, R., Deng, X., and Nie, L. Lion:
+Empowering multimodal large language model with dual-
+level visual knowledge. arXiv preprint arXiv:2311.11860,
+2023.
+Chuang, C.-Y., Jampani, V., Li, Y., Torralba, A., and Jegelka,
+S. Debiasing vision-language models via biased prompts.
+arXiv preprint arXiv:2302.00070, 2023.
+Cui, C., Zhou, Y., Yang, X., Wu, S., Zhang, L., Zou, J.,
+and Yao, H. Holistic analysis of hallucination in gpt-4v
+(ision): Bias and interference challenges. arXiv preprint
+arXiv:2311.03287, 2023.
+Dai, W., Li, J., Li, D., Tiong, A. M. H., Zhao, J., Wang,
+W., Li, B., Fung, P., and Hoi, S. Instructblip: Towards
+general-purpose vision-language models with instruction
+tuning, 2023.
+Dewangan, V., Choudhary, T., Chandhok, S., Priyadarshan,
+S., Jain, A., Singh, A. K., Srivastava, S., Jatavallabhula,
+K. M., and Krishna, K. M. Talk2bev: Language-enhanced
+bird’s-eye view maps for autonomous driving. arXiv
+preprint arXiv:2310.02251, 2023.
+Fu, C., Chen, P., Shen, Y., Qin, Y., Zhang, M., Lin, X., Yang,
+J., Zheng, X., Li, K., Sun, X., et al. Mme: A comprehen-
+sive evaluation benchmark for multimodal large language
+models. arXiv preprint arXiv:2306.13394, 2023.
+Gao, L., Schulman, J., and Hilton, J. Scaling laws for reward
+model overoptimization. 2023.
+Huang, Q., Dong, X., Zhang, P., Wang, B., He, C., Wang,
+J., Lin, D., Zhang, W., and Yu, N. Opera: Alleviating
+hallucination in multi-modal large language models via
+over-trust penalty and retrospection-allocation. arXiv
+preprint arXiv:2311.17911, 2023.
+Jia, C., Yang, Y., Xia, Y., Chen, Y.-T., Parekh, Z., Pham, H.,
+Le, Q., Sung, Y.-H., Li, Z., and Duerig, T. Scaling up
+visual and vision-language representation learning with
+noisy text supervision. In International conference on
+machine learning, pp. 4904–4916. PMLR, 2021.
+Lee, H., Phatale, S., Mansoor, H., Lu, K., Mesnard, T.,
+Bishop, C., Carbune, V., and Rastogi, A. Rlaif: Scal-
+ing reinforcement learning from human feedback with ai
+feedback. arXiv preprint arXiv:2309.00267, 2023.
+Leng, S., Zhang, H., Chen, G., Li, X., Lu, S., Miao, C., and
+Bing, L. Mitigating object hallucinations in large vision-
+language models through visual contrastive decoding.
+arXiv preprint arXiv:2311.16922, 2023.
+Li, C., Ge, Y., Li, D., and Shan, Y. Vision-language instruc-
+tion tuning: A review and analysis. 2023a.
+Li, C., Wong, C., Zhang, S., Usuyama, N., Liu, H., Yang, J.,
+Naumann, T., Poon, H., and Gao, J. Llava-med: Training
+a large language-and-vision assistant for biomedicine in
+one day. arXiv preprint arXiv:2306.00890, 2023b.
+Li, J., Li, D., Xiong, C., and Hoi, S. Blip: Bootstrapping
+language-image pre-training for unified vision-language
+understanding and generation. In International Confer-
+ence on Machine Learning, pp. 12888–12900. PMLR,
+2022.
+Li, J., Li, D., Savarese, S., and Hoi, S.
+Blip-2: Boot-
+strapping language-image pre-training with frozen im-
+age encoders and large language models. arXiv preprint
+arXiv:2301.12597, 2023c.
+Li, L., Xie, Z., Li, M., Chen, S., Wang, P., Chen, L., Yang,
+Y., Wang, B., and Kong, L. Silkie: Preference distilla-
+tion for large visual language models. arXiv preprint
+arXiv:2312.10665, 2023d.
+9
+
+===== PAGE 10 =====
+Aligning Modalities in Vision Large Language Models via Preference Fine-tuning
+Li, L., Yin, Y., Li, S., Chen, L., Wang, P., Ren, S., Li, M.,
+Yang, Y., Xu, J., Sun, X., et al. M3it: A large-scale
+dataset towards multi-modal multilingual instruction tun-
+ing. arXiv preprint arXiv:2306.04387, 2023e.
+Li, Y., Du, Y., Zhou, K., Wang, J., Zhao, W. X., and Wen,
+J.-R.
+Evaluating object hallucination in large vision-
+language models.
+arXiv preprint arXiv:2305.10355,
+2023f.
+Liu, F., Lin, K., Li, L., Wang, J., Yacoob, Y., and Wang, L.
+Aligning large multi-modal model with robust instruction
+tuning. arXiv preprint arXiv:2306.14565, 2023a.
+Liu, H., Li, C., Wu, Q., and Lee, Y. J. Visual instruction
+tuning. arXiv preprint arXiv:2304.08485, 2023b.
+Liu, Y., Duan, H., Zhang, Y., Li, B., Zhang, S., Zhao, W.,
+Yuan, Y., Wang, J., He, C., Liu, Z., et al. Mmbench: Is
+your multi-modal model an all-around player?
+arXiv
+preprint arXiv:2307.06281, 2023c.
+Lu, P., Mishra, S., Xia, T., Qiu, L., Chang, K.-W., Zhu,
+S.-C., Tafjord, O., Clark, P., and Kalyan, A. Learn to
+explain: Multimodal reasoning via thought chains for
+science question answering. In The 36th Conference on
+Neural Information Processing Systems (NeurIPS), 2022.
+OpenAI. Gpt-4 technical report. ArXiv, abs/2303.08774,
+2023.
+URL https://arxiv.org/abs/2303.
+08774.
+Rafailov, R., Sharma, A., Mitchell, E., Manning, C. D.,
+Ermon, S., and Finn, C. Direct preference optimization:
+Your language model is secretly a reward model. In Thirty-
+seventh Conference on Neural Information Processing
+Systems, 2023. URL https://arxiv.org/abs/
+2305.18290.
+Rohrbach, A., Hendricks, L. A., Burns, K., Darrell, T., and
+Saenko, K. Object hallucination in image captioning.
+arXiv preprint arXiv:1809.02156, 2018.
+Schulman, J., Wolski, F., Dhariwal, P., Radford, A., and
+Klimov, O. Proximal policy optimization algorithms,
+2017.
+Sun, Z., Shen, S., Cao, S., Liu, H., Li, C., Shen, Y., Gan, C.,
+Gui, L.-Y., Wang, Y.-X., Yang, Y., et al. Aligning large
+multimodal models with factually augmented rlhf. arXiv
+preprint arXiv:2309.14525, 2023.
+Taori, R., Gulrajani, I., Zhang, T., Dubois, Y., Li,
+X., Guestrin, C., Liang, P., and Hashimoto, T. B.
+Stanford
+alpaca:
+An
+instruction-following
+llama
+model.
+https://github.com/tatsu-lab/
+stanford_alpaca, 2023.
+Touvron, H., Lavril, T., Izacard, G., Martinet, X., Lachaux,
+M.-A., Lacroix, T., Rozi`ere, B., Goyal, N., Hambro, E.,
+Azhar, F., et al. Llama: Open and efficient foundation lan-
+guage models. arXiv preprint arXiv:2302.13971, 2023a.
+Touvron, H., Martin, L., Stone, K., Albert, P., Almahairi,
+A., Babaei, Y., Bashlykov, N., Batra, S., Bhargava, P.,
+Bhosale, S., et al. Llama 2: Open foundation and fine-
+tuned chat models. arXiv preprint arXiv:2307.09288,
+2023b.
+Tu, H., Cui, C., Wang, Z., Zhou, Y., Zhao, B., Han, J., Zhou,
+W., Yao, H., and Xie, C. How many unicorns are in this
+image? a safety evaluation benchmark for vision llms.
+arXiv preprint arXiv:2311.16101, 2023.
+Vinyals, O., Toshev, A., Bengio, S., and Erhan, D. Show and
+tell: A neural image caption generator. In Proceedings
+of the IEEE conference on computer vision and pattern
+recognition, pp. 3156–3164, 2015.
+Wei, J., Wang, X., Schuurmans, D., Bosma, M., Xia, F.,
+Chi, E., Le, Q. V., Zhou, D., et al. Chain-of-thought
+prompting elicits reasoning in large language models.
+Advances in Neural Information Processing Systems, 35:
+24824–24837, 2022.
+Ye, Q., Xu, H., Xu, G., Ye, J., Yan, M., Zhou, Y., Wang, J.,
+Hu, A., Shi, P., Shi, Y., et al. mplug-owl: Modulariza-
+tion empowers large language models with multimodality.
+arXiv preprint arXiv:2304.14178, 2023.
+Yin, S., Fu, C., Zhao, S., Xu, T., Wang, H., Sui, D., Shen, Y.,
+Li, K., Sun, X., and Chen, E. Woodpecker: Hallucination
+correction for multimodal large language models. arXiv
+preprint arXiv:2310.16045, 2023.
+Yu, T., Yao, Y., Zhang, H., He, T., Han, Y., Cui, G., Hu, J.,
+Liu, Z., Zheng, H.-T., Sun, M., and Chua, T.-S. Rlhf-v:
+Towards trustworthy mllms via behavior alignment from
+fine-grained correctional human feedback. arxiv, 2023a.
+Yu, T., Yao, Y., Zhang, H., He, T., Han, Y., Cui, G., Hu,
+J., Liu, Z., Zheng, H.-T., Sun, M., et al. Rlhf-v: To-
+wards trustworthy mllms via behavior alignment from
+fine-grained correctional human feedback. arXiv preprint
+arXiv:2312.00849, 2023b.
+Yu, W., Yang, Z., Li, L., Wang, J., Lin, K., Liu, Z., Wang,
+X., and Wang, L.
+Mm-vet: Evaluating large multi-
+modal models for integrated capabilities. arXiv preprint
+arXiv:2308.02490, 2023c.
+Zhao, Z., Wang, B., Ouyang, L., Dong, X., Wang, J., and
+He, C. Beyond hallucinations: Enhancing lvlms through
+hallucination-aware direct preference optimization. arXiv
+preprint arXiv:2311.16839, 2023.
+10
+
+===== PAGE 11 =====
+Aligning Modalities in Vision Large Language Models via Preference Fine-tuning
+Zhou, Y., Cui, C., Yoon, J., Zhang, L., Deng, Z., Finn, C.,
+Bansal, M., and Yao, H. Analyzing and mitigating object
+hallucination in large vision-language models. arXiv
+preprint arXiv:2310.00754, 2023.
+11
+
+===== PAGE 12 =====
+Aligning Modalities in Vision Large Language Models via Preference Fine-tuning
+A. Appendix.
+A.1. Training Setup
+Training hyperparameters are shown in Table 5. For the first phase, we trained for 3 epochs, and for the second phase, the
+training was conducted for 1 epoch. Training for 20 hours on one A100 80G GPU. For the second phase, we adjust the
+diffusion noise level, symbolized by ξ through a specific formula: ξ = Sigmoid(lt) × (0.5 × 10−2 −10−5) + 10−5, where
+ϵ is drawn from a normal distribution.
+A.2. Construction of the Dispreference Dataset
+This section details the prompts utilized to compile the dataset focusing on dispreferences, specifically within the realms
+of image captioning and reasoning tasks. The prompts are designed to elicit responses that reveal dispreference patterns,
+categorized into two main types: image captioning tasks intended to provoke imaginative descriptions, and reasoning tasks
+aimed at stimulating inferential thought processes. These prompts, central to our methodology, are enumerated in Table 6,
+offering a comprehensive view of the data generation framework.
+Table 5. Training hyperparameters.
+Hyperparameters
+lora r
+128
+lora alpha
+256
+lora target
+all
+mm projector lr
+2e-5
+Batch size
+1
+Learning rate
+1e-7
+model max length
+1024
+noise step (only for internal preference optimization)
+500
+B. Details about baselines
+For the assessment of multitasking, MME (Fu et al., 2023) is a comprehensive evaluation tool for MLLMs, which is designed
+to measure both perception and cognition abilities across 14 sub-tasks. MMBench (Liu et al., 2023c) is characterized by its
+approach to assessing both perception and reasoning abilities, categorized into top-level dimensions in the ability taxonomy.
+This benchmark includes different levels of abilities, each including specific aspects of perception and reasoning. MM-Vet
+(Yu et al., 2023c) focuses on six core capabilities for evaluation: recognition, knowledge, optical character recognition
+(OCR), spatial awareness, language generation, and math. These capabilities cover a wide range of functions from general
+visual recognition to specific tasks like arithmetic problem-solving. LLaVA-Bench (Liu et al., 2023b) assesses models in
+more complex tasks and their adaptability to new domains. It consists of 24 diverse images, encompassing a variety of
+scenes like indoor and outdoor settings, memes, paintings, and sketches. Each image in LLaVA-Bench is paired with a
+detailed, manually crafted description and a carefully chosen set of questions, totaling 60 questions. This setup aims to
+provide a thorough and varied evaluation of the models’ capabilities.
+12
+
+===== PAGE 13 =====
+Aligning Modalities in Vision Large Language Models via Preference Fine-tuning
+Table 6. Two types of prompts to GPT4V (The format of the obtained data is {image, prefer data, disprefer data}).
+Prompts for hallucinating image captioning tasks:
+Help me generate one highly confusing response based on the image and the standard caption in the Question-Answer
+Pair.
+*****************************************
+Question-answer Pair:
+Q: {question}
+A: {answer}
+Requirements:
+(1) The generated caption is generally similar to the given A, with the same main meaning; (2) You can refer to the
+following errors to generate the wrong caption (1. The wrong caption can contain some co-occurring objects, which are
+prone to appear in such scenarios but do not appear in the image; 2. The wrong caption can be an error in the number
+of entities or the logical relationships between entities; 3. The attributes of entities in the caption can also be modified,
+such as color, appearance, etc.) (3) Compared to the original caption A, the caption you modified is incorrect based on
+the provided image.
+*****************************************
+Output Format:
+Answer: your answer
+Prompts for hallucinating reasoning tasks:
+Now, please help me generate new answers with hallucination errors based on the image, question, and answer provided.
+There are two cases now:
+1. If the given question and answer are short and do not require logical reasoning, then modify the answer to a
+hallucination error answer, such as some quantity errors or entity and property errors.
+2. If the entire question requires logical reasoning, then help me reorganize the answers based on the given image,
+questions, and answers into the format “Reason: xxx, Result: xxx” (Answer 1). Modify the reasons by introducing
+errors related to logical relationships, entity information, entity attributes, etc. If the error in the reason would lead to a
+new result, modify the result accordingly. If the error does not lead to a new result, keep the original result. Similarly,
+organize it in the format “Reason: xxx, Result: xxx” (Answer 2).
+*****************************************
+Question-answer Pair:
+Q: {question}
+A: {answer}
+Requirements:
+(1) The generated wrong answer and reasoning process should be combined with the image and be misleading..
+*****************************************
+Output Format:
+Answer: your answer
+13

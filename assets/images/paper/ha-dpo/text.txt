@@ -1,0 +1,2144 @@
+
+===== PAGE 1 =====
+Beyond Hallucinations: Enhancing LVLMs
+through Hallucination-Aware Direct Preference Optimization
+Zhiyuan Zhao*, Bin Wang*, Linke Ouyang*, Xiaoyi Dong, Jiaqi Wang, Conghui He†
+Shanghai AI Laboratory
+{zhaozhiyuan, wangbin, ouyanglinke, dongxiaoyi, wangjiaqi, heconghui}@pjlab.org.cn
+Abstract
+Multimodal large language models have made signif-
+icant advancements in recent years, yet they still suffer
+from a common issue known as the “hallucination prob-
+lem”, in which the models generate textual descriptions
+that inaccurately depict or entirely fabricate content from
+associated images.
+This paper introduces a novel solu-
+tion, Hallucination-Aware Direct Preference Optimization
+(HA-DPO), which reframes the hallucination problem as
+a preference selection task.
+The model is trained to fa-
+vor the non-hallucinating response when presented with
+two responses of the same image (one accurate and one
+hallucinatory). Furthermore, this paper proposes an effi-
+cient pipeline for constructing positive (non-hallucinatory)
+and negative (hallucinatory) sample pairs, ensuring a high-
+quality, style-consistent dataset for robust preference learn-
+ing. When applied to three mainstream multimodal mod-
+els, HA-DPO significantly reduced hallucination issues
+and amplified the models’ generalization capabilities. No-
+tably, the MiniGPT-4 model, when enhanced with HA-
+DPO, demonstrated a substantial improvement: POPE ac-
+curacy rose from 51.13% to 86.13% (an absolute improve-
+ment of 35%), and the MME score surged from 932.00 to
+1326.46 (a relative improvement of 42.32%). The codes,
+models, and datasets are made accessible at https://
+opendatalab.github.io/HA-DPO.
+1. Introduction
+Large Vision-Language Models (LVLMs) have achieved
+substantial advancements in synchronizing visual and tex-
+tual features, thanks to extensive unsupervised pre-training
+on image-text pairs and meticulous fine-tuning on high-
+quality data. This progress has endowed these models with
+the ability to follow multimodal instructions [5, 14, 32, 36],
+resulting in significant advancements in a variety of mul-
+*Equal contribution.
+†Corresponding author.
+SFT Dataset
+LVLM-Pretrain
+H. SFT Dataset
+Supervised Fine-tuning
+LVLM-SFT+
+Response
+Image
+Human
+Question    
+(a) Hallucination Elimination with SFT
+( )
+LVLM-SFT
+Toolbox Pool
+Question    
+Initial Outputs
+Object Detector
+Key Concept 
+Extraction
+Response
+Image
+(b) Hallucination Elimination with Post-hoc
+H. P. Data
+LVLM-SFT
+( )
+(
+)
+H. N. Data   
+GPT
+HA-DPO Training
+LVLM-HA-DPO
+Response
+Pair
+Question    
+Image
+(c) Hallucination Elimination with HA-DPO (Ours)
+Figure 1.
+Comparative diagram of strategies for hallucination
+elimination in LVLMs. ‘H.’ represents hallucination, ‘H.P.’ stands
+for positive samples without hallucination, and ‘H.N.’ denotes
+negative samples with hallucination.
+timodal tasks. However, even the most advanced LVLMs
+are not immune to the pervasive issue of “hallucination”.
+This phenomenon, where the model’s output includes fic-
+titious information, such as non-existent objects or incor-
+rect categories, attributes, or relationships, is a critical chal-
+lenge [7, 10, 12, 26, 31, 35]. These hallucinated details not
+only tarnish the user experience but can also mislead users,
+potentially triggering severe consequences. For instance, an
+inaccurate description in medical diagnostics could lead to
+a misdiagnosis, posing unforeseeable harm to patients.
+Researchers have embarked on a series of studies to mit-
+igate the hallucination issue in multimodal models. Cur-
+rent mainstream solutions can be broadly divided into two
+categories: the first, as shown in Figure 1a, involves con-
+structing abundant hallucination-free data and employing
+exhaustive Supervised Fine-Tuning (SFT) process to miti-
+gate hallucination phenomenon [5, 12, 32]. Although SFT-
+based method reduces hallucination to a certain extent, this
+method demands high-quality data and comes with high
+1
+arXiv:2311.16839v2  [cs.CV]  6 Feb 2024
+
+===== PAGE 2 =====
+annotation and training overheads. The second, as shown
+in Figure 1b, treats the elimination of hallucination as a
+post-processing operation on model output and uses exist-
+ing tools or expert models (such as tokenizers and detection
+models) to rectify hallucinated content [35]. This approach
+does not necessitate additional data and training, unless a
+certain customized model is required [30] for post-hoc hal-
+lucination processing. However, its effectiveness is con-
+strained by existing resources, and the time cost increases
+with additional post-processing tools.
+While the SFT method is beneficial, it lacks flexibility
+for algorithm optimization and custom hallucination han-
+dling, and it demands substantial resources for data con-
+struction and training. Conversely, the Post-Hoc method’s
+performance wholly depends on the existing toolset.
+In
+contrast, this paper perceives hallucination elimination as a
+model preference, biasing the model towards hallucination-
+free output. Following this approach, we decouple the task
+of multimodal hallucination elimination into a preference
+optimization problem.
+Through this preference learning
+strategy, we anticipate that multimodal models will exhibit
+a preference constraint during training, leading to a bias to-
+ward hallucination-free output. RLHF [1] and DPO [22]
+are two effective strategies proposed to address the prefer-
+ence issue in large language models. Given the lightweight
+nature and efficient training of the DPO, this paper ex-
+tends DPO to propose a multimodal DPO strategy sensitive
+to hallucinations (Hallucination-Aware Direct Preference
+Optimization, termed HA-DPO), thereby customizing and
+enhancing the hallucination elimination capability of multi-
+modal models.
+In scrutinizing current methodologies for multimodal
+hallucination evaluation, we’ve identified significant short-
+comings in existing assessment systems [10, 24, 29].
+Firstly, these systems limit categories to predefined ones,
+leading to the erroneous marking of unrecognized content
+as hallucinations. Additionally, they predominantly focus
+on specific areas, such as the existence and attributes of ob-
+jects, neglecting a wider range of hallucinations. To ad-
+dress these issues, we introduce the Sentence-level Halluci-
+nation Ratio (SHR), a comprehensive and intuitive bench-
+mark. Unconfined by fixed categories and scopes, the SHR
+offers a broad, fine-grained, and quantitative measurement
+for multimodal hallucinations.
+In summary, our contributions are as follows:
+1. We propose the HA-DPO strategy, a novel paradigm
+specifically designed to overcome hallucinations in large
+multimodal models, which is demonstrated in Figure 1c.
+Additionally, we develop a method for constructing
+style-consistent hallucination sample pairs, ensuring the
+stability of HA-DPO training.
+2. We introduce the Sentence-level Hallucination Ratio
+(SHR), an intuitive and comprehensive metric for assess-
+ing hallucinations in LVLMs.
+3. Through extensive experiments on prevalent models, we
+demonstrate the effectiveness of our approach, showing
+a marked reduction in hallucinations and a notable en-
+hancement in the general performance of the models.
+2. Related Work
+2.1. Hallucination in LLMs
+Hallucinations in Large Language Models (LLMs) refer to
+a phenomenon where the model generates responses that
+conflict with known facts [11, 23, 33]. Early research has
+indicated that hallucinations are often attributed to noise in
+the pre-training data [16, 20] and a lack of prior knowledge
+during supervised fine-tuning (SFT) [20]. To address these
+issues, Falcon [21] has developed a powerful strategy for
+cleaning internet data. LLaMA2 [27] reduces data noise by
+increasing the sampling ratio of high-quality data sources.
+As for hallucination mitigation during SFT, LIMA [34] sug-
+gests reducing SFT data volume for enhanced performance.
+Reinforcement Learning from Human Feedback (RLHF) is
+another strong method for mitigating hallucinations. For in-
+stance, by employing RLHF, GPT4 enhances the accuracy
+of TruthfulQA from 30% to 60% [18].
+2.2. Hallucination in LVLMs
+The hallucination issue in LVLMs, exacerbated by language
+and image modal space misalignment, has recently become
+the focus of numerous studies. POPE [10] identifies the ob-
+ject existence hallucination issue in LVLM, illustrating its
+severity. LRV [12] creates abundant questions with rich an-
+notations and GPT4-assisted evaluation. However, existing
+benchmarks fail to cover a sufficient range of object cate-
+gories and types of hallucinations.
+In terms of mitigating hallucination, most methods
+have focused on improving the quality of the SFT data.
+VIGC [28] introduces a module for visual instruction cor-
+rection to minimize long sequence generation hallucina-
+tions.
+LRV [12] and InstructBLIP [5] mitigate halluci-
+nations by constructing substantial and diverse SFT data.
+LLaVA-RLHF [26] is the first to apply RLHF in hallucina-
+tion mitigation of LVLM. Gunjal et al. utilize DPO (Di-
+rect Preference Optimization) [22] for hallucination reduc-
+tion, but use only dis-preferred data [22]. However, their
+approach risked over-exploitation due to lack of preferred
+data, complicating effective strategy learning [2, 4, 17, 19].
+In contrast, our framework integrates high-quality, human-
+free, style-consistent data into DPO, enhancing data quality
+and RL strategy beyond previous methods.
+2.3. Human-preference Learning
+Human-preference learning is a crucial approach in con-
+structing effective, safe, and trustworthy models. [18, 20,
+2
+
+===== PAGE 3 =====
+The image shows a tree with oranges
+hanging from its branches…with a few white
+clouds scattered across it.
+Describe this image in detail.
+①Description Generation
+LVLM
+Human
+Judgement:
+1. hallucination: <reason>
+2. …
+Revised Sentences:
+1. ...
+②Hallucination Detection & Correction
+Human
+GPT
+④Hallucination Mitigation
+DPO
+Final LVLM
+Maximum 
+Likelihood
+Preference Data
+Describe this image in detail.
+Human
+The image portrays an individual, dressed
+in a white shirt and blue jeans, bending
+over next to a vibrant blue bicycle on a
+sandy beach. Seen from behind, the person
+is anonymous. The bicycle sports a black
+backpack
+slung
+over
+its
+handlebars.
+Beyond them, the tranquil shoreline of an
+ocean stretches out, its surface kissed by
+smooth, sun-bathed brown sand.
+③Style-consistency Data Augmentation
+Help me rewrite the given sentence. Don't change 
+any detail and information in the original sentence.
+Human
+GPT
+The image shows a tree 
+with oranges hanging from 
+its branches… with a clear 
+blue sky as background.
+The image shows a tree with 
+oranges hanging from its 
+branches…with a few white 
+clouds scattered across it.
+The image captures an orange 
+tree, its branches heavy with 
+fruit… against the striking 
+contrast of a clear blue sky.
+The picture depicts an orange 
+tree laden with ripe fruit… set 
+against a backdrop of sparse 
+white clouds dotting the sky.
+Rewrite
+Rewrite
+γ
+Please help me judge if the comment of this 
+image is hallucination or correct. If a 
+comment is hallucination, please help me 
+rewrite it.
+Is there a tree in the image?
+No, there is no tree in the image.
+LVLM-HA-DPO
+Non-Hallucinated After DPO
+Figure 2. Our proposed hallucination mitigation process involves four steps: (1) Description Generation, where the LVLM is tasked
+with a detailed image description; (2) Hallucination Detection and Correction, GPT-4 identifies and corrects hallucinations in model
+responses using rich annotations; (3) Style-consistency Data Augmentation, GPT-4 rewrites samples to maintain style consistency; and
+(4) Hallucination Mitigation, style-consistent data is gathered for DPO training.
+27]. RLHF [15, 20, 37] has been the most successful im-
+plementation in learning human preference. It constructs
+a reward model based on human preferences and opti-
+mizes the policy model guided by feedback from the re-
+ward model. [25].
+Similarly, InstructGPT exploits hu-
+man preference data for RL optimization, building upon
+GPT3 [3]. Bai et al. [1] aim to enhance human-preference
+learning with updated RL policies.
+Recently, DPO pro-
+poses a method [22] that bypasses learning the reward
+model and directly learns policies, resulting in a much sim-
+pler approach with superior performance compared to PPO.
+The current state-of-the-art AI agent, GPT4, also utilizes
+human-preference alignment via extensive data processing
+during its construction [18].
+3. Our Method
+In this work, we introduce a novel method, Hallucination-
+Aware Direct Preference Optimization (HA-DPO), de-
+signed to constrain the model’s preference toward outputs
+that are devoid of hallucinations. The primary objective is
+to promote non-hallucinatory outputs. Considering the in-
+herent complexity in data construction and model training
+processes when utilizing classical RLHF methods to con-
+strain model preferences, we opt for Direct Preference Opti-
+mization (DPO). DPO, being a simpler, more efficient, and
+RL-free method, serves as our foundational strategy. We
+extend this strategy to the multimodal domain with the in-
+tention of eliminating hallucinations, thereby enhancing the
+authenticity and precision of multimodal model outputs.
+As illustrated in Figure 2, we construct a style-consistent
+hallucination dataset through three primary steps:
+1 de-
+scription generation,
+2 hallucination detection and cor-
+rection, and
+3 style-consistent data augmentation.
+This
+dataset is subsequently utilized for the training of the HA-
+DPO model. The models trained using this method demon-
+strate a significant reduction in hallucination phenomena in
+tasks involving detailed descriptions and dialogues.
+3.1. Multimodal Hallucination-Aware DPO
+We formulate the elimination of hallucinations as a prefer-
+ence selection problem, where, in conjunction with a style-
+consistent dataset, preference learning is conducted. This
+encourages the model to favor non-hallucinatory positive
+response ypos and reject hallucinatory negative response
+yneg. During the human-preference learning stage, a re-
+ward model, denoted as ˆr, is trained to ensure the model’s
+propensity for outputting non-hallucinated responses ypos
+and rejecting hallucinated responses yneg.
+This reward
+model is capable of assigning scores to different responses
+y, thereby accurately reflecting human preferences. Once
+the reward model r is obtained, it is used to provide feed-
+back for guiding an additional fine-tuning phase, which
+learns a policy model πθ guided by human preference.
+Building on the DPO framework, HA-DPO avoids the
+need for implicit reward model learning, instead directly
+optimizing the policy model πref as follows:
+3
+
+===== PAGE 4 =====
+LVLM
+Pos:
+No H. Sentence
+Preference Data
+(LVLM, Negative)
+(LVLM, Positive)
+revise
+Neg:
+H. Sentence
+Pos:
+No H. Sentence
+GPT
+(GPT,    Positive)
+(LVLM, Negative)
+Neg:
+H. Sentence
+Pos:
+No H. Sentence
+GPT
+augment
+augment
+(a)
+(b)
+(c)
+Neg:
+H. Sentence
+(GPT,    Positive)
+(GPT,    Negative)
+The pentagon       represents the GPT style, while the circle
+represents the LVLM style. 
+Yellow indicates No Hallucination Samples (positive), and blue indicates Hallucination Samples (negative).
+Figure 3. Style Consistency Analysis for Hallucination Dataset.
+Ldpo(πθ; πref) = −E(xT ,xI,ypos,yneg)∼D
+
+log σ(βlog πθ(ypos|[xT , xI])
+πref(ypos|[xT , xI])
+−β log πθ(yneg|[xT , xI])
+πref(yneg|[xT , xI]))
+
+(1)
+where xT and xI denote the text and image prompts, re-
+spectively, while [ ] signifies feature concatenation. We re-
+fer to πref and πtheta as the reference and policy models,
+respectively. D represents the style-consistent dataset, and
+log σ stands for the log-sigmoid function. This objective
+function is designed to train the reward and policy models
+concurrently, skewing the reward model to favor positive
+responses ypos and reject negative responses yneg. Instead
+of training the reward model explicitly, Eq. 1 optimizes the
+policy model πref directly, with the reward model r repre-
+sented implicitly as follows:
+ˆr(xT , xI, y) = βlog πθ(ypos|[xT , xI])
+πref(ypos|[xT , xI])
+(2)
+Building on Eq. 2, we formulate Eq. 1 to maximize the re-
+ward margin ˆr(xT , xI, ypos) −ˆr(xT , xI, yneg). This ap-
+proach effectively amplifies the log-likelihood of the posi-
+tive, non-hallucinated sample ypos, while diminishing that
+of the negative, hallucinated sample yneg. Consequently,
+the model is steered to favor non-hallucinated over halluci-
+nated samples. To ensure training stability, we incorporate
+an auxiliary causal language modeling task into the pref-
+erence learning process, drawing inspiration from Instruct-
+GPT [20]. The auxiliary task is defined as follows:
+Laux = −
+X
+log P(y|xP ; πθ), {xP , y} ∼Dsft
+(3)
+where xP represents the prompt and y corresponds to the
+associated response. Dsft denotes the data utilized during
+the SFT training phase, and πθ refers to the policy model.
+Eq. 3 integrates the supervised fine-tuning gradient into the
+preference learning process, which serves to mitigate po-
+tential performance regression and ensure stable training.
+During HA-DPO training, we minimize an objective where
+λ balances preference learning loss and auxiliary language
+modeling loss:
+L = Ldpo + λLaux
+(4)
+3.2. Dataset Construction with Style Consistency
+3.2.1
+Data Source
+This paper uses the Visual Genome (VG) dataset [9] to con-
+struct hallucinated samples yneg and non-hallucinated ypos.
+The VG dataset contains abundant annotated information.
+Each image includes multiple region bounding boxes, each
+corresponding to a detailed description. These annotations
+can adequately cover various detailed information related to
+the image: diverse objectives, attributes, relationships, etc.,
+unrestricted by specific categories and scopes.
+3.2.2
+Generation of Hallucination Sample Pairs.
+As shown in Figure 2, based on Visual Genome images with
+detailed annotation information, we propose the following
+data construction process:
+Description Generation. We randomly select images from
+the VG dataset and use the LVLM to generate correspond-
+ing detailed descriptions.
+GPT-4 Hallucination Detection and Correction. Next,
+input the model-generated description and all the annota-
+tion information of the original image into GPT-4 and pro-
+vide a detailed prompt template to enable GPT-4 to check
+whether there are hallucinations in the generated descrip-
+tion. If hallucinations exist, a corrected description without
+hallucinations needs to be provided. This way, we can ob-
+tain the positive and negative responses corresponding to an
+image. In fact, hallucinations almost always occur when a
+multimodal model provides a detailed image description.
+Style-consistent Data Augmentation. To ensure style con-
+sistency and amplify our sample pool, we use GPT-4 to
+rewrite earlier positive and negative samples, preserving
+their polarity.
+These data are further augmented into a
+question-answer format. Specifically, GPT-4 transforms de-
+scriptive data into questions coupled with positive-negative
+answer pairs, which are then fed into LVLM. Responses
+are sampled based on prior answers. In HA-DPO training,
+the preference learning data consists of both descriptive and
+question-answer data. Consequently, high-quality positive
+(x, ypos) and negative (x, yneg) sample pairs for the HA-
+DPO training process have been successfully constructed.
+3.3. Style Consistency Analysis
+High-quality and style-consistent data are crucial for the ef-
+fective training of HA-DPO, as demonstrated in Figure 3-
+(a), which illustrates our initial generation of detailed image
+descriptions using a multimodal model that yields a small
+4
+
+===== PAGE 5 =====
+0
+20
+40
+60
+80
+100
+120
+Gradient accumulation steps
+200
+175
+150
+125
+100
+75
+50
+25
+0
+log-probability
+Postive(No H.)
+Negative(H.)
+0
+20
+40
+60
+80
+100
+120
+Gradient accumulation steps
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+4-gram
+policy model (πθ)
+reference model (πref)
+(a) w/o style consistency control. Left: log-likelihood distribution;
+Right: N-grams comparison between reference and policy model.
+0
+20
+40
+60
+80
+100
+120
+Gradient accumulation steps
+240
+220
+200
+180
+160
+140
+120
+100
+80
+log-probability
+Postive(No H.)
+Negative(H.)
+0
+20
+40
+60
+80
+100
+120
+Gradient accumulation steps
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+4-gram
+policy model (πθ)
+reference model (πref)
+(b) w/ style consistency control. Left: log-likelihood distribution;
+Right: N-grams comparison between reference and policy model.
+Figure 4. Quantative analysis on style-consistent control.
+proportion of responses free from hallucinations.
+How-
+ever, HA-DPO training necessitates a balance of positive
+and negative samples, (x, ypos) and (x, yneg), as indicated
+in Equation 1.
+To achieve this, we utilize GPT-4 to re-
+fine hallucinated responses and produce positive responses
+without hallucinations, as shown in Figure 3-(b). Despite
+this, the observed distribution difference between the non-
+hallucinatory positive samples and hallucinatory negative
+samples does not result from the presence of hallucination.
+Instead, it arises from the stylistic variations between the
+direct outputs of the VLM and the refined outputs from
+GPT-4. This could potentially mislead the DPO into learn-
+ing stylistic differences instead of distinguishing between
+hallucination-free and hallucination-prone responses. In or-
+der to address this, we utilize GPT-4 to augment the initial
+positive and negative samples in Figure 3-(b), as depicted in
+Figure 3-(c). At this point, both the hallucinatory negative
+samples and non-hallucinatory positive samples adopt the
+style of GPT-4, ensuring style consistency. Consequently,
+this enables the HA-DPO to learn a true preference for non-
+hallucination, thereby eliminating model hallucinations.
+To intuitively understand the impact of style-consistency
+on HA-DPO training, we analyzed its effects on data dis-
+tribution and sentence fluency during the training process.
+Prior to applying style-consistency alignment, as shown on
+the left side of Figure 4a, there is a significant distribution
+difference between non-hallucination negative samples and
+hallucination positive samples. Concurrently, the right side
+of Figure 4a illustrates a rapid decline in sentence fluency
+as training progresses, with the model losing its question-
+answering capability after a certain training period, man-
+ifested as repetitive output of the same word or sentence.
+However, after style-consistency alignment, as shown on
+the left side of Figure 4b, the distributions of both types of
+samples are successfully pulled into the same feature space.
+Under this condition, sentence fluency is not affected as
+training progresses, and the model trained ultimately pos-
+sesses the ability to eliminate hallucinations.
+Moreover, we corroborate, from the perspective of gra-
+dient optimization of objective 1, that a misalignment in the
+distribution of positive and negative samples can induce in-
+stability during training. By deriving the optimization ob-
+jective from objective 1, we obtain:
+∇L(πθ; πref) = −βExT ,xI,ypos,yneg
+∼D
+
+σ(ˆrθ(xT , xI, yneg) −ˆrθ(xT , xI, ypos))
+|
+{z
+}
+weighting coefficient
+−[∇θ log π(ypos|[xT , xI]) −∇θ log π(yneg|[xT , xI)]]
+|
+{z
+}
+dominate gradient when ypos and yneg are misaligned
+
+(5)
+where the optimization gradient consists of two compo-
+nents. The first, represented by the reward model ˆr, serves
+to realign the model when the reward estimates deviate. The
+second component aims to enhance the log-likelihood of
+ypos while diminishing that of yneg. As empirically demon-
+strated by [22], the weight factor of the reward model plays
+a pivotal role in maintaining the stability of training. As
+suggested by Eq. 5, once the distribution of positive and
+negative samples (ypos and yneg) becomes misaligned, this
+misalignment predominates the gradient, thereby destabi-
+lizing training despite the presence of the weighting factor.
+Further analysis can be found in Sec 10.
+4. Sentencel-level Hallucination Ratio (SHR)
+4.1. Benchmark Details
+The currently prevalent LVLM hallucination evaluation
+benchmark, POPE [10], restricts its evaluation scope to a
+limited number of target categories, neglecting a broader
+range of categories, attributes, emotions, and other ele-
+ments. To overcome the limitations posed by POPE, we
+introduce a new evaluation metric, the SHR (Sentence-level
+Hallucination Ratio).
+The SHR aims to provide a comprehensive and broad
+measurement of whether the output of LVLMs contains hal-
+lucinations. The hallucination check is not confined to cat-
+egories or attributes, but encompasses all textual descrip-
+tions that do not match the image content, thereby offering
+a quantifiable metric at the sentence level. The formal defi-
+nition of the SHR is :
+SHR =
+PN
+i=1 hi
+PN
+i=1 si
+(6)
+5
+
+===== PAGE 6 =====
+One person is standing at 
+the top of the slope, 
+holding a ski pole, while 
+the others are skiing down 
+the slope.
+LVLM
+GPT-4
+Judgement: Hallucination. There is no 
+description mentioning one person standing at 
+the top of the slope while the others are skiing 
+down. 
+Revise: A woman in ski gear is smiling at the 
+camera, holding ski poles.
+Movement Hallucination
+There are balloons and 
+streamers hanging from the 
+ceiling.
+LVLM
+GPT-4
+Judgement: Hallucination. There is no mention 
+of balloons and streamers hanging from the 
+ceiling in the region descriptions. 
+Revise: The room they are in has windows with 
+bars and a railing visible outside. 
+Nonexistent Object
+The cat is looking up at the 
+person with a curious 
+expression on its face.
+LVLM
+GPT-4
+Judgement: Hallucination. There's no specific 
+mention of the cat's expression in the region 
+descriptions.
+revise: The cat is actively engaging with the 
+banana.
+Emotion Hallucination
+The pole is made of metal 
+and has a green light on 
+top and a red light on the 
+bottom.
+LVLM
+GPT-4
+Judgement: Hallucination. The green light is 
+not on top and the red light is not on the 
+bottom. 
+Revise: The pole is made of metal with a traffic 
+signal hanging from it, showing a green light.
+Spatial relation Hallucination
+The table is made of wood
+and has a white tablecloth 
+on it.
+LVLM
+GPT-4
+Judgement: Hallucination. The table is not 
+described as made of wood in the region 
+descriptions. 
+Revise: The image shows a table with a blue 
+and white patterned tablecloth.
+Object Attribute Hallucination
+The image shows a 
+chocolate cake with 
+orange slices on a white 
+plate.
+LVLM
+GPT-4
+Judgement: Hallucination. There are no 
+orange slices on the cake or plate, they are 
+whole oranges. 
+Revise: The image shows a chocolate cake 
+and whole oranges on a white plate.
+Physical State Hallucination
+Figure 5. SHR evaluation covers diverse types of hallucinations.
+where N is the total number of images, si and hi denote the
+number of hallucinated sentences and all sentences in the
+response, respectively. Specifically, we randomly selected
+200 images from VG as the validation set. The determina-
+tion of hi is made by GPT-4 based on the model’s outputs
+and the corresponding annotations for the current image.
+4.2. Benchmark Advantages
+Our proposed SHR offers a more compelling evaluation
+than its counterparts, such as POPE and HaELM. It excels
+in three key areas: (1) Reliability: SHR relies on manually
+annotated factual information to enhance GPT-4’s judgment
+accuracy, achieving an impressive accuracy rate of approxi-
+mately 95% (see Section 9 for more details). (2) Universal-
+ity: unlike benchmarks limited to a select few categories
+(such as COCO’s 80), SHR accommodates an unlimited
+number of object types within VG images. (3) Comprehen-
+siveness: SHR can recognize a wide spectrum of hallucina-
+tions, tagging any description that contradicts image content
+as a hallucination. This includes hallucinations involving
+nonexistent objects, emotions, attributes, movements, and
+more (see Figure 5 for illustrations).
+5. Experiments
+5.1. Data and Evaluation
+Training Data: Based on the VG dataset [9], we filtered out
+images that had either too many or too few objects, or those
+with insufficient annotation information, and randomly se-
+lected 2K images. The hallucination dataset was built us-
+ing GPT-4 in three rewrites, yielding 2K images with 6K
+non-hallucinatory and 6K hallucinatory responses. With the
+conversion of descriptive data into a question-answer for-
+mat, we added about 10K data pairs for training, summing
+β
+SHR ↓
+1-gram
+2-gram
+3-gram
+4-gram
+0.3
+57.2
+56.7
+82.3
+86.4
+87.9
+0.4
+55.8
+57.8
+84.3
+88.4
+90.0
+0.5
+52.3
+59.0
+85.9
+90.3
+91.8
+0.6
+51.4
+60.1
+87.4
+91.7
+93.1
+0.8
+52.3
+59.0
+85.9
+90.3
+91.8
+1.0
+56.7
+61.0
+88.8
+93.1
+94.6
+Table 1. Ablation studies on β. Too low β can lead to unstable
+training, and too high β constraint model from learning knowledge
+about how to distinguish hallucinations.
+up to 16K total data used.
+Evaluation with POPE. The POPE dataset, a mainstream
+dataset for hallucination evaluation in multimodal models,
+contains 9,000 questions of 3 types. POPE targets at object
+existence of fixed categories (80 COCO) in images, sup-
+plying Yes/No responses. The model’s accuracy is bench-
+marked against the ground truth answer.
+Evaluation with SHR: The SHR evaluation uses 200 im-
+ages from the VG dataset. During the evaluation, the model
+is required to provide detailed descriptions for these 200
+images. SHR then measures the ratio of hallucinated sen-
+tences in these descriptions. GPT-4 determines if a sentence
+is hallucinated by comparing the model output with VG an-
+notations and human-annotated factual information.
+5.2. Implementation Details
+MiniGPT-4. We fine-tune MiniGPT-4 model [36] parame-
+ters via LoRA [8], fixing all but qproj, kproj and vproj. The
+LoRA’s dimensionality (rank) is 64 and α is 16. A cosine
+scheduler adjusts the learning rate at 1e−4 initially, with a
+warmup ratio of 0.03 for 100 rounds. The batch size is 1,
+and HA-DPO’s β and λ is set to 0.1 and 0.5. Training is
+6
+
+===== PAGE 7 =====
+POPE
+Model
+HA-DPO
+Accuracy
+Precision
+F1 Score
+Yes Ratio (%)
+Random
+MiniGPT-4-LLama2-7B [36]
+%
+51.13
+50.57
+67.13
+98.66
+"
+86.13
+92.81
+84.96
+42.20
+InstructBLIP-13B [5]
+%
+88.70
+85.03
+89.26
+55.23
+"
+89.83
+93.07
+89.43
+46.23
+LLaVA-1.5-7B [13]
+%
+89.60
+88.77
+89.70
+51.06
+"
+90.53
+92.99
+90.25
+47.13
+Popular
+MiniGPT-4-LLama2-7B [36]
+%
+51.46
+50.74
+67.72
+98.06
+"
+79.50
+80.20
+79.25
+48.83
+InstructBLIP-13B [5]
+%
+81.36
+75.06
+83.44
+62.56
+"
+85.76
+85.55
+85.80
+50.03
+LLaVA-1.5-7B [13]
+%
+86.20
+83.23
+86.79
+54.46
+"
+87.90
+88.07
+87.81
+49.76
+Adversarial
+MiniGPT-4-LLama2-7B [36]
+%
+51.26
+50.64
+67.16
+98.40
+"
+75.66
+74.36
+76.29
+52.66
+InstructBLIP-13B [5]
+%
+74.50
+67.64
+78.64
+69.43
+"
+80.70
+77.72
+81.68
+55.36
+LLaVA-1.5-7B [13]
+%
+79.76
+74.43
+81.75
+60.90
+"
+81.46
+77.99
+82.54
+56.20
+Table 2. Results on POPE Benchmark: HA-DPO significantly enhances the model’s ability to discern hallucinatory objects in images.
+performed on 8×A100 GPUs takes 1–2 hours for 1K steps.
+InstructBLIP.
+We
+fine-tune
+the
+InstructBLIP-13B
+model [5] parameters with LoRA, setting its rank to 64
+and α to 16.
+qproj, kproj, vproj in the language model
+are fine-tuned.
+We use a learning rate of 4e−6 with a
+cosine learning rate schedulera a batch size of 1, and set
+HA-DPO’s β as 0.1 with λ being 0.
+Training runs on
+8×A100 GPUs for 1 epoch (less than 1 hour).
+LLaVA-1.5.
+Experiments
+on
+the
+LLaVA-1.5-7B
+model [13] involve fine-tuning all linear layers, using
+LoRA with a rank of 256 and α of 128, following the
+original LLaVA-1.5 configuration. The learning rate, batch
+size, and hyperparameters β and λ is set to 2e−6, 16, 0.1,
+and 0 respectively, with learning rate adjusted by a cosine
+scheduler. Training is conducted using 8×A100 GPUs for
+1 epoch, which takes less than 1 hour.
+5.3. Ablation Studies
+5.3.1
+Ablation on the Effect of Beta
+We conducted experiments on different hyper-parameter β
+to verify their effects in HA-DPO. We carried out an exper-
+iment of MiniGPT4-LLaMA2 on a subset of SHR. Results
+are shown in Table 1. It can be observed that when β is too
+small, HA-DPO training is unstable, and what the model
+mostly learns is noise rather than how to distinguish hallu-
+cinations. When β is very large, the loss is more focused on
+constraining the consistency between the policy model and
+the reference model, which will also result in the model’s
+inability to learn how to distinguish non-hallucination from
+hallucination.
+5.4. Main Results
+5.4.1
+Results on Hallucination Mitigation
+The phenomenon of hallucination is significantly reduced
+in models optimized with HA-DPO. We analyze this from
+both POPE and SHR perspectives.
+POPE. The results of the POPE experiment are shown in
+Table 2. As can be seen, The phenomenon of hallucination
+in MiniGPT-4 is significantly reduced after optimization
+with HA-DPO. The accuracy metrics on the Random, Pop-
+ular, and Adversarial sets improved by 35.0%, 28.04%, and
+24.4%, respectively, and F1-Score improved by 17.83%,
+11.53%, and 9.13%, respectively. LLaVA-1.5, due to the
+diversity of data in the supervised fine-tuning phase, has
+the least hallucination. After fine-tuning with HA-DPO, the
+performance of this model is further improved, reaching a
+new SOTA result of 90.25% F1 score. Besides, HA-DPO
+optimized model achieves better performance on not only
+random set, but also more challenging set such as popular
+and adversarial set. Meanwhile, we compare HA-DPO with
+other hallucination mitigation methods, as shown in Table 7.
+Results show that HA-DPO outperforms other competitive
+methods and achieves SOTA (state-of-the-art) in POPE ac-
+curacy and F1 score. Notably, LRV and LLaVA-RLHF used
+400K and 160K training data, respectively, while HA-DPO
+only used 2, 000 images and corresponding 16K pairs of
+7
+
+===== PAGE 8 =====
+This is an image of a baseball player in the
+middle of a game. The player is wearing a white
+jersey with the number 5 on the back and ....
+Behind him, there is a crowd of people watching
+the game. In the background, there is a large
+stadium with seats and a scoreboard. The image is
+in black and white.
+Describe this image 
+in detail.
+This is an image of a baseball player in the middle
+of a game. The player is wearing a baseball uniform
+and holding a bat in his hand. He is standing on the
+field, ready to hit the ball. The crowd is cheering in
+the background.
+What best describes the 
+pool of water?
+Based on the image provided, the pool of water
+appears to be a small, shallow body of water
+with a few giraffes standing next to it.
+Which vegetable on the 
+pizza would be risky for 
+someone with a certain 
+allergy?
+The vegetable on the pizza that would be risky
+for someone with a certain allergy is the mushr
+ooms.
+LVLMs
+Human
+HA-DPO Optimized LVLMs
+There are several vegetables on the pizza that co
+uld be risky for someone with a certain allergy, i
+ncluding: Peppers, Onions, Mushrooms, Olive.
+Based on the image provided, the pool of water 
+appears to be a small body of water with a few 
+giraffes standing near it. The giraffes seem to 
+be drinking from the pool, and there is a small 
+island in the middle of the pool with some 
+vegetation on it.
+Hallucination types:
+- Nonexistent Object
+- Movement Hallucination
+- Physical State Hallucination
+- Object Attribute Hallucination
+Figure 6. Comparison of model responses before and after our proposed hallucination elimination method.
+Model
+HA-DPO
+SHR ↓
+MiniGPT-4-LLama2-7B
+%
+47.3
+"
+44.4
+InstructBLIP-13B
+%
+51.2
+"
+49.1
+LLaVA-1.5-7B
+%
+36.7
+"
+34.0
+Table 3. Hallucination evaluation results on SHR benchmark.
+positive and negative reply samples.
+SHR. To more intuitively evaluate the model’s hallucination
+at the sentence level, we use the SHR evaluation metric. As
+shown in Table 3, the original MiniGPT-4’s SHR metric is
+47.3%, meaning that nearly half of the sentences in its de-
+tailed descriptions of images exhibit hallucination, a rather
+alarming figure. After optimization with HA-DPO, the pro-
+portion of hallucinatory sentences decreased by about 3%.
+An improvement of 2.1% and 2.7% are also achieved in In-
+structBLIP and LLaVA-1.5. However, we can see that the
+problem of LVLM hallucination remains severe.
+5.4.2
+Results on General Performance Enhancement
+In order to verify the impact of HA-DPO’s elimination of
+multimodal model hallucination on the model’s general ca-
+pabilities, we evaluated it on MME [6], which aims to eval-
+uate the general ability of LVLMs. The results, shown in
+Table 4, indicate that the MiniGPT-4 model optimized with
+HA-DPO significantly improved its MME metrics. The Per-
+ception metric increased from 726.72 to 1051.41, and Cog-
+nition increased from 169.64 to 233.57. As for Instruct-
+BLIP, an improvement of 71.32 is also seen in Perception.
+The general capabilities of the model showed a clear im-
+provement after the elimination of hallucinations, further
+demonstrating the necessity of eliminating hallucinations.
+Model
+HA-DPO
+Perception
+Cognition
+MiniGPT-4-LLama2-7B
+%
+733.79
+198.21
+"
+1092.18
+234.28
+InstructBLIP-13B
+%
+1344.91
+232.50
+"
+1416.23
+233.21
+LLaVA-1.5-7B
+%
+1510.74
+355.71
+"
+1502.58
+313.93
+Table 4. Results on MME Benchmark. Recognition and cognition
+each represent two major capability dimensions in MME, examin-
+ing recognition and perceptual reasoning ability, respectively.
+5.4.3
+Hallucination Elimination Examples
+In this section, we illustrate extensive hallucination elimi-
+nation examples to further validate the effectiveness of HA-
+DPO. As shown in Figure 6, the application of the HA-DPO
+strategy significantly reduces multiple kinds of hallucina-
+tions, including but limited to object existence hallucina-
+tion, object attribute hallucination, movement hallucination,
+and physical hallucination, etc.
+6. Conclusion
+In this work, we present the Hallucination-Aware Di-
+rect Perception Optimization strategy and utilize style-
+consistent hallucination data to enhance the performance
+of LVLMs. The improved models tend to generate non-
+hallucinatory outputs, demonstrating enhanced generaliza-
+tion capabilities. Additionally, we introduce the Sentence-
+level Hallucination Ratio (SHR) as a direct measure of hal-
+lucination in model outputs. In future research, we aim to
+adapt these techniques to real-world scenarios, with the goal
+of establishing a precise framework for effective hallucina-
+tion identification and reduction.
+8
+
+===== PAGE 9 =====
+References
+[1] Yuntao Bai, Andy Jones, Kamal Ndousse, Amanda Askell,
+Anna Chen, Nova DasSarma, Dawn Drain, Stanislav Fort,
+Deep Ganguli, Tom Henighan, Nicholas Joseph, Saurav Ka-
+davath, Jackson Kernion, Tom Conerly, Sheer El Showk,
+Nelson Elhage, Zac Hatfield-Dodds, Danny Hernandez, Tris-
+tan Hume, Scott Johnston, Shauna Kravec, Liane Lovitt,
+Neel Nanda, Catherine Olsson, Dario Amodei, Tom B.
+Brown, Jack Clark, Sam McCandlish, Chris Olah, Benjamin
+Mann, and Jared Kaplan. Training a helpful and harmless
+assistant with reinforcement learning from human feedback.
+arXiv.org, 2022. 2, 3
+[2] Oded Berger-Tal, Jonathan Nathan, Ehud Meron, and David
+Saltz. The exploration-exploitation dilemma: a multidisci-
+plinary framework. PLOS ONE, 2014. 2
+[3] Tom B. Brown, Benjamin Mann, Nick Ryder, Melanie Sub-
+biah, Jared Kaplan, Prafulla Dhariwal, Arvind Neelakan-
+tan, Pranav Shyam, Girish Sastry, Amanda Askell, Sand-
+hini Agarwal, Ariel Herbert-Voss, Gretchen Krueger, Tom
+Henighan, Rewon Child, Aditya Ramesh, Daniel M. Ziegler,
+Jeffrey Wu, Clemens Winter, Christopher Hesse, Mark Chen,
+Eric Sigler, Mateusz Litwin, Scott Gray, Benjamin Chess,
+Jack Clark, Christopher Berner, Sam McCandlish, Alec Rad-
+ford, Ilya Sutskever, and Dario Amodei. Language models
+are few-shot learners. In Advances in Neural Information
+Processing Systems (NeurIPS), 2020. 3
+[4] Paul F. Christiano, Jan Leike, Tom B. Brown, Miljan Mar-
+tic, Shane Legg, and Dario Amodei.
+Deep reinforcement
+learning from human preferences. In Advances in Neural
+Information Processing Systems (NIPS), 2017. 2
+[5] Wenliang Dai, Junnan Li, Dongxu Li, Anthony Meng Huat
+Tiong, Junqi Zhao, Weisheng Wang, Boyang Li, Pascale
+Fung, and Steven C. H. Hoi. Instructblip: Towards general-
+purpose vision-language models with instruction tuning.
+arXiv.org, 2023. 1, 2, 7
+[6] Chaoyou Fu, Peixian Chen, Yunhang Shen, Yulei Qin,
+Mengdan Zhang, Xu Lin, Zhenyu Qiu, Wei Lin, Jinrui Yang,
+Xiawu Zheng, Ke Li, Xing Sun, and Rongrong Ji. MME: A
+comprehensive evaluation benchmark for multimodal large
+language models. arXiv.org, 2023. 8
+[7] Anisha Gunjal, Jihan Yin, and Erhan Bas.
+Detecting and
+preventing hallucinations in large vision language models.
+arXiv.org, 2023. 1
+[8] Edward J. Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-
+Zhu, Yuanzhi Li, Shean Wang, Lu Wang, and Weizhu Chen.
+Lora: Low-rank adaptation of large language models. In Pro-
+ceedings of the International Conference on Learning Rep-
+resentations (ICLR). OpenReview.net, 2022. 6
+[9] Ranjay Krishna, Yuke Zhu, Oliver Groth, Justin Johnson,
+Kenji Hata, Joshua Kravitz, Stephanie Chen, Yannis Kalan-
+tidis, Li-Jia Li, David A. Shamma, Michael S. Bernstein, and
+Li Fei-Fei. Visual genome: Connecting language and vision
+using crowdsourced dense image annotations. International
+Journal of Computer Vision (IJCV), 2017. 4, 6, 1
+[10] Yifan Li, Yifan Du, Kun Zhou, Jinpeng Wang, Wayne Xin
+Zhao, and Ji-Rong Wen. Evaluating object hallucination in
+large vision-language models. arXiv.org, 2023. 1, 2, 5
+[11] Stephanie Lin, Jacob Hilton, and Owain Evans. Truthfulqa:
+Measuring how models mimic human falsehoods. In Associ-
+ation for Computational Linguistics (ACL), 2022. 2
+[12] Fuxiao Liu, Kevin Lin, Linjie Li, Jianfeng Wang, Yaser Ya-
+coob, and Lijuan Wang. Aligning large multi-modal model
+with robust instruction tuning. arXiv.org, 2023. 1, 2
+[13] Haotian Liu, Chunyuan Li, Yuheng Li, and Yong Jae Lee.
+Improved baselines with visual instruction tuning.
+arXiv,
+2023. 7
+[14] Haotian Liu, Chunyuan Li, Qingyang Wu, and Yong Jae Lee.
+Visual instruction tuning. arXiv.org, 2023. 1
+[15] James MacGlashan, Mark K. Ho, Robert Tyler Loftin, Bei
+Peng, Guan Wang, David L. Roberts, Matthew E. Taylor,
+and Michael L. Littman. Interactive learning from policy-
+dependent human feedback.
+In Proceedings of the Inter-
+national Conference on Machine learning (ICML), pages
+2285–2294. PMLR, 2017. 3
+[16] Nick McKenna, Tianyi Li, Liang Cheng, Mohammad Javad
+Hosseini, Mark Johnson, and Mark Steedman. Sources of
+hallucination by large language models on inference tasks.
+arXiv.org, 2023. 2
+[17] Seyed Sajad Mousavi, Michael Schukat, and Enda Howley.
+Deep reinforcement learning: An overview. In Intelligent
+Systems Conference (IntelliSys), 2016. 2
+[18] OpenAI. GPT-4 technical report. arXiv.org, 2023. 2, 3
+[19] Ian Osband, Benjamin Van Roy, Daniel J. Russo, and Zheng
+Wen.
+Deep exploration via randomized value functions.
+Journal of Machine Learning Research (JMLR), 2019. 2
+[20] Long Ouyang, Jeffrey Wu, Xu Jiang, Diogo Almeida, Car-
+roll L. Wainwright, Pamela Mishkin, Chong Zhang, Sandhini
+Agarwal, Katarina Slama, Alex Ray, John Schulman, Jacob
+Hilton, Fraser Kelton, Luke Miller, Maddie Simens, Amanda
+Askell, Peter Welinder, Paul F. Christiano, Jan Leike, and
+Ryan Lowe. Training language models to follow instructions
+with human feedback. In Advances in Neural Information
+Processing Systems (NeurIPS), 2022. 2, 3, 4
+[21] Guilherme Penedo, Quentin Malartic, Daniel Hesslow,
+Ruxandra Cojocaru, Alessandro Cappelli, Hamza Alobeidli,
+Baptiste Pannier, Ebtesam Almazrouei, and Julien Launay.
+The refinedweb dataset for falcon LLM: outperforming cu-
+rated corpora with web data, and web data only. arXiv.org,
+2023. 2
+[22] Rafael Rafailov, Archit Sharma, Eric Mitchell, Stefano Er-
+mon, Christopher D. Manning, and Chelsea Finn.
+Direct
+preference optimization: Your language model is secretly a
+reward model. arXiv.org, 2023. 2, 3, 5
+[23] Ruiyang Ren, Yuhao Wang, Yingqi Qu, Wayne Xin Zhao,
+Jing Liu, Hao Tian, Hua Wu, Ji-Rong Wen, and Haifeng
+Wang. Investigating the factual knowledge boundary of large
+language models with retrieval augmentation.
+arXiv.org,
+2023. 2
+[24] Anna Rohrbach, Lisa Anne Hendricks, Kaylee Burns, Trevor
+Darrell, and Kate Saenko. Object hallucination in image cap-
+tioning. In Empirical Methods in Natural Language Process-
+ing (EMNLP), 2018. 2
+[25] John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Rad-
+ford, and Oleg Klimov. Proximal policy optimization algo-
+rithms. arXiv.org, 2017. 3
+9
+
+===== PAGE 10 =====
+[26] Zhiqing Sun, Sheng Shen, Shengcao Cao, Haotian Liu,
+Chunyuan Li, Yikang Shen, Chuang Gan, Liang-Yan Gui,
+Yu-Xiong Wang, Yiming Yang, Kurt Keutzer, and Trevor
+Darrell.
+Aligning large multimodal models with factually
+augmented RLHF. arXiv.org, 2023. 1, 2
+[27] Hugo Touvron, Louis Martin, Kevin Stone, Peter Al-
+bert, Amjad Almahairi, Yasmine Babaei, Nikolay Bash-
+lykov, Soumya Batra, Prajjwal Bhargava, Shruti Bhos-
+ale, Dan Bikel, Lukas Blecher, Cristian Canton-Ferrer,
+Moya Chen, Guillem Cucurull, David Esiobu, Jude Fer-
+nandes, Jeremy Fu, Wenyin Fu, Brian Fuller, Cynthia
+Gao, Vedanuj Goswami, Naman Goyal, Anthony Hartshorn,
+Saghar Hosseini, Rui Hou, Hakan Inan, Marcin Kardas, Vik-
+tor Kerkez, Madian Khabsa, Isabel Kloumann, Artem Ko-
+renev, Punit Singh Koura, Marie-Anne Lachaux, Thibaut
+Lavril, Jenya Lee, Diana Liskovich, Yinghai Lu, Yuning
+Mao, Xavier Martinet, Todor Mihaylov, Pushkar Mishra,
+Igor Molybog, Yixin Nie, Andrew Poulton, Jeremy Reizen-
+stein, Rashi Rungta, Kalyan Saladi, Alan Schelten, Ruan
+Silva, Eric Michael Smith, Ranjan Subramanian, Xiao-
+qing Ellen Tan, Binh Tang, Ross Taylor, Adina Williams,
+Jian Xiang Kuan, Puxin Xu, Zheng Yan, Iliyan Zarov,
+Yuchen Zhang, Angela Fan, Melanie Kambadur, Sharan
+Narang, Aur´elien Rodriguez, Robert Stojnic, Sergey Edunov,
+and Thomas Scialom. Llama 2: Open foundation and fine-
+tuned chat models. arXiv.org, 2023. 2, 3
+[28] Bin Wang, Fan Wu, Xiao Han, Jiahui Peng, Huaping Zhong,
+Pan Zhang, Xiaoyi Dong, Weijia Li, Wei Li, Jiaqi Wang, and
+Conghui He. VIGC: visual instruction generation and cor-
+rection. arXiv.org, abs/2308.12714, 2023. 2
+[29] Junyang Wang, Yiyang Zhou, Guohai Xu, Pengcheng Shi,
+Chenlin Zhao, Haiyang Xu, Qinghao Ye, Ming Yan, Ji
+Zhang, Jihua Zhu, Jitao Sang, and Haoyu Tang. Evaluation
+and analysis of hallucination in large vision-language mod-
+els. arXiv.org, 2023. 2
+[30] Shukang Yin, Chaoyou Fu, Sirui Zhao, Tong Xu, Hao Wang,
+Dianbo Sui, Yunhang Shen, Ke Li, Xing Sun, and Enhong
+Chen. Woodpecker: Hallucination correction for multimodal
+large language models. arXiv.org, 2023. 2
+[31] Bohan Zhai, Shijia Yang, Xiangchen Zhao, Chenfeng Xu,
+Sheng Shen, Dongdi Zhao, Kurt Keutzer, Manling Li, Tan
+Yan, and Xiangjun Fan. Halle-switch: Rethinking and con-
+trolling object existence hallucinations in large vision lan-
+guage models for detailed caption. arXiv.org, 2023. 1
+[32] Pan Zhang, Xiaoyi Dong, Bin Wang, Yuhang Cao, Chao
+Xu,
+Linke Ouyang,
+Zhiyuan Zhao,
+Shuangrui Ding,
+Songyang Zhang, Haodong Duan, Wenwei Zhang, Hang
+Yan, Xinyue Zhang, Wei Li, Jingwen Li, Kai Chen, Con-
+ghui He, Xingcheng Zhang, Yu Qiao, Dahua Lin, and Jiaqi
+Wang. Internlm-xcomposer: A vision-language large model
+for advanced text-image comprehension and composition.
+arXiv.org, 2023. 1
+[33] Yue Zhang, Yafu Li, Leyang Cui, Deng Cai, Lemao Liu,
+Tingchen Fu, Xinting Huang, Enbo Zhao, Yu Zhang, Yulong
+Chen, Longyue Wang, Anh Tuan Luu, Wei Bi, Freda Shi,
+and Shuming Shi. Siren’s song in the AI ocean: A survey on
+hallucination in large language models. arXiv.org, 2023. 2
+[34] Chunting Zhou, Pengfei Liu, Puxin Xu, Srini Iyer, Jiao Sun,
+Yuning Mao, Xuezhe Ma, Avia Efrat, Ping Yu, Lili Yu, Susan
+Zhang, Gargi Ghosh, Mike Lewis, Luke Zettlemoyer, and
+Omer Levy. LIMA: less is more for alignment. arXiv.org,
+2023. 2
+[35] Yiyang Zhou, Chenhang Cui, Jaehong Yoon, Linjun Zhang,
+Zhun Deng, Chelsea Finn, Mohit Bansal, and Huaxiu
+Yao. Analyzing and mitigating object hallucination in large
+vision-language models. arXiv.org, 2023. 1, 2
+[36] Deyao Zhu, Jun Chen, Xiaoqian Shen, Xiang Li, and
+Mohamed Elhoseiny.
+Minigpt-4:
+Enhancing vision-
+language understanding with advanced large language mod-
+els. arXiv.org, 2023. 1, 6, 7
+[37] Daniel M. Ziegler, Nisan Stiennon, Jeffrey Wu, Tom B.
+Brown, Alec Radford, Dario Amodei, Paul F. Christiano, and
+Geoffrey Irving. Fine-tuning language models from human
+preferences. arXiv.org, abs/1909.08593, 2019. 3
+10
+
+===== PAGE 11 =====
+Beyond Hallucinations: Enhancing LVLMs
+through Hallucination-Aware Direct Preference Optimization
+Supplementary Material
+7. Dataset
+Visual Genome (VG). Visual Genome is a large-scale
+vision-language dataset that includes dense captions [9]. It
+contains over 100,000 densely annotated images, each aver-
+aging 21 objects, 18 attributes, and 18 object relationships.
+As the largest and densest dataset of image descriptions, ob-
+jects, attributes, relationships, and question answers, VG
+bridges visual concepts with language. In our study, VG
+images are used to create both the hallucination training
+dataset and the SHR evaluation set.
+SHR Evaluation Set. The SHR evaluation set, dedicated to
+evaluating the LVLM’s hallucination at the sentence level,
+comprises 200 images from the Visual Genome. To ensure
+precise hallucination judgment, GPT-4 is provided with de-
+tailed annotations from Visual Genome and manually anno-
+tated factual information. There’s no overlap between the
+SHR set images and those in the positive-negative data.
+8. Details of Hallucination Data Generation
+In this section, we delve into the specifics of the halluci-
+nation data generation process. This is illustrated through
+concrete examples at each of its three crucial stages: de-
+scription generation, hallucination detection and correction,
+and style-consistency data augmentation.
+8.1. Description Generation
+We provide the images from Visual Genome dataset to
+LVLMs with the instruction “Describe the image in detail.”
+(as shown in Figure 8). For both hallucination dataset con-
+struction and SHR evaluation, generation parameters are
+configured as shown in Table 5.
+num beams
+temperature
+do sample
+5
+1.0
+False
+Table 5. Generation parameters.
+8.2. Hallucination Detection & Correction
+We utilize GPT-4 to detect hallucinations in sentences pro-
+duced by LVLMs, leveraging the detailed and rich image
+information provided by the annotations of the VG dataset.
+GPT-4 is prompted to identify hallucinated sentences and
+rectify these sentences. Any sentence deemed as a hallu-
+cination is preserved as a negative sample, while its cor-
+P
+R
+H
+88.81%
+89.43%
+C
+86.99%
+87.70%
+(a) w/o factual information.
+P
+R
+H
+97.76%
+92.25%
+C
+92.60%
+97.56%
+(b) w factual information.
+Table 6. Precision and Recall of GPT-4 judgment. ”P” stands for
+precision and ”R” stands for recall. ”H” stands for hallucination
+and ”C” stands for correct. The precision and recall of GPT-4
+judgment is much improved with human-annotated factual infor-
+mation.
+rected version is treated as a positive sample. An example
+is demonstrated in Figure 9.
+8.3. Style-consistency Data Augmentation
+Following hallucination detection and correction, we fur-
+ther prompt GPT to rewrite both the positive and negative
+samples. This ensures style-consistency between positive
+and negative samples. An instance of negative augmenta-
+tion is displayed in Figure 10 and an instance of positive
+augmentation is presented in Figure 11.
+9. Details of SHR evaluation
+9.1. Evaluation Example
+In the SHR evaluation, GPT-4 classifies each sentence in
+the model response as hallucination or correct. The SHR
+is then computed as the proportion of hallucinated sentences
+to total sentences. Consult Figure 12 for illustration.
+9.2. Factual-assisted Evaluation
+During the SHR evaluation, some inaccuracies in GPT-
+4’s judgments were observed due to insufficient VG an-
+notations.
+To improve the judgment accuracy of GPT-
+4, we manually supplement each image with extra fac-
+tual information.
+Therefore, incorrect GPT-4 judgments
+are corrected with this additional information.
+Next, to
+validate the effect of additional factual information, we
+meticulously check judgments of GPT-4 and responses of
+three LVLMs (MiniGPT-4, LLaVA-1.5, and InstructBLIP)
+on 20 images (about 250 sentences), both with and with-
+out this factual information.
+Tables 6 present improved
+precision and recall with the help of additional factual
+information.
+Overall, human-annotated factual annota-
+tion enhanced GPT-4’s judgment accuracy from 88.30% to
+95.84%.
+1
+
+===== PAGE 12 =====
+Method
+Random
+Popular
+Adversarial
+Accuracy
+F1 score
+Accuracy
+F1 score
+Accuracy
+F1 score
+LRV [12]
+86.00
+88.00
+73.00
+79.00
+65.00
+73.00
+LLaVA-RLHF [26]
+84.80
+83.30
+83.90
+81.80
+82.30
+80.50
+LLaVA-1.5-7B
+89.60
+89.70
+86.20
+86.79
+79.76
+81.75
+InstructBLIP-13B
+88.70
+89.26
+81.36
+83.44
+74.50
+78.64
+MiniGPT4-LLaMA2-7B
+51.13
+67.13
+51.46
+67.72
+51.26
+67.16
+LLaVA-1.5-7B w HA-DPO
+90.53
+90.25
+87.90
+87.81
+81.46
+82.54
+InstructBLIP-13B w HA-DPO
+89.83
+89.43
+85.76
+85.80
+80.70
+81.68
+MiniGPT4-LLaMA2-7B w HA-DPO
+86.13
+84.96
+79.50
+79.25
+75.66
+76.29
+Table 7. Results comparisons with other hallucination mitigation methods on POPE Benchmark. HA-DPO outperforms other competitive
+methods and achieves SOTA (state-of-the-art) in POPE accuracy and F1 score. Bolded denotes the best score and underline denotes the
+second best score.
+0
+20
+40
+60
+80
+100
+120
+Gradient accumulation steps
+0
+2
+4
+6
+8
+10
+12
+Reward Margin
+w/o style-consistency
+w/ style-consistency
+Figure 7. Comparison of gradient value between training with
+and without style-consistency data. Gradient changing using style-
+consistent data is much smoother.
+10. Additional Style-consistency Analysis
+To further demonstrate the effect of style-consistent con-
+trol, we quantitatively examine the role of data style-
+consistent control in preventing training instability. Specif-
+ically, MiniGPT4-LLaMA2 model is fine-tuned with and
+without style-consistency control and evaluated on a sub-
+set of SHR. Instability is evaluated based on the degree of
+model degeneration, using n-gram fluency as an indicator,
+represented by set(ngrams(s))
+len(ngram(s)) , where s stands for the image
+description generated by the model. High n-gram fluency
+indicates smoother sentences, whereas low values denote
+repetition and degeneration, which is the main indicator of
+failure in preference learning [22]. Table 8 demonstrates
+that applying style-consistent control can ease training in-
+stability and reduce degeneration.
+To allow readers to better understand the importance
+of style-consistency, we further provide some quantitative
+analysis regarding style consistency here.
+As shown in
+Eq 5, we mentioned that the lack of style consistency could
+lead to a disfunctioning of the weight factor, thereby caus-
+ing extremely unstable gradients in preference learning. To
+β
+Style Consistency
+1-gram
+2-gram
+3-gram
+4-gram
+0.1
+%
+17.9
+23.9
+25.2
+25.9
+!
+56.8
+83.5
+88.1
+90.0
+0.3
+%
+40.8
+58.0
+61.1
+62.3
+!
+58.7
+87.0
+91.7
+93.4
+0.5
+%
+47.3
+69.1
+73.0
+74.6
+!
+59.4
+87.8
+92.4
+93.9
+1.0
+%
+57.2
+85.3
+90.1
+91.8
+!
+60.1
+89.1
+93.8
+95.4
+MiniGPT-4
+60.0
+91.7
+96.6
+98.0
+Table 8. Ablation studies on on the effect of style-consistency
+control in stabilizing training and mitigating degeneration.
+further validate this conclusion, we demonstrate the gra-
+dient variates with and without style consistency in Fig-
+ure 7. It can be observed that optimizing gradient on a style-
+consistent dataset is much more stable.
+11. Comparison with other hallucination miti-
+gation methods
+In this section, we compare our proposed method with other
+hallucination mitigation methods, results are shown in Ta-
+ble 7. Results show that HA-DPO outperforms other com-
+petitive methods and achieves SOTA (state-of-the-art) in
+POPE accuracy. Notably, LRV used 400, 000 training data,
+while our hallucination elimination only used 2, 000 images
+and corresponding 6, 000 pairs of positive and negative re-
+ply samples.
+To clarify, the decrease in HA-DPO’s POPE recall is not
+an indicator of model degradation. POPE Recall merely
+considers the correctness of ”Yes” responses and overlooks
+”No” answers. For instance, models like MiniGPT-4, fa-
+voring ”Yes” outputs, can attain near 100% Recall, but with
+most ”No” responses being wrong and accuracy is just 51%.
+2
+
+===== PAGE 13 =====
+The image shows a group of people skiing down 
+a snowy slope. They are all wearing ski gear, 
+including helmets, goggles, and skis. One person 
+is standing at the top of the slope, holding a ski 
+pole, while the others are skiing down the slope. 
+The slope is covered in snow and there are trees 
+in the background. The sky is blue and there are 
+some clouds in the distance. The overall mood 
+of the image is one of excitement and adventure.
+Describe this image in detail.
+Human
+MiniGPT-4
+Figure 8. Detailed Image Description Generation Using LVLMs.
+Therefore, Accuracy and F1 score are holistic measures for
+model hallucination in POPE.
+12. Quality Examples
+Figure 13, Figure 14 and Figure 15 present hallucination-
+eliminated
+examples
+generated
+by
+the
+MiniGPT4-
+LLaMA2-7B,
+InstructBLIP-13
+and
+LLaVA-1.5,
+re-
+spectively.
+Models optimized using HA-DPO produce
+significantly less hallucinated content in both visual
+question-answering and image description tasks.
+12.1. Efficacy and Potential of HA-DPO
+According to the POPE and SHR evaluation results, we ob-
+serve that the HA-DPO method can learn to output without
+hallucination bias during training, thereby providing more
+precise results and reducing the phenomenon of hallucina-
+tion in large vision-language models. Given the effective-
+ness and simplicity of the HA-DPO method, we envision
+HA-DPO as a specialized stage following supervised fine-
+tuning, capable of rectifying biases in hallucination and po-
+tentially other dimensions. This would enable the model
+to produce outputs that are more realistic and in line with
+human expectations.
+3
+
+===== PAGE 14 =====
+Please help me judge if the comment of this image is hallucination or correct. 
+I will give you a list of region description of a image. The format is [x1, y1, x2, y2]: region description, where [x1, y1, 
+x2, y2] is the bounding box of the region. Highly overlapping bounding boxes may refer to the same object. This is the 
+ground truth information of the image. Your judgement should base on this information. However, this information only 
+describe the objects in the region of image, so it cannot describe the subjective part of the image, e.g., atmosphere, style,
+emotion. In that case, you can return "Cannot judge". 
+Also, I will give you a list of comments of the image for you to judge if it is hallucination. Please give a judgement one 
+by one along with the reason.
+If a comment is hallucination, please help me rewrite it. When rewrite the comment, sound like you are looking at 
+the image directly.
+Each rewritten comments should compose a description about the image which is correct, detailed, smooth and has 
+strong readability. 
+If not hallucination (correct or cannot judge), keep the original comment.
+Your output should be:
+Judgement:
+1. hallucination or correct or cannot judge: <reason>
+2. ...
+Corrected Sentences:
+1. ...
+2. ...
+Here are the region descriptions of the image:
+[0.02, 0.02, 0.98, 0.65]: people are posing for the picture
+[0.81, 0.0, 0.94, 0.2]: the woman is wearing goggles
+[0.79, 0.0, 0.94, 0.22]: the woman is wearing a scarf
+...
+Here is the comment for you to judge if it is hallucination and revise: 
+1. The image shows a group of people skiing down a snowy slope.
+2. They are all wearing ski gear, including helmets, goggles, and skis.
+3. One person is standing at the top of the slope, holding a ski pole, while the others are skiing down the slope.
+4. The slope is covered in snow and there are trees in the background.
+5. The sky is blue and there are some clouds in the distance.
+6. The overall mood of the image is one of excitement and adventure.
+Judgement:
+1. The image shows a group of people skiing down a snowy slope. (correct: The region descriptions mention four skiers 
+on a snowy hill, and objects related to skiing.)
+2. They are all wearing ski gear, including helmets, goggles, and skis. (correct: The region descriptions include ski gear 
+like helmets, goggles, ski poles and skis.)
+3. One person is standing at the top of the slope, holding a ski pole, while the others are skiing down the slope. 
+(hallucination: There is no description mentioning one person standing at the top of the slope while the others are skiing 
+down.)
+4. The slope is covered in snow and there are trees in the background. (hallucination: There is no description involving 
+trees in the background and the slope being covered in snow. )
+5. The sky is blue and there are some clouds in the distance. (hallucination: There is no description involving the sky or 
+clouds.)
+6. The overall mood of the image is one of excitement and adventure. (correct: The overall mood is adventurous.)
+Corrected Sentences:
+1. The image shows a group of people skiing down a snowy slope.
+2. They are all wearing ski gear, including helmets, goggles, and skis.
+3. A woman in ski gear is smiling at the camera, holding ski poles. (Corrected)
+4. Four skiers are present on a snowy hill. (Corrected)
+5. The skiers are equipped with helmets, goggles and ski poles. (Corrected)
+6. The image portrays a winter sport scenario, with skiers ready for an adventure.
+GPT-4 Output
+Prompt
+Figure 9. Hallucination Detection and Correction in LVLM-Generated Sentences.
+4
+
+===== PAGE 15 =====
+Help me rewrite the given sentence. Don't change any detail and information in the original sentence. Don't add any new 
+information. Give 3 different versions.
+The format of your output should be:
+1. ...
+2. ...
+3. ...
+The sentence you need to rewrite:
+The image shows a group of people skiing down a snowy slope. They are all wearing ski gear, including helmets, goggles, 
+and skis. One person is standing at the top of the slope, holding a ski pole, while the others are skiing down the slope. The
+slope is covered in snow and there are trees in the background. The sky is blue and there are some clouds in the distance. 
+The overall mood of the image is one of excitement and adventure.
+1. In the image, a snowy slope is depicted with a group of individuals skiing down it. Each person is outfitted in ski gear, 
+complete with helmets, goggles, and skis. Positioned at the top of the slope, one individual stands, clutching a ski pole, 
+while the rest joyfully descend. Snow blankets the slope, accompanied by a backdrop of trees. The sky above is a 
+vibrant blue, adorned with distant clouds. The atmosphere captured in the image exudes enthusiasm and a sense of 
+thrilling exploration.
+2. A snowy slope takes center stage in the image, featuring a spirited group of skiers descending down its snowy 
+expanse. All members are donned in ski gear, incorporating helmets, goggles, and skis into their attire. One person 
+stands confidently at the peak, gripping a ski pole, while the remaining skiers revel in the thrill of their descent. The 
+snow-covered slope harmonizes with the surrounding lush trees, while the vibrant blue sky is complemented by distant 
+clouds. The overall ambiance of the image resonates with excitement and a thirst for adventure.
+3. Illustrated in the image is a snowy slope, where a cohesive group of skiing enthusiasts can be seen carving their way 
+down. Their attire includes helmets, goggles, and skis, highlighting their readiness for an exhilarating adventure. 
+Positioned at the summit of the slope, one individual stands upright, firmly grasping a ski pole, while the others relish in 
+the exhilaration of skiing downhill. The snow-covered slope merges seamlessly with the backdrop of trees, while the 
+radiant blue sky showcases scattered clouds in the distance. The image emanates an atmosphere charged with 
+excitement and a sense of daring exploration.
+Prompt
+GPT-4 Output
+Figure 10. Style-Consistent Data Augmentation: Negative Sample (Hallucinated).
+5
+
+===== PAGE 16 =====
+Help me rewrite the given sentence. Don't change any detail and information in the original sentence. Don't add any new 
+information. Give 3 different versions.
+The format of your output should be:
+1. ...
+2. ...
+3. ...
+The sentence you need to rewrite:
+The image shows a group of people skiing down a snowy slope. They are all wearing ski gear, including helmets, goggles, 
+and skis. A woman in ski gear is smiling at the camera, holding ski poles. Four skiers are present on a snowy hill. The 
+skiers are equipped with helmets, goggles and ski poles. The image portrays a winter sport scenario, with skiers ready for 
+an adventure.
+1. In the picture, there is a snowy hill with a group of four skiers all dressed in ski gear, including helmets, goggles, and 
+skis. One woman in the group is smiling at the camera while holding ski poles.
+2. The snowy slope depicted in the image is occupied by a group of four skiers who are all wearing ski gear, including 
+helmets, goggles, and ski poles. One of the skiers, a woman, can be seen smiling at the camera.
+3. The image showcases a winter sport scene featuring four skiers skiing down a snowy hill. All of them are properly 
+equipped with ski gear, such as helmets, goggles, and ski poles. Among the skiers, a woman stands out as she smiles at 
+the camera while holding her ski poles.
+Prompt
+GPT-4 Output
+Figure 11. Style-Consistent Data Augmentation: Positive Sample (Non-hallucinated).
+6
+
+===== PAGE 17 =====
+Please help me judge if the comment of this image is hallucination or correct. 
+I will give you a list of region description of a image. The format is [x1, y1, x2, y2]: region description, where [x1, y1, 
+x2, y2] is the bounding box of the region. Highly overlapping bounding boxes may refer to the same object. This is the 
+ground truth information of the image. Your judgement should base on this information. However, this information only 
+describe the objects in the region of image, so it cannot describe the subjective part of the image, e.g., atmosphere, style,
+emotion. In that case, you can return "Cannot judge". 
+Also, I will give you a list of comments of the image for you to judge if it is hallucination. Please give a judgement one 
+by one along with the reason.
+Your output should be:
+Judgement:
+1. hallucination or correct or cannot judge: <reason>
+2. ...
+Here are the region descriptions of the image:
+[0.24, 0.59, 0.34, 0.95]: woman walking on the street 
+[0.46, 0.59, 0.62, 0.68]: people sitting on tables on the street 
+[0.41, 0.57, 0.46, 0.68]: man wearing red top
+[0.1, 0.0, 0.36, 0.43]: a balcony in the building 
+[0.36, 0.58, 0.43, 0.75]: woman holding a white bag
+...
+Here is the comment for you to judge if it is hallucination: 
+1. The scene depicts a bustling city street filled with pedestrians, motorcycles, and bicycles.
+2. There are several people walking along the sidewalk, including a woman in a white dress who appears to be crossing 
+the street.
+3. In addition to the pedestrians, there are two motorcycles parked on the side of the street, one closer to the left side 
+and the other closer to the right side.
+4. Several bicycles can also be seen throughout the scene, some parked and others being ridden by individuals.
+Judgement:
+1. The scene depicts a bustling city street filled with pedestrians, motorcycles, and bicycles. (Hallucination: The 
+description does not mention bicycles or the street being bustling. )
+2. There are several people walking along the sidewalk, including a woman in a white dress who appears to be crossing 
+the street. (Correct: The description mentions a woman walking and other people on the sidewalk.)
+3. In addition to the pedestrians, there are two motorcycles parked on the side of the street, one closer to the left side 
+and the other closer to the right side. (Correct: The description mentions two motorcycles parked on the side of the 
+street.)
+4. Several bicycles can also be seen throughout the scene, some parked and others being ridden by individuals. 
+(Hallucination: There are no bicycles mentioned in the description.)
+GPT-4 Output
+Prompt
+Figure 12. Illustration of Sentence Hallucination Ratio (SHR) Evaluation.
+7
+
+===== PAGE 18 =====
+The image shows a plate of food on a table in front 
+of a computer monitor. The plate contains a steak, 
+potatoes, and carrots. There is also a glass of water 
+on the table. The room appears to be a home or 
+office, with a desk and chair in the background.
+Describe this image in detail.
+This is an image of a plate with food on it. There 
+is a piece of meat, potatoes, and carrots on the 
+plate. The plate is on a desk with a computer and 
+other office supplies nearby.
+The image shows a balcony with a view of the city 
+at night. There are two chairs on the balcony, one 
+with a red cushion and the other with a white 
+cushion. A table with a white tablecloth is on the 
+balcony, with two glasses of wine and a bottle of 
+wine on it. The balcony is surrounded by a railing 
+with a view of the city in the distance.
+Describe this image in detail.
+This is an image of a balcony with a table and 
+chairs on it. There is a city view in the background.
+Based on the image provided, it appears that they 
+are having a pizza party. The group of people are 
+sitting around a table, eating pizza and drinking 
+soda. There are several pizzas on the table, and 
+the group appears to be enjoying themselves.
+They are likely having pizza at 
+what kind of event?
+Based on the image, it appears that they are 
+having a pizza party.
+The image shows a bedroom with a bed, a dresser, 
+and a window. There is a girl sitting on the bed, 
+looking at something on her phone. The room 
+appears to be well lit and tidy.
+This part of the house where the girl 
+is in called?
+The girl is in the bedroom.
+Based on the image provided, these people are at a 
+ski resort. The image shows a group of people skiing 
+down a snowy slope with a mountain in the 
+background. The resort appears to be in a 
+mountainous area with trees and rocks visible in the 
+foreground.
+What kind of resort are these 
+people at?
+Based on the image, it appears to be a ski resort. 
+The people in the image are skiing down a snowy 
+slope, and there are other skiers and snowboarders 
+in the background. The mountain in the 
+background is steep and rocky, indicating that it is 
+a challenging slope for skiers and snowboarders. 
+The overall atmosphere of the image is one of 
+excitement and adventure, as people enjoy the 
+thrill of skiing down the mountain.
+The image shows a plate of steak with broccoli and 
+red peppers on it. The steak appears to be cooked to 
+perfection, with a nice sear on the outside and a 
+juicy texture inside. The broccoli and red peppers 
+are also cooked to perfection, with the broccoli 
+florets slightly browned and the red peppers sliced 
+into thin strips. The dish appears to be served on a 
+white plate with a red and white checkered 
+tablecloth 
+in 
+the 
+background. 
+The 
+overall 
+appearance of the dish is visually appealing, with 
+the colors of the steak, broccoli, and red peppers 
+complementing each other well.
+Describe this image in detail.
+The image appears to be a plate of steak with 
+broccoli and red peppers on it. The steak appears to 
+be cooked and has a brown color. The broccoli 
+appears to be steamed and has a green color. The red 
+peppers appear to be sliced and have a red color. 
+The plate appears to be made of ceramic and has a 
+glossy finish.
+MiniGPT-4
+Human
+HA-DPO Optimized MiniGPT-4
+Figure 13. High-quality examples from MiniGPT4-LLaMA2-7B optimized by HA-DPO.
+8
+
+===== PAGE 19 =====
+The image depicts a busy city street with a traffic 
+light pole in the center of the scene. There are 
+several people walking around the area, some 
+closer to the traffic light and others further away. 
+A total of 12 people can be seen in the scene, 
+spread out across different parts of the street. In 
+addition to the pedestrians, there are two bicycles 
+parked near the traffic light, one on the left side 
+and the other on the right side. One of the bicycles 
+is positioned closer to the traffic light, while the 
+other is farther away. The tall building in the 
+background adds to the urban atmosphere of the 
+scene.
+Describe this image 
+in detail.
+A busy city street scene is depicted in this image, 
+with a number of people walking and standing 
+around. There are several traffic lights on the street, 
+some of which are green and some are red. A large 
+building can be seen in the background, adding to 
+the urban atmosphere of the scene. In addition to 
+the traffic lights, there are various other objects 
+scattered throughout the scene, such as bicycles, 
+chairs, and umbrellas. Some of these objects are 
+positioned near the traffic lights, while others are 
+located further away. Overall, the scene provides a 
+glimpse into the hustle and bustle of city life.
+The image depicts a city street with a wooden 
+bench on the sidewalk. There are two people 
+sitting on the bench, one closer to the left side of 
+the image and the other closer to the right side. A 
+bicyclist is also visible in the scene, riding past the 
+bench towards the right side of the image. In 
+addition to the people and the bicyclist, there are 
+several cars parked along the street. Some of the 
+cars are closer to the left side of the image, while 
+others are closer to the right side. The overall 
+scene captures a peaceful moment on a city street, 
+with people enjoying the outdoors and a bicyclist 
+passing by.
+Describe this image 
+in detail.
+A bench sits on a sidewalk next to a busy street. 
+There are several people on bicycles passing by the 
+bench, with some of them closer to the bench than 
+others. Some of the bicyclists can be seen in the 
+background, while others are closer to the front of 
+the image. The bench appears to be a popular spot 
+for people to sit and rest while enjoying the view of 
+the street.
+InstructBLIP
+Human
+HA-DPO Optimized InstructBLIP
+Describe this image in detail.
+A small blue and yellow airplane is flying through 
+the sky, with two people visible in the cockpit of the 
+plane.
+A large silver boat is parked on the side of a dirt 
+road, with a trailer attached to it. There are several 
+sheep scattered around the boat and trailer, grazing 
+in the area. Some of the sheep are closer to the trailer, 
+while others are further away. The sheep appear to 
+be relaxed and comfortable in their surroundings.
+The image depicts a large silver boat parked on a dirt 
+field, with sheep grazing around it. There are several 
+sheep scattered throughout the scene, some closer to 
+the boat and others further away. In addition to the 
+sheep, there is a person standing near the left side of 
+the boat, observing the scene. Two cars can be seen 
+in the background, one closer to the left side of the 
+image and the other closer to the right side. A 
+handbag is placed on the ground near the left side of 
+the image, possibly belonging to the person standing 
+next to the boat. Overall, the scene captures a 
+peaceful moment in the countryside, with animals 
+and people enjoying the natural surroundings.
+Describe this image in detail.
+The image depicts a small blue and yellow airplane 
+flying in the sky. It appears to be an old-fashioned, 
+vintage plane with two people sitting in the cockpit. 
+The plane is positioned towards the left side of the 
+image, while the people can be seen closer to the 
+center of the frame. There are several other planes 
+visible in the background, scattered across the sky. 
+Some of these planes appear to be much larger than 
+the vintage plane in the foreground, while others 
+appear to be similar in size. Overall, the scene offers 
+a glimpse into the world of aviation, showcasing 
+various types of planes flying together in the clear 
+blue sky.
+Figure 14. High-quality examples from InstructBLIP-13B optimized by HA-DPO.
+9
+
+===== PAGE 20 =====
+The image features a large airport tarmac with 
+several airplanes parked on the runway. There are 
+three airplanes in the scene, with one being a large 
+white and red airplane, another smaller airplane, 
+and a third one located further back. In addition to 
+the airplanes, there are two trucks on the tarmac, 
+one near the center and the other towards the right 
+side of the image. A person can also be seen 
+standing near the center of the scene, possibly 
+attending to the airplanes or the trucks. The overall 
+atmosphere of the image suggests a busy airport 
+environment with various ground vehicles and 
+airplanes in operation.
+Describe this image in detail.
+The image features a large airport runway with 
+several airplanes parked on the tarmac. There are 
+three airplanes in the scene, with one being a large 
+white and red airplane, another smaller white 
+airplane, and a third airplane located further back. 
+In addition to the airplanes, there are two trucks on 
+the runway, one near the center and the other 
+towards the right side of the image. These trucks 
+are likely used for maintenance or other airport 
+operations. 
+The 
+scene 
+captures 
+the 
+busy 
+atmosphere of an airport with various vehicles and 
+aircraft present.
+The image features a woman walking down a street 
+while holding an umbrella to protect herself from 
+the rain. She is wearing a black coat and is carrying 
+a handbag. Another person is visible in the 
+background, walking in the same direction as the 
+woman.
+There are two handbags in the scene, one being held 
+by the woman and the other placed on the ground. 
+The woman is also wearing a watch, which can be 
+seen on her wrist. The scene captures the essence of 
+a rainy day, with people trying to stay dry and 
+continue their daily activities.
+Describe this image 
+in detail.
+The image features an older woman walking down a 
+street while holding an umbrella to protect herself 
+from the rain. She is wearing a black jacket and 
+appears to be carrying a handbag. Another person is 
+visible in the background, but they are not the main 
+focus of the scene. The woman with the umbrella is 
+the main subject of the image, capturing the essence 
+of a rainy day.
+LLaVA-1.5
+Human
+HA-DPO Optimized InstructBLIP
+Describe this image 
+in detail.
+The image features a man walking down a sidewalk 
+next to a red double-decker bus. The bus is parked 
+on the side of the road, and the man appears to be 
+carrying a backpack. The scene is set in a city 
+environment, with a building visible in the 
+background. The man is walking away from the bus, 
+possibly heading towards his destination or just 
+passing by.
+The image features a man standing in a kitchen, 
+preparing hot dogs on a grill. He is wearing a 
+yellow shirt and is focused on cooking the hot 
+dogs. There are several hot dogs on the grill, with 
+some of them being cooked and others still 
+waiting to be cooked. The man is using tongs to 
+handle the hot dogs, ensuring they are cooked 
+evenly and properly. The scene appears to be in a 
+restaurant or a similar setting where hot dogs are 
+being prepared for customers.
+The image features a man wearing a yellow shirt, 
+standing in a kitchen and preparing hot dogs. He is 
+in the process of putting mustard on a hot dog, 
+which is placed on a grill. The man is using a spatula 
+to handle the hot dog, ensuring it is evenly coated 
+with mustard.
+There are several hot dogs on the grill, with some 
+already prepared and others waiting to be cooked. 
+The kitchen is equipped with a sink and an oven, 
+which are visible in the background. The man 
+appears to be focused on his task, ensuring the hot 
+dogs are cooked to perfection.
+Describe this image in detail.
+The image features a man walking down a city street, 
+carrying a backpack. He is wearing a green jacket 
+and appears to be crossing the street. A red double-
+decker bus is parked on the side of the street, and 
+another bus is visible further down the road. There 
+are several other people in the scene, some of them 
+walking or standing near the buses. A traffic light 
+can be seen in the background, indicating that the 
+street is likely a busy urban area. Additionally, there 
+is a handbag placed on the ground near the man 
+walking, possibly belonging to him or someone else 
+in the scene.
+Figure 15. High-quality examples from LLaVA-1.5-7B optimized by HA-DPO.
+10
