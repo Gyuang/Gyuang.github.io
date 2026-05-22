@@ -2,7 +2,7 @@
 title: "CPR-RAG: Clinical Prior-Regularized Retrieval for Anatomy-Aware 3D CT Report Generation"
 authors: "Sungkyu Yang¹, Kang-Min Kim²·*, Mansu Kim¹·*"
 affiliations: "¹ AI Graduate School, GIST &nbsp;&middot;&nbsp; ² Department of Software Convergence, Kyung Hee University"
-venue: "Under review at ACL 2026"
+venue: "ACL 2026"
 date: 2026-04-15
 order: 1
 thumbnail: /assets/images/projects/cpr-rag/hero.png
@@ -84,7 +84,7 @@ Gains are largely **recall-driven** — CPR-RAG surfaces pathological findings t
 @article{yang2026cprrag,
   title  = {CPR-RAG: Clinical Prior-Regularized Retrieval for Anatomy-Aware 3D CT Report Generation},
   author = {Yang, Sungkyu and Kim, Kang-Min and Kim, Mansu},
-  journal = {Under review at ACL 2026},
+  booktitle = {Proceedings of the 64th Annual Meeting of the Association for Computational Linguistics (ACL)},
   year   = {2026}
 }
 ```
