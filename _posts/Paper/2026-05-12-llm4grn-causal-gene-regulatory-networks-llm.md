@@ -100,12 +100,6 @@ The hybrid **wins on 2/3 datasets**. On BoneMarrow the human-KB baseline ties or
 ![Marker dot plots: best-performing hybrid (KBLlama + GRNBoost2)](/assets/images/paper/llm4grn/page_010.png)
 *Figure 2a: Dot plot of top marker-gene expression per cell type for KBLlama + GRNBoost2 — the best-performing hybrid. Red = overexpression, dot size = fraction of cells expressing.*
 
-![Marker dot plots: KBGPT4 + GRNBoost2](/assets/images/paper/llm4grn/page_010.png)
-*Figure 2b: Same plot for KBGPT4 + GRNBoost2 — visibly noisier than the Llama hybrid, with multiple markers expressed across non-specific cell types.*
-
-![Marker dot plots: human-KB baseline](/assets/images/paper/llm4grn/page_010.png)
-*Figure 2c: KBH + GRNBoost2 (human-KB baseline) — noise concentrated in Naïve T and cytotoxic T compartments.*
-
 **Ablations that undercut the headline.**
 
 - **TF-count ablation (Table 5).** When KBLlama is sub-sampled from 266 TFs down to 95 / 75, performance degrades monotonically (Euclidean 83 → 103 → 102; RF-AUROC 0.58 → 0.65 → 0.67). The "Llama wins" effect is therefore largely a function of how many TF candidates the model emits, not better edge-level biological reasoning.
@@ -114,9 +108,6 @@ The hybrid **wins on 2/3 datasets**. On BoneMarrow the human-KB baseline ties or
 
 ![Cell-type proportion distortion: KBGPT4 hybrid](/assets/images/paper/llm4grn/page_011.png)
 *Figure 3a: Cell-type proportions in KBGPT4 + GRNBoost2 synthetic PBMC. Real CD4+ Naïve T = 65.1%, here ~4.5% — every generated dataset distorts the real composition.*
-
-![Cell-type proportion distortion: KBLlama hybrid](/assets/images/paper/llm4grn/page_011.png)
-*Figure 3b: Cell-type proportions for KBLlama + GRNBoost2 — same distortion pattern (CD8+ Naïve Cytotoxic dominates at 34.1%). The failure is method-agnostic.*
 
 ![t-SNE: random vs LLM vs GRNBoost2 synthetic data](/assets/images/paper/llm4grn/page_022.png)
 *Figure 4: t-SNE projections (real = red, synthetic = blue). Random-graph synthetic data produces "hallucinated" clusters (red circles); LLM- and GRNBoost2-graphs stay closer to the real distribution.*

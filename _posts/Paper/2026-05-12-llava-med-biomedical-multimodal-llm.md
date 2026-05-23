@@ -85,18 +85,6 @@ Filter PMC-15M to single-plot figures, sample 60K image-text pairs balanced acro
 ![Five-modality Stage-2 sampling pool: CXR](/assets/images/paper/llava-med/page_005.png)
 *Figure 2a: Example chest X-ray from the Stage-2 balanced modality pool.*
 
-![Five-modality Stage-2 sampling pool: MRI](/assets/images/paper/llava-med/page_005.png)
-*Figure 2b: Example MRI (ischiofemoral region) from the Stage-2 pool.*
-
-![Five-modality Stage-2 sampling pool: histopathology](/assets/images/paper/llava-med/page_005.png)
-*Figure 2c: Example histopathology slide from the Stage-2 pool.*
-
-![Five-modality Stage-2 sampling pool: gross pathology](/assets/images/paper/llava-med/page_005.png)
-*Figure 2d: Example gross-pathology specimen from the Stage-2 pool.*
-
-![Five-modality Stage-2 sampling pool: abdominal CT](/assets/images/paper/llava-med/page_005.png)
-*Figure 2e: Example abdominal CT from the Stage-2 pool. Together (2a-2e) correspond to the five modalities the 60K dialogues are stratified across.*
-
 ### 4. Stage 2 training
 
 Unfreeze the LM and projection; vision encoder remains frozen. 3 epochs on 60K-IM, batch 128, ~8h on 8x A100. Total curriculum = ~15h.

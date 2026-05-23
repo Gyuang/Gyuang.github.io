@@ -57,7 +57,7 @@ PathGen reframes the problem: at deployment, **synthesise the bulk transcriptomi
 
 ## Method & Architecture
 
-![PathGen pipeline: WSI patches to UNI embeddings to diffusion gene synthesis to MCAT_GR](/assets/images/paper/pathgen/page_018.png)
+![PathGen pipeline: WSI patches to UNI embeddings to diffusion gene synthesis to MCAT_GR](/assets/images/paper/pathgen/page_003.png)
 *Figure 1: PathGen pipeline — WSI patches → frozen UNI embeddings → DDPM-based gene-group embedding synthesis → MCAT_GR multimodal grade/risk head with split-conformal uncertainty.*
 
 ### 1. WSI preprocessing and patch embedding
@@ -112,7 +112,7 @@ A modified MCAT (Chen 2021) adding a parallel global-attention-pooling branch fo
 
 ### Architecture detail
 
-![PathGen architecture detail: diffusion model, MCAT_GR head, transformer, co-attention, encoder/decoder](/assets/images/paper/pathgen/page_024.png)
+![PathGen architecture detail: diffusion model, MCAT_GR head, transformer, co-attention, encoder/decoder](/assets/images/paper/pathgen/page_003.png)
 *Figure 2: Architectural breakdown — (a) PathGen diffusion model; (b) MCAT_GR head; (c) PathGen transformer with three rounds of co-attention; (d) gene encoder; (e) genomic-guided co-attention block; (f) gene decoder.*
 
 ## Experimental Results

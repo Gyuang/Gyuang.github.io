@@ -74,9 +74,6 @@ The ⭐⭐ rows deserve to stay at ⭐⭐. **C4**'s headline #1 ranking is real 
 ![OmiCLIP pretraining and the Loki platform overview](/assets/images/paper/omiclip_loki/page_003.png)
 *Figure 1 — OmiCLIP contrastive pretraining on 2.2M Visium image-gene-sentence pairs across 32 organs, with the five downstream modules of the Loki platform: Align, Annotate, Decompose, Retrieve, PredEx.*
 
-![Cross-modal similarity heatmap across 32 organs and disease conditions](/assets/images/paper/omiclip_loki/page_003.png)
-*Figure 2 — OmiCLIP image↔transcriptome similarity heatmap. A strong diagonal within organ / disease confirms the joint embedding captures tissue identity across modalities.*
-
 The architecture is CoCa-style with a vanilla ViT image encoder and a 76-token causal-masking text encoder. The pipeline is best read as ten steps:
 
 1. **Gene-sentence construction.** For each Visium spot, take the top 50 expressed genes, rank by expression, concatenate gene symbols with spaces to form a 50-token sentence. Preprocessing: Ensembl→symbol conversion, housekeeping-gene removal, Seurat/Scanpy normalization, then rank-ordering.

@@ -152,9 +152,6 @@ This is the conceptually distinctive evidence in the paper. Per-gene predicted v
 
 ### Spatial fidelity
 
-![CYP3A4 predicted vs. original spatial maps](/assets/images/paper/bleep/page_007.png)
-*Figure 3: CYP3A4 (pericentral marker) predicted vs. original — variable-scale (top) and fixed-scale (bottom) color maps overlaid on the held-out slice. BLEEP visibly recovers pericentral zonation; the regression baselines do not.*
-
 ### Gene-gene correlation structure
 
 ![Gene-gene correlation heatmaps for original vs. each method](/assets/images/paper/bleep/page_008.png)

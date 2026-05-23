@@ -87,7 +87,7 @@ BF16, ZeRO-3, batch 64 x grad-accum 2, cosine LR, warmup ratio 0.03, peak LR **2
 
 ### 5. PathChatInstruct in pictures
 
-![Six instruction families used to train PathChat](/assets/images/paper/pathchat/page_019.png)
+![Six instruction families used to train PathChat](/assets/images/paper/pathchat/page_007.png)
 *Figure 2: Examples from the six PathChatInstruct categories — MCQ, free response, description, conversation, guardrail, and text-only — illustrating instruction-format diversity.*
 
 ## Experimental Results

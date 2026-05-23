@@ -107,8 +107,7 @@ $$\mathcal{L}_{\text{DDPM}} = \mathbb{E}_{X_E, t, \varepsilon}\bigl[\,\|\varepsi
 
 ### Stage 3 — Inference
 
-![Stage 3 inference: decode, filter CGs, return only originally missing HSAG entries](/assets/images/paper/lgdist/page_004.png)
-*Figure 3(b): Inference — encode the median-pre-completed neighborhood, denoise the central spot, decode, **filter CGs**, and write only the originally missing HSAG positions.*
+*filter CGs**, and write only the originally missing HSAG positions.*
 
 16. Encode the (median-pre-completed) neighborhood, run the DiT to denoise the central latent row, decode with $D_\phi$.
 17. **Filter CGs** from the decoded output — CGs are scaffolding only.
@@ -154,9 +153,6 @@ On the 10XGMBSP dataset, LGDiST holds MSE roughly flat at ~0.53-0.55 from 10% to
 
 ![Downstream MSE bar chart: 6 histology-to-expression models trained on LGDiST-completed data](/assets/images/paper/lgdist/page_008.png)
 *Figure 8(a): All six histology-to-expression models (ST-Net, SEPAL, HisToGene-class, BLEEP, EGGN-style, EGN) improve in MSE when trained on LGDiST-completed data versus SpaCKLE; BLEEP shows the largest reduction (up to 10%).*
-
-![Downstream PCC bar chart: SEPAL shows +188% but the absolute baseline is undisclosed](/assets/images/paper/lgdist/page_008.png)
-*Figure 8(b): PCC also improves across all six models, with SEPAL +188% as the headline; the absolute baseline PCC is not disclosed, so the gain may reflect a near-zero baseline.*
 
 - **BLEEP:** up to **10%** MSE reduction.
 - **SEPAL:** up to **188%** PCC improvement (absolute baseline undisclosed).

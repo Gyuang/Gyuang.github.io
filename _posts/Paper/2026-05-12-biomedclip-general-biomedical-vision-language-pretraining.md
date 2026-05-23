@@ -56,18 +56,12 @@ Public biomedical multimodal corpora before 2023 were small (<=377k pairs), acce
 
 ## Method & Architecture
 
-![BiomedCLIP overview: PMC-15M pipeline plus contrastive image/text encoder](/assets/images/paper/biomedclip/page_015.png)
+![BiomedCLIP overview: PMC-15M pipeline plus contrastive image/text encoder](/assets/images/paper/biomedclip/page_006.png)
 *Figure 1: BiomedCLIP system overview — PMC-15M is built from 4.4M PubMed Central full-text articles; ViT-B/16 + PubMedBERT are trained contrastively and applied to retrieval, classification, and VQA downstream tasks.*
 
 ### 1. PMC-15M dataset construction
 
 Every public PMC OA article in the June 2022 snapshot is downloaded, XML-parsed for figure-caption pairs, and de-duplicated by PMID/PMCID. The pipeline runs on Azure Databricks. Yield: **15,282,336 image-caption pairs from >3M distinct articles**, split into 13.9M train / 13.6k dev / 725.7k test. A separate PMC-Fine-Grained-46M pipeline OCR-splits composite figures into sub-panels but is *not* used for BiomedCLIP pretraining — only for image-type frequency analysis.
-
-![PMC-15M image-type taxonomy](/assets/images/paper/biomedclip/page_015.png)
-*Figure 1B: Top-30 image types in PMC-Fine-Grained-46M — radiology, pathology, and microscopy sit alongside a long tail of charts, flowcharts, chemical structures, and tables. The "diversity" cuts both ways.*
-
-![PMC-15M image and caption length distributions](/assets/images/paper/biomedclip/page_015.png)
-*Figure 1A: Image height/width and caption-length distributions in PMC-15M — captions far exceed the 77-token CLIP default, motivating the 256-token context extension.*
 
 ### 2. Contrastive objective
 

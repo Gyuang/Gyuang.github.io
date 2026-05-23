@@ -119,12 +119,6 @@ Two patterns stand out. (i) MedCBR has by far the **tightest std** of any row in
 ![Ultrasound BI-RADS 5 reasoning](/assets/images/paper/vl-concept-reasoning-clinical/page_007.png)
 *Figure 2: BUS-BRA case — MedCBR weighs posterior shadowing, indistinct margins, and microlobulated margins against a benign regular shape and outputs BI-RADS 5 with a next-step recommendation.*
 
-![Mammography BI-RADS 5 reasoning](/assets/images/paper/vl-concept-reasoning-clinical/page_007.png)
-*Figure 3: CBIS-DDSM case — pleomorphic calcifications + segmental distribution + high density are aggregated into a "classic malignant constellation" with BI-RADS 5.*
-
-![Conflict resolution toward BI-RADS 3](/assets/images/paper/vl-concept-reasoning-clinical/page_007.png)
-*Figure 4: Conflict-resolution case — microlobulated margins are reconciled against benign cues (posterior enhancement, circumscribed margins) toward BI-RADS 3, matching ground-truth fibroadenoma.*
-
 ![CUB-200 reasoner contradicting concept predictor](/assets/images/paper/vl-concept-reasoning-clinical/page_008.png)
 *Figure 5: CUB-200 — the reasoner contradicts a concept prediction ("underparts color red") when it conflicts with the Sibley field-guide entry for Blue Jay. This is the paper's strongest qualitative argument for guideline-grounded override, but it is a single anecdote.*
 

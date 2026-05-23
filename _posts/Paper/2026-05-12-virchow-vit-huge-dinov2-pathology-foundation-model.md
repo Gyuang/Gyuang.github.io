@@ -119,9 +119,6 @@ The LungEGFR gain (+0.046 vs CTransPath, +0.032 vs Phikon) is the most substanti
 
 ### Qualitative — semantic part discovery
 
-![CoNSeP PCA visualization: Virchow tile features approximately segment malignant epithelium, miscellaneous, and inflammatory cells](/assets/images/paper/virchow/page_006.png)
-*Figure 6: Fig. 3d — PCA over Virchow tile features on CoNSeP. First PC isolates malignant epithelium; second PC isolates miscellaneous vs inflammatory cells. Qualitative only — no segmentation IoU/F1 is reported.*
-
 ## Limitations
 
 **Acknowledged by the authors:**

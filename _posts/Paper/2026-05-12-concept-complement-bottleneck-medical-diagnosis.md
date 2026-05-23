@@ -102,12 +102,6 @@ The most striking deltas are on **Skincon concept detection** (82.14 vs 62.14 AU
 ![Per-concept AUC on Derm7pt](/assets/images/paper/concept-complement-bottleneck/page_017.png)
 *Figure 2(a): Per-concept AUC on Derm7pt. CCBM matches or beats CBM/AEC on all 7 clinical concepts with smaller variance.*
 
-![Per-concept AUC on BrEaST](/assets/images/paper/concept-complement-bottleneck/page_017.png)
-*Figure 2(b): Per-concept AUC on BrEaST. CBM collapses on BrH / PF / CAL while CCBM stays balanced — the source of the per-concept fairness claim.*
-
-![Per-concept AUC on Skincon](/assets/images/paper/concept-complement-bottleneck/page_017.png)
-*Figure 2(c): Per-concept AUC on Skincon (22 concepts). The +20-point AUC gain in Table 2 comes from this flatter per-concept profile.*
-
 **Ablations and additional findings.**
 
 - **`n_u` sweep (Table 3).** Optimum sits at `n_u = #classes` on Derm7pt (2) and BrEaST (2); Skincon's best is `n_u=3` (matching classes); LIDC-IDRI ties between `n_u=2` and `n_u=3`. Critically, **with `n_u=0` (no unknown branch) CCBM already matches CBM**, so the adapter+MHCA design does the heavy lifting and the complement branch closes a smaller residual gap.
@@ -116,9 +110,6 @@ The most striking deltas are on **Skincon concept detection** (82.14 vs 62.14 AU
 
 ![Intervention on Derm7pt](/assets/images/paper/concept-complement-bottleneck/page_018.png)
 *Figure 3(a): Inference-time intervention on Derm7pt — as more high-scoring concepts are zeroed, diagnosis AUC falls toward chance.*
-
-![Intervention on Skincon](/assets/images/paper/concept-complement-bottleneck/page_018.png)
-*Figure 3(b): Intervention on Skincon — same trend, with the larger concept set producing a smoother decay.*
 
 - **Label efficiency (Fig. 4).** Down to 30% of training labels, CCBM degrades by only 5–10% AUC; the sharp drop happens at 10%. BrEaST is the exception, dominated by its tiny size.
 

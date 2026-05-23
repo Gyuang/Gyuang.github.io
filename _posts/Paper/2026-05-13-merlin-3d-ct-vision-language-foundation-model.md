@@ -87,7 +87,7 @@ The **report-generation claim (C7) deserves the most scepticism.** Numerically M
 - **Report generation**: last hidden block (7x7x10x2048) -> linear adapter -> 4,096-dim, prepended to a per-section prompt `"<visual tokens>Generate a radiology report for <organ system>### <report section>###</s>"`, decoded by **RadLlama-7B** (Llama2-7B fine-tuned on MIMIC reports) with the adapter and 5% of LLM weights via LoRA. Reports are generated section-by-section, then concatenated for "full report" scoring.
 - **Segmentation**: UNet decoder with skip connections from the Merlin encoder, full 224x224x160 volumes inside the nnUNet framework (default augmentation, 1,000-epoch schedule, polynomial LR).
 
-![Zero-shot findings ablation — report splitting is the load-bearing trick](/assets/images/paper/merlin/fig_p018_03.png)
+![Zero-shot findings ablation — report splitting is the load-bearing trick](/assets/images/paper/merlin/fig_p018_01.png)
 *Figure 2: Zero-shot findings ablation — I3D + MTL + report splitting is the only configuration that hits F1 0.741; removing report splitting costs 7.9 F1 points (Figure 2e).*
 
 ## Experimental Results

@@ -123,19 +123,14 @@ ImageNet, CIFAR-10 and CIFAR-100 reproduce within ~1pp. The Places365* -3.5pp ga
 
 ### Task-agnostic concept grids (the C2 stress test)
 
-![Top-aligned task-agnostic concepts: plaid, burgundy, turquoise, sweater](/assets/images/paper/discover-then-name-cbm/page_007.png)
-*Figure 2: Top-activating images across ImageNet / CIFAR-10 / CIFAR-100 / Places365* for the **four highest-cosine concepts** ("plaid", "burgundy", "turquoise", "sweater"). The cherry-picked success case — visually coherent and matching their assigned names.*
+for the **four highest-cosine concepts** ("plaid", "burgundy", "turquoise", "sweater"). The cherry-picked success case — visually coherent and matching their assigned names.*
 
-![Low-aligned task-agnostic concepts: zealand, silhouette, commissioned, sauna](/assets/images/paper/discover-then-name-cbm/page_007.png)
-*Figure 3: Same layout for **low-cosine concepts** ("zealand", "silhouette", "commissioned", "sauna"). Top-activating images are visibly incoherent and rarely match the assigned name — the central piece of evidence against claim C2.*
+*low-cosine concepts** ("zealand", "silhouette", "commissioned", "sauna"). Top-activating images are visibly incoherent and rarely match the assigned name — the central piece of evidence against claim C2.*
 
 ### Local explanations on original DN-CBM
 
 ![Local explanation, original DN-CBM, coherent case](/assets/images/paper/discover-then-name-cbm/page_008.png)
 *Figure 4: A Places365 image where the reproduced DN-CBM surfaces thematically coherent concepts (greenhouse case).*
-
-![Local explanation, original DN-CBM, failure case](/assets/images/paper/discover-then-name-cbm/page_008.png)
-*Figure 5: A failure case where DN-CBM surfaces "kayaking", "dams", "trivium" for an escalator — concrete evidence that "explanations" can be incoherent even on correct classifications.*
 
 ### Cosine-score distribution after fine-tuning
 

@@ -69,7 +69,7 @@ Standard computational pathology shreds a gigapixel WSI into thousands of indepe
 
 **(3) Description Agent — Quilt-LLaVA 7B captioner.** Quilt-LLaVA 7B instruction-tuned on 102K samples for one epoch, where GPT-4 condensed Quilt-1M captions into concise finding lists. Each sampled patch yields a brief natural-language description that feeds back into the Navigator and forward to the Diagnosis Agent.
 
-![Appendix Figure 1: Triage Agent architecture — QuiltNet features, square padding, transformer + PPEG, multi-scale convs + SE block, CLS-token transformer head.](/assets/images/paper/pathfinder/fig_p013_01.png)
+![Appendix Figure 1: Triage Agent architecture — QuiltNet features, square padding, transformer + PPEG, multi-scale convs + SE block, CLS-token transformer head.](/assets/images/paper/pathfinder/page_001.png)
 
 *Appendix Figure 1: Triage Agent architecture — QuiltNet features are reshaped into a square grid, refined by transformer + PPEG positional encoding and multi-scale convolutions with an SE block, then classified via a CLS-token transformer head.*
 

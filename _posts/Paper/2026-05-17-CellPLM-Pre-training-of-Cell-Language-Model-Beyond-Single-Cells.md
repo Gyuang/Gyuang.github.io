@@ -95,7 +95,7 @@ Crucially, MSE is computed **only on genes measured by that cell's platform** â€
 
 **Compute.** 82M parameters, 8x V100 16GB, <24 h.
 
-![scRNA-seq vs SRT input representation](/assets/images/paper/cellplm/fig_p015_03.png)
+![scRNA-seq vs SRT input representation](/assets/images/paper/cellplm/page_003.png)
 *Figure 2: Input representation. scRNA-seq cells are bag-of-genes vectors with no spatial coordinates; SRT cells carry $(x, y)$ tissue coordinates that drive the 2D sinusoidal positional encoding.*
 
 ## Experimental Results

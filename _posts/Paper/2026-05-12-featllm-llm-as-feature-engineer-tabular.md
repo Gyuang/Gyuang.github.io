@@ -94,9 +94,6 @@ Note the XGBoost row: **50.00 AUC at 4-shot on every dataset** indicates a degen
 
 **Ablations.**
 
-![Rules per class](/assets/images/paper/featllm/page_009.png)
-*Figure 5: AUC vs rules-per-class. R=10 is the sweet spot across all shot counts; R=30 overfits in the 4-shot regime.*
-
 ![Ensemble size](/assets/images/paper/featllm/page_017.png)
 *Figure 6: AUC vs ensemble size T. Gains plateau around T=20, the default in the main experiments.*
 

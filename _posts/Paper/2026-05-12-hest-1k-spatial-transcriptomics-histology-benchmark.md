@@ -72,18 +72,12 @@ The pipeline has eight stages, all wrapped in the HEST-Library Python package.
 7. **Nuclear segmentation.** CellViT (PanNuke-pretrained) yields instance masks plus a 5-class classification — neoplastic / non-neoplastic epithelial / inflammatory / stromal / necrotic. Aggregate: **76.4M nuclei** (17.6M neoplastic, 21.5M stromal, 4.9M normal epithelial, 15.4M inflammatory, 76k necrotic; mean 62.1k per slide).
 8. **Metadata.** Per-sample: license/source/year, species, OncoTree code + organ, sample type, ST technology, gene count, spot count, reads, spot size & spacing, image resolution, magnification, FFPE vs. frozen.
 
-![CellViT nuclear segmentation on a HEST-1k H&E patch](/assets/images/paper/2406.16192_HEST-1k/page_002.png)
-*Figure 2: A CellViT nuclear instance segmentation on a HEST-1k H&E patch — the 5-class output (neoplastic / non-neoplastic epithelial / inflammatory / stromal / necrotic) is what produces the 76.4M-nuclei statistic.*
-
 ### Visium spot auto-alignment
 
 The hardest engineering step is recovering spot coordinates without trusting the published metadata. Visium slides have four corner fiducial markers, and YOLOv8 trained on 119 annotated regions detects them reliably enough to derive spot positions whenever at least three corners are visible.
 
 ![Raw Visium capture area with corner fiducials](/assets/images/paper/2406.16192_HEST-1k/page_015.png)
 *Figure 3 (left): Raw 6.5x6.5 mm Visium capture area with corner fiducial markers — the input the YOLOv8 detector consumes.*
-
-![Auto-aligned spots after YOLOv8 fiducial detection](/assets/images/paper/2406.16192_HEST-1k/page_015.png)
-*Figure 4 (right): After YOLOv8 fiducial detection, spot coordinates are derived geometrically and pixel size is estimated from inter-spot pixel distance.*
 
 ### HEST-Benchmark evaluation protocol
 
@@ -165,12 +159,6 @@ On a single IDC Xenium sample (n=168,033 detected neoplastic nuclei), GATA3 expr
 
 ![GATA3 expression heatmap on IDC Xenium WSI](/assets/images/paper/2406.16192_HEST-1k/page_009.png)
 *Figure 6: GATA3 expression heatmap overlaid on an invasive ductal carcinoma Xenium WSI; high expression visibly aligns with tumor regions.*
-
-![Neoplastic nuclear-area heatmap on the same WSI](/assets/images/paper/2406.16192_HEST-1k/page_009.png)
-*Figure 7: Per-region neoplastic nuclear-area heatmap on the same sample; size-related morphology tracks GATA3 hotspots, giving the R=0.47 correlation.*
-
-![Zoom-ins of CellViT nuclear segmentation](/assets/images/paper/2406.16192_HEST-1k/page_009.png)
-*Figure 8: Four 30-µm zoom-ins with CellViT instance segmentation of neoplastic nuclei from the same IDC sample.*
 
 In a second IDC sample (n=342,018 nuclei, Appendix Figure 6) nuclear size correlates with FLNB (R=0.45), TPD52 (R=0.47), and FOXA1 (R=0.47). Across the 12 hand-crafted nuclear features, size-related features dominate; shape/topology features stay below R=0.2. There is no multiple-testing correction, no null/permutation baseline, and only two slides — read this as a case study, not as inference.
 

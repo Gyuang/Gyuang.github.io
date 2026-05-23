@@ -110,7 +110,7 @@ For each image, compute pairwise IoU between predicted and reference boxes, solv
 - **RadGraph-F1-only training is empirically reward-hacked.** Training RadVLM with `+RGF1-C` collapses report length from ANC = 207 chars to **93 chars** and *only* improves RadGraph-F1 itself (20.1) while dropping every other metric (CXb-micro 49.0 -> 34.1, GREEN 29.1 -> 23.5). RadCliQ, BERTScore and GLEU all improve metrics broadly; RadCliQ wins **4 of 7** evaluation metrics.
 - **Training dynamics.** Qwen3-VL+RL on report generation collapses response length within the first few steps — direct evidence that the RadCliQ signal suppresses excess verbosity. Thinking variants are notably more stable in length but slower to converge in reward.
 
-![GRPO critic-score curves: RadVLM converges fastest, RadVLM-Thinking variants lag behind](/assets/images/paper/ct-rl-grounding/fig_p029_01.png)
+![GRPO critic-score curves: RadVLM converges fastest, RadVLM-Thinking variants lag behind](/assets/images/paper/ct-rl-grounding/page_005.png)
 *Figure 2: Reward trajectories during GRPO. RadVLM (in-domain SFT start) leads throughout, while RadVLM-Thinking variants converge more slowly — consistent with the paper's claim that explicit thinking does not add value once GRPO is in place.*
 
 ![Mean response length during GRPO: thinking variants stay long, RadVLM stays compact](/assets/images/paper/ct-rl-grounding/fig_p030_01.png)

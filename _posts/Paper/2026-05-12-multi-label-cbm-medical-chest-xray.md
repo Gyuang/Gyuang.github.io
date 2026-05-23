@@ -112,13 +112,7 @@ This is the paper's central finding. **High per-class AUC is compatible with nea
 ![Majority-class confusion matrices](/assets/images/paper/multi-label-cbm-medical/page_012.png)
 *Figure 4: Majority-class confusion matrices — Effusion (TPR 0.73) and Infiltration (TPR 0.75) are predicted reliably.*
 
-![Minority-class confusion matrices](/assets/images/paper/multi-label-cbm-medical/page_012.png)
-*Figure 5: Minority-class confusion matrices — 69% of Hernia cases and 76% of Pneumonia cases are missed (false negatives), despite per-class AUC > 0.87.*
-
 ### Loss-function ablation
-
-![Loss-function ablation](/assets/images/paper/multi-label-cbm-medical/page_011.png)
-*Figure 6: Loss-function ablation across all 14 classes. AUC barely moves under WBCE / focal / two-way loss, but minority-class recall and F1 rise visibly — WBCE lifts Hernia recall from ~0.02 (BCE) to ~0.31, and two-way loss lifts Pneumonia recall from 0.10 to 0.24.*
 
 Embedding-type ablation (Table 2, BioViL / ResNet50 / BioViL-T × global/patch/combined): **global wins** on micro/macro AUC and F1; patch trades precision for recall; combined offers no consistent gain. Best in that sub-table: BioViL global (mi/ma AUC = 0.7883 / 0.6436); BioViL-T patch has the best macro-recall (0.435).
 

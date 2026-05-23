@@ -148,12 +148,6 @@ This is the table that justifies the dense-prediction reformulation. Every spot-
 ![Foundation encoder ablation — MSE](/assets/images/paper/spatially-dense-ge/page_008.png)
 *Figure 4a: MSE across foundation encoders on breast Visium HD.*
 
-![Foundation encoder ablation — MAE](/assets/images/paper/spatially-dense-ge/page_008.png)
-*Figure 4b: MAE across foundation encoders.*
-
-![Foundation encoder ablation — PCC@M](/assets/images/paper/spatially-dense-ge/page_008.png)
-*Figure 4c: PCC@M across foundation encoders — UNI2-h is best across all three metrics.*
-
 ## Limitations
 
 **Author-acknowledged.** The dense map is still supervised only at measured spots; the paper proposes large-scale self-supervised WSI pretraining as future work.

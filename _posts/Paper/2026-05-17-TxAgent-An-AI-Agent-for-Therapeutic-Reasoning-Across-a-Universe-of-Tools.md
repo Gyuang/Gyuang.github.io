@@ -58,7 +58,7 @@ The most load-bearing piece of evidence in the paper is the **LLM-as-tool ablati
 ![TxAgent inference loop and TOOLUNIVERSE](/assets/images/paper/txagent/fig_p023_08.png)
 *Figure 1: At inference TxAgent emits a reasoning thought, optionally calls TOOLRAG to retrieve more tools, issues parallel JSON function calls into TOOLUNIVERSE (211 tools over openFDA, Open Targets, Monarch), consumes the responses, and loops until it emits `[FinalAnswer]`. The example tool spec shown is `get_associated_targets_by_disease_efoID`.*
 
-![TOOLUNIVERSE category wheel](/assets/images/paper/txagent/fig_p023_14.png)
+![TOOLUNIVERSE category wheel](/assets/images/paper/txagent/page_008.png)
 *Figure 2: TOOLUNIVERSE breakdown — 211 tools across ~15 categories, dominated by adverse events / risks / safety and drug-target-disease association lookups.*
 
 ## Method & Architecture

@@ -96,9 +96,6 @@ The pipeline is intentionally short:
 | Compute (her2st LOO) | **CONCH+UNI MLP** | **GPU / time** | **570 MB / 9m 13s** |
 | Compute (her2st LOO) | Hist2Cell | GPU / time | 44,951 MB / 171m 39s |
 
-![Per-patient CC and L1 on her2st leave-one-out; CONCH+UNI MLP outperforms single-FM heads and Hist2Cell in most folds.](/assets/images/paper/fm-st-cellular-decomp/page_003.png)
-*Figure 2: her2st leave-one-out — per-patient CC (left) and L1 (right); CONCH+UNI MLP leads in most folds, with patient D as the notable exception.*
-
 ![Per-patient CC and L1 across 23 STNet patients (leave-one-out); CONCH+UNI MLP consistently leads except on samples 23288 and 23377.](/assets/images/paper/fm-st-cellular-decomp/page_004.png)
 *Figure 3: STNet leave-one-out — CC (top) and L1 (bottom) across 23 patients; CONCH+UNI MLP leads with two exceptions (23288, 23377).*
 
@@ -113,9 +110,6 @@ The ablation evaluates three single-FM configurations (CONCH, UNI, UNI2), three 
 
 ![Predicted vs. ground-truth cell-type spatial distributions on her2st slide B1 (a) and bivariate Moran's R clustermaps (b); CONCH+UNI MLP reduces false-positive spots vs. Hist2Cell.](/assets/images/paper/fm-st-cellular-decomp/page_007.png)
 *Figure A1: (a) cell-type spatial maps for her2st slide B1; (b) bivariate Moran's R colocalization clustermaps. The authors report an average CC improvement of 0.1 across four representative cell types of slide B1, with the largest gains on cell types with less distinct morphology.*
-
-![STNet ablation mirror of Figure 4: per-patient CC/L1 across CONCH, UNI, UNI2 and their combinations.](/assets/images/paper/fm-st-cellular-decomp/page_007.png)
-*Figure A2: STNet ablation — same conclusion as her2st; CONCH+UNI and UNI2 alone are the consistently strong configurations.*
 
 ## Limitations
 

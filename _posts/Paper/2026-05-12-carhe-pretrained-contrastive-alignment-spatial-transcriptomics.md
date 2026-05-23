@@ -55,7 +55,7 @@ The strongest claims are C7, C8, and C4 — downstream-clinically-relevant metri
 
 ## Method & Architecture
 
-![CarHE overview: contrastive alignment of HIPT patches to scGPT cell-cluster embeddings, followed by Grad-CAM iterative refinement](/assets/images/paper/carhe/page_021.png)
+![CarHE overview: contrastive alignment of HIPT patches to scGPT cell-cluster embeddings, followed by Grad-CAM iterative refinement](/assets/images/paper/carhe/page_004.png)
 *Figure 1: CarHE overview — scGPT cell-cluster embeddings are contrastively aligned to HIPT image features, then iteratively refined by Grad-CAM masking.*
 
 **Inputs.** Paired H&E WSI (stain-normalized via `staintools.LuminosityStandardizer`) and ST counts. Each spot/cell sits at the center of a 256×256 px patch at ~0.5 µm/px.
@@ -107,7 +107,7 @@ The softened off-diagonal α is what prevents the contrastive objective from col
 | Cluster ID | Mouse intestine HD | AUROC | **>0.9** (all 21) | — | — | — | — | Fig 5C/D |
 | **DFS prediction** | **In-house lung 1,600+ slides** | **AUC** | **0.734** | — | — | — | — | vs. unnamed SOTA 0.586 / 0.643 |
 
-![BRCA H1 marker genes and melanoma Xenium cell-type recovery](/assets/images/paper/carhe/page_022.png)
+![BRCA H1 marker genes and melanoma Xenium cell-type recovery](/assets/images/paper/carhe/page_006.png)
 *Figure 2: BRCA H1 and melanoma Xenium benchmarks — CarHE recovers marker-gene patterns (CD3D / CD74 / COL3A1) and cell-type composition where HisToGene / Hist2ST / THItoGene / STEM flatline.*
 
 ### Reading between the rows

@@ -67,7 +67,7 @@ The most important finding the paper *under-reports* is the **external CT degrad
 
 **1) Preprocessing.** De-identify DICOM → extract metadata (weight, injected dose, scan time) → convert to NIfTI → resample PET and CT to **1.5 × 1.5 × 3 mm** in RAS → clip CT to **[−1000, +1000] HU** → convert PET to SUV via $\mathrm{SUV}(t) = c_{img}(t) \cdot \mathrm{BW} / \mathrm{ID}$ → remove scanner bed with TotalSegmentator → crop to upper-thigh level (trunk + 20% below pelvic floor, ≤ 50 slices).
 
-![Preprocessing pipeline for PET/CT volumes and report text](/assets/images/paper/petrg-3d/fig_p013_01.png)
+![Preprocessing pipeline for PET/CT volumes and report text](/assets/images/paper/petrg-3d/page_001.png)
 *Suppl. Fig. 1: Preprocessing pipeline. Image side — de-id → SUV conversion → bed removal (TotalSegmentator) → trunk crop. Text side — de-id → JSON parsing → normalization → keep only the "Findings" section.*
 
 **2) Dual-Stream Volumetric Feature Encoding (DSFE).** Two parallel branches, each:
@@ -138,7 +138,7 @@ Other design choices (Fig. 4): training the PET encoder from scratch significant
 ![Ground-truth whole-body lymphoma report (Chinese with English translation)](/assets/images/paper/petrg-3d/fig_p021_01.png)
 *Suppl. Fig. 5: A ground-truth whole-body lymphoma PET/CT report illustrating the anatomical breadth and length that a model has to reproduce — region-by-region descriptions of nodal involvement, SUVmax values, and CT density findings across head, neck, chest, abdomen, and pelvis.*
 
-![Region-level decomposition example used for the 'w/ Regional Input' ablation](/assets/images/paper/petrg-3d/fig_p014_01.png)
+![Region-level decomposition example used for the 'w/ Regional Input' ablation](/assets/images/paper/petrg-3d/page_004.png)
 *Suppl. Fig. 2 (excerpt): Region-level report decomposition used in the "w/ Regional Input" ablation — the whole-body report is split into Head&Neck / Chest / Abdomen / Pelvis-and-below pairs. Counterintuitively, this regional supervision **hurts** whole-body NLG performance, suggesting the model benefits from end-to-end whole-body context rather than per-region training signals.*
 
 ## Limitations

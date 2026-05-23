@@ -123,9 +123,6 @@ Sample with `top_p = 0.9`, `temperature = 0.7`. For conditional cell generation,
 
 **Ablations and robustness worth highlighting.** Tables 5–6 are the most informative panels in the paper: NL+C2S roughly doubles cell-type performance over C2S-only at the same parameter count, which is the strongest evidence that the LLM is doing more than memorizing rank statistics. Reconstruction quality across 127 datasets is Pearson R = 0.91 ± 0.04, Spearman R = 0.83 ± 0.05, R² = 0.81 ± 0.07. Gene-validity sanity check (Table 7): NL+C2S outputs are 99.6–99.7% valid HGNC symbols and 98.9–99.5% unique, so the LLM is generating plausible biological vocabulary, not gibberish. Generated-vs-real averaging (Table 4): GPT-2 small NL+C2S Pearson R = 0.984, R² = 0.949 — but this is class-averaged over 17 cell types, which suppresses per-cell variance.
 
-![Scatter of reconstructed-from-rank vs. normalized transcript counts, R^2 = 0.815](/assets/images/paper/cell2sentence/page_004.png)
-*Figure 3: Linear reconstruction of normalized expression from log-rank on the immune-tissue dataset. ~81% of expression variance is recovered — the empirical basis of C2S's invertibility claim and the residual 19% the paper does not analyze further.*
-
 ## Limitations
 
 Acknowledged by the authors:

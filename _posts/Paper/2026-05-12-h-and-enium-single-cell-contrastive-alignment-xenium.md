@@ -69,9 +69,6 @@ Downstream evaluation is intentionally non-end-to-end: balanced-class L2-penaliz
 ![UNI2 image UMAP on Pancreas](/assets/images/paper/henium/page_004.png)
 *Figure 2A: UNI2 frozen image embeddings on Pancreas form overlapping clusters with cell types mixed — the image side has the most to gain from alignment.*
 
-![CellPLM gene UMAP on Pancreas](/assets/images/paper/henium/page_004.png)
-*Figure 2B: CellPLM gene-expression embeddings on the same Pancreas cells cleanly separate the four cell types — the gene side is already discriminative, motivating image-to-gene transfer.*
-
 ## Experimental Results
 
 ### Non-aligned baselines (Table 1)

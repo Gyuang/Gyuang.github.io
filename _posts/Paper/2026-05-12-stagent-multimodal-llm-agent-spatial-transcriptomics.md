@@ -57,7 +57,7 @@ The methodological contribution is orchestration, not modeling — there is no f
 
 The backend pairs Claude-3.7-Sonnet and GPT-4o (used **without fine-tuning**, model selectable from the Streamlit sidebar) with a LangGraph state graph that exposes four tools: a Python REPL (CodeAct-style), a Chroma vector store of code snippets retrieved from public bioinformatics repos, a SerpAPI / Google Scholar wrapper, and a typed multimodal memory. The conventional-ML baseline pipeline the agent is compared against runs Scanpy preprocessing (`normalize_total → log1p → scale → pca → neighbors → umap → leiden`), STAligner (graph attention autoencoder on STAGATE embeddings + Louvain) for 6 cross-slice spatial domains, Tangram for whole-transcriptome imputation (mapping GSE151117 scRNA-seq onto the 154-gene STARmap data → ~15,000 imputed genes), and CellChat on the imputed data with the human-specific CellChatDB.
 
-![STAgent autonomously generates and executes analysis code](/assets/images/paper/stagent/page_019.png)
+![STAgent autonomously generates and executes analysis code](/assets/images/paper/stagent/page_004.png)
 *Figure 2: STAgent autonomously generates Scanpy/Squidpy code and produces UMAP, temporal cell-composition, spatial distribution, and neighborhood-enrichment analyses from a one-line natural-language prompt.*
 
 Key hyperparameters and operational details that are **not reported** in the paper: temperature / top-p for either backbone; the specific OpenAI embedding model used in the code-RAG index; max-step budget; code-execution timeout; retry policy on failed Python execution; which GitHub repos populate the Chroma store; licensing handling for retrieved code. Cost and latency per analysis are reported only as "minutes".

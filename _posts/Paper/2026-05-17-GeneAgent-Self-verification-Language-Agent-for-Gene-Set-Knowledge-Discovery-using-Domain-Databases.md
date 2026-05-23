@@ -115,12 +115,12 @@ Formally, GeneAgent processes a gene set $D = \{g_i\}_{i=1}^N$ through:
 
 **Percentile-evaluation example.**
 
-![Same gene set scored by GeneAgent's name vs GPT-4's name on a 12,320-term background](/assets/images/paper/geneagent/fig_p026_01.png)
+![Same gene set scored by GeneAgent's name vs GPT-4's name on a 12,320-term background](/assets/images/paper/geneagent/page_005.png)
 *Extended Fig. 1: Same gene set, two systems -- GeneAgent's "Regulation of Cellular Response to Stress" (a) sits at the 98.9th percentile of the 12,320-term background; GPT-4's "Calcium Signaling Pathway Regulation" (b) sits at the 60.2nd percentile.*
 
 **Mouse melanoma case study (Table 3).** Two-expert blind annotation across Relevance / Readability / Consistency / Comprehensiveness across 7 gene sets from B2905 sublines. GeneAgent wins the final decision on **5/7** sets, ties on 1 (both fail on mmu03010 HA-S where GeneAgent's "Cytosolic Ribosome" misses mitochondrial Mrpl10/Mrps21 and GPT-4 hallucinates "Synthesis"). Wins concentrate on Relevance and Comprehensiveness; Readability/Consistency are roughly tied. Two of 7 names exactly match expert reference (mmu04015 HA-S "Rap1 Signaling Pathway"; mmu05100 HA-S "Bacterial Invasion of Epithelial Cells").
 
-![Mouse melanoma case study: GeneAgent vs GPT-4 gene-function clustering for mmu05022 LA-S](/assets/images/paper/geneagent/fig_p027_01.png)
+![Mouse melanoma case study: GeneAgent vs GPT-4 gene-function clustering for mmu05022 LA-S](/assets/images/paper/geneagent/page_006.png)
 *Extended Fig. 2: Mouse melanoma case study (mmu05022, LA-S clade) -- GeneAgent (a) places Ndufa10 into Complex I and labels Gpx7 as oxidative-stress protection; GPT-4 (b) omits Ndufa10 from oxidative phosphorylation and provides no biological role for Gpx7.*
 
 **GeneAgent vs conventional GSEA.**

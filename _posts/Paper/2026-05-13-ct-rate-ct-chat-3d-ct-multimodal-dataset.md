@@ -65,7 +65,7 @@ The strongest claims (C1, C2, C8, C13) carry the headline. The weak spots cluste
 
 CT volumes are resampled to 0.75 × 0.75 × 1.5 mm spacing, cropped/padded to 480 × 480 × 240 voxels, HU-clipped to [-1000, 1000] and normalized to [-1, 1]. CT-ViT applies 20 × 20 × 10-voxel patching with a two-stage spatial + causal transformer. The trick that makes the 3D budget work: encoded tokens are **averaged across the axial plane** then linearly projected to 512-d, so axial attention still propagates per-slice context but the joint-space representation stays compact. Text-side: up to 512 tokens of *Findings + Impression* into CXR-Bert, per-token 768-d outputs summed across the span, linearly projected to 512-d. Standard symmetric InfoNCE.
 
-![Dataset demographics from CT-RATE](/assets/images/paper/ct-rate/fig_p011_07.png)
+![Dataset demographics from CT-RATE](/assets/images/paper/ct-rate/page_003.png)
 *Figure 2: CT-RATE per-abnormality abundance — class imbalance ranges from Lung nodule (~45%) down to Mosaic attenuation (~7.7%), which the paper does not reweight against during pretraining.*
 
 ![ClassFine and VocabFine finetuning](/assets/images/paper/ct-rate/fig_p012_01.png)

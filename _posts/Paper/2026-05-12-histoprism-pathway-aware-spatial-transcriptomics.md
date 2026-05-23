@@ -123,8 +123,7 @@ Training uses AdamW, lr $5\times 10^{-4}$, weight decay 0.01, grad-clip 1.0, up 
 ![Hallmark and GO pathway-level coherence scatter plots showing HistoPrism beating STPath on most pathways](/assets/images/paper/histoprism/page_007.png)
 *Figure 2: Hallmark pathway-level coherence — HistoPrism beats STPath on **43/50 (86.0%)** Hallmark pathways. Points above the y=x line favor HistoPrism, colored by normalized variance level; wins concentrate in the low-variance regime.*
 
-![Gene Ontology pathway-level coherence scatter plot for HistoPrism vs STPath](/assets/images/paper/histoprism/page_007.png)
-*Figure 3: Gene Ontology pathway-level coherence — HistoPrism wins on **65/87 (74.7%)** of size- and Jaccard-filtered GO pathways, again with the largest gaps at lower variance levels.*
+*65/87 (74.7%)** of size- and Jaccard-filtered GO pathways, again with the largest gaps at lower variance levels.*
 
 - **Hallmark (50 pathways):** HistoPrism > STPath on 86.0% (43/50).
 - **GO (87 pathways):** HistoPrism > STPath on 74.7% (65/87).
@@ -142,8 +141,7 @@ At roughly 20k patches per slide, HistoPrism runs in the low-hundreds of millise
 ![Hallmark pathway-level coherence for HistoPrism with GigaPath backbone vs STPath](/assets/images/paper/histoprism/page_009.png)
 *Figure 5: PFM-swap on Hallmark — HistoPrism with the GigaPath backbone still beats STPath on **42/50 (84.0%)** pathways, indicating the gains come from the architecture, not the feature extractor.*
 
-![Gene Ontology pathway-level coherence for HistoPrism with GigaPath backbone vs STPath](/assets/images/paper/histoprism/page_009.png)
-*Figure 6: PFM-swap on GO — HistoPrism+GigaPath wins on **70/87 (80.5%)** of GO pathways. Pathway-level gains transfer across PFMs.*
+*70/87 (80.5%)** of GO pathways. Pathway-level gains transfer across PFMs.*
 
 ### Ablations (Table 3, Table 4)
 
