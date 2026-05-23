@@ -6,7 +6,7 @@ author_profile: true
 classes: wide
 ---
 
-내가 1저자 또는 주요 공저자로 참여한 연구. 각 카드를 클릭하면 lambertae.github.io 스타일의 standalone landing page로 이동합니다.
+A selection of research I led as first or co-first author. My work sits at the intersection of **medical AI**, **3D vision–language models**, and **computational pathology** — building systems that ground language models in clinical evidence rather than letting them hallucinate over it. Click any card for a paper-specific landing page with the abstract, key figures, results, and BibTeX.
 
 <style>
 .project-grid { display: grid; grid-template-columns: 1fr; gap: 1.5em; margin-top: 2em; }
