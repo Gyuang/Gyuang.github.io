@@ -1,0 +1,1283 @@
+
+===== PAGE 1 =====
+MFTrans: A Multi-Resolution Fusion Transformer for Robust Tumor
+Segmentation in Whole Slide Images
+Sungkyu Yang1, Woohyun Park2,3, Kwangil Yim3,*, Mansu Kim1,*
+1 AI Graduate School, Gwangju Institute of Science and Technology, Gwangju-si, Republic of Korea
+2 Department of Data Science, The Catholic University of Korea, Bucheon-si, Republic of Korea
+3 Department of Hospital Pathology, College of Medicine, The Catholic University of Korea, Seoul, Republic of Korea
+yangsung9999@gmail.com, mansu.kim@gist.ac.kr
+Abstract
+Accurate tumor segmentation in whole slide image (WSI)
+is essential for histopathological diagnosis and research,
+but the traditional manual analysis is labor-intensive and
+prone to variability.
+Furthermore, many artificial mod-
+els focus on specific magnification images, limiting the
+detailed information available for segmentation.
+To ad-
+dress these challenges, we propose MFTrans, a novel multi-
+resolution fusion transformer with a CNN-based architec-
+ture designed for efficient tumor segmentation in WSI. In-
+spired by the diagnostic procedures of expert pathologists,
+MFTrans integrates both high- and low-magnification im-
+ages, capturing detailed local features and broader con-
+textual relationships through a dual-branch architecture.
+The model employs a global token transformer and cross-
+attention mechanism to fuse hierarchical features from dual
+branches to improve segmentation performance. We eval-
+uate MFTrans on three real-world WSI datasets: Came-
+lyon16, PAIP2019, and Catholic Uijeongbu St. Mary’s hos-
+pital dataset, demonstrating its superior segmentation per-
+formance over state-of-the-art methods in balanced and im-
+balanced setups. These results highlight MFTrans’s effec-
+tiveness in medical image analysis and its generalizabil-
+ity across different datasets, making it a robust tool for
+automated cancer diagnostics.
+Our code is available at
+https://github.com/aimed-gist/MFTrans.
+1. Introduction
+Histopathology, the examination of tissue samples to
+study disease, is crucial in clinical practice for accurate di-
+agnosis. Pathologists manually analyze histopathological
+samples, establishing the gold standard for cancer diagnos-
+tics and prognosis [1, 15, 23]. However, manual analysis
+is time-consuming and subject to variability due to human
+factors, with studies indicating up to a 24% discrepancy in
+Figure 1. Motivations. Expert pathologists assess tumor struc-
+tures at lower magnifications and examine individual cell mor-
+phology at higher magnifications. However, current models often
+focus on specific magnifications, which limits the detailed infor-
+mation used for segmentation.
+interpretations among experts [13].
+Recent advancements in artificial intelligence (AI) tech-
+nology have led to success in various applications, partic-
+ularly in natural language processing and computer vision
+[10, 29, 31]. In computer vision, Vision Transformer (ViT)
+[12] and its extensions [5, 16, 27] have demonstrated state-
+of-the-art performance on various benchmarks [8, 26, 40,
+42]. Specifically, ViT-based models with the self-attention
+module provide more effective global contextual represen-
+tations by modeling long-range relationships through pair-
+wise interactions between token embeddings [12]. In med-
+ical image analysis, U-Net is the first segmentation method
+for biomedical images that utilized a CNN-based encoder
+and decoder [32], and UnetR employed ViT as its encoder to
+extract feature [17]. Specifically, CNNs are highly efficient
+at handling local features due to their convolutional nature,
+which excels at extracting fine-grained features at a regional
+level. Other approaches [7,16,41] have attempted to lever-
+age the power of CNN and ViT to improve segmentation
+performance. In analyzing histopathology, the collected tis-
+sue sample undergoes several steps, including fixation, slic-
+ing, and staining, to create pathology glass slides. Pathol-
+This WACV paper is the Open Access version, provided by the Computer Vision Foundation.
+Except for this watermark, it is identical to the accepted version;
+the final published version of the proceedings is available on IEEE Xplore.
+4595
+
+===== PAGE 2 =====
+ogists then examine cells under microscopy at high magni-
+fication, known as whole slide image (WSI). A significant
+challenge of WSI analysis is high computational consump-
+tion due to its unusually high resolution [19]. Expert pathol-
+ogists typically assess tumor architecture at lower magni-
+fications and observe the morphology of individual tumor
+cells at higher magnifications, such as nuclear to cytoplas-
+mic ratio and nuclear features (Fig. 1) [22]. However, most
+AI studies typically focus on patches of specific magnifica-
+tion or resolutions (e.g., low-resolution or middle-resolution
+images) that contain far fewer details.
+In this study, we propose a multi-resolution fusion
+transformer (MFTrans) that utilizes both high- and low-
+magnification WSI to segment tumors. This approach is
+inspired by the clinical behavior of pathologists, who al-
+ternate between different magnifications during diagnosis.
+Our scientific contributions are summarized as follows:
+• We extend a cross-attention mechanism to integrate
+complementary multi-resolution WSI. We aimed to
+learn shared and distinct representations across multi-
+resolution WSI information.
+• We develop an efficient Global Token Transformer to
+enhance the transformer’s ability to capture and inte-
+grate multi-resolution information from WSI more ef-
+fectively.
+• We perform rich experiments on three real WSI
+datasets to demonstrate the effectiveness and clinical
+benefits of the proposed model over the competing al-
+gorithms.
+The rest of this paper is organized as follows. In Sec. 2,
+we describe the state-of-the-art AI methods. In Sec. 3, we
+describe our proposed model (i.e., MFTrans). In Sec. 4, we
+present the experimental setup and results on three real WSI
+datasets and provide a brief discussion about experimental
+results. In Sec. 5, we summarize and describe the potential
+implications of the study.
+2. Related Work
+CNN-based methods For the field of medical image
+segmentation, CNNs with a U-shaped structure, commonly
+known as U-Net [32], and its extensions showed superior
+performance [2, 25, 37, 39].
+This success was attributed
+to the skip connections that allowed the network to com-
+bine low-level spatial information with high-level contex-
+tual information, thereby enhancing segmentation accuracy
+and performance. Zhou et al. Proposed U-Net++ utilized
+nested and dense skip pathways to enhance feature propa-
+gation further and reduce the semantic gap between the en-
+coder and decoder [43]. Attention U-Net integrated atten-
+tion mechanisms into the U-Net architecture to focus on the
+most relevant features [29]. Recently, U-Net 3+ was pro-
+posed to incorporate full-scale skip connections and multi-
+scale feature aggregation [18]. This model significantly im-
+proved segmentation accuracy while maintaining computa-
+tional efficiency.
+Transformer-based methods Based on the success of
+ViTs architecture, researchers applied it to medical image
+segmentation [9, 11, 14, 20, 24, 30]. Compared with CNN-
+based models, ViT models perceived the entire image as a
+sequence of patches, making them adept at understanding
+overall tissue morphology and the spatial distribution of tu-
+mor cells across the slide. TransUNet utilized a ViT encoder
+within a U-shaped structure [7], while ViT-V-Net extended
+this approach to volumetric medical data [6]. The Medi-
+cal Transformer (MedT) employed a gated axial-attention
+mechanism to extract high-level global information and
+fine-grained local details separately [36]. SwinUNet and
+Swin-UNETR learned hierarchical feature representation
+through shifted windows with local attention [4,16]. These
+methods demonstrated the potential of ViTs in capturing
+complex patterns and enhancing segmentation accuracy in
+medical imaging. However, fully ViT-based models require
+high computational costs and large labeled datasets, which
+are not suitable for the medical domain.
+Dual-branch methods To overcome high computational
+costs and the need for large labeled datasets, researchers
+proposed dual-branched approaches integrating CNNs and
+transformers. These methods aimed to combine the local
+feature extraction capabilities of CNNs with the global con-
+text modeling of transformers, enhancing the overall per-
+formance of medical image segmentation. TransFuse is an
+early dual-branch model combining CNNs for local fea-
+ture extraction and transformers for capturing global con-
+text and fusing CNN and transformer features with vari-
+ous pooling attention [41]. DHUnet also utilized a dual
+branch approach with CNNs and transformers to extract
+features separately [38]. However, it merged feature rep-
+resentation via transposed convolution feature concatena-
+tion at multiple levels to enhance segmentation accuracy.
+Although these approaches showed improved segmentation
+performance, existing methods only focused on a specific
+resolution of WSI that contained far fewer details.
+3. Methodology
+3.1. Overall architecture
+The proposed method (MFTrans, a multi-resolution fu-
+sion transformer) consists of three components: a global
+branch, a local branch, and a fusion branch, as shown in
+Fig. 2. The global branch extracts global relationships be-
+tween patches in low magnification WSI, passing through
+stages composed of token and patch merging layers and
+transformer blocks. The local branch provides regional rep-
+4596
+
+===== PAGE 3 =====
+Patch Embedding
+ConvNext
+block
+ConvNext
+block
+ConvNext
+block
+ConvNext
+block
+Patch Embedding
+𝑙𝑙𝑙𝑙𝑙𝑙𝑙𝑙𝑙𝑙0
+4𝐻𝐻× 4𝑊𝑊× 3
+Token Fusion
+block
+Token Fusion
+block
+Token Fusion
+block
+Token Fusion
+block
+Image Decoder
+Segment head
+Image Decoder
+Image Decoder
+Image Decoder
+𝑀𝑀𝑀𝑀𝑀𝑀𝑀𝑀(𝑀𝑀)
+Global Token 
+Transformer 
+block
+x2
+Stage 1
+Global Token 
+Transformer 
+block
+x2
+Stage 2
+Global Token 
+Transformer 
+block
+x2
+Stage 3
+Global Token 
+Transformer 
+block
+x2
+Stage 4
+𝐻𝐻
+4 × 𝑊𝑊
+4 × 𝐶𝐶
+𝐻𝐻
+8 × 𝑊𝑊
+8 × 2𝐶𝐶
+𝐻𝐻
+16 × 𝑊𝑊
+16 × 4𝐶𝐶
+𝐻𝐻
+32 × 𝑊𝑊
+32 × 8𝐶𝐶
+𝑙𝑙𝑙𝑙𝑙𝑙𝑙𝑙𝑙𝑙𝑙
+𝐻𝐻× 𝑊𝑊× 3
+Patch & Token Merge
+Classification block
+Patch & Token Merge
+Patch & Token Merge
+Patch Embedding
+x3
+x3
+x3
+x3
+x1
+x1
+x1
+x1
+Patch Merging
+Patch Merging
+Patch Merging
+Global Branch
+Local Branch
+Fusion Branch
+𝑳𝑳(𝑪𝑪𝑪𝑪, 𝑪𝑪(𝑮𝑮𝟒𝟒))
+𝑳𝑳(𝑴𝑴, 𝒉𝒉𝒉𝒉𝒉𝒉𝒉𝒉𝒇𝒇𝟒𝟒)
+𝑳𝑳(𝑴𝑴, 𝒉𝒉𝒉𝒉𝒉𝒉𝒉𝒉𝒇𝒇𝟐𝟐)
+𝑳𝑳(𝑴𝑴, 𝒉𝒉𝒉𝒉𝒉𝒉𝒉𝒉𝒇𝒇𝟎𝟎)
+Loss
+Figure 2. Overall architecture. MFTrans operates on two magnification levels (Level 2 and Level 0). The global branch assesses low-
+magnification features using Global Token Transformer blocks, while the local branch assesses high-magnification features with Local
+CNN blocks. In the fusion branch, a token fusion block combines features from both branches, and an image decoder generates the final
+segmentation mask by integrating information from the different magnification levels.
+resentation extracted from high magnification WSI, such
+as individual cells, lesions, and cellular morphology, pass-
+ing through stages of merging layers and ConvNeXt blocks
+[28]. Lastly, the Token fusion branch integrates the infor-
+mation from the global and local branches, utilizing the fea-
+tures extracted from each stage to provide a comprehensive
+representation. Through this design, our model is able to ef-
+fectively integrate global and local representations through
+a dual-branch architecture, similar to the export pathology’s
+diagnosis procedure. In our implementation, each compo-
+nent of MFTrans is comprised of four stages. In the global
+branch, each stage consists of a patch embedding layer fol-
+lowed by two global token transformer blocks. In the lo-
+cal branch, each stage includes a patch embedding layer
+followed by three local ConvNeXt blocks. In the fusion
+branch, a token fusion block and decoder are used at each
+stage to integrate information from both branches.
+3.2. Global branch
+3.2.1
+Patch Embedding layer
+We split the input RGB image (i.e. low magnification lev-
+els), x ∈RH×W×3, into non-overlapping patches embed-
+ding, w ∈R
+H
+4 × W
+4 ×C using convolution operator. In our
+implementation, the dimension C is set to 96. After patch
+embedding, we defined the window as M × M patches,
+where M is the size of the window, which yields Np = M 2
+patches per window and Nw =
+H
+4×M ×
+W
+4×M number of win-
+dows per image.
+3.2.2
+Global token-based multi-head self-attention
+(GT-MSA) Transformer Block
+Inspired by GLAM transformer [35], we propose global
+token-based multi-head self-attention (GT-MSA) to effec-
+tively represent global interaction within images (Fig. 3),
+while significantly reducing the computational cost.
+First, we define global tokens gl ∈RNw×Ng×C for l-th
+layer, which means every window have own global token,
+where (Ng) is the number of global tokens per window, and
+(C) is the patch embedding dimension. Then, we concate-
+nate the global token with their window, where it yields as
+Zl ∈RNw×(Ng+Np)×C.
+Second, we apply the multi-head self-attention (MSA)
+on Zl to compute ˆZl. Then, GT-MSA is applied to update
+the global token. GT-MSA uses the MSA for every global
+token in the window, as illustrated in Fig. 3-(a). The formu-
+lation of GT-MSA is described as follows:
+  \text {G T
+-
+MSA
+}( \ma
+th bf { g^l
+}
+)
+= \left [ \hat {g}_1^l, \hat {g}_2^l, ..., \hat {g}_n^l \right ] \in \mathbb {R}^{N_w \times N_g \times C}, \label {eq:GT-MSA} 
+(1)
+where ˆgl
+n = MSA(gl
+n)(n = 1, 2, ..., Ng), and gl
+n ∈RNw×C
+denotes n-th global tokens for all window. Finally, GT-
+MSA transformer blocks are computed as
+ 
+ \le ft [
+ \hat {\mathbf 
+{G}} ^ l ; \ha t {\m
+athb f  { w }}^l \r ight ]
+ 
+&= \t ext {
+W -MSA}(\text {LN}(\mathbf {Z}^l)), \nonumber \\ \mathbf {G}^{l+1} &= \text {GT-MSA}(\hat {\mathbf {G}}^{l}), \nonumber \\ \mathbf {w}^{l+1} &= \mathbf {w}^l + \text {MLP}(\text {LN}(\hat {\mathbf {w}}^{l})),\nonumber \\ \left [ \mathbf {G}^{l+1} ; \mathbf {w}^{l+1} \right ] &= \mathbf {Z}^{l+1},
+(2)
+where wl+1 ∈RNw×Np×C denotes global feature and
+Gl+1 denotes concatenated global tokens for all windows
+(Fig. 3-(a)).
+4597
+
+===== PAGE 4 =====
+For the computational complexity, the computational
+complexity of GT-MSA is less than that of GLAM,
+since GT-MSA computes self-attention for each global
+token.
+The computational complexity of GT-MSA is
+ΩGT −MSA(Ng × (4 × Nw × C2 + 2 × Nw
+2 × C))), where
+4×Nw×C2 represents the number of operations required to
+generate the Query, Key, and Value matrices, and 2×Nw
+2×
+C denotes the number of operations for calculating the re-
+sults through the multiplication of attention weights and the
+Value matrix. For GLAM, the computational complexity is
+ΩGLAM(4 × Nw × Ng × C2 + 2 × (Nw × Ng)2 × C). The
+detailed computational complexity of models is presented
+in the Supplementary S1.
+3.2.3
+Token & patch merging layer
+To model learning a hierarchical representation, patches and
+global tokens are integrated based on the token & patch
+merging layer. Briefly, the patch merging layer consisted
+of convolution operation with 2 × 2 kernel, stride 2, and the
+number of filter 2C. The global token for 2 × 2 neighboring
+windows is merged based on channel-wise concatenation
+and linear projection to produce a 2C-dimensional concate-
+nated global token for each channel. The token & patch
+merging layer follows the GT-MSA transformer to produce
+hierarchical representation. So, Each time a token passes
+through the token & patch merging layer, the stage deep-
+ens. The first stage, with the patch embedding layer, creates
+Nw. In the subsequent stages, Nw is reduced by a factor of
+1/4, and C is doubled. So each t-th stage feature denoted
+by Zt ∈R
+Nw
+4t−1 ×(Np+Ng)×2t−1C. In our implementation,
+we use the token & patch merging layer instead of the patch
+embedding layer in all stages except the first.
+3.2.4
+Classifier block
+In the last stage, we add an auxiliary network (i.e., the clas-
+sifier block) to enhance discrimination in the lower stages
+of our model [34]. We utilize an attention-based MLP to
+classify whether each window originates from a tumor or
+normal tissue. During training, the loss from this auxiliary
+network is combined with the total loss of the model. How-
+ever, the classifier block is not used during the inference
+phase. The detailed description is presented in the Supple-
+mentary S2.
+3.3. Local branch
+3.3.1
+Patch Embedding
+Similar to Sec. 3.2.1, we split input RGB image (i.e., high
+magnification levels), where the input image in the local
+branch being four times larger than in the global branch,
+x ∈R4H×4W×3, into non-overlapping patches embedding
+(i.e., s ∈R
+H
+4 × W
+4 ×C) using convolution operator.
+(a) Global token Transformer Block
+W-MSA
+GT-MSA
+MLP
+Fusion layer
+C
+C
+(c) Token Fusion Block
+(b) Image Decoder Block
+16x16 , C/8
+8x8 , C/4
+4x4 , C/2
+Conv, LN, GELU
+C
+32x32 , C/8
+Transposed
+conv
+Global  
+Tokens
+𝑁𝑁𝑤𝑤
+𝑁𝑁𝑔𝑔
+𝑁𝑁𝑝𝑝
+𝐶𝐶
+𝑮𝑮𝒍𝒍
+𝒘𝒘𝒍𝒍
+෡𝑮𝑮𝒍𝒍
+𝑮𝑮𝒍𝒍+𝟏𝟏
+ෝ𝒘𝒘𝒍𝒍
+Patch & token merging 
+Cross 
+Attention
+𝒘𝒘𝒍𝒍+𝟏𝟏
+𝒁𝒁𝒍𝒍+𝟏𝟏
+Fusion feature 
+Fusion feature from 
+previous stage
+Local feature 
+from current local Branch
+Global feature
+Figure 3.
+Detailed architecture of the Global and Fusion
+branch.
+Sub-figures (a), (b), and (c) denote the Global To-
+ken Transformer Block, Image Decoder Block, and Token Fusion
+Block, respectively. This diagram illustrates how the model fuses
+local and global features from high- and low-magnification im-
+ages, enabling segmentation in a manner similar to the approach
+used by pathologists.
+3.3.2
+ConvNeXt block
+We employ ConvNeXt as the backbone of the local image
+encoder. The ConvNeXt has the advantage of providing
+CNNs’ locality inductive bias, hierarchical feature repre-
+sentation, and parameter efficiency. [28]. In our implemen-
+tation, the ConvNeXt consists of several layers, including
+a depth-wise convolution layer(DConv) with a 7 × 7 ker-
+nel size and C filters, Layer Normalization (LN) layer, a
+1x1 point-wise convolution(PConv) layer with 4C filters,
+the GELU activation, and PConv layer with C filters, are
+applied. Finally, a skip connection adds the input of the
+block to the final output, preserving the spatial information
+and mitigating the gradient vanishing problem.
+ \ h at {\mathbf {s
+}}^l  &=  \text {LN}(\text {DConv} (\mathbf {s}^l)), \nonumber \\ \mathbf {s}^{l+1} &= \mathbf {s}^l +\text {PConv}(\text {GELU}(\text {PConv}(\hat {\mathbf {s}}^{l}))
+(3)
+where sl+1 denotes local feature, presented in Fig. 3-(c).
+3.3.3
+Patch merging layer
+Similar to the Sec. 3.2.3, we perform convolution operation
+with 2 × 2 kernel, stride 2, and the number of filter 2C to
+learn a hierarchical representation. This allows the encoder
+to capture local features from high magnification images ef-
+ficiently. Thus, the local feature at t −th stage are :
+  \ m
+a
+thbf  
+{
+s}_{ t} \in  \
+ma
+thbb  {R}^{\frac {H}{2^{t+1}} \times \frac {W}{2^{t+1}} \times 2^{t-1}C} = \mathbb {R}^{\frac {{N}_w}{4^{t-1}} \times N_p \times {{2^{t-1}C}}} 
+(4)
+In our implementation, we use the patch merging layer
+instead of the patch embedding layer in all stages except the
+first.
+4598
+
+===== PAGE 5 =====
+3.4. Fusion branch
+3.4.1
+Token fusion block
+In order to integrate multi-resolution WSI, we propose the
+token fusion block based on a cross-attention mechanism
+and apply it to each stage, as shown in Fig. 3-(c). Briefly,
+we first assess globally important local features by using a
+cross-attention mechanism, where the global token is used
+as the query, and the local feature serves as the key and
+value, denoted as “cross attention” in Fig. 3-(c). Next, we
+concatenate it with the global feature and integrate them
+based on inverted bottleneck structure [33], which consists
+of a 5x5 convolution, LN, PConv for channel expansion, a
+GELU activation function, and another PConv to compress
+the channels again, denoted as “Fuse block” in Fig. 3-(c).
+Finally, the output of the Fuse block is concatenated with
+the result from the previous Image decoder block, described
+in below.
+3.5. Image decoder block
+Inspired by DHUnet [38], we implement an image de-
+coder to expand the image features, allowing them to be
+used in subsequent stages to account for the dimensional
+differences between each stage, as shown in Fig. 3-(b). For
+instance, in the first stage, the image decoder transforms
+the shape from ht × wt × Ct to 4ht × 4wt × Ct. In the
+following stages, the shape changes from ht × wt × Ct to
+2ht × 2wt × 1
+2Ct. Specifically, the image decoder consists
+of multiple transposed convolution layers, and the result-
+ing feature maps are concatenated as the output, which is
+then used as the previous feature of “Fusion stage” in the
+subsequent stage, as shown in Fig. 3-(c). The details are
+presented in Supplementary S3.
+  \ mathb f {D}_{t} = \ text {Image decoder}[\mathbf {D}_{t+1} ; \mathbf {F}_t],
+(5)
+where Dt+1 denotes the previous fusion stage’s output and
+Ft denotes Fuse block’s output. The final output D1 goes
+to a 1x1 convolution to make the final segmentation map.
+3.6. Loss Function
+We train our model in an end-to-end manner using a
+composite loss function, as presented in Eq. (6). The seg-
+mentation loss function, L, is defined as the sum of bi-
+nary cross-entropy loss (Lbce) and Dice loss (Ldice), cal-
+culated based on the model’s predictions and the ground
+truth. To further guide the learning process, we incorpo-
+rate additional auxiliary segmentation losses from interme-
+diate stages, along with a classification loss from the classi-
+fier block in the final stage. During training, these auxiliary
+losses are combined with the total loss, though they are not
+used during the inference phase. The overall training loss is
+then defined as:
+  \mat h bf {L }_{total}  = \al pha \math
+bf {L} (M,head(f _ 0)) + \be ta \mathbf {L}(M,head(f_2)) \nonumber &\\ \quad \quad +\gamma \mathbf {L}(M,head(f_4)) + \omega \mathbf {L}_{bce}(CM,C(G_4)) \label {eq:total_loss}
+(6)
+where α, β, γ and ω are tunable hyperparameters. The
+segmentation head generates pixel-wise predictions, and M
+denotes the ground truth mask. CM is a binary classifi-
+cation mask that indicates 1 or 0 whether the presence or
+absence of tumor in the ground truth mask.
+4. Experiments
+In this section, we conduct empirical experiments to pro-
+vide the promise of integrating multi-resolution based on
+the dual approach in tumor segmentation. The dataset and
+experimental settings details are described in Sec. 4.1. In
+section Sec. 4.2, we present the three experiment results.
+First, we present the results of three experiments. First,
+we evaluate the segmentation performance of the proposed
+method for breast cancer metastases in lymph nodes us-
+ing the Camelyon 16 dataset. Next, we evaluate general-
+ization of our model across different dataset (i.e., Catholic
+Uijeongbu St. Mary’s hospital dataset). Finally, we demon-
+strates robusteness of our model using data from entirely
+different organ (i.e., PAIP dataset). Finally, We conduct ab-
+lation studies to validate our method in section Sec. 4.3.
+4.1. Experimental setups
+4.1.1
+Data description
+The Camelyon16 dataset The Camelyon16 dataset [3] is
+part of the Camelyon Grand Challenge 2016, which fo-
+cused on the detection of metastases in sentinel lymph
+node whole-slide images from two independent datasets.
+It includes 400 H&E-stained WSIs (i.e., 270 training im-
+ages and 130 testing images). The images are annotated
+with lesion-level ground truth, providing a robust dataset
+for evaluating algorithms for metastasis detection.
+The
+high resolution and detailed annotations of the Camelyon16
+dataset make it an ideal benchmark for testing the effective-
+ness of segmentation algorithms in identifying metastatic
+regions.
+Catholic Uijeongbu St. Mary’s hospital dataset We in-
+clude a total of 83 WSIs of lymph nodes from 36 patients
+undergoing either radical mastectomy or breast-conserving
+surgery with sentinel lymph node biopsy at Catholic Ui-
+jeongbu St. Mary’s hospital between January 2023 and De-
+cember 2023. Of these, 59 WSIs from 22 patients show
+evidence of metastatic carcinoma, while 24 WSIs from 14
+patients exhibit normal lymph node histology. The sizes
+of the metastatic lesions range from 0.03 mm to 15.4 mm.
+pecifically, 49 WSIs are classified as macrometastatic (> 2
+mm), 8 WSIs as micrometastatic (> 0.2 mm and ≤2.0 mm
+or ≤0.2 mm and > 200 cells), aand 2 WSIs as containing
+isolated tumor cells (≤0.2 mm and ≤200 cells). An expert
+4599
+
+===== PAGE 6 =====
+pathologist (K.Y) performs the annotations for all cancer
+regions. This study is approved by the Institutional Review
+Board of the College of Medicine at the Catholic Uijeongbu
+St. Mary’s hospital (Approval No. XC23SIDI0021).
+The PAIP2019 dataset The PAIP2019 dataset [21] is from
+the Pathology AI Platform Challenge 2019, which aims to
+promote the development of algorithms for automated liver
+cancer segmentation in WSI. This dataset consists of 50
+WSIs of liver biopsies stained with H&E, split into training
+and testing sets. Each image is annotated with detailed seg-
+mentation masks for tumor regions, offering a challenging
+dataset for evaluating segmentation performance. The com-
+plexity and variety of tumor appearances in the PAIP2019
+dataset provide a rigorous test for the generalizability and
+robustness of segmentation models.
+4.1.2
+Implementation details
+1) CNN-based methods: We compare our method with
+CNN-based models, such as Unet 2) Transformer-based
+methods: Since the ViT-based model successfully seg-
+ments objects both natural images and medical images,
+we compare MFTrans with transformer-based models, in-
+cluding DSTransUnet, SwinUnet, and SwinUnetR. 3) Dual
+branch methods: Recently dual-branch approaches, in-
+cluding DHUnet, and TransFuse, have shown successful
+segmentation performance in WSI applications. We com-
+pare our method with dual branch models. Note that the
+major difference between existing dual-branch approaches
+and our method is that our method utilizes multi-resolution
+(i.e., , 10x and 40x magnification WSI) while existing meth-
+ods focus on one particular resolution, such as 10x alone.
+For each model, we train on 6 Nvidia H100 GPU with
+80GB of memory with python 3.10 and pytorch 2.0.0. The
+hyper-parameters are tuned in certain ranges as follows:
+learning rate in {0.003, 0.001, 0.0003, 0.0001, 0.00003,
+0.00001} and AdamW optimizer with α = 0.99, and
+β = 0.99, and crossentropy as loss function with α = 0.6,
+β = 0.2, γ = 0.2 and ω = 0.2. For training each model,
+Dice
+Jaccard
+Accuracy
+MFTrans(ours)
+0.918
+0.848
+0.925
+DHUnet
+0.907
+0.830
+0.915
+DSTransUnet
+0.906
+0.829
+0.912
+TransFuse
+0.920
+0.851
+0.925
+SwinUnet
+0.848
+0.737
+0.873
+SwinUnetR
+0.793
+0.657
+0.831
+Unet
+0.857
+0.751
+0.88
+Table 1. Comparison with competing methods on Cameylon 16
+for balanced setup(i.e., normal:tumor=1:1). The tumor segmen-
+tation performance are compared in terms of dice, Jaccard index,
+and accuracy. Top results are reported in bold.
+we use data augmentations including horizontal flip, ver-
+tical flip, random [90◦, 180◦, 270◦] rotation, and random
+hue-saturation-value (HSV) transform with hue 30%, satu-
+ration 10%. When we training Transfuse and DSTransUnet,
+the input size of the two models is resized to the size used
+in the paper respectively.
+4.2. Experimental results and discussion
+4.2.1
+Evaluation on Camelyon 16 dataset
+To demonstrate the potential of our method for tumor seg-
+mentation, we conduct a quantitative comparison with bal-
+anced data setup (i.e., normal:tumor=1:1).
+As shown in
+Tab. 1 and Fig. 4, we observe that TransFuse shows the
+best segmentation performance (i.e., dice= 0.920, Jaccard
+index= 0.851, accuracy: 0.925), and our method achieves
+second best performance (i.e., dice= 0.918, Jaccard index=
+0.848, accuracy: 0.925) compared with all state-of-the-art
+(SOTA) methods. Overall, the transformer-based segmen-
+tation methods, including DHUnet, DSTransUnet, Trans-
+Fuse and ours, shows better performance than CNN-based
+segmentation model, such as U-Net, and Swin transformer
+based model shows the worst performance.
+However, our method (i.e., MFTrans) shows promising
+results for tumor segmentation in real world setup. Particu-
+lary, in camelyon 16 dataset, WSI scans contain more nor-
+mal patches than tumor patches (i.e, normal:tumor=5:1). As
+shown in Tab. 2 We observe that our method achieves the
+best performance (i.e., dice= 0.818, Jaccard index= 0.692,
+accuracy: 0.938) and Transfuse achieves second best per-
+formance (i.e., dice= 0.810, Jaccard index= 0.681, accu-
+racy: 0.933) compared with all SOTA methods.
+4.2.2
+Evaluation on Catholic Uijeongbu St.
+Mary’s
+hospital dataset
+To assess the generalizability of our method, we conduct a
+quantitative comparison in Catholic Uijeongbu St. Mary’s
+hospital dataset, where WSIs are collected from the same
+Dice
+Jaccard
+Accuracy
+MFTrans(ours)
+0.818
+0.692
+0.938
+DHUnet
+0.802
+0.669
+0.932
+DSTransUnet
+0.765
+0.619
+0.913
+TransFuse
+0.810
+0.681
+0.933
+SwinUnet
+0.780
+0.640
+0.933
+SwinUnetR
+0.688
+0.525
+0.902
+Unet
+0.801
+0.668
+0.940
+Table 2. Comparison with competing methods on Cameylon 16
+in real-world setup (i.e., normal:tumor=5:1). The tumor seg-
+mentation performance are compared in terms of dice, Jaccard in-
+dex, and accuracy. Top results are reported in bold.
+4600
+
+===== PAGE 7 =====
+(a) WSI
+(e) DSTransUnet
+(f) TransFuse
+(b) Ground truth
+(g) SwinUnetR
+(c) MFTrans (Ours)
+(h) SwinUnet
+(d) DHUnet
+(i) Unet
+Figure 4. Visualization of segmentation map for SOTA meth-
+ods on the Camelyon 16 dataset. Sub-figures (a) denotes ground
+truth WSI and its tumor is marked with black solid contour. The
+segmentation map for benchmark algorithms, including proposed,
+DHUnet, DSTransUnet, TransFuse, SwinUnetR, SwinUnet, Unet
+are presented in sub-figure (b)-(i), respectively.
+organ with Camelyon16. This allows us to evaluate our
+model on independently collected data under similar con-
+ditions. As shown in Tab. 3 and Fig. 5, we observe that our
+MFTrans shows the best segmentation performance (i.e.,
+dice= 0.902, Jaccard index= 0.829, accuracy: 0.995), and
+SwinUnet achieves second best performance (i.e., dice=
+0.897, Jaccard index= 0.820, accuracy: 0.995) compared
+with all SOTA methods.
+4.2.3
+Evaluation on PAIP dataset
+To further assess the generalizability across different or-
+gans, we conduct a quantitative comparison in the PAIP
+dataset, where WSIs are collected from the different organs
+with Camelyon16. Segmenting tumors in WSI from differ-
+ent organs is more challenging due to variations in tissue
+morphology and staining. Despite this, as shown in Tab. 4
+and Fig. 6, we observe that our model shows the best seg-
+mentation performance (i.e., dice= 0.801, Jaccard index=
+0.688, accuracy: 0.905) compared with all SOTA methods.
+Dice
+Jaccard
+Accuracy
+MFTrans(ours)
+0.902
+0.829
+0.995
+DHUnet
+0.894
+0.817
+0.995
+DSTransUnet
+0.860
+0.809
+0.995
+TransFuse
+0.893
+0.818
+0.995
+SwinUnet
+0.897
+0.820
+0.995
+SwinUnetR
+0.850
+0.767
+0.994
+Unet
+0.875
+0.792
+0.994
+Table 3. Comparison with competing methods on Catholic Ui-
+jeongbu St. Mary’s hospital dataset. The tumor segmentation
+performance are compared in terms of dice, Jaccard index, and ac-
+curacy. Top results are reported in bold.
+(e) DSTransUnet
+(b) Ground truth
+(h) SwinUnet
+(a) WSI
+(g) SwinUnetR
+(d) DHUnet
+(f) TransFuse
+(c) MFTrans (Ours)
+(i) Unet
+Figure 5. Visualization of segmentation map for SOTA meth-
+ods on the Catholic Uijeongbu St. Mary’s hospital dataset..
+Sub-figure (a) shows the original WSI, and sub-figure (b) presents
+the ground truth mask. Segmentation results for benchmark algo-
+rithms, including MFTrans (ours), DHUnet, DSTransUnet, Trans-
+Fuse, SwinUnetR, SwinUnet, and Unet, are shown in sub-figures
+(c) - (i), respectively.
+4.2.4
+Discussion
+While individual performance within each dataset is criti-
+cal, demonstrating generalization across different datasets
+is crucial for validating a model’s real-world applicability.
+The Camelyon 16 and Catholic Uijeongbu St. Mary’s hos-
+pital datasets both consist of WSIs from the same organ (i.e.
+lymph nodes), enabling us to assess the robustness of our
+model across datasets with similar tissue types but differ-
+ent data sources. Our method perform consistently well in
+both datasets, indicating that it can generalize effectively
+even when WSIs are collected independently under similar
+conditions.
+More challenging is generalizing to WSIs collected from
+entirely different organs, as in the PAIP dataset (e.g., liver).
+Dice
+Jaccard
+Accuracy
+MFTrans(ours)
+0.801
+0.688
+0.905
+DHUnet
+0.794
+0.678
+0.904
+DSTransUnet
+0.792
+0.673
+0.899
+TransFuse
+0.748
+0.610
+0.889
+SwinUnet
+0.773
+0.648
+0.896
+SwinUnetR
+0.741
+0.608
+0.893
+Unet
+0.767
+0.648
+0.921
+Table 4.
+Comparison with competing methods on PAIP
+dataset. The tumor segmentation performance are compared in
+terms of dice, Jaccard index, and accuracy. Top results are re-
+ported in bold.
+4601
+
+===== PAGE 8 =====
+(a) WSI
+(e) DSTransUnet
+(f) TransFuse
+(b) Ground truth
+(g) SwinUnetR
+(c) MFTrans (Ours)
+(h) SwinUnet
+(d) DHUnet
+(i) Unet
+Figure 6. Visualization of segmentation maps for state-of-the-
+art (SOTA) methods on the PAIP dataset. Sub-figure (a) shows
+the original WSI, and sub-figure (b) presents the ground truth
+mask. Segmentation results for benchmark algorithms, including
+MFTrans (ours), DHUnet, DSTransUnet, TransFuse, SwinUnetR,
+SwinUnet, and Unet, are shown in sub-figures (c) - (i), respec-
+tively.
+Although differences in tissue morphology typically lead to
+significant drops in segmentation performance, our method
+achieves the best performance compared with competing
+methods in the PAIP dataset. This impressive performance
+demonstrates its ability to adapt to different tissue types and
+maintain strong segmentation capabilities. These result sug-
+gest that MFTrans is effective within specific datasets and
+highly generalizable across various WSI data from different
+organs.
+4.3. Ablation Studies
+Effect of sample imbalance varying proportion of tumor
+We evaluate the effect of varying tumor-to-normal tissue
+ratios on segmentation performance. As shown in Fig. 7,
+our method outperforms state-of-the-art models, particu-
+larly when the dataset contains more than twice as many
+normal patches as tumor patches. This demonstrates the
+advantage of our approach in real-world scenarios (i.e., nor-
+mal:tumor=5:1), where datasets typically have a higher pro-
+portion of normal tissue compared to tumor regions.
+Effect of Global token number The number of global to-
+kens plays a crucial role in the model’s ability to capture
+integrated context within the global branch and in selecting
+important features from the local branch during fusion. As
+shown in Tab. 5, using too many tokens can degrade perfor-
+mance, while 9 tokens provide the best results. Fewer to-
+kens struggle to capture sufficient global context, whereas
+increasing model complexity and leading to overfitting on
+less relevant features. Additional experimental results are
+provided in the Supplementary S4.
+5. Conclusion
+In this study, we propose MFTrans, a multi-resolution
+fusion transformer designed to combine high- and low-
+Figure 7. The effect of tumor-to-normal tissue ratio. We eval-
+uate segmentation performance with varying imbalance ratios, in
+terms of Dice coefficients. The imbalance ratio is defined as the
+number of normal patches divided by the number of tumor patches.
+7
+8
+9
+10
+11
+12
+Dice
+0.907
+0.894
+0.917
+0.910
+0.909
+0.898
+Jaccard
+0.829
+0.808
+0.848
+0.836
+0.832
+0.815
+Table 5. Effect of number of Global token. We compre segmen-
+tation performance varing number of Global token in Camelyon16
+magnification WSI for better tumor segmentation.
+The
+combination of a Global Token Transformer and a dual-
+branch architecture allows MFTrans to capture both local
+and global features efficiently, mimicking the hierarchical
+approach of pathologists.
+Our extensive experiments on
+the Camelyon16, PAIP2019, and Catholic Uijeongbu St.
+Mary’s hospital datasets show that MFTrans outperforms
+existing state-of-the-art models in terms of segmentation
+accuracy, especially in real-world cases where tumor-to-
+normal tissue ratios are imbalanced. The model’s ability
+to perform well across different datasets and tissue types
+also highlights its promise for broader use in clinical cancer
+diagnostics.
+6. Acknowledgments
+This study was partly supported by the National Re-
+search Foundation of Korea (NRF-2022R1F1A1068529),
+Institute of Information & communications Technology
+Planning & Evaluation (IITP) grant funded by the Korea
+government (MSIT) (No.RS-2021-II212068, Artificial In-
+telligence Innovation Hub, No.2019-0-01842, Artificial In-
+telligence Graduate School Program (GIST)), Ministry of
+Trade, Industry, and Energy (MOTIE) Korea, under the
+“Infrastructure program for industrial innovation” super-
+vised by the Korea Institute for Advancement of Technol-
+ogy (KIAT) (No. RS-2024-00434342), and Artificial intel-
+ligence industrial convergence cluster development project
+funded by the Ministry of Science and ICT(MSIT, Ko-
+rea)&Gwangju Metropolitan City.
+4602
+
+===== PAGE 9 =====
+References
+[1] Esther Abels, Liron Pantanowitz, Famke Aeffner, Mark D
+Zarella, Jeroen Van der Laak, Marilyn M Bui, Venkata NP
+Vemuri, Anil V Parwani, Jeff Gibbs, Emmanuel Agosto-
+Arroyo, et al.
+Computational pathology definitions, best
+practices, and recommendations for regulatory guidance: a
+white paper from the digital pathology association. The Jour-
+nal of pathology, 249(3):286–294, 2019. 1
+[2] Md Zahangir Alom, Mahmudul Hasan, Chris Yakopcic,
+Tarek M Taha, and Vijayan K Asari. Recurrent residual con-
+volutional neural network based on u-net (r2u-net) for med-
+ical image segmentation. arXiv preprint arXiv:1802.06955,
+2018. 2
+[3] Babak Ehteshami Bejnordi, Mitko Veta, Paul Johannes
+Van Diest, Bram Van Ginneken, Nico Karssemeijer, Geert
+Litjens, Jeroen AWM Van Der Laak, Meyke Hermsen,
+Quirine F Manson, Maschenka Balkenhol, et al. Diagnos-
+tic assessment of deep learning algorithms for detection of
+lymph node metastases in women with breast cancer. Jama,
+318(22):2199–2210, 2017. 5
+[4] Hu Cao, Yueyue Wang, Joy Chen, Dongsheng Jiang, Xi-
+aopeng Zhang, Qi Tian, and Manning Wang.
+Swin-unet:
+Unet-like pure transformer for medical image segmentation.
+In European conference on computer vision, pages 205–218.
+Springer, 2022. 2
+[5] Chun-Fu Chen, Rameswar Panda, and Quanfu Fan.
+Re-
+gionvit: Regional-to-local attention for vision transformers.
+arXiv preprint arXiv:2106.02689, 2021. 1
+[6] Junyu Chen, Yufan He, Eric C Frey, Ye Li, and Yong Du. Vit-
+v-net: Vision transformer for unsupervised volumetric med-
+ical image registration.
+arXiv preprint arXiv:2104.06468,
+2021. 2
+[7] Jieneng Chen, Yongyi Lu, Qihang Yu, Xiangde Luo, Ehsan
+Adeli, Yan Wang, Le Lu, Alan L Yuille, and Yuyin Zhou.
+Transunet: Transformers make strong encoders for medi-
+cal image segmentation. arXiv preprint arXiv:2102.04306,
+2021. 1, 2
+[8] Jia Deng, Wei Dong, Richard Socher, Li-Jia Li, Kai Li,
+and Li Fei-Fei. Imagenet: A large-scale hierarchical image
+database. In 2009 IEEE conference on computer vision and
+pattern recognition, pages 248–255. Ieee, 2009. 1
+[9] Kaizhong Deng, Yanda Meng, Dongxu Gao, Joshua Bridge,
+Yaochun Shen, Gregory Lip, Yitian Zhao, and Yalin Zheng.
+Transbridge: A lightweight transformer for left ventricle
+segmentation in echocardiography.
+In Simplifying Medi-
+cal Ultrasound: Second International Workshop, ASMUS
+2021, Held in Conjunction with MICCAI 2021, Strasbourg,
+France, September 27, 2021, Proceedings 2, pages 63–72.
+Springer, 2021. 2
+[10] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina
+Toutanova.
+Bert:
+Pre-training of deep bidirectional
+transformers for language understanding.
+arXiv preprint
+arXiv:1810.04805, 2018. 1
+[11] Bo Dong, Wenhai Wang, Deng-Ping Fan, Jinpeng Li,
+Huazhu Fu, and Ling Shao.
+Polyp-pvt: Polyp segmen-
+tation with pyramid vision transformers.
+arXiv preprint
+arXiv:2108.06932, 2021. 2
+[12] Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov,
+Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner,
+Mostafa Dehghani, Matthias Minderer, Georg Heigold, Syl-
+vain Gelly, et al. An image is worth 16x16 words: Trans-
+formers for image recognition at scale.
+arXiv preprint
+arXiv:2010.11929, 2020. 1
+[13] Joann G Elmore, Gary M Longton, Patricia A Carney,
+Berta M Geller, Tracy Onega, Anna NA Tosteson, Heidi D
+Nelson, Margaret S Pepe, Kimberly H Allison, Stuart J
+Schnitt, et al. Diagnostic concordance among pathologists
+interpreting breast biopsy specimens. Jama, 313(11):1122–
+1132, 2015. 1
+[14] Yunhe Gao, Mu Zhou, and Dimitris N Metaxas. Utnet: a
+hybrid transformer architecture for medical image segmen-
+tation. In Medical Image Computing and Computer Assisted
+Intervention–MICCAI 2021: 24th International Conference,
+Strasbourg, France, September 27–October 1, 2021, Pro-
+ceedings, Part III 24, pages 61–71. Springer, 2021. 2
+[15] Metin N Gurcan, Laura E Boucheron, Ali Can, Anant Mad-
+abhushi, Nasir M Rajpoot, and Bulent Yener. Histopatholog-
+ical image analysis: A review. IEEE reviews in biomedical
+engineering, 2:147–171, 2009. 1
+[16] Ali Hatamizadeh, Vishwesh Nath, Yucheng Tang, Dong
+Yang, Holger R Roth, and Daguang Xu. Swin unetr: Swin
+transformers for semantic segmentation of brain tumors in
+mri images. In International MICCAI Brainlesion Workshop,
+pages 272–284. Springer, 2021. 1, 2
+[17] Ali Hatamizadeh, Yucheng Tang, Vishwesh Nath, Dong
+Yang, Andriy Myronenko, Bennett Landman, Holger R
+Roth, and Daguang Xu. Unetr: Transformers for 3d med-
+ical image segmentation. In Proceedings of the IEEE/CVF
+winter conference on applications of computer vision, pages
+574–584, 2022. 1
+[18] Huimin Huang, Lanfen Lin, Ruofeng Tong, Hongjie Hu,
+Qiaowei Zhang, Yutaro Iwamoto, Xianhua Han, Yen-Wei
+Chen, and Jian Wu. Unet 3+: A full-scale connected unet
+for medical image segmentation.
+In ICASSP 2020-2020
+IEEE international conference on acoustics, speech and sig-
+nal processing (ICASSP), pages 1055–1059. IEEE, 2020. 2
+[19] Andrew Janowczyk and Anant Madabhushi. Deep learning
+for digital pathology image analysis: A comprehensive tuto-
+rial with selected use cases. Journal of pathology informat-
+ics, 7(1):29, 2016. 2
+[20] Yuanfeng Ji, Ruimao Zhang, Huijie Wang, Zhen Li, Lingyun
+Wu, Shaoting Zhang, and Ping Luo. Multi-compound trans-
+former for accurate biomedical image segmentation. In Med-
+ical Image Computing and Computer Assisted Intervention–
+MICCAI 2021: 24th International Conference, Strasbourg,
+France, September 27–October 1, 2021, Proceedings, Part I
+24, pages 326–336. Springer, 2021. 2
+[21] Yoo
+Jung
+Kim,
+Hyungjoon
+Jang,
+Kyoungbun
+Lee,
+Seongkeun
+Park,
+Sung-Gyu
+Min,
+Choyeon
+Hong,
+Jeong Hwan Park, Kanggeun Lee, Jisoo Kim, Wonjae
+Hong, et al.
+Paip 2019:
+Liver cancer segmentation
+challenge. Medical image analysis, 67:101854, 2021. 6
+[22] Jun Kong, Olcay Sertel, Hiroyuki Shimada, Kim L Boyer,
+Joel H Saltz, and Metin N Gurcan. Computer-aided eval-
+uation of neuroblastoma on whole-slide histology images:
+4603
+
+===== PAGE 10 =====
+Classifying grade of neuroblastic differentiation.
+Pattern
+Recognition, 42(6):1080–1092, 2009. 2
+[23] Vinay Kumar, Abul K Abbas, Nelson Fausto, and Jon C
+Aster. Robbins and Cotran pathologic basis of disease, pro-
+fessional edition e-book. Elsevier health sciences, 2014. 1
+[24] Shaohua Li, Xiuchao Sui, Xiangde Luo, Xinxing Xu, Yong
+Liu, and Rick Goh.
+Medical image segmentation us-
+ing squeeze-and-expansion transformers.
+arXiv preprint
+arXiv:2105.09511, 2021. 2
+[25] Xiaomeng Li, Hao Chen, Xiaojuan Qi, Qi Dou, Chi-Wing
+Fu, and Pheng-Ann Heng. H-denseunet: hybrid densely con-
+nected unet for liver and tumor segmentation from ct vol-
+umes. IEEE transactions on medical imaging, 37(12):2663–
+2674, 2018. 2
+[26] Tsung-Yi Lin, Michael Maire, Serge Belongie, James Hays,
+Pietro Perona, Deva Ramanan, Piotr Doll´ar, and C Lawrence
+Zitnick. Microsoft coco: Common objects in context. In
+Computer Vision–ECCV 2014: 13th European Conference,
+Zurich, Switzerland, September 6-12, 2014, Proceedings,
+Part V 13, pages 740–755. Springer, 2014. 1
+[27] Ze Liu, Yutong Lin, Yue Cao, Han Hu, Yixuan Wei, Zheng
+Zhang, Stephen Lin, and Baining Guo. Swin transformer:
+Hierarchical vision transformer using shifted windows. In
+Proceedings of the IEEE/CVF international conference on
+computer vision, pages 10012–10022, 2021. 1
+[28] Zhuang Liu, Hanzi Mao, Chao-Yuan Wu, Christoph Feicht-
+enhofer, Trevor Darrell, and Saining Xie. A convnet for the
+2020s. In Proceedings of the IEEE/CVF conference on com-
+puter vision and pattern recognition, pages 11976–11986,
+2022. 3, 4
+[29] Ozan Oktay, Jo Schlemper, Loic Le Folgoc, Matthew Lee,
+Mattias Heinrich, Kazunari Misawa, Kensaku Mori, Steven
+McDonagh, Nils Y Hammerla, Bernhard Kainz, et al. Atten-
+tion u-net: Learning where to look for the pancreas. arXiv
+preprint arXiv:1804.03999, 2018. 1, 2
+[30] Olivier Petit, Nicolas Thome, Clement Rambour, Loic The-
+myr, Toby Collins, and Luc Soler. U-net transformer: Self
+and cross attention for medical image segmentation.
+In
+Machine Learning in Medical Imaging: 12th International
+Workshop, MLMI 2021, Held in Conjunction with MICCAI
+2021, Strasbourg, France, September 27, 2021, Proceedings
+12, pages 267–276. Springer, 2021. 2
+[31] Robin Rombach, Andreas Blattmann, Dominik Lorenz,
+Patrick Esser, and Bj¨orn Ommer.
+High-resolution image
+synthesis with latent diffusion models.
+In Proceedings of
+the IEEE/CVF conference on computer vision and pattern
+recognition, pages 10684–10695, 2022. 1
+[32] Olaf Ronneberger, Philipp Fischer, and Thomas Brox. U-
+net: Convolutional networks for biomedical image segmen-
+tation. In Medical image computing and computer-assisted
+intervention–MICCAI 2015: 18th international conference,
+Munich, Germany, October 5-9, 2015, proceedings, part III
+18, pages 234–241. Springer, 2015. 1, 2
+[33] Mark Sandler, Andrew Howard, Menglong Zhu, Andrey Zh-
+moginov, and Liang-Chieh Chen.
+Mobilenetv2: Inverted
+residuals and linear bottlenecks.
+In Proceedings of the
+IEEE conference on computer vision and pattern recogni-
+tion, pages 4510–4520, 2018. 5
+[34] Christian Szegedy, Wei Liu, Yangqing Jia, Pierre Sermanet,
+Scott Reed, Dragomir Anguelov, Dumitru Erhan, Vincent
+Vanhoucke, and Andrew Rabinovich.
+Going deeper with
+convolutions.
+In Proceedings of the IEEE conference on
+computer vision and pattern recognition, pages 1–9, 2015.
+4
+[35] Loic Themyr, Cl´ement Rambour, Nicolas Thome, Toby
+Collins, and Alexandre Hostettler. Full contextual attention
+for multi-resolution transformers in semantic segmentation.
+In Proceedings of the IEEE/CVF Winter Conference on Ap-
+plications of Computer Vision, pages 3224–3233, 2023. 3
+[36] Jeya Maria Jose Valanarasu, Poojan Oza, Ilker Hacihaliloglu,
+and Vishal M Patel.
+Medical transformer: Gated axial-
+attention for medical image segmentation. In Medical im-
+age computing and computer assisted intervention–MICCAI
+2021: 24th international conference, Strasbourg, France,
+September 27–October 1, 2021, proceedings, part I 24,
+pages 36–46. Springer, 2021. 2
+[37] Jeya Maria Jose Valanarasu, Vishwanath A Sindagi, Ilker
+Hacihaliloglu, and Vishal M Patel. Kiu-net: Towards accu-
+rate segmentation of biomedical images using over-complete
+representations.
+In Medical Image Computing and Com-
+puter Assisted Intervention–MICCAI 2020: 23rd Interna-
+tional Conference, Lima, Peru, October 4–8, 2020, Proceed-
+ings, Part IV 23, pages 363–373. Springer, 2020. 2
+[38] Lian Wang, Liangrui Pan, Hetian Wang, Mingting Liu,
+Zhichao Feng, Pengfei Rong, Zuo Chen, and Shaoliang
+Peng. Dhunet: Dual-branch hierarchical global–local fusion
+network for whole slide image segmentation.
+Biomedical
+Signal Processing and Control, 85:104976, 2023. 2, 5
+[39] Xiao Xiao, Shen Lian, Zhiming Luo, and Shaozi Li.
+Weighted res-unet for high-quality retina vessel segmenta-
+tion. In 2018 9th international conference on information
+technology in medicine and education (ITME), pages 327–
+331. IEEE, 2018. 2
+[40] Xiaohua Zhai, Joan Puigcerver, Alexander Kolesnikov,
+Pierre Ruyssen, Carlos Riquelme, Mario Lucic, Josip Djo-
+longa, Andre Susano Pinto, Maxim Neumann, Alexey Doso-
+vitskiy, et al. A large-scale study of representation learning
+with the visual task adaptation benchmark. arXiv preprint
+arXiv:1910.04867, 2019. 1
+[41] Yundong Zhang, Huiye Liu, and Qiang Hu.
+Transfuse:
+Fusing transformers and cnns for medical image segmenta-
+tion. In Medical Image Computing and Computer Assisted
+Intervention–MICCAI 2021: 24th International Conference,
+Strasbourg, France, September 27–October 1, 2021, Pro-
+ceedings, Part I 24, pages 14–24. Springer, 2021. 1, 2
+[42] Bolei Zhou, Hang Zhao, Xavier Puig, Sanja Fidler, Adela
+Barriuso, and Antonio Torralba.
+Scene parsing through
+ade20k dataset. In Proceedings of the IEEE conference on
+computer vision and pattern recognition, pages 633–641,
+2017. 1
+[43] Zongwei Zhou, Md Mahfuzur Rahman Siddiquee, Nima
+Tajbakhsh, and Jianming Liang. Unet++: A nested u-net ar-
+chitecture for medical image segmentation. In Deep Learn-
+ing in Medical Image Analysis and Multimodal Learning
+for Clinical Decision Support: 4th International Workshop,
+DLMIA 2018, and 8th International Workshop, ML-CDS
+4604
+
+===== PAGE 11 =====
+2018, Held in Conjunction with MICCAI 2018, Granada,
+Spain, September 20, 2018, Proceedings 4, pages 3–11.
+Springer, 2018. 2
+4605
