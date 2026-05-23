@@ -97,11 +97,11 @@ Ablation (Tab. 4) shows KPS alone lifts ImageNet from 55.1 -> 65.6 and COCO T2I 
 Fine-tuning only with (long caption, image) pushes the image encoder to encode *every* detail into one vector, blurring the short-caption alignment. PCM adds a second contrastive objective on a *coarse* version of the image feature:
 
 $$
-(v_1, i_1), \ldots, (v_n, i_n) = F(I_{\mathrm{fine}}) \quad \text{(decomposition)}
+(v_1, i_1), \ldots, (v_n, i_n) = F(I_{\mathrm{fine} }) \quad \text{(decomposition)}
 $$
 
 $$
-I_{\mathrm{coarse}} = F^{-1}\big(E(F(I_{\mathrm{fine}}))\big)
+I_{\mathrm{coarse} } = F^{-1}\big(E(F(I_{\mathrm{fine} }))\big)
 $$
 
 Concretely **F is the eigendecomposition of the (batch) covariance** of image features, **E keeps the top-32 eigenvectors** by eigenvalue, and F^-1 is the linear projection back. The total loss is the symmetric InfoNCE between (a) I_fine <-> T_long and (b) I_coarse <-> T_short.

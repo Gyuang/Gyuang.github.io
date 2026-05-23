@@ -88,7 +88,7 @@ and the existence probability is the MC average. Appendix A is the load-bearing 
 
 Per-sample concept embeddings are concatenated and linearly projected to a class embedding,
 
-$$h^{(n)} = w^\top [z_{c_1}^{(n)}, \dots, z_{c_{N_c}}^{(n)}] + b,$$
+$$h^{(n)} = w^\top [z_{c_1}^{(n)}, \dots, z_{c_{N_c} }^{(n)}] + b,$$
 
 and matched against trainable class anchors $g_k$ by negative squared distance softmax with learnable scale $d > 0$:
 
@@ -98,7 +98,7 @@ $$p(y_k \mid x) \approx \tfrac{1}{N_s} \sum_n \frac{\exp(-d\|h^{(n)} - g_k\|_2)}
 
 Concept predictor: BCE on the MC-averaged concept probability plus a KL prior to prevent variance collapse,
 
-$$\mathcal{L}_{\text{concept}} = \mathcal{L}_{BCE} + \lambda_{KL}\sum_c \mathrm{KL}(\mathcal{N}(\mu_c, \mathrm{diag}(\sigma_c)) \,\|\, \mathcal{N}(0, I)).$$
+$$\mathcal{L}_{\text{concept} } = \mathcal{L}_{BCE} + \lambda_{KL}\sum_c \mathrm{KL}(\mathcal{N}(\mu_c, \mathrm{diag}(\sigma_c)) \,\|\, \mathcal{N}(0, I)).$$
 
 The class predictor is trained **separately** with cross-entropy (sequential training in the CBM-Koh taxonomy).
 

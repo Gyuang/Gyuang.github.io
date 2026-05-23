@@ -83,7 +83,7 @@ LGDiST attacks both gaps: reference-free *and* expressive enough to exploit the 
 8. **Regularization:** Gaussian noise injected into $X_p$ with probability 0.5 during training.
 9. **Weighted reconstruction loss** prioritizes HSAGs over CGs:
 
-$$\mathcal{L}_{\text{rec}} = \alpha\,\text{MSE}(X_{\text{HSAGs}}, \hat{X}_{\text{HSAGs}}) + (1-\alpha)\,\text{MSE}(X_{\text{CGs}}, \hat{X}_{\text{CGs}})$$
+$$\mathcal{L}_{\text{rec} } = \alpha\,\text{MSE}(X_{\text{HSAGs} }, \hat{X}_{\text{HSAGs} }) + (1-\alpha)\,\text{MSE}(X_{\text{CGs} }, \hat{X}_{\text{CGs} })$$
 
 The exact $\alpha$ is **not stated in the paper**. AE training: 5,000 epochs, lr 1e-6, AdamW, batch 128.
 
@@ -101,7 +101,7 @@ $$\tilde X_E = (1-M) \odot \varepsilon + M \odot X_E,\quad \varepsilon \sim \mat
 13. **Condition** the DiT on $C = M \odot X_E$ plus timestep $t$.
 14. Noise-prediction loss:
 
-$$\mathcal{L}_{\text{DDPM}} = \mathbb{E}_{X_E, t, \varepsilon}\bigl[\,\|\varepsilon - \hat\varepsilon_\theta(\tilde X_{E,t}, C, t)\|_2^2\,\bigr]$$
+$$\mathcal{L}_{\text{DDPM} } = \mathbb{E}_{X_E, t, \varepsilon}\bigl[\,\|\varepsilon - \hat\varepsilon_\theta(\tilde X_{E,t}, C, t)\|_2^2\,\bigr]$$
 
 15. **Schedule:** cosine, 1500 training steps, 50 sampling steps. Train 1500 epochs, lr 1e-4, AdamW, batch 128, 1× RTX 8000.
 

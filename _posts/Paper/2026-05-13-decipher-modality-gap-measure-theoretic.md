@@ -71,19 +71,19 @@ The medical-AI relevance is indirect but real: BioMedCLIP, PubMedCLIP and other 
 
 **Theorem 1 (no constraint).** As $N \to \infty$,
 
-$$\lim \mathcal{L}_{\text{MCL}} - 2\log N \ge -\tfrac{2}{\tau} + 2\log\!\big(\Gamma(\nu+1)(2\tau)^\nu I_\nu(1/\tau)\big)$$
+$$\lim \mathcal{L}_{\text{MCL} } - 2\log N \ge -\tfrac{2}{\tau} + 2\log\!\big(\Gamma(\nu+1)(2\tau)^\nu I_\nu(1/\tau)\big)$$
 
 with $\nu = h/2 - 1$, with equality iff (A1) $x_i = y_i\ \forall i$ and (A2) $\mu_x = \mu_y = \sigma_{h-1}$ (uniform on the sphere). Conclusion: $\Delta\theta \to 0$, $\kappa \to 0$. The MCL objective by itself wants to dissolve the gap.
 
 **Theorem 2 (cone constraint, $\kappa > 0$).** Restrict $X, Y$ to $\text{vMF}(c_x, \kappa_x), \text{vMF}(c_y, \kappa_y)$ with fixed positive $\kappa$. Then
 
-$$\lim \mathcal{L}_{\text{MCL}}^c - 2\log N = J(\cos\Delta\theta;\kappa_y,\nu) + J(\cos\Delta\theta;\kappa_x,\nu) \ge J(1;\kappa_y,\nu) + J(1;\kappa_x,\nu),$$
+$$\lim \mathcal{L}_{\text{MCL} }^c - 2\log N = J(\cos\Delta\theta;\kappa_y,\nu) + J(\cos\Delta\theta;\kappa_x,\nu) \ge J(1;\kappa_y,\nu) + J(1;\kappa_x,\nu),$$
 
 with equality iff $\Delta\theta = 0$. **Critically, the bound depends on $\kappa$ but the optimum $\Delta\theta$ does not.** Cone size and temperature shift the loss value but not its argmin.
 
 **Theorem 3 (subspace constraint).** If $X$ collapses into hyperplane $A$ and $Y$ into $B$ with normals $n_A, n_B$, intersection $C = A \cap B$, principal angle $\varphi \in (0, \pi/2)$, then
 
-$$\lim \mathcal{L}_{\text{MCL}}^c - 2\log N \ge \tilde{J}(\cos\varphi_{\min}, \cos\varphi_{\min}, \cos\varphi_{\min}; \kappa_y, \tilde{\nu}) + \text{(symmetric)},$$
+$$\lim \mathcal{L}_{\text{MCL} }^c - 2\log N \ge \tilde{J}(\cos\varphi_{\min}, \cos\varphi_{\min}, \cos\varphi_{\min}; \kappa_y, \tilde{\nu}) + \text{(symmetric)},$$
 
 with $\tilde\nu = (h-1)/2 - 1$ and $\tilde J$ generalizing $J$ via the projection norm $\tilde M_\kappa(w,t) = \sqrt{\kappa^2 + 2\kappa w/\tau + t^2/\tau^2}$. Equality iff (A6) $c_x \perp C, c_y \perp C$ and (A7) $\Delta\theta = \varphi_{\min}$. **Once representations live in two distinct hyperplanes, the gap converges to the smallest angle between them and cannot go below.**
 

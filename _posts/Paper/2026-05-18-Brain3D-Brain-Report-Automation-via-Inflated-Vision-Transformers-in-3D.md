@@ -64,7 +64,7 @@ Brain MRI interpretation needs coherent 3D spatial reasoning: hemispheric latera
 Given a volumetric MRI $X \in \mathbb{R}^{C \times D \times H \times W}$ and a fixed instruction prompt $Y_{\text{prompt}}$, generate report $Y$ autoregressively:
 
 $$
-p(Y \mid X, Y_{\text{prompt}}) = \prod_{t=1}^{|Y|} p(y_t \mid X, t_{1:S}, y_{<t})
+p(Y \mid X, Y_{\text{prompt} }) = \prod_{t=1}^{|Y|} p(y_t \mid X, t_{1:S}, y_{<t})
 $$
 
 ### 2. Preprocessing
@@ -78,7 +78,7 @@ The backbone is **MedSigLIP** (MedGemma family), a 2D Transformer pretrained on 
 Positional embeddings are decomposed:
 
 $$
-P_{3D}(z, y, x) = P_{\text{depth}}(z) + P_{\text{spatial}}(y, x)
+P_{3D}(z, y, x) = P_{\text{depth} }(z) + P_{\text{spatial} }(y, x)
 $$
 
 where $P_{\text{depth}}$ is learnable and $P_{\text{spatial}}$ reuses pretrained 2D embeddings broadcast along the depth axis. Output: $Z_{\text{enc}} \in \mathbb{R}^{N \times d_v}$.
@@ -92,7 +92,7 @@ Adaptive average pooling along the sequence dimension reduces $N$ volumetric tok
 Two-layer MLP with GELU maps $d_v \to d_{\text{llm}}$, scaled by a learnable scalar gate $s$ (`vis_scale`):
 
 $$
-Z_{\text{vis}} = s \cdot \text{MLP}(Z_{\text{pool}})
+Z_{\text{vis} } = s \cdot \text{MLP}(Z_{\text{pool} })
 $$
 
 Low initial $s$ enables gradual visual conditioning.
@@ -102,7 +102,7 @@ Low initial $s$ enables gradual visual conditioning.
 No cross-attention — visual tokens are simply prepended to text embeddings:
 
 $$
-Z_{\text{in}} = \text{Concat}(Z_{\text{vis}}, Z_{\text{txt}}) \in \mathbb{R}^{(K+T) \times d_{\text{llm}}}
+Z_{\text{in} } = \text{Concat}(Z_{\text{vis} }, Z_{\text{txt} }) \in \mathbb{R}^{(K+T) \times d_{\text{llm} }}
 $$
 
 Then autoregressively decoded by the causal LLM (**MedGemma 1.5-4B-IT**).

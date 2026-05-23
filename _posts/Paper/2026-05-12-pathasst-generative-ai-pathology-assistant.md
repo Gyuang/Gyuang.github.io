@@ -71,7 +71,7 @@ Assistant: {response} <STOP> ...
 
 Training is two-phase, with a standard causal-LM next-token loss over response tokens only:
 
-$$\mathcal{L}(\theta) = -\sum_{t=1}^{T} \log p(x_t \mid I, X_{\text{instruct}}, X_{a,<t}; \theta)$$
+$$\mathcal{L}(\theta) = -\sum_{t=1}^{T} \log p(x_t \mid I, X_{\text{instruct} }, X_{a,<t}; \theta)$$
 
 - **Phase 1 (projector alignment).** Freeze PathCLIP and Vicuna-13B; train only the FC projector on PathInstruct's detailed-description split. $\theta$ = FC params.
 - **Phase 2 (instruction tuning).** Freeze only PathCLIP; train FC + Vicuna-13B end-to-end on a curated 35K subset (all book-sourced PathInstruct entries plus PubMed single-image samples with caption length > 50 tokens). $\theta$ = FC + Vicuna-13B params.

@@ -93,7 +93,7 @@ The dispreferred tokens `y_l^n` are **decoded online** during DPO, each chosen a
 
 Both branches are folded into one loss with separate coefficients:
 
-$$\mathcal{L}_{\text{POVID}} = -\mathbb{E}_{(x, y_w, y_l)\sim \mathcal{D}} \left[\log \sigma\left( \alpha \log \frac{\pi_\theta(y_w|x)}{\pi_{\text{ref}}(y_w|x)} - \left(\beta_1 \log \frac{\pi_\theta(y_l^t|x)}{\pi_{\text{ref}}(y_l^t|x)} + \beta_2 \log \frac{\pi_\theta(y_l^n|x^n)}{\pi_{\text{ref}}(y_l^n|x^n)} \right) \right)\right]$$
+$$\mathcal{L}_{\text{POVID} } = -\mathbb{E}_{(x, y_w, y_l)\sim \mathcal{D} } \left[\log \sigma\left( \alpha \log \frac{\pi_\theta(y_w|x)}{\pi_{\text{ref} }(y_w|x)} - \left(\beta_1 \log \frac{\pi_\theta(y_l^t|x)}{\pi_{\text{ref} }(y_l^t|x)} + \beta_2 \log \frac{\pi_\theta(y_l^n|x^n)}{\pi_{\text{ref} }(y_l^n|x^n)} \right) \right)\right]$$
 
 `y_l^n` is conditioned on the noisy image `x^n`; `y_l^t` shares the clean image `x` with `y_w`. The reference policy `π_ref` is the SFT'd LLaVA-1.5-7B before POVID.
 

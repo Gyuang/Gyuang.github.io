@@ -69,7 +69,7 @@ Also missing across the board: **no variance / seed reporting**, no statistical 
 
 ### Simple rule reward
 
-$$R = R_{\text{format}} + R_{\text{acc}}, \quad R_{\text{format}} \in \{0, 0.5\}, \quad R_{\text{acc}} \in \{0, 1\}.$$
+$$R = R_{\text{format} } + R_{\text{acc} }, \quad R_{\text{format} } \in \{0, 0.5\}, \quad R_{\text{acc} } \in \{0, 1\}.$$
 
 Format reward fires when the output is wrapped in `<think>…</think><answer>…</answer>`; accuracy reward fires when the answer string matches the multiple-choice ground truth. No learned reward model.
 
@@ -85,7 +85,7 @@ For every training sample compute $s = \mathrm{Acc}(y_d, y^*)$ over the $e$ spec
 
 Train sequentially $D_{\text{easy}} \to D_{\text{medium}} \to D_{\text{hard}}$ with GRPO, augmenting the objective with a token-level entropy bonus:
 
-$$J_{\text{C-MARL}}(\theta) = \mathbb{E}\Big[\, J_{\text{GRPO}}(\theta) + \gamma_s \cdot H_t(\pi_\theta^{\text{attend}}) \,\Big], \qquad H_t = -\sum_{j} p_{t,j} \log p_{t,j},$$
+$$J_{\text{C-MARL} }(\theta) = \mathbb{E}\Big[\, J_{\text{GRPO} }(\theta) + \gamma_s \cdot H_t(\pi_\theta^{\text{attend} }) \,\Big], \qquad H_t = -\sum_{j} p_{t,j} \log p_{t,j},$$
 
 with $p_t = \mathrm{softmax}(z_t/\tau)$ over the vocabulary $V$. The coefficient schedule encodes the curriculum:
 

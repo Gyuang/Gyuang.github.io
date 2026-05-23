@@ -34,7 +34,7 @@ Saunshi et al. (2022) gave a single linear toy where contrastive learning succee
 
 Replace $r_0$ (graph-only quantity) with $m$ (graph $\cap$ function-class quantity), called the number of **minimal implementable clusters**. A partition $\{S_1, \dots, S_m\}$ is *minimal implementable* w.r.t. $\mathcal{F}$ when (i) inter-cluster positive-pair leakage is at most $\alpha$, (ii) every $f \in \mathcal{F}$ has a lower-bounded per-cluster expansion $Q_{S_i}(g) \geq \beta$ (so $\mathcal{F}$ cannot split clusters any finer), and (iii) there exists an $f \in \mathcal{F}$ implementing the partition exactly. Under those assumptions, Theorem 3.6 bounds the linear-probe MSE at $k = m$ by
 
-$$\mathbb{E}_{p_{\text{data}}}\|W\hat f(x) - e_{y(x)}\|^2 \;\leq\; \frac{\alpha}{\beta}\cdot\frac{P_{\max}}{P_{\min}-\alpha}.$$
+$$\mathbb{E}_{p_{\text{data} }}\|W\hat f(x) - e_{y(x)}\|^2 \;\leq\; \frac{\alpha}{\beta}\cdot\frac{P_{\max} }{P_{\min}-\alpha}.$$
 
 Theorem 4.5 strengthens this through eigenfunctions of the positive-pair Laplacian: $m$ approximate eigenfunctions inside $\mathcal{F}$ suffice, which can be strictly smaller than the count of minimal implementable clusters when the implementable eigenfunctions have geometric structure.
 
@@ -63,7 +63,7 @@ Theorem 4.5 strengthens this through eigenfunctions of the positive-pair Laplaci
 
 The setup is the spectral / Barlow-Twins-style contrastive loss
 
-$$\mathcal{L}_\lambda(f) \;=\; \mathbb{E}_{(x,x^+)\sim p_{\text{pos}}}\|f(x)-f(x^+)\|^2 \;+\; \lambda \cdot \big\|\mathbb{E}_{x\sim p_{\text{data}}}[f(x)f(x)^\top] - I\big\|_F^2,$$
+$$\mathcal{L}_\lambda(f) \;=\; \mathbb{E}_{(x,x^+)\sim p_{\text{pos} }}\|f(x)-f(x^+)\|^2 \;+\; \lambda \cdot \big\|\mathbb{E}_{x\sim p_{\text{data} }}[f(x)f(x)^\top] - I\big\|_F^2,$$
 
 with $f \in \mathcal{F}: \mathcal{X} \to \mathbb{R}^k$.
 
@@ -74,11 +74,11 @@ with $f \in \mathcal{F}: \mathcal{X} \to \mathbb{R}^k$.
 
 Under these assumptions, **Theorem 3.6** gives, at $k = m$ with $\lambda > \alpha/P_{\min}$,
 
-$$\mathbb{E}_{p_{\text{data}}}\|W\hat f(x) - e_{y(x)}\|^2 \;\leq\; \frac{\alpha}{\beta}\cdot\frac{P_{\max}}{P_{\min}-\alpha}.$$
+$$\mathbb{E}_{p_{\text{data} }}\|W\hat f(x) - e_{y(x)}\|^2 \;\leq\; \frac{\alpha}{\beta}\cdot\frac{P_{\max} }{P_{\min}-\alpha}.$$
 
 **Eigenfunction reformulation (Section 4).** Define the graph Laplacian $L(g)(x) = g(x) - \int p_{\text{pos}}(x,x')/p_{\text{data}}(x)\cdot g(x')\,dx'$. Assumption 4.2 posits $m$ orthogonal unit-norm "approximate eigenfunctions" inside $\mathcal{F}$ with total quadratic form $\leq \varphi$. Assumption 4.3 requires any small-eigenvalue function in $\mathcal{F}$ to be (up to $\varepsilon$) a linear combination of those eigenfunctions. Assumption 4.4 makes the downstream label linear in the eigenfunctions with norm $B$ and residual $\zeta$. **Theorem 4.5** then gives
 
-$$\mathbb{E}_{p_{\text{data}}}\|W\hat f(x) - \vec y(x)\|^2 \;\lesssim\; \zeta + B^2 k \cdot (\varepsilon + \varphi/\lambda).$$
+$$\mathbb{E}_{p_{\text{data} }}\|W\hat f(x) - \vec y(x)\|^2 \;\lesssim\; \zeta + B^2 k \cdot (\varepsilon + \varphi/\lambda).$$
 
 This is strictly stronger than Thm 3.6: the same downstream task can sometimes be solved with $k = m$ smaller than the count of minimal implementable clusters.
 

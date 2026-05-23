@@ -69,7 +69,7 @@ The medical-AI angle is that the same pipeline plus a small contrastive adaptor 
 
 The core computation is the cell-embedding aggregation:
 
-$$ e_{\text{cells}} = \mathrm{AVG}(X)\, e_f + e_c, \quad \mathrm{AVG}_{aa}(X_i) = X_i / m,\ \mathrm{AVG}_{wa}(X_i) = X_i / \mathrm{sum}(X_i). $$
+$$ e_{\text{cells} } = \mathrm{AVG}(X)\, e_f + e_c, \quad \mathrm{AVG}_{aa}(X_i) = X_i / m,\ \mathrm{AVG}_{wa}(X_i) = X_i / \mathrm{sum}(X_i). $$
 
 `wa` is the new ingredient; `e_c` is an optional cell-state term. GenePT corresponds to `LLM → NCBI text` plus `aa`.
 

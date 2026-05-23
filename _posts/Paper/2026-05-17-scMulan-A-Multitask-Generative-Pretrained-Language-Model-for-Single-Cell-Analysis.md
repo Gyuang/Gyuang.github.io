@@ -79,7 +79,7 @@ The transformer is a 24-layer decoder with ~368M parameters. Two architectural c
 - **Dual embedding layer.** Each input token sums an entity embedding and a value embedding: $h_0 = E_e(E_{\text{obs}}) + E_v(V_{\text{obs}})$. This lets the same `CD3D` token carry expression value 2.1 in one cell and 0 in another without two-stage tokenisation.
 - **Dual prediction heads.** `head_e` is a classification MLP over the full vocabulary; `head_v` is an MSE regression head for the predicted expression value. Total loss is
 
-  $$L = L_1 + \lambda L_2, \quad L_1 = -\sum_i \log P\!\left(\{E \setminus \{e_1,\dots,e_i\}\} \mid e_{\leq i}, v_{\leq i}; \theta\right), \quad L_2 = \frac{1}{|E_{\text{unobs}}|}\sum_{e_j \in E_{\text{unobs}}}\!\!\big(v_j^{\text{true}} - v_j^{\text{pred}}\big)^2.$$
+  $$L = L_1 + \lambda L_2, \quad L_1 = -\sum_i \log P\!\left(\{E \setminus \{e_1,\dots,e_i\}\} \mid e_{\leq i}, v_{\leq i}; \theta\right), \quad L_2 = \frac{1}{|E_{\text{unobs} }|}\sum_{e_j \in E_{\text{unobs} }}\!\!\big(v_j^{\text{true} } - v_j^{\text{pred} }\big)^2.$$
 
   $L_1$ is the *set-prediction* analogue of next-token cross-entropy; genes are randomly shuffled each epoch to enforce order-insensitivity, and positional encodings are removed for input entities.
 

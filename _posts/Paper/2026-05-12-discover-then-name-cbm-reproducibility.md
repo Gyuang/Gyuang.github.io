@@ -60,7 +60,7 @@ The Amsterdam group asks the unglamorous but critical question: when you train t
 CLIP ResNet-50 image and text encoders, embedding dim `d = 1024`. The SAE is a Bricken et al. 2023-style dictionary learner with linear encoder `f(.)` (weights `W_E in R^{d x h}`), ReLU `phi`, and linear decoder `g(.)` (weights `W_D in R^{h x d}`), latent dim `h = 8192` (8x over-complete). The self-supervised loss is
 
 $$
-\mathcal{L}_{\text{SAE}}(a) = \lVert \text{SAE}(a) - a \rVert^2 + \lambda_1 \lVert \phi(f(a)) \rVert_1
+\mathcal{L}_{\text{SAE} }(a) = \lVert \text{SAE}(a) - a \rVert^2 + \lambda_1 \lVert \phi(f(a)) \rVert_1
 $$
 
 with `lambda_1 = 3e-5`. Training: CC3M for 200 epochs, batch 4096, lr 0.1 Adam, resample frequency 10.
@@ -83,7 +83,7 @@ and the cosine score `v_c = cos(angle(p_c, T(s_c)))` is the paper's main interpr
 The fine-tuning loss adds an activation-weighted, magnitude-normalized cosine bonus:
 
 $$
-\mathcal{L}_{\text{FSAE}}(a) = \lVert \text{SAE}(a) - a \rVert^2 + \lambda_1 \lVert \phi(f(a)) \rVert_1 - C \cdot \frac{\phi(f(a))}{\max(\lVert \phi(f(a)) \rVert_2, \epsilon)} \cdot v
+\mathcal{L}_{\text{FSAE} }(a) = \lVert \text{SAE}(a) - a \rVert^2 + \lambda_1 \lVert \phi(f(a)) \rVert_1 - C \cdot \frac{\phi(f(a))}{\max(\lVert \phi(f(a)) \rVert_2, \epsilon)} \cdot v
 $$
 
 where `v in R^h` is the per-neuron cosine score from the naming step. Two design choices matter: activation scaling by `phi(f(a))` so rarely-firing neurons are not pushed toward CLIP-aligned vectors they never use, and L2 normalization that prevents the optimizer from inflating activations to game the cosine bonus.

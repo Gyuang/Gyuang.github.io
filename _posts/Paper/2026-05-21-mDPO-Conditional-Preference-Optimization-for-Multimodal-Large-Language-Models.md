@@ -71,13 +71,13 @@ mDPO replaces the single DPO term with an unweighted **sum of three losses**: st
 
 **(1) Standard multimodal DPO** (backbone):
 
-$$\mathcal{L}_{\text{DPO}_m} = -\log \sigma\!\left(\beta \log \tfrac{\pi_\theta(y_w \mid m, q)}{\pi_{\text{ref}}(y_w \mid m, q)} - \beta \log \tfrac{\pi_\theta(y_l \mid m, q)}{\pi_{\text{ref}}(y_l \mid m, q)}\right)$$
+$$\mathcal{L}_{\text{DPO}_m} = -\log \sigma\!\left(\beta \log \tfrac{\pi_\theta(y_w \mid m, q)}{\pi_{\text{ref} }(y_w \mid m, q)} - \beta \log \tfrac{\pi_\theta(y_l \mid m, q)}{\pi_{\text{ref} }(y_l \mid m, q)}\right)$$
 
 This maximizes $\sigma(r(m,q,y_w) - r(m,q,y_l))$ -- the standard chosen-vs-rejected response margin.
 
 **(2) Conditional Preference Optimization (CoPO)** -- swap the contrast axis from response to image. Hold $(q, y_w)$ fixed and contrast a chosen image $m_w$ against a hard-negative cropped image $m_l$:
 
-$$\mathcal{L}_{\text{CoPO}} = -\log \sigma\!\left(\beta \log \tfrac{\pi_\theta(y_w \mid m_w, q)}{\pi_{\text{ref}}(y_w \mid m_w, q)} - \beta \log \tfrac{\pi_\theta(y_w \mid m_l, q)}{\pi_{\text{ref}}(y_w \mid m_l, q)}\right)$$
+$$\mathcal{L}_{\text{CoPO} } = -\log \sigma\!\left(\beta \log \tfrac{\pi_\theta(y_w \mid m_w, q)}{\pi_{\text{ref} }(y_w \mid m_w, q)} - \beta \log \tfrac{\pi_\theta(y_w \mid m_l, q)}{\pi_{\text{ref} }(y_w \mid m_l, q)}\right)$$
 
 Maximizes $\sigma(r(m_w,q,y_w) - r(m_l,q,y_w))$. Because $q$ and $y_w$ are identical on both sides, the only way the model can drive the margin up is by **using image features**, which mechanically removes the language-only shortcut.
 
@@ -85,13 +85,13 @@ The hard-negative $m_l$ is constructed by **random-cropping 0-20%** of the origi
 
 **(3) Anchored Preference Optimization (AncPO)** -- absolute floor on the chosen reward, fixing the well-known DPO pathology where chosen-response log-prob drifts down:
 
-$$\mathcal{L}_{\text{AncPO}} = -\log \sigma\!\left(\beta \log \tfrac{\pi_\theta(y_w \mid m_w, q)}{\pi_{\text{ref}}(y_w \mid m_w, q)} - \delta\right)$$
+$$\mathcal{L}_{\text{AncPO} } = -\log \sigma\!\left(\beta \log \tfrac{\pi_\theta(y_w \mid m_w, q)}{\pi_{\text{ref} }(y_w \mid m_w, q)} - \delta\right)$$
 
 with $\delta = 0$ (default), forcing $r(m_w, q, y_w) > 0$.
 
 **Combined objective**:
 
-$$\mathcal{L}_{\text{mDPO}} = \mathcal{L}_{\text{DPO}_m} + \mathcal{L}_{\text{CoPO}} + \mathcal{L}_{\text{AncPO}}$$
+$$\mathcal{L}_{\text{mDPO} } = \mathcal{L}_{\text{DPO}_m} + \mathcal{L}_{\text{CoPO} } + \mathcal{L}_{\text{AncPO} }$$
 
 Unweighted sum -- no coefficient sweep is reported, a minor audit gap (see Limitations).
 

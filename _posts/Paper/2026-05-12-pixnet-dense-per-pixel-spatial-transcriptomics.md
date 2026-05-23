@@ -83,7 +83,7 @@ The two ⭐⭐⭐ claims (dense reformulation + multi-dataset SOTA) are well-sup
 
 **Output head and supervision.** A 1×1 conv on $D_1$ yields $G \in \mathbb{R}^{H \times W \times M}$ with $M = 250$ (top-250 mean-expression genes per dataset, following ST-Net). Loss:
 
-$$\mathcal{L} = \mathcal{L}_{\text{mse}} + \lambda \cdot \mathcal{L}_{\text{pcc}}, \quad \lambda = 0.5$$
+$$\mathcal{L} = \mathcal{L}_{\text{mse} } + \lambda \cdot \mathcal{L}_{\text{pcc} }, \quad \lambda = 0.5$$
 
 where $\mathcal{L}_{\text{pcc}}$ is a batch-wise Pearson correlation loss. The MSE+PCC combination is ablated in Table 4 and beats either alone.
 

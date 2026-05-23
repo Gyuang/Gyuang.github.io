@@ -103,7 +103,7 @@ $\pi_\theta$ outputs which of $\{y^{(1)}, y^{(2)}\}$ is better. The chosen respo
 Standard DPO with $\pi_\text{ref}$ = the SFT-initialized LVLM:
 
 $$
-\mathcal{L}_\text{DPO}(\pi_\theta; \pi_\text{ref}) = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}}\left[\log \sigma\left(\beta \log \frac{\pi_\theta(y_w \mid x, I)}{\pi_\text{ref}(y_w \mid x, I)} - \beta \log \frac{\pi_\theta(y_l \mid x, I)}{\pi_\text{ref}(y_l \mid x, I)}\right)\right].
+\mathcal{L}_\text{DPO}(\pi_\theta; \pi_\text{ref}) = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D} }\left[\log \sigma\left(\beta \log \frac{\pi_\theta(y_w \mid x, I)}{\pi_\text{ref}(y_w \mid x, I)} - \beta \log \frac{\pi_\theta(y_l \mid x, I)}{\pi_\text{ref}(y_l \mid x, I)}\right)\right].
 $$
 
 ### Training recipe

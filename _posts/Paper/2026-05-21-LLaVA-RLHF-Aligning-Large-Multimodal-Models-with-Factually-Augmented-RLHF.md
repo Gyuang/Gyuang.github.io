@@ -85,7 +85,7 @@ Two additional changes are folded into the same condition:
 PPO objective with per-token KL to the SFT initial policy:
 
 $$
-\mathcal{L}(\pi_\phi^{\text{RL}}) \;=\; -\mathbb{E}\!\left[\, r_\theta(I, x, y) - \beta \cdot D_{\mathrm{KL}}\!\left(\pi_\phi^{\text{RL}} \,\|\, \pi_{\text{INIT}}\right) \right].
+\mathcal{L}(\pi_\phi^{\text{RL} }) \;=\; -\mathbb{E}\!\left[\, r_\theta(I, x, y) - \beta \cdot D_{\mathrm{KL} }\!\left(\pi_\phi^{\text{RL} } \,\|\, \pi_{\text{INIT} }\right) \right].
 $$
 
 - **RL data pool**: 50K LLaVA first-turn prompts (to avoid pre-existing context hallucinations) + 12K A-OKVQA + 10K VQA-v2 = 72K prompts.

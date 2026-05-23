@@ -78,7 +78,7 @@ $$
 TopK sparsification keeps only the $k=32$ largest entries; the decoder reconstructs
 
 $$
-\hat{x} = W_{dec}\, h_{\text{sparse}} + \mu
+\hat{x} = W_{dec}\, h_{\text{sparse} } + \mu
 $$
 
 with **unit-normalized decoder columns after every gradient step**. Loss is plain $L = \lVert x - \hat{x} \rVert^2$. Geneformer: **18 SAEs x 4,608 features each**, 1M positions/layer subsample. scGPT: **12 SAEs x 2,048 features each**, full 3.56M positions/layer. Adam, lr $3\!\times\!10^{-4}$, batch 4,096, 5 epochs. Dead features = zero activations on 100K held-out positions.

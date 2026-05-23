@@ -61,7 +61,7 @@ Two pieces, in this order:
 
 **Phase 2 — Gradient saliency.** For each tumour sample $i$, enable input gradients and compute
 
-$$s_j = \frac{1}{|T|} \sum_{i \in T} \left| \frac{\partial L}{\partial x_{ij}} \right|.$$
+$$s_j = \frac{1}{|T|} \sum_{i \in T} \left| \frac{\partial L}{\partial x_{ij} } \right|.$$
 
 The top 50 genes by $s_j$ form $G_{50}$ (baseline B2).
 

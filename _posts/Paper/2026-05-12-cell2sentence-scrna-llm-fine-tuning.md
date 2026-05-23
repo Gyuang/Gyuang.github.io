@@ -61,7 +61,7 @@ Single-cell transcriptomics has its own zoo of specialized architectures (scVI, 
 
 Drop cells with <200 genes expressed and genes detected in <200 cells; drop cells with >2,500 total counts or >20% mitochondrial reads (Scanpy defaults). Row-normalize to 10,000 and log-transform:
 
-$$ C'_{i,j} = \log_{10}\!\left(1 + 10^4 \cdot \frac{C_{i,j}}{\sum_k C_{i,k}}\right) $$
+$$ C'_{i,j} = \log_{10}\!\left(1 + 10^4 \cdot \frac{C_{i,j} }{\sum_k C_{i,k} }\right) $$
 
 ### 2. Rank transform into a sentence
 

@@ -72,7 +72,7 @@ The most important finding the paper *under-reports* is the **external CT degrad
 
 **2) Dual-Stream Volumetric Feature Encoding (DSFE).** Two parallel branches, each:
 
-$$\mathrm{ViT\text{-}3D}_{\text{frozen, RadFM-init}} \;\rightarrow\; \mathrm{Perceiver\,Sampler}_{\text{trainable, 128 latents}}.$$
+$$\mathrm{ViT\text{-}3D}_{\text{frozen, RadFM-init} } \;\rightarrow\; \mathrm{Perceiver\,Sampler}_{\text{trainable, 128 latents} }.$$
 
 Sliding-window on the volume yields variable-length features; the Perceiver Sampler compresses them to a fixed sequence of **128 visual tokens × 768 hidden dim** per modality. Crucially the PET branch is also initialized from CT-pretrained ViT — Fig. 4 confirms that training the PET encoder from scratch hurts all metrics.
 

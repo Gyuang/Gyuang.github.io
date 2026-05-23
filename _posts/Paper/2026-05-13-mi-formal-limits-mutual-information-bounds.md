@@ -47,7 +47,7 @@ The trick is the same each time — *one* counter-distribution, *one* outlier-ri
 The second contribution is the constructive alternative: **Difference of Entropies (DoE)**,
 
 $$
-\hat I = \inf_{q_X} \hat H(p_X, q_X) - \inf_{q_{X|Y}} \hat H(p_{X|Y}, q_{X|Y}),
+\hat I = \inf_{q_X} \hat H(p_X, q_X) - \inf_{q_{X|Y} } \hat H(p_{X|Y}, q_{X|Y}),
 $$
 
 a difference of two cross-entropy *upper* bounds. DoE is **neither** an upper nor a lower bound on `I(X, Y)` — that is the price of escaping the `ln N` wall — but each cross-entropy admits an honest `O(1/√N)` Chernoff interval once log-loss is bounded by some `F_max` (e.g. via character-level backoff). The paper is explicit that this is *engineering*: a sufficiently more competent unseen "superintelligent" model could always drive the conditional entropy lower, so DoE has no formal guarantee against being fooled in this direction.
@@ -82,7 +82,7 @@ $$
 has a log-moment-generating term that is dominated by the heaviest tail event in the support. Suppose an empirical estimate uses `f(x_i) = F_max` on `p`-samples and `f(x'_i) = 0` on `q`-samples — a structurally favorable best case. The **outlier risk lemma** (Lemma 2.2) says that if `Pr[Φ] ≤ 1/N` then with probability at least `1/4` *no sample hits `Φ`*, because `(1 − 1/N)^N ≥ 1/4` for `N ≥ 2`. So an unseen event of mass `1/N` and height `e^{F_max}` contributes `(1/N) · e^{F_max}` to the true expectation that the sample never observed. Honoring the high-confidence guarantee forces
 
 $$
-\hat{\mathrm{DV}} \le F_\text{max} - \ln\!\big(e^{F_\text{max}} / N\big) = \ln N.
+\hat{\mathrm{DV} } \le F_\text{max} - \ln\!\big(e^{F_\text{max} } / N\big) = \ln N.
 $$
 
 This is the entire mechanism. Every subsequent theorem is just the same outlier risk applied to a different functional.
@@ -118,7 +118,7 @@ Plugging into `I(X, Y) ≤ H(X)` and taking the sup over discrete binnings (cont
 Use `I(X, Y) = H(X) − H(X | Y)` and estimate each entropy by a cross-entropy **upper** bound:
 
 $$
-\hat I = \inf_{q_X} \hat H(p_X, q_X) - \inf_{q_{X|Y}} \hat H(p_{X|Y}, q_{X|Y}).
+\hat I = \inf_{q_X} \hat H(p_X, q_X) - \inf_{q_{X|Y} } \hat H(p_{X|Y}, q_{X|Y}).
 $$
 
 A difference of upper bounds is neither an upper nor a lower bound on the truth — but each cross-entropy individually has `O(1/√N)` Chernoff intervals once log-loss is capped by `F_max` (Theorem 5.1). This is engineering: you trade the formal lower-bound guarantee for an honest pointwise estimate that can actually exceed `ln N`.

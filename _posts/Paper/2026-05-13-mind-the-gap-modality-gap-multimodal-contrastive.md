@@ -70,7 +70,7 @@ The downstream interventions (C10, C11) are weaker than the abstract suggests. T
 
 Define the modality gap vector
 
-$$\vec\Delta_{\text{gap}} = \frac{1}{n}\sum_i x_i - \frac{1}{n}\sum_i y_i$$
+$$\vec\Delta_{\text{gap} } = \frac{1}{n}\sum_i x_i - \frac{1}{n}\sum_i y_i$$
 
 over L2-normalized image and text embeddings $\{x_i\}, \{y_i\}$. For pre-trained CLIP on 5,000 MSCOCO pairs, $\|\vec\Delta_{\text{gap}}\| = 0.82$.
 

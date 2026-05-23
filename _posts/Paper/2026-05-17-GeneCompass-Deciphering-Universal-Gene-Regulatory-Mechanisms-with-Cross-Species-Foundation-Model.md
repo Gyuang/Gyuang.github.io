@@ -88,9 +88,9 @@ For each cell: prepend a species token + `<CLS>`, then represent each gene as a 
 
 Mask 15% of genes per cell. Two decoding heads simultaneously predict:
 
-$$\mathcal{L}_{\text{id}} = \sum_{x \in n_{\text{unk}}} p(x)\log q(x)$$
+$$\mathcal{L}_{\text{id} } = \sum_{x \in n_{\text{unk} }} p(x)\log q(x)$$
 
-$$\mathcal{L}_{\text{exp}} = \frac{1}{|n_{\text{unk}}|}\sum_{i \in n_{\text{unk}}}(\hat{x}_i^{(m)} - x_i^{(i)})^2$$
+$$\mathcal{L}_{\text{exp} } = \frac{1}{|n_{\text{unk} }|}\sum_{i \in n_{\text{unk} }}(\hat{x}_i^{(m)} - x_i^{(i)})^2$$
 
 The absolute-value head — not just rank, as in Geneformer — is what enables quantitative perturbation downstream.
 

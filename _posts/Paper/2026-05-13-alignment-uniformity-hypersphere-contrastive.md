@@ -37,11 +37,11 @@ Encoder `f : R^n → S^{m-1}` maps inputs to the unit sphere. Two ideal properti
 The authors note up front that these cannot both hold on a finite augmented dataset, and perfect uniformity itself requires `n ≥ m-1` and bounded density. The two computable surrogates:
 
 $$
-\mathcal{L}_\text{align}(f; \alpha) = \mathbb{E}_{(x,y) \sim p_\text{pos}} \big[ \|f(x) - f(y)\|_2^\alpha \big]
+\mathcal{L}_\text{align}(f; \alpha) = \mathbb{E}_{(x,y) \sim p_\text{pos} } \big[ \|f(x) - f(y)\|_2^\alpha \big]
 $$
 
 $$
-\mathcal{L}_\text{uniform}(f; t) = \log \mathbb{E}_{x, y \sim p_\text{data}} \big[ \exp(-t \|f(x) - f(y)\|_2^2) \big]
+\mathcal{L}_\text{uniform}(f; t) = \log \mathbb{E}_{x, y \sim p_\text{data} } \big[ \exp(-t \|f(x) - f(y)\|_2^2) \big]
 $$
 
 with `α = 2` and `t ∈ {2, 3}` in practice. The choice of the Gaussian kernel `G_t(u, v) = exp(-t‖u-v‖²)` is not cosmetic: Proposition 1 shows `σ_d` is the *unique* Borel-probability minimizer of `∫∫ G_t dμ dμ` on `S^d`, by strict positive-definiteness (Bochner / Stewart). Proposition 2 gives the matching `N`-point convergence (weak-* to `σ_d`).
@@ -49,7 +49,7 @@ with `α = 2` and `t ∈ {2, 3}` in practice. The choice of the Gaussian kernel 
 The load-bearing theoretical claim is **Theorem 1**: for fixed `τ > 0`,
 
 $$
-\lim_{M \to \infty} \big( \mathcal{L}_\text{contrastive}(f; \tau, M) - \log M \big) = -\tfrac{1}{\tau} \mathbb{E}_{p_\text{pos}}[ f(x)^\top f(y) ] + \mathbb{E}_{p_\text{data}} \big[ \log \mathbb{E}_{p_\text{data}} \exp\!\big( f(x^-)^\top f(x) / \tau \big) \big]
+\lim_{M \to \infty} \big( \mathcal{L}_\text{contrastive}(f; \tau, M) - \log M \big) = -\tfrac{1}{\tau} \mathbb{E}_{p_\text{pos} }[ f(x)^\top f(y) ] + \mathbb{E}_{p_\text{data} } \big[ \log \mathbb{E}_{p_\text{data} } \exp\!\big( f(x^-)^\top f(x) / \tau \big) \big]
 $$
 
 with `O(M^{-1/2})` deviation from the limit (corrected from an earlier `O(M^{-1/3})` claim). The first term is minimized iff `f` is perfectly aligned; the second is minimized by perfectly uniform encoders if any exist.

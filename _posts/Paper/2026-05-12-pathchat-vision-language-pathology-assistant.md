@@ -81,7 +81,7 @@ Llama 2 13B (decoder-only, 40 layers, 40 heads, embed 5,120, FFN hidden 13,824, 
 
 **Stage 2 — instruction finetuning (projector + LLM, vision encoder frozen).** End-to-end causal LM loss on answer tokens over the full 257k PathChatInstruct:
 
-$$\mathcal{L}_{\text{clm}}(\theta_{\text{proj}}, \theta_{\text{llm}}) = -\sum_{i=1}^{L} \log p\big(X_{\text{ans},i}\,\big|\,X_{\text{ans},1:i-1}, X_{\text{instruct}}, X_{\text{img}};\,\theta_{\text{proj}}, \theta_{\text{llm}}\big)$$
+$$\mathcal{L}_{\text{clm} }(\theta_{\text{proj} }, \theta_{\text{llm} }) = -\sum_{i=1}^{L} \log p\big(X_{\text{ans},i}\,\big|\,X_{\text{ans},1:i-1}, X_{\text{instruct} }, X_{\text{img} };\,\theta_{\text{proj} }, \theta_{\text{llm} }\big)$$
 
 BF16, ZeRO-3, batch 64 x grad-accum 2, cosine LR, warmup ratio 0.03, peak LR **2e-5**, weight decay 0, grad clip 1.0, 1 epoch. Multiple images are concatenated with a `"\n"` separator; text-only instructions drop image conditioning entirely. Training on 8x A100 80GB; inference on a single 24GB RTX 3090.
 

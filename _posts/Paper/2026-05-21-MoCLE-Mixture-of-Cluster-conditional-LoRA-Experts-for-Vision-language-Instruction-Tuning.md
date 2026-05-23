@@ -74,7 +74,7 @@ The contribution that does the most architectural work is #3: ablations (Table 5
 3. **Insert MoCLE blocks** into selected linear projections of the frozen LLM: `q_proj, v_proj` for InstructBLIP, `up_proj, down_proj` for LLaVA-1.5. Each block has E task LoRA experts (default 4) plus 1 universal LoRA expert, rank-8 for InstructBLIP and rank-128 for LLaVA-1.5.
 4. **Gate.** For input $x_i$ with cluster $C[x_i]$ (shared across all layers, initialized to centroid $c_j$, then trainable):
 
-   $$G = \text{top-}k\!\left(\text{softmax}\!\left(\tfrac{1}{\tau}(W_{\text{gate}} C[x_i] + \epsilon)\right)\right),\quad \epsilon\sim\mathcal{N}(0, 1/E),\ \tau=0.05$$
+   $$G = \text{top-}k\!\left(\text{softmax}\!\left(\tfrac{1}{\tau}(W_{\text{gate} } C[x_i] + \epsilon)\right)\right),\quad \epsilon\sim\mathcal{N}(0, 1/E),\ \tau=0.05$$
 
    Top-k is set to k=1 (a single task expert is activated). $W_{\text{gate}}$ is per-layer; the cluster embedding $C[\cdot]$ is shared across layers.
 

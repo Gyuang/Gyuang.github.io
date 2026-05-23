@@ -80,7 +80,7 @@ The final spot token is `z = z_img + z_gene + z_meta`, with `z ∈ R^{N×d}` and
 For each spot pair, the relative direction `x^{i→j}_coord = x_coord^{(i)} − x_coord^{(j)}` is computed. PCA on the pairwise direction cloud yields a frame set `F(x'_coord) = {[±u_1, ±u_2]}` (4 frames). Averaging linear projections of relative coordinates across this frame set produces a scalar bias `z_coord ∈ R^{N×N}` invariant to rotations, reflections, and translations of slide coordinates. Self-attention adds the bias:
 
 $$
-A = \mathrm{softmax}\!\left(\frac{z_Q z_K^\top}{\sqrt{d}} + z_{\mathrm{coord}}\right)
+A = \mathrm{softmax}\!\left(\frac{z_Q z_K^\top}{\sqrt{d} } + z_{\mathrm{coord} }\right)
 $$
 
 ### Masked gene-expression generative objective
@@ -88,7 +88,7 @@ $$
 A subset `m` of spots is masked, and the model regresses the gene expression of masked spots conditional on visible spots and metadata. Gene expression is continuous, so the loss is **MSE** (the paper writes the log-likelihood form in Eq. 9 but states MSE in implementation):
 
 $$
-\mathcal{L} = \frac{1}{|m|} \sum_{i \in m} \lVert x_{\mathrm{gene}}^{(i)} - \hat x_{\mathrm{gene}}^{(i)} \rVert^2
+\mathcal{L} = \frac{1}{|m|} \sum_{i \in m} \lVert x_{\mathrm{gene} }^{(i)} - \hat x_{\mathrm{gene} }^{(i)} \rVert^2
 $$
 
 ### Three pretraining schedules (the load-bearing design)

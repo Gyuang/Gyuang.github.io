@@ -70,7 +70,7 @@ A note on the title: **"scaling" here means scaling across institutions and metr
    $$R_1 = 0\cdot\text{BLEU} + 0.370\cdot\text{BERTScore} + 0.253\cdot\text{SembScore} + 0.377\cdot\text{RadGraph-F1}$$
    matching the published RadCliQ-v1 regression coefficients. One epoch. BLEU's coefficient is literally zero — the model is never *directly* rewarded for BLEU yet still reports BLEU gains downstream.
 6. **Step 2 reward — error-reduction.** Initialize from the best Step 1 checkpoint, add
-   $$R_{\text{err}} = \frac{1}{\#\text{CheXprompt errors} + 1}$$
+   $$R_{\text{err} } = \frac{1}{\#\text{CheXprompt errors} + 1}$$
    at weight 0.5 alongside the Step 1 reward, and re-introduce a KL term with coefficient 0.03 against the Step 1 policy. One additional epoch. CheXprompt is GPT-4-backed.
 7. **No format reward** is needed because SFT already produces well-structured `Findings/Impression` outputs.
 8. **Longitudinal variant** is trained by adding the prior CXR + prior report into the context window during both SFT and RL — no architectural change.

@@ -79,7 +79,7 @@ $$
 ### 4. Loss
 
 $$
-\mathcal{L}_{BT} = \underbrace{\sum_i (1 - C_{ii})^2}_{\text{invariance}} \; + \; \lambda \underbrace{\sum_i \sum_{j \neq i} C_{ij}^2}_{\text{redundancy reduction}}
+\mathcal{L}_{BT} = \underbrace{\sum_i (1 - C_{ii})^2}_{\text{invariance} } \; + \; \lambda \underbrace{\sum_i \sum_{j \neq i} C_{ij}^2}_{\text{redundancy reduction} }
 $$
 
 The invariance term equates same-feature outputs across views (push diagonal to 1); the redundancy-reduction term decorrelates distinct features across views (push off-diagonal to 0). Trivial constant solutions are excluded by construction. Default lambda = 5e-3, insensitive across [0.002, 0.020] (Fig. 5).

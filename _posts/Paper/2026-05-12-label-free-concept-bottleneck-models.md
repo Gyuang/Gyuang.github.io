@@ -87,7 +87,7 @@ For training set $\mathcal{D} = \{x_1, \ldots, x_N\}$ and concept set $\mathcal{
 Define $f_c(x) = W_c f(x)$ with $W_c \in \mathbb{R}^{M \times d_0}$. For neuron $k$ with activation pattern $q_k \in \mathbb{R}^N$ across the dataset, the differentiable `cos_cubed` similarity is:
 
 $$
-\operatorname{sim}(t_i, q_i) = \frac{\bar{q}_i^{\,3} \cdot \bar{P}_{:,i}^{\,3}}{\lVert \bar{q}_i^{\,3} \rVert_2 \cdot \lVert \bar{P}_{:,i}^{\,3} \rVert_2}
+\operatorname{sim}(t_i, q_i) = \frac{\bar{q}_i^{\,3} \cdot \bar{P}_{:,i}^{\,3} }{\lVert \bar{q}_i^{\,3} \rVert_2 \cdot \lVert \bar{P}_{:,i}^{\,3} \rVert_2}
 $$
 
 where $\bar{q}$ is $q$ after mean-0 std-1 normalization, and the element-wise cube concentrates the similarity on highly activating inputs. The training objective is $\mathcal{L}(W_c) = -\sum_i \operatorname{sim}(t_i, q_i)$, optimized with Adam, early-stopped on validation similarity. Concepts whose final validation similarity falls below 0.45 are pruned (Filter 5).

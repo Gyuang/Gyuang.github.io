@@ -44,7 +44,7 @@ The contribution is the **pipeline**, not the model. There is no new architectur
 The DPO objective itself is unchanged:
 
 $$
-\max_{\pi_\theta}\, \mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}} \log \sigma\!\left( \beta \log \frac{\pi_\theta(y_w \mid x)}{\pi_\text{ref}(y_w \mid x)} - \beta \log \frac{\pi_\theta(y_l \mid x)}{\pi_\text{ref}(y_l \mid x)} \right)
+\max_{\pi_\theta}\, \mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D} } \log \sigma\!\left( \beta \log \frac{\pi_\theta(y_w \mid x)}{\pi_\text{ref}(y_w \mid x)} - \beta \log \frac{\pi_\theta(y_l \mid x)}{\pi_\text{ref}(y_l \mid x)} \right)
 $$
 
 with LoRA, 3 epochs, AdamW (β1=0.9, β2=0.98, eps=1e-6, wd=0.05), cosine LR (warmup 0.1, peak 1e-5), global batch 256, 16× A100, ~30 h per run.

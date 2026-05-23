@@ -64,9 +64,9 @@ The experimental setup that supports Figure 1 is small and reproducible:
 - **Two-view task.** Split an MNIST image into top half `X^{(1)} ∈ [0,1]^{392}` and bottom half `X^{(2)} ∈ [0,1]^{392}`. Train encoders `g_1, g_2` and a critic `f` to maximize a sample-based lower-bound estimator `I_EST`. Evaluate by training a linear (SAGA) classifier on `g_1(x_{top})` over all training labels; report 20-run mean test accuracy. Baselines: linear-on-pixels ≈ 85%; supervised MLP/ConvNet ≈ 94%.
 - **Estimators.**
 
-  $$\hat{I}_{\text{NCE}}(X; Y) = \mathbb{E}\!\left[\frac{1}{K}\sum_{i=1}^{K} \log \frac{e^{f(x_i, y_i)}}{\frac{1}{K}\sum_{j=1}^{K} e^{f(x_i, y_j)}}\right]$$
+  $$\hat{I}_{\text{NCE} }(X; Y) = \mathbb{E}\!\left[\frac{1}{K}\sum_{i=1}^{K} \log \frac{e^{f(x_i, y_i)} }{\frac{1}{K}\sum_{j=1}^{K} e^{f(x_i, y_j)} }\right]$$
 
-  $$\hat{I}_{\text{NWJ}}(X; Y) = \mathbb{E}_{p(x,y)}[f(x,y)] - e^{-1}\,\mathbb{E}_{p(x)}\mathbb{E}_{p(y)}[e^{f(x,y)}]$$
+  $$\hat{I}_{\text{NWJ} }(X; Y) = \mathbb{E}_{p(x,y)}[f(x,y)] - e^{-1}\,\mathbb{E}_{p(x)}\mathbb{E}_{p(y)}[e^{f(x,y)}]$$
 
   Note `I_NCE` is upper-bounded by `log K ≈ 4.85` at `K = 128` — so it cannot track high MI even in principle.
 - **Critic families.** Bilinear `f(x,y) = x^T W y`; separable `f = φ_1(x)^T φ_2(y)` (~40k params); concatenated MLP `f = φ([x, y])` (~40k params). Higher capacity → tighter lower bound, in theory.
@@ -77,7 +77,7 @@ The experimental setup that supports Figure 1 is small and reproducible:
 
 The algebraic identity that grounds the metric-learning view (Section 4 / Appendix C):
 
-$$\hat{I}_{\text{NCE}} = \log K - \mathbb{E}\!\left[\frac{1}{K}\sum_{i=1}^{K} \log\!\left(1 + \sum_{j \ne i} e^{f(x_i, y_j) - f(x_i, y_i)}\right)\right]$$
+$$\hat{I}_{\text{NCE} } = \log K - \mathbb{E}\!\left[\frac{1}{K}\sum_{i=1}^{K} \log\!\left(1 + \sum_{j \ne i} e^{f(x_i, y_j) - f(x_i, y_i)}\right)\right]$$
 
 With symmetric separable critic `f(x, y) = φ(x)^T φ(y)` and shared encoder `g = g_1 = g_2`, the right-hand expectation **is** Sohn (2016)'s multi-class K-pair loss up to constants. Maximizing I_NCE ≡ minimizing a K-pair triplet loss with an inner-product metric.
 

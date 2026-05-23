@@ -75,11 +75,11 @@ where $h = f(x)$ is the shared visual feature and $G$ is the clinical guideline 
 
 2. **(b) Vision-language concept modelling.** Backbone is CLIP with vision encoder $f^v_\theta$ and text encoder $f^t_\phi$. For pair $(x, r)$, compute $h_v = f^v_\theta(x)$, $h_t = f^t_\phi(r)$, then symmetric InfoNCE:
 
-   $$\mathcal{L}_{\text{CLIP}} = -\log \frac{\exp(\mathrm{sim}(h_v, h_t)/\tau)}{\sum_{r'} \exp(\mathrm{sim}(h_v, h_{t'})/\tau)}$$
+   $$\mathcal{L}_{\text{CLIP} } = -\log \frac{\exp(\mathrm{sim}(h_v, h_t)/\tau)}{\sum_{r'} \exp(\mathrm{sim}(h_v, h_{t'})/\tau)}$$
 
    On top of $h_v$, two heads: a linear diagnostic head $W_y$ supervised by $\mathcal{L}_y = \mathcal{L}_{CE}(W_y h_v, y)$, and $N_c$ lightweight 2-layer MLP per-concept adapters $g_{\psi_i}$ supervised by $\mathcal{L}_c = (1/N_c)\sum_i \mathcal{L}_{CE}(g_{\psi_i}(h_v), c_i)$. Full objective:
 
-   $$\mathcal{L}_{\text{MedCBR}} = \lambda \mathcal{L}_{\text{CLIP}} + \mu \mathcal{L}_y + \nu \mathcal{L}_c$$
+   $$\mathcal{L}_{\text{MedCBR} } = \lambda \mathcal{L}_{\text{CLIP} } + \mu \mathcal{L}_y + \nu \mathcal{L}_c$$
 
 3. **(c) Concept-based clinical reasoning.** A frozen Qwen3-8B is prompted with $\pi = (Q, \hat y, \hat c, G)$: task instruction $Q$, $\hat y = \sigma(f^y_\theta(h_v))$, concept confidences $\hat c_i = \sigma(f^{c_i}_\theta(h_v))$, and the relevant BI-RADS excerpt. The LRM is instructed to interpret each concept's contribution, cross-check against $G$, and emit a step-by-step justification with a BI-RADS category and next-step recommendation. **No fine-tuning** of the LRM.
 

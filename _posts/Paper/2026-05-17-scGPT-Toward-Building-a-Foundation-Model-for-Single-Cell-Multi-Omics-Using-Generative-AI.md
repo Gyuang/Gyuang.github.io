@@ -101,7 +101,7 @@ $$h'_n = \mathrm{concat}(h_n,\ \mathrm{emb}_b(t_b) + \mathrm{emb}_m(t_m)).$$
 
 Self-attention is modified by an additive mask $A_{\text{mask}} \in \{0, -\infty\}^{M \times M}$:
 
-$$\mathrm{Attention}(Q,K,V) = \mathrm{softmax}\!\left(\frac{QK^T}{\sqrt{d}} + A_{\text{mask}}\right) V$$
+$$\mathrm{Attention}(Q,K,V) = \mathrm{softmax}\!\left(\frac{QK^T}{\sqrt{d} } + A_{\text{mask} }\right) V$$
 
 Each input token is either (a) `<cls>`, (b) "known" (token + expression bin embedded), or (c) "unknown" (token only). The mask rule (eq. 11):
 
@@ -111,7 +111,7 @@ So every query can attend to all known gene keys plus the query position itself,
 
 **Pretraining objective (eq. 12)** is MSE on the unknown positions:
 
-$$\mathcal{L} = \frac{1}{|\mathcal{U}_{\text{unk}}|} \sum_{j \in \mathcal{U}_{\text{unk}}} \left(\mathrm{MLP}(h_n^{(i)}) - x_j^{(i)}\right)^2$$
+$$\mathcal{L} = \frac{1}{|\mathcal{U}_{\text{unk} }|} \sum_{j \in \mathcal{U}_{\text{unk} }} \left(\mathrm{MLP}(h_n^{(i)}) - x_j^{(i)}\right)^2$$
 
 The target $x_j^{(i)}$ is the *bin index* (an integer in $\{0,\dots,B\}$), but the loss is squared-error not cross-entropy — so the model is regressing on a discretized scalar, blurring "categorical token prediction" and "regression". Two prompt modes are mixed per cell (gene-prompt and cell-prompt) and their losses summed before each optimizer step.
 

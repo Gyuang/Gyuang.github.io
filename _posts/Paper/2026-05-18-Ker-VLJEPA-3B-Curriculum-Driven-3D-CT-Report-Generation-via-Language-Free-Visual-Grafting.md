@@ -84,7 +84,7 @@ Linear 1024 → 3072 (Llama hidden) with LayerNorm and dropout, initialized via 
 
 The chat template contains 32 `<|visual_region|>` placeholder tokens whose embeddings are replaced with $\tilde{V}$ via differentiable mask-scatter. Flamingo-style gated cross-attention adapters are injected at LLM layers 7, 14, 21 with per-layer Q/K/V/O (Xavier gain=0.3):
 
-$$h'_l = h_l + \text{MHA}^{\text{xattn}}_l(h_l, \text{Linear}_l(\tilde{V}), \text{Linear}_l(\tilde{V}))$$
+$$h'_l = h_l + \text{MHA}^{\text{xattn} }_l(h_l, \text{Linear}_l(\tilde{V}), \text{Linear}_l(\tilde{V}))$$
 
 **Critical bug fix:** the x-attn hooks must fire on **every autoregressive decode step**, not only at prefill. A sequence-length guard was skipping x-attn during token-by-token decoding; removing it gave a 2.5× generation F1 jump (0.122 → 0.304).
 

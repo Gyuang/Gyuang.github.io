@@ -61,7 +61,7 @@ Multi-column extension: once a rule is selected, the new column is appended to t
 
 The bilevel objective:
 
-$$\min_{r}\; \mathcal{L}_{f^*}(\mathcal{D}_{\text{val}} \oplus r) \quad\text{s.t.}\quad f^* = \arg\min_f \mathcal{L}_f(\mathcal{D}_{\text{train}} \oplus r),$$
+$$\min_{r}\; \mathcal{L}_{f^*}(\mathcal{D}_{\text{val} } \oplus r) \quad\text{s.t.}\quad f^* = \arg\min_f \mathcal{L}_f(\mathcal{D}_{\text{train} } \oplus r),$$
 
 solved iteratively by an LLM optimizer with feedback. The pipeline:
 

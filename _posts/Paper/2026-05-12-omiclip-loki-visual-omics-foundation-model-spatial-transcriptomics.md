@@ -81,7 +81,7 @@ The architecture is CoCa-style with a vanilla ViT image encoder and a 76-token c
 3. **Text side.** Causal transformer initialized from LAION-5B. The authors note that LAION-5B initialization (which contains biological literature) already helps cluster tissue-similar patches before any finetuning — though they do not run a randomly-initialized ablation, leaving this contribution unquantified.
 4. **Contrastive objective.** Symmetric InfoNCE over the 768-d image and text embeddings:
 
-$$\mathcal{L}_{\text{Con}} = -\frac{1}{N}\Big[\sum_i \log\frac{\exp(x_i^\top y_i/\sigma)}{\sum_j \exp(x_i^\top y_j/\sigma)} + \sum_i \log\frac{\exp(y_i^\top x_i/\sigma)}{\sum_j \exp(y_i^\top x_j/\sigma)}\Big]$$
+$$\mathcal{L}_{\text{Con} } = -\frac{1}{N}\Big[\sum_i \log\frac{\exp(x_i^\top y_i/\sigma)}{\sum_j \exp(x_i^\top y_j/\sigma)} + \sum_i \log\frac{\exp(y_i^\top x_i/\sigma)}{\sum_j \exp(y_i^\top x_j/\sigma)}\Big]$$
 
 with $N=64$ (local batch), $\sigma$ a learned temperature. Trained 20 epochs on a single A100 80GB.
 

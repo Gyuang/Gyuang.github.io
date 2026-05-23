@@ -66,7 +66,7 @@ The encoding is discrete and grid-tied, not sinusoidal — which makes the model
 
 Eight layers, 16 heads, $d_\text{model} = 1024$, dropout 0.1. Standard scaled dot-product attention,
 
-$$\mathrm{Attention}(Q, K, V) = \mathrm{softmax}\!\left(\tfrac{Q K^\top}{\sqrt{d_k}}\right) V,$$
+$$\mathrm{Attention}(Q, K, V) = \mathrm{softmax}\!\left(\tfrac{Q K^\top}{\sqrt{d_k} }\right) V,$$
 
 with $Q = K = V$ taken over all $N$ spot-tokens of the section. Self-attention is **global within a section** — every spot can attend to every other spot. Output $\mathbf{H} \in \mathbb{R}^{N \times 1024}$.
 

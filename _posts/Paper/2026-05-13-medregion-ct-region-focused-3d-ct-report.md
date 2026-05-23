@@ -67,7 +67,7 @@ The authors' framing is procedural rather than architectural: they take the radi
 
 The model emits a **structured 6-paragraph report** — Lung, Large airways, Mediastinum, Heart and great vessels, Osseous structures, Upper Abdomen — and ground-truth reports were pre-split into the same 6 regions for training. The full forward pass is
 
-$$R = \mathrm{LLM}(T_{\text{vision}}, T_{\text{seg}}, T_{\text{attr}}, I)$$
+$$R = \mathrm{LLM}(T_{\text{vision} }, T_{\text{seg} }, T_{\text{attr} }, I)$$
 
 with $I$ the instruction prompt that lists the 6 region tags and the attribute block.
 

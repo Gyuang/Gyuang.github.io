@@ -91,7 +91,7 @@ and symmetrically (Def. 4.2). **Theorem 4.1** is the multimodal analogue of larg
 
 **Intrinsic multimodal energy (Def. 4.3) — the load-bearing equation.**
 
-$$F^{Sym}_{\tau, U_{1,2}}(\rho_1, \rho_2) = \frac{1}{2}\big(F_{\tau,U_{12}}(\rho_1) + F_{\tau,U_{21}}(\rho_2)\big) - D^{Sym}_{KL}(\rho_1, \rho_2).$$
+$$F^{Sym}_{\tau, U_{1,2} }(\rho_1, \rho_2) = \frac{1}{2}\big(F_{\tau,U_{12} }(\rho_1) + F_{\tau,U_{21} }(\rho_2)\big) - D^{Sym}_{KL}(\rho_1, \rho_2).$$
 
 The **negative** symmetric KL is what kills the convex-Gibbs structure of the unimodal case.
 

@@ -63,7 +63,7 @@ ChatCAD+ reframes the problem as two coupled subproblems. **Universal interpreta
 Given image $I$ and per-domain textual prompts $\{M_i\}$, BiomedCLIP encodes both sides and the predicted domain is
 
 $$
-D_{\text{pred}} = \arg\max_{i} \frac{I \cdot M_i}{\lVert I \rVert \cdot \lVert M_i \rVert}.
+D_{\text{pred} } = \arg\max_{i} \frac{I \cdot M_i}{\lVert I \rVert \cdot \lVert M_i \rVert}.
 $$
 
 CLIPs are frozen. Three domains are actually wired to specialist CAD models: chest X-ray (CheXpert-trained classifier + R2GenCMN report generator), dental panoramic X-ray (HC-Net periodontitis classifier trained on 300 private 2903x1536 panoramics), and knee MRI (graph-representation cartilage-defect model trained on 964 in-house Philips Achieva 3.0T MRIs).

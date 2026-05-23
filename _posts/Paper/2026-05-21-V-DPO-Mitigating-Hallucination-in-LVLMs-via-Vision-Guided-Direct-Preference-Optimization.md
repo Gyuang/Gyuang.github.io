@@ -42,13 +42,13 @@ Decoding-time fixes (OPERA, HALC, Volcano) are expensive and architecture-specif
 
 The technical move is a **CFG-form vision-conditional regularizer** inside the DPO objective. The reward optimization becomes
 
-$$\max_\pi \; \mathbb{E}\left[\, r(v,x,y) - \beta\,\mathrm{KL}\!\big(\pi \,\|\, \pi_{\text{ref}} \mid v,x\big) + \alpha\,\mathrm{KL}\!\big(\pi(y|v,x)\,\|\,\pi(y|x)\big)\,\right],$$
+$$\max_\pi \; \mathbb{E}\left[\, r(v,x,y) - \beta\,\mathrm{KL}\!\big(\pi \,\|\, \pi_{\text{ref} } \mid v,x\big) + \alpha\,\mathrm{KL}\!\big(\pi(y|v,x)\,\|\,\pi(y|x)\big)\,\right],$$
 
 whose optimal-policy solution introduces a multiplicative correction `φ_θ(v,x,y) = [π_θ(y|v,x)/π_θ(y|x)]^(γ−1)` with `γ = 1 − α/β`. Setting `α > 0` gives `γ < 1` — the **opposite sign** of inference-time CFG, which uses `γ > 1` to amplify the visual ratio at decode. The V-DPO insight is that during gradient updates you *strengthen* the visual-specificity ratio rather than amplify it post-hoc.
 
 The implicit reward used inside the Bradley–Terry sigmoid becomes
 
-$$f_\theta(v,x,y) = \log\!\left[\frac{\pi_\theta(y|v,x)\cdot \phi_\theta(v,x,y)}{\pi_{\text{ref}}(y|v,x)}\right],$$
+$$f_\theta(v,x,y) = \log\!\left[\frac{\pi_\theta(y|v,x)\cdot \phi_\theta(v,x,y)}{\pi_{\text{ref} }(y|v,x)}\right],$$
 
 with the gradient stopped on `φ_θ` so the textual-only branch acts as a stable reference target.
 
@@ -83,13 +83,13 @@ The pipeline runs as follows.
 
 1. **Start from an SFT LVLM** (LLaVA-v1.5-7B) and the standard DPO loss on response-contrast pairs (Eq. 3):
 
-   $$\mathcal{L}_{\text{DPO}} = -\mathbb{E}\,\log\sigma\!\left(\beta\!\left[\log\frac{\pi_\theta(y_w|v,x)}{\pi_{\text{ref}}(y_w|v,x)} - \log\frac{\pi_\theta(y_l|v,x)}{\pi_{\text{ref}}(y_l|v,x)}\right]\right).$$
+   $$\mathcal{L}_{\text{DPO} } = -\mathbb{E}\,\log\sigma\!\left(\beta\!\left[\log\frac{\pi_\theta(y_w|v,x)}{\pi_{\text{ref} }(y_w|v,x)} - \log\frac{\pi_\theta(y_l|v,x)}{\pi_{\text{ref} }(y_l|v,x)}\right]\right).$$
 
 2. **Image-contrast extension** (Eq. 4): construct `D_v = {(v_w, v_l, x, y)}` where the same response is preferred under `v_w` and dispreferred under `v_l`. Same Bradley–Terry form, but the log-ratio is over images.
 
 3. **Vision-guided reward** (Eq. 7, Eq. 8): add the `α·KL(π(y|v,x) ‖ π(y|x))` term, solve, and obtain the implicit reward
 
-   $$f_\theta(v,x,y) = \log\!\left[\frac{\pi_\theta(y|v,x)\cdot [\pi_\theta(y|v,x)/\pi_\theta(y|x)]^{\gamma-1}}{\pi_{\text{ref}}(y|v,x)}\right],$$
+   $$f_\theta(v,x,y) = \log\!\left[\frac{\pi_\theta(y|v,x)\cdot [\pi_\theta(y|v,x)/\pi_\theta(y|x)]^{\gamma-1} }{\pi_{\text{ref} }(y|v,x)}\right],$$
 
    where `γ = 1 − α/β`. Gradient is stopped on the `φ_θ = [π_θ(y|v,x)/π_θ(y|x)]^(γ−1)` factor.
 

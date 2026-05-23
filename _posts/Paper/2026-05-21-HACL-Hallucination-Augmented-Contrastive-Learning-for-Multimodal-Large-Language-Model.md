@@ -70,7 +70,7 @@ The HACL framework attaches to a standard MLLM stack (vision encoder $V_\theta$ 
 Append `<EOS>` to (a) the projected visual token sequence $S_v$ and (b) the text token sequence $S_t$. Run each through the same LLM separately. Take the last-layer hidden state at the EOS position:
 
 $$
-\hat e_v = \mathrm{LLM}([S_v, \texttt{<EOS>}])_{\mathrm{EOS}}, \qquad \hat e_t = \mathrm{LLM}([S_t, \texttt{<EOS>}])_{\mathrm{EOS}}.
+\hat e_v = \mathrm{LLM}([S_v, \texttt{<EOS>}])_{\mathrm{EOS} }, \qquad \hat e_t = \mathrm{LLM}([S_t, \texttt{<EOS>}])_{\mathrm{EOS} }.
 $$
 
 Critically, $\hat e_v$ and $\hat e_t$ live in the LLM's hidden-state space, not in a separate CLIP-style projection head. This is what lets HACL act on the modality gap that the visualization in Figure 1 diagnoses.

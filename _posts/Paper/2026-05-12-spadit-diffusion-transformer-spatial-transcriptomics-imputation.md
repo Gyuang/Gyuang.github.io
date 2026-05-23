@@ -43,7 +43,7 @@ Three design choices, all coupled:
 
 3. **Condition Embedding `ψ` via Flash-Attention.** The full scRNA-seq matrix `X_sc` is reduced via Flash-Attention with extra dim-reduction maps `Φ_K, Φ_V`:
 
-   $$x_\psi = \text{softmax}\!\left(\frac{Q\,\Phi_K(K)^\top}{\sqrt{d_k}}\right)\Phi_V(V)$$
+   $$x_\psi = \text{softmax}\!\left(\frac{Q\,\Phi_K(K)^\top}{\sqrt{d_k} }\right)\Phi_V(V)$$
 
    `x_ψ` becomes the conditioning token `x_0^c` injected into every DiT block as adaLN-style scale/shift modulation — the Peebles & Xie 2023 trick, ported to gene expression.
 

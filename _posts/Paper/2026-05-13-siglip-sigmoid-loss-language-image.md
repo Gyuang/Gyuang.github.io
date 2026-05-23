@@ -73,7 +73,7 @@ Image tower $f(\cdot)$ (ViT-B/L/SO-400M) and text tower $g(\cdot)$ (transformer 
 ### 2. Sigmoid loss vs softmax
 
 $$
-\mathcal{L}_{\text{sig}} = -\frac{1}{|B|}\sum_{i=1}^{|B|}\sum_{j=1}^{|B|} \log\sigma\!\left(z_{ij}\cdot(t\cdot x_i\cdot y_j + b)\right)
+\mathcal{L}_{\text{sig} } = -\frac{1}{|B|}\sum_{i=1}^{|B|}\sum_{j=1}^{|B|} \log\sigma\!\left(z_{ij}\cdot(t\cdot x_i\cdot y_j + b)\right)
 $$
 
 with $z_{ij}=+1$ for matched pairs and $-1$ otherwise. $t = e^{t'}$ is a learnable temperature; $b$ is a learnable bias. **Initialization that matters:** $t' = \log 10$ (so $t\approx 10$), $b = -10$.

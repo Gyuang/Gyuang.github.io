@@ -92,7 +92,7 @@ Each gene's d_p = 5120 ESM2 token is compressed to d_emb = 1280 by a single-laye
 - Construct loss sets: `G_i^{L+}` (N_loss/2 drawn from masked-expressed) and `G_i^{L-}` (N_loss/2 from non-expressed).
 - For every query gene `g` in `G_i^{L+} \cup G_i^{L-}`, concatenate the cell embedding with the (MLP-compressed) ESM2 token: `z_g^i = [h_\text{cell}^i \| \text{MLP}(p_g)]`, then predict expression indicator `y_g^i \in \{0,1\}` via an MLP with binary cross-entropy:
 
-$$ \mathcal{L} = -\frac{1}{N} \sum_i \frac{1}{N_\text{loss}} \sum_j \Big[ y_j^i \log p(y_j^i) + (1 - y_j^i) \log(1 - p(y_j^i)) \Big] $$
+$$ \mathcal{L} = -\frac{1}{N} \sum_i \frac{1}{N_\text{loss} } \sum_j \Big[ y_j^i \log p(y_j^i) + (1 - y_j^i) \log(1 - p(y_j^i)) \Big] $$
 
 ### 5. Scale and compute
 

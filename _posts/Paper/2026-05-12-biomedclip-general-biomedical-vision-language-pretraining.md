@@ -68,7 +68,7 @@ Every public PMC OA article in the June 2022 snapshot is downloaded, XML-parsed 
 Standard symmetric InfoNCE on N pairs per batch:
 
 $$
-\mathcal{L} = -\frac{1}{2N}\left( \sum_{i=1}^{N}\log\frac{e^{\cos(I_i, T_i)/\tau}}{\sum_{j=1}^{N}e^{\cos(I_i, T_j)/\tau}} + \sum_{i=1}^{N}\log\frac{e^{\cos(I_i, T_i)/\tau}}{\sum_{j=1}^{N}e^{\cos(I_j, T_i)/\tau}} \right)
+\mathcal{L} = -\frac{1}{2N}\left( \sum_{i=1}^{N}\log\frac{e^{\cos(I_i, T_i)/\tau} }{\sum_{j=1}^{N}e^{\cos(I_i, T_j)/\tau} } + \sum_{i=1}^{N}\log\frac{e^{\cos(I_i, T_i)/\tau} }{\sum_{j=1}^{N}e^{\cos(I_j, T_i)/\tau} } \right)
 $$
 
 with learnable temperature tau and linear-projected encoder outputs $I_i, T_i$. Sharded contrastive loss (Cherti et al. 2022) handles memory; built on OpenCLIP 2.x.

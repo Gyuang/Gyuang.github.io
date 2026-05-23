@@ -96,7 +96,7 @@ A weighted PageRank with damping $\alpha_\text{page}$ is iterated to convergence
 Each top-$K$ keyword is fed to SAM (Kirillov et al., 2023) to get a region $R_i$. Diffusion noise is applied *only inside* $R_i$:
 
 $$
-m' = \sqrt{\alpha_{\text{diff},t}} \cdot R_i + \sqrt{1 - \alpha_{\text{diff},t}} \cdot \epsilon, \quad \epsilon \sim \mathcal{N}(0, 1)
+m' = \sqrt{\alpha_{\text{diff},t} } \cdot R_i + \sqrt{1 - \alpha_{\text{diff},t} } \cdot \epsilon, \quad \epsilon \sim \mathcal{N}(0, 1)
 $$
 
 with $\alpha_{\text{diff},t} = \prod_{j=0}^{t} \beta_{\text{diff},j}$. Best schedule: **500 diffusion steps**.
