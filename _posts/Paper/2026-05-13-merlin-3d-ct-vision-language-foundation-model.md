@@ -117,7 +117,7 @@ The **report-generation claim (C7) deserves the most scepticism.** Numerically M
 ![Per-finding F1 radar over 30 abdominal findings](/assets/images/paper/merlin/fig_p018_01.png)
 *Figure 4: Per-finding F1 radar — Merlin holds up on coarse findings (pleural effusion, splenomegaly, AAA) and degrades on fine ones (appendicitis, lymphadenopathy, free air) (Figure 2c).*
 
-![Zero-shot data-scaling power law](/assets/images/paper/merlin/fig_p018_08.png)
+![Zero-shot data-scaling power law](/assets/images/paper/merlin/fig_p021_01.png)
 *Figure 5: Zero-shot data-scaling curve, F1 = 0.458 * D^0.0524, indicating diminishing but non-zero returns at this data scale (Figure 2d).*
 
 ![Image->Findings retrieval Recall@1](/assets/images/paper/merlin/fig_p020_01.png)

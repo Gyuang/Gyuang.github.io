@@ -111,7 +111,7 @@ The paper reports no single summary table; numbers are read off Figures 2 and 4.
 
 ### Per-section Pearson correlation, 785 genes (Fig 2a)
 
-![Per-section Pearson correlation across 785 genes on HER2+ and GSEA on top-100 predicted genes](/assets/images/paper/histogene/page_028.png)
+![Per-section Pearson correlation across 785 genes on HER2+ and GSEA on top-100 predicted genes](/assets/images/paper/histogene/page_020.png)
 *Figure 2: Per-section Pearson correlation across 785 genes on the HER2+ breast cancer dataset. (a) HisToGene* (yellow) > HisToGene (blue) > ST-Net (grey) in nearly every section; ST-Net medians cluster around 0. (b) GSEA on the top-100 predicted gene list shows enrichment in breast-cancer-relevant pathways for HisToGene/HisToGene*.*
 
 | Method | Metric | Dataset | Number (as plotted) |
@@ -137,7 +137,7 @@ Top gene mean Pearson r across 32 sections (HER2+):
 
 ### K-means clustering vs. pathologist annotation (Fig 4, ARI)
 
-![K-means clustering ARI on 6 pathologist-annotated HER2+ sections](/assets/images/paper/histogene/page_030.png)
+![K-means clustering ARI on 6 pathologist-annotated HER2+ sections](/assets/images/paper/histogene/page_021.png)
 *Figure 4: K-means clustering (k=4) of predicted gene expression on the 6 pathologist-annotated HER2+ sections. HisToGene* yields the highest ARI in 4/6 sections (B1: 0.30; D1: 0.26; F1: 0.22; C1: 0.11) and beats clustering of observed expression in 4/6 — the paper's most-cited but most-fragile claim, given N=6 and no variance.*
 
 | Section | Observed expr. | ST-Net | HisToGene | **HisToGene\*** | Winner |
