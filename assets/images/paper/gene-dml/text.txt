@@ -1,0 +1,2087 @@
+
+===== PAGE 1 =====
+Gene-DML: Dual-Pathway Multi-Level Discrimination for Gene Expression
+Prediction from Histopathology Images
+Yaxuan Song1, Jianan Fan1*, Hang Chang2, Weidong Cai1*
+1The University of Sydney, Australia
+2Lawrence Berkeley National Laboratory, USA
+yson2999@sydney.edu.au, jianan.fan@sydney.edu.au, hchang@lbl.gov, tom.cai@sydney.edu.au
+Abstract
+Accurately predicting gene expression from histopathol-
+ogy images offers a scalable and non-invasive approach to
+molecular profiling, with significant implications for pre-
+cision medicine and computational pathology.
+However,
+existing methods often underutilize the cross-modal rep-
+resentation alignment between histopathology images and
+gene expression profiles across multiple representational
+levels, thereby limiting their prediction performance. To ad-
+dress this, we propose Gene-DML, a unified framework that
+structures latent space through Dual-pathway Multi-Level
+discrimination to enhance correspondence between mor-
+phological and transcriptional modalities. The multi-scale
+instance-level discrimination pathway aligns hierarchical
+histopathology representations extracted at local, neigh-
+bor, and global levels with gene expression profiles, cap-
+turing scale-aware morphological-transcriptional relation-
+ships. In parallel, the cross-level instance-group discrim-
+ination pathway enforces structural consistency between
+individual (image/gene) instances and modality-crossed
+(gene/image, respectively) groups, strengthening the align-
+ment across modalities. By jointly modeling fine-grained
+and structural-level discrimination, Gene-DML is able to
+learn robust cross-modal representations, enhancing both
+predictive accuracy and generalization across diverse bi-
+ological contexts.
+Extensive experiments on public spa-
+tial transcriptomics datasets demonstrate that Gene-DML
+achieves state-of-the-art performance in gene expression
+prediction. The code and processed datasets are available
+at https://github.com/YXSong000/Gene-DML.
+1. Introduction
+Spatial transcriptomics (ST) has emerged as a transfor-
+mative technology that enables high-resolution mapping
+of quantification of mRNA expression (gene expression)
+within intact tissue architectures [27, 29, 38].
+Unlike
+*Corresponding authors.
+bulk RNA sequencing [35], single-cell RNA sequencing
+(scRNA-seq) or single-nucleus RNA sequencing (snRNA-
+seq), which lacks spatial localization, spatial transcrip-
+tomics preserves the anatomical and microenvironmental
+context of gene expressions, making it invaluable for pro-
+viding unprecedented insights into the spatial organization
+of molecular processes [41]. Intuitively, ST technology can
+be seen as converging on a gene expression matrix that
+captures the transcriptome at every spot (that is, a pixel, a
+cell, or a group of cells) [27], which is divided from large-
+scale whole-slide images (WSIs).
+Traditional ST meth-
+ods, such as Visium [29], MERFISH [4], seqFISH+ [9],
+STARmap [36] et al. [13], tend to be time-consuming and
+expensive, relying on specialized instruments and extensive
+domain knowledge. This raises a critical question: how can
+we leverage recent advances in deep learning to accurately
+infer spatial gene expression directly from WSIs?
+Several recent studies have made substantial progress in
+gene expression prediction from WSIs [23, 43]. Unimodal
+approaches [7, 14, 25, 42, 45] typically employ supervised
+learning to predict gene profiles from WSI tiles, focusing
+on improving feature extraction to learn strong visual rep-
+resentations. However, despite the use of powerful image
+encoders, these unimodal methods often fail to incorporate
+gene-specific morphological information. The absence of
+alignment with gene expression weakens the model’s abil-
+ity to capture meaningful biological signals, often resulting
+in overfitting to high-dimensional gene expression counts
+and weak generalization across patient samples.
+To explore image-gene relationships more effectively, bi-
+modal methods [17, 22, 24] co-embed WSI tiles and gene
+expression profiles in a shared space.
+While these ap-
+proaches enable cross-modal learning, they typically model
+only single-level, pairwise relationships between individ-
+ual tiles and gene instances. By treating each image-gene
+pair independently, they fail to capture the hierarchical
+alignment inherent in neither WSI tile nor gene expres-
+sion profile instances, triggering overfitting to the instance-
+level noise. Thus, multi-level alignments between image
+and gene modalities are essential for constructing a ro-
+1
+arXiv:2507.14670v3  [cs.CV]  6 Dec 2025
+
+===== PAGE 2 =====
+bust and expressive latent space that faithfully encodes both
+histopathology morphology [11, 28, 40] and gene expres-
+sion; otherwise, the model’s generalization and the learning
+of biologically coherent representations are compromised.
+To this end, we propose Gene-DML, a novel framework
+that enhances Gene-image correspondence by performing
+Dual-pathway Multi-Level discrimination. It jointly cap-
+tures the scale-aware morphological-transcriptional rela-
+tionship between multi-scaled WSI tiles and gene expres-
+sion profiles at the instance level and instance-group level,
+that is, WSI tile instances aligned with clustered gene-
+expression groups and vice versa. By jointly modeling fine-
+grained and high-level discrimination, Gene-DML enables
+the learning of robust cross-modal representations, enhanc-
+ing both predictive accuracy and generalization across di-
+verse biological contexts. Contributions are summarized as:
+• We propose Gene-DML, a novel framework that models
+dual-pathway multi-level discrimination to enhance spa-
+tial and morphological alignment between histopathology
+images and gene expression profiles.
+• Gene-DML integrates multi-scale instance-level discrim-
+ination pathway to align gene expression with WSI fea-
+tures extracted at local, neighbor, and global scales, en-
+abling scale-aware cross-modal representation learning.
+• In parallel,
+Gene-DML incorporates the cross-level
+instance-group discrimination pathway, which jointly
+enforces consistency of instance-level and group-level
+across image and gene modalities, improving semantic
+structure in the shared latent space.
+• Through comprehensive experiments on public ST
+datasets and additional external tests on Visium data,
+Gene-DML outperforms state-of-the-art methods on mul-
+tiple datasets, achieving superior prediction accuracy and
+generalization across heterogeneous patient samples.
+2. Related Work
+2.1. Gene Expression Prediction
+Early methods for spatial gene expression prediction from
+histology [10], such as ST-Net [14], employed a transfer
+learning strategy by fine-tuning a DenseNet121 model [16]
+pre-trained on ImageNet to capture image features and
+map WSI tiles to gene expression labels. Building upon
+this, HisToGene [25] integrates Vision Transformers (ViT)
+to capture global contextual dependencies between im-
+age tiles within a WSI. Further advancing this direction,
+Hist2ST [45] incorporates ConvMixer [31] and a graph
+convolution network (GCN) post-initially for enhanced im-
+age tile embeddings by aggregating neighborhood infor-
+mation.
+Recent multi-scale models, TRIPLEX [7] and
+M2OST [34] improved performance by integrating spot-
+, neighborhood-, and slide-level features. These architec-
+tures leveraged hierarchical modeling and fusion techniques
+to capture both fine-grained morphology and global tissue
+context. EGN [42] is an alternative paradigm in which im-
+age embedding is optimized by selecting the most analo-
+gous exemplars from the target spot within a WSI to en-
+hance gene expression prediction. Despite these advances,
+these unimodal methods lack semantic alignment with gene
+expression and struggle to generalize across samples. Bi-
+modal contrastive learning has gained traction.
+To ex-
+plore the image-gene relationship for more scalable and
+broader potential approaches, bimodal models, BLEEP [41]
+and MclSTExp [24] with Transformer encoders align im-
+age and gene embeddings through contrastive loss, enabling
+gene querying via latent similarity. RankByGene [17] and
+ST-Align [22] further improved alignment through ranking
+consistency and large-scale pretraining, while Stem [46] ex-
+plored generative modeling using diffusion techniques [32].
+Existing contrastive or generative methods focus mainly
+on pairwise alignment and overlook deeper morphological-
+transcriptional correspondences across image scales, which
+is essential for biological semantic understanding.
+2.2. Multi-scaled Image Feature Extraction
+Several recent works have explored multi-scale model-
+ing for WSIs to capture both fine-grained and contextual
+features [12].
+HIPT by Chen et al. [5] employs hier-
+archical self-supervised learning to learn patch-level and
+region-level features via contrastive objectives, enabling
+effective representation learning across image resolutions.
+TRIPLEX [7] is proposed by integrating multi-resolution
+features from target, neighbor, and global tissue levels us-
+ing a supervised fusion strategy. M2OST [34] leverages
+multi-scale WSI patches with Transformer-based many-to-
+one regression for accurate gene prediction.
+Cross-scale
+MIL architectures have also shown promise. MEGT [8]
+and DSF-WSI [33] adopt dual-branch architectures with
+separate high- and low-resolution encoders, fusing outputs
+using graph-Transformer modules or masked-jigsaw tasks.
+Despite these advances, existing methods suffer from the
+following limitations: (1) most focus exclusively on uni-
+modal representation learning without leveraging alignment
+of transcriptomic modality data, and (2) fusion-based de-
+signs often lack contrastive objectives that explicitly en-
+force scale-consistent representation.
+In contrast, Gene-
+DML incorporates multi-scale instance-level discrimination
+that explicitly aligns local, neighbor, and global image fea-
+tures with gene expression, enriching cross-modal represen-
+tations and enhancing semantic consistency across scales.
+2.3. Cross-Level Instance-Group Discrimination
+Cross-Level Discrimination (CLD) [37] is proposed to im-
+prove instance-level contrastive learning by incorporating
+dynamic group-level structure within a single modality. By
+pairing each instance with its group centroid, CLD miti-
+2
+
+===== PAGE 3 =====
+Gene 1
+Gene 2
+Gene n
+Gene 1
+Gene 2
+Gene n
+𝐺!
+𝐺"
+…
+𝐺#
+𝐼$!′ 𝐼$"′
+…
+𝐼$#′
+𝐼%!′ 𝐼%"′
+…
+𝐼%#′
+𝐼&!′ 𝐼&"′
+…
+𝐼&#′
+…
+Multi-scale Image Encoder
+𝐼!!
+𝐼!"
+…
+𝐼!#
+𝐼"!
+𝐼""
+…
+𝐼"#
+𝐼#!
+𝐼#"
+…
+𝐼##
+𝐺!
+𝐺"
+…
+𝐺#
+Gene Expression Encoder
+Gene 1
+Gene 2
+Gene n
+…
+WSI Tiles
+Gene Profiles
+𝐶!
+𝐶"
+…
+𝐶'
+𝐶!
+𝐶"
+…
+𝐶'
+𝐼!
+𝐼"
+…
+𝐼#
+Scale-wise Fusion
+𝐼!′
+𝐼"′
+…
+𝐼#′
+𝐺!𝐼!′
+𝐺"𝐼"′
+…
+𝐺#𝐼#′
+𝐶!𝐼!′
+𝐶"𝐼"′
+…
+𝐶'𝐼#′
+𝐺!𝐶!
+𝐺"𝐶"
+…
+𝐺#𝐶'
+𝓛𝒎𝒖𝒍𝒕𝒊_𝒊𝒏𝒔+ 𝝀𝓛𝒄𝒓𝒐𝒔𝒔+ 𝓛𝒑𝒓𝒆𝒅
+𝐺!𝐼$!′
+𝐺"𝐼$"′
+…
+𝐺#𝐼$#′
+𝐺!𝐼%!′
+𝐺"𝐼%"′
+…
+𝐺#𝐼%#′
+𝐺!𝐼&!′
+𝐺"𝐼&"′
+…
+𝐺#𝐼&#′
+Legend
+Feature Grouping
+Feature Extraction
+Cross-level
+Instance-group Dis.
+Multi-scaled
+Instance-level Dis.
+Multiplication
+𝐼/ ⋯𝐼0
+𝑄!, 𝐾!, 𝑉!
+𝐼/′ ⋯𝐼0′
+Self-attention
+Scale-wise Fusion
+Predictor
+Figure 1. An overview of Gene-DML framework. Pairs of WSI tiles and gene profiles are aligned from both the multi-scale instance-level
+and the cross-level instance-group discrimination. An illustration of feature grouping with instance-group alignment is shown in Fig. 2.
+gates over-separation of semantically similar samples and
+improves representation stability.
+Subsequent work has
+adapted instance-group techniques within a single modal-
+ity and for video-text alignment, e.g., CrossCLR [47],
+TCL [21], by incorporating grouping or de-biasing false
+negatives, these methods empirically show improved re-
+trieval, classification, and stability [21]. However, they re-
+main unimodal or restricted to intra-modality alignment.
+In medical imaging and genomics, multimodal frameworks
+like ContIG [30] and MGI [21] have adopted instance-
+level contrastive learning across modalities (e.g., image-
+genetic or image-omics pairs), but these lack mechanisms
+to model group-level relationships or latent clustering in
+cross-modal [3]. They typically use pairwise contrastive
+objectives akin to CLIP [26, 39], which may overempha-
+size instance-level uniqueness and discount shared bio-
+logical patterns.
+To bridge these gaps, Gene-DML inte-
+grates a cross-level instance-group discrimination mecha-
+nism within two modalities: images and transcriptomics. It
+aligns each image instance with gene-expression groups and
+vice versa, ensuring the model learns shared semantic struc-
+ture between morphology and transcriptional activity. This
+bidirectional group alignment improves robustness to noise,
+enhances positive/negative contrastive signal, and supports
+generalization to unseen tissue domains.
+3. Methodology
+In this study, we explore how to effectively leverage the
+alignment information between WSIs and gene expression
+profiles via a dual-pathway discrimination strategy to en-
+hance gene expression prediction. Specifically, our objec-
+tive is to train a bimodal contrastive learning model that
+captures semantic alignment information between morpho-
+logical features and gene functions, which is distilled us-
+ing WSI tiles, represented as I ∈RN×H×W ×3, to pre-
+dict the gene expression levels for each spot, represented
+as G ∈RN×M, in a N-spot WSI. Here, M denotes the
+number of gene types whose expression levels are to be pre-
+dicted, and H and W signify the height and width of each
+spot image, respectively. An overview of the framework we
+proposed, Gene-DML, is illustrated in Fig. 1.
+3.1. Multi-scale Instance-level Alignment
+3.1.1. Multi-scale Image Instance Feature
+A single spot’s gene expression is influenced not only by
+its WSI tile structure but also by its surrounding environ-
+ment [7]. Each WSI is split into tiles centered on spatial
+transcriptomics spots, extracted at three spatial scales: lo-
+cal tiles IL focus on local-level detail, neighbor tiles IN
+capture microenvironment context, and the global scale IG
+represents the WSI’s global tissue structure. These tiles are
+encoded via a shared Multi-Scale Image Encoder. Specifi-
+cally, we utilize the UNI [6] model, pretrained using more
+than 100 million H&E-stained WSIs, for histopathology im-
+age feature extraction. In order to avoid the overfitting prob-
+lem, the base feature extraction model UNI is kept frozen to
+ensure the generalization of Gene-DML. The features from
+all three scales are individually projected into 512 dimen-
+sions via separate linear layers.
+3
+
+===== PAGE 4 =====
+Local-scale.
+For local-scale (green square in Fig. 1) fea-
+ture extraction, the pretrained UNI model is utilized to pro-
+cess N tiles with a size of 224 × 224 for each WSI. These
+features are extracted from the forward feature of the UNI
+model. These features are embedded into 265 features with
+1024 dimensions for each.
+Neighbor-scale.
+As for the neighbor-scale (yellow square
+in Fig. 1), to preserve the structural integrity of the tissue
+within the WSI, we utilize a region of size 1120 × 1120
+pixel tiles of centered spot rather than the surrounding 5
+tiles. These neighbor-scale features are embedded into 25
+1024 × 1024 features by using the UNI model. Since the
+UNI model is frozen, a series of self-attention blocks are
+applied on neighbor-scale features, which are kept updated
+for better model learning.
+Global-scale.
+To efficiently capture global spatial con-
+text in WSIs without incurring high computational costs,
+inspired by [7], the global-scale representation is concate-
+nated with all local-scale tile features extracted by the pre-
+trained UNI model, which is then encoded through the
+transformer block for the ultimate global-scale token.
+Scale-wise Fusion.
+To effectively integrate morpholog-
+ical information across scales, multi-scale image fea-
+tures captured at local, neighbor, and global scales are
+concatenated for each spot along the channel dimension
+In
+=
+{ILn, INn, IGn} and passed into a Scale-wise
+Fusion module designed to model cross-scale dependen-
+cies.
+This module adopts a self-attention mechanism
+that dynamically reweights information across levels, en-
+abling the network to integrate fine-grained cellular pat-
+terns with broader tissue context. The fused outputs IEins
+i
+=
+{I′
+1, I′
+2, . . . , I′
+n}, where i = 1, ..., n, retain scale-specific at-
+tributes and are subsequently disentangled for downstream
+alignment with gene expression features. This process en-
+sures semantically enriched, scale-aware representations for
+each spot, facilitating more robust cross-modal learning.
+3.1.2. Gene Expression Instance Feature
+In parallel, to model transcriptomic information in the
+shared latent space, we employ a lightweight yet expressive
+fully connected network as the gene expression encoder.
+Each spatial gene expression profile is passed through the
+FCN to produce a dense embedding:
+  G^{E_{\text {ins}}}_i = \text {FFN} \circ \text {GeneEncoder}(G_i) \in \mathbb {R}^d,s
+(1)
+where i = 1, ..., n. Here, GeneEncoder first maps raw gene
+profiles into an intermediate embedding space of dimen-
+sion d, capturing high-level transcriptomic structure, con-
+sisting of two linear layers with GELU [15] activation and
+dropout for regularization. This is followed by a FeedFor-
+ward (FFN) network consisting of two linear layers with a
+non-linear activation and dropout, which refines the repre-
+sentation and projects it into the shared latent space. This
+design allows Gene-DML to learn instance-level gene fea-
+tures that align with corresponding histology-derived repre-
+sentations.
+3.2. Cross-Level Instance-Group Alignment
+3.2.1. Feature Grouping
+To enrich broader semantic alignment information, which
+enforces the transcriptional activity of a certain tile of WSI
+close to a group of tiles with similar morphology and vice
+versa, between the morphological features of WSI tiles and
+the functional meaning of gene expression, we integrate a
+feature grouping branch for both histopathology and gene
+expression modalities. As illustrated in the light blue sec-
+tion of Fig. 1, for both feature grouping branches of image
+and gene, group features are derived from the instance-level
+embeddings {IEins
+i
+} and {GEins
+i
+} (Sec. 3.1) via a fully con-
+nected transformation:
+  I^{
+E
+_ {\text {
+c
+l u}} }_i =
+ 
+\ text {FC
+}
+(I^{E{_\text {ins}}}_i)\text { and } G^{E{_\text {clu}}}_i = \text {FC}(G^{E{_\text {ins}}}_i). 
+(2)
+This branch serves as a preparatory step for downstream
+clustering by projecting instance features into a space
+optimized for group structure discovery.
+Compared to
+the instance embeddings (IEins
+i
+and GEins
+i
+) that may con-
+tain modality-specific noise or fine-grained variations, the
+learned group features emphasize higher-level semantic
+consistency, making them more suitable for clustering. This
+facilitates more coherent dual-view contrastive alignment
+not only at the instance level but also across clusters that
+capture shared morphological or transcriptional patterns.
+To structurally organize the latent space and uncover
+shared biological semantics, we perform modality-specific
+feature grouping based on the group features {IEclu
+i
+} and
+{GEclu
+i
+}. Specifically, the K-means strategy [44] is applied
+to unit-normalized vectors to form k local clusters in each
+modality. This yields sets of centroids {CI
+1, . . . , CI
+k} and
+{CG
+1 , . . . , CG
+k }, which are {Ci} in gradient-colored circles
+and {Ci} in red circles, respectively, as shown in Fig. 1.
+3.2.2. Cross-Level Alignment
+As for cross-level instance-group alignment, each instance-
+level embedding IEins
+i
+(or GEins
+i
+) is assigned to its nearest
+gene (or image) cluster centroid via a mapping A(i) = j.
+As illustrated in Fig. 2, we then compute instance-to-group
+similarities bidirectionally across modalities:
+• Aligning each gene instance GEins
+i
+with its corresponding
+visual group centroid CI
+j ;
+• Aligning each image instance IEins
+i
+with its corresponding
+gene group centroid CG
+j .
+This instance-group alignment enables Gene-DML to rein-
+force semantic consistency across heterogeneous domains
+4
+
+===== PAGE 5 =====
+𝐶!
+"
+…
+𝐶#
+"
+𝐶$
+"
+𝐶%
+"
+…
+𝐶!
+&
+𝐶#
+&
+𝐶$
+&
+𝐶%
+&
+𝐺'
+(!"#
+𝐼'
+(!"#
+Instance-group Alignment
+Instance-group Alignment
+𝐼!
+"!"# 𝐼#
+"!"#
+𝐼$
+"!"#
+…
+…
+…
+…
+𝐺!
+"!"#𝐺#
+"!"#
+𝐺$
+"!"#
+…
+…
+…
+…
+𝐶%
+"
+Figure 2. Detailed illustration of feature grouping intuition. The image group features (gradient color squares) and gene group features
+(red squares) are grouped into k groups with centroids {CI
+1, . . . CI
+k} and {CG
+1 , . . . CG
+k }.
+while mitigating overfitting to noisy or isolated instance-
+level correlations. By leveraging local group structure in
+both vision and gene spaces, the model gains robustness and
+improved generalization to out-of-distribution samples.
+3.3. Loss Component
+Our method follows the CLIP [26] framework that maxi-
+mizes the cosine similarity of the image and gene embed-
+dings of the N real pairs while minimizing the cosine sim-
+ilarity of the embeddings of the N 2 −N incorrect pair-
+ings at the image-gene instance level. At the multi-scale
+instance-level, the contrastive loss is applied on WSI em-
+beddings from different scales with gene embedding. At the
+instance-group level, Gene-DML applies a batch-wise con-
+trastive loss across views between group features IEins
+i
+and
+group centroids CG, and vice versa for GEins
+i
+(with CI), to
+supervise the consistency of grouping relationships.
+3.3.1. Multi-scale Instance-level Loss
+Inspired by the contrastive loss used in [41], Gene-DML
+computes the internal multi-scaled similarities between the
+image or the gene expression features in advance, denoted
+as T, increasing the coherence of the latent space for joint
+embedding. Then, cross-entropy loss is applied to align the
+multi-scaled image and gene expression instance features:
+  \ m
+athbf {T^s} = \sigma &\left ( \frac { \text {sim}(I^{E_\text {ins}}_{s}, I^{E_\text {ins}}_{s}) + \text {sim}(G^{E_\text {ins}}, G^{E_\text {ins}}) }{2 \cdot \tau } \right ), \\ \mathcal {L}_{\text {multi\_ins}} = & \frac {1}{3} \sum _{s} \frac {1}{N} \sum _{i=1}^{N} \bigg [ - \sum _{j=1}^{N} \mathbf {T^s}_{ij} \log \sigma \left ( \text {sim}(I^{E_{\text {ins}}}_{s_i}, G^{E_{\text {ins}}}_{j}) \right ) \nonumber \\ & - \sum _{j=1}^{N} \mathbf {T^s}_{ji} \log \sigma \left ( \text {sim}(I^{E_{\text {ins}}}_{s_j}, G^{E_{\text {ins}}}_{i}) \right ) \bigg ],s
+(4)
+where s denotes the scale of WSI tiles s ∈{L, N, G}, σ(·)
+denotes the softmax function, and sim(A, B) = ABT .
+3.3.2. Instance-group Loss
+The discrimination between instance and group can be re-
+garded as minimizing the cross-entropy between the hard
+grouping centroids and the predicted grouping assignment.
+Specifically, the cross-entropy between the group centroids
+CG
+i
+computed by GEclu
+i
+and the soft grouping assignment
+predicted from IEins
+i
+should be minimized, and vice versa
+for GEins
+i
+. Thus, we have the instance-group cross-level loss
+that validates feature grouping across different views:
+  \mathcal {L}_{\text {cross}} = & \frac {1}{N} \sum _{i=1}^{N} \bigg [ - \sum _{j=1}^{N} \mathbf {T^I}_{ij} \log \sigma \left ( \text {sim}(I^{E_{\text {ins}}}_{i}, C^G_{j}) \right ) \nonumber \\ & - \sum _{j=1}^{N} \mathbf {T^G}_{ji} \log \sigma \left ( \text {sim}(G^{E_{\text {ins}}}_{j}, C^I_{i}) \right ) \bigg ],s
+(5)
+where TI =
+sim(I
+Eins
+i
+,CG
+j )
+τI-G
+, TG =
+sim(G
+Eins
+j
+,CI
+i )
+τI-G
+, and τI-G
+denotes the temperature of instance-group discrimination.
+To facilitate downstream inference of gene expression,
+we append a prediction head atop the fused image represen-
+tations {I′
+i}. This module maps the learned self-supervised
+features to predicted gene expression profiles ˆGi, and is op-
+timized using a standard mean squared error (MSE) loss:
+  \ma t h
+c
+a
+l
+ {L
+}_{ \te x t 
+{pr
+e
+d }} = \frac {1}{N} \sum _{i=1}^{N} \left \| \hat {G}_i - G_i \right \|_2^2. 
+(6)
+By combining the instance-level and instance-group losses
+with a task-specific prediction loss, Gene-DML has the abil-
+ity to learn the alignments between WSIs and spatial gene
+expressions in terms of different semantic levels with the
+weight λ of instance-group loss:
+  \mat h cal {L _\t e xt {tot a l}} = \mathcal {L_\text {multi\_ins}} + \lambda \mathcal {L_\text {cross}} + \mathcal {L_\text {pred}}. 
+(7)
+4. Experiments and Results
+4.1. Dataset and Implementation Details
+In this study, we conducted experiments on three ST
+datasets that are collected in the HEST-1k [18] benchmark:
+HER2ST [2], STNet [14], and skinST [19]. Specifically,
+two breast cancer ST datasets – HER2ST, which focuses
+exclusively on HER2-positive breast tumor subtypes, and
+5
+
+===== PAGE 6 =====
+Model
+HER2ST
+STNet
+skinST
+MSE↓
+PCC(A)↑
+PCC(H)↑
+MSE↓
+PCC(A)↑
+PCC(H)↑
+MSE↓
+PCC(A)↑
+PCC(H)↑
+ST-Net [14] 20’
+0.260 ± 0.04
+0.194 ± 0.11
+0.345 ± 0.16
+0.209 ± 0.02
+0.116 ± 0.06
+0.223 ± 0.10
+0.294 ± 0.07
+0.274 ± 0.08
+0.382 ± 0.08
+HistoGene [25] 21’
+0.314 ± 0.09
+0.168 ± 0.12
+0.302 ± 0.19
+0.194 ± 0.05
+0.100 ± 0.05
+0.219 ± 0.12
+0.270 ± 0.09
+0.133 ± 0.06
+0.261 ± 0.13
+Hist2ST [45] 22’
+0.285 ± 0.08
+0.118 ± 0.10
+0.248 ± 0.17
+0.181 ± 0.02
+0.044 ± 0.02
+0.099 ± 0.03
+1.291 ± 0.65
+0.004 ± 0.01
+0.053 ± 0.01
+EGN [42] 23’
+0.241 ± 0.06
+0.197 ± 0.11
+0.328 ± 0.17
+0.192 ± 0.02
+0.111 ± 0.05
+0.203 ± 0.09
+0.281 ± 0.08
+0.281 ± 0.06
+0.388 ± 0.06
+BLEEP [41] 23’
+0.277 ± 0.05
+0.151 ± 0.11
+0.277 ± 0.16
+0.235 ± 0.02
+0.095 ± 0.05
+0.193 ± 0.10
+0.297 ± 0.05
+0.269 ± 0.07
+0.396 ± 0.08
+TRIPLEX [7] 24’
+0.228 ± 0.07
+0.314 ± 0.14
+0.497 ± 0.17
+0.202 ± 0.02
+0.206 ± 0.07
+0.352 ± 0.10
+0.268 ± 0.09
+0.374 ± 0.07
+0.490 ± 0.07
+M2OST [34] 25’
+0.302 ± 0.06
+0.231 ± 0.10
+0.410 ± 0.17
+0.278 ± 0.03
+0.201 ± 0.07
+0.353 ± 0.10
+0.271 ± 0.02
+0.300 ± 0.05
+0.490 ± 0.05
+Gene-DML (ours)
+0.210 ± 0.03
+0.331 ± 0.07
+0.541 ± 0.08
+0.179 ± 0.02
+0.237 ± 0.09
+0.384 ± 0.08
+0.237 ± 0.04
+0.433 ± 0.03
+0.520 ± 0.07
+Table 1. Comparison of cross-validation experiments with baselines. PCC(A) denotes the average PCC of all 250-genes, and PCC(H)
+denotes the average PCC of the top-50 (high) predictive genes. The best results are in bold; the second-best results are underlined.
+STNet, which includes a broader range of breast cancer sub-
+types – provide approximately 13, 620 and 68, 050 spa-
+tially resolved spots, respectively.
+Additionally, skinST
+contains approximately 23, 205 spots from spatial profiling
+of skin tissue sections. Each spot comprises its coordinates
+on the WSI sample and the corresponding gene expression
+profiles with around 20, 000 genes for breast and skin can-
+cer. To prevent data leakage, we ensure that samples from
+the same patient do not appear in both the training and test-
+ing datasets. Following [7], we adopt the one-patient-one-
+fold cross-validation (CV) approach for the HER2ST (8-
+fold) and skinST (4-fold) datasets; for STNet, which com-
+prises 68 samples from 23 patients, we perform an 8-fold
+CV, ensuring that all samples from the same patient are
+assigned to the same fold. To evaluate the generalization
+performance of Gene-DML, we perform external tests on 3
+breast Visium data and 2 skin Visium data. In our experi-
+ments, we use Pearson Correlation Coefficient (PCC), Mean
+Squared Error (MSE), and Mean Absolute Error (MAE) as
+evaluation metrics:
+  \ s
+ma
+ll &\t e xt {PCC }  = \
+fra
+c {\su m  _{i
+=1}
+^{N} (y _ i - \
+b
+ar 
+{y} ) (
+\
+h
+a
+t {
+y}_ i  - \ba r {
+\ha
+t { y }
+}
+)
+}
+{\s
+qrt  {\sum _{i=1}^{N} (y_i - \bar {y})^2} \sqrt {\sum _{i=1}^{N} (\hat {y}_i - \bar {\hat {y}})^2}},\\ & \text {MSE} = \frac {1}{N} \sum _{i=1}^{N} (y_i - \hat {y}_i)^2, \text { and}\\ & \text {MAE} = \frac {1}{N} \sum _{i=1}^{N} |y_i - \hat {y}_i|.
+(10)
+We report both the mean PCC for all genes (PCC(A))
+and the mean PCC for highly predictive genes (PCC(H)).
+Specifically, PCC is computed for each gene across all spa-
+tial spots within a sample, and the highly predictive genes
+(HPG) are identified as the top-50 genes selected based on
+their average ranking across all CV folds.
+At the data-preprocessing stage, we crop patches with
+224 × 224 pixel patches centered on each spatial spot from
+WSIs to construct image tiles. For gene expression profiles,
+we select 250 genes per dataset (details refer to the sup-
+plementary), applying spot-wise normalization followed by
+log transformation according to [14]. For feature grouping,
+we utilize K-means [44] method. Gene-DML is optimized
+using the Adam optimizer with an initial learning rate of
+1e−4. The learning rate is decayed by a factor of 0.95 ev-
+ery 20 epochs using a StepLR scheduler. The batch size is
+set to 256 during training, and we report the mean of the
+model’s performance evaluated on all spots in every valida-
+tion WSI during testing. All the experiments are trained on
+an NVIDIA RTX A6000 (48GB) GPU.
+4.2. Cross-validation Performance of Gene-DML
+To evaluate the performance of Gene-DML, we conducted
+cross-validation experiments on the public ST datasets,
+HER2ST, STNet, and skinST, and compared the spatial
+gene expression result predicted by Gene-DML with recent-
+year existing methods as baselines: ST-Net [14], EGN [42],
+BLEEP [41], HistoGene [25], Hist2ST [45], TRIPLEX [7],
+and M2OST [34]. We re-implement the baseline methods
+by their public code repositories under the same CV fold
+splitting settings on the same datasets.
+In comparison with existing works, as shown in Tab. 1,
+Gene-DML consistently achieves the best performance
+across all metrics, MSE, PCC(A), and PCC(H), demon-
+strating its superiority in accurately capturing spatial gene
+expression patterns.
+Specifically, for HER2ST dataset,
+Gene-DML obtains the lowest MSE of 0.210, outperform-
+ing the second-best TRIPLEX (0.228) by 0.018. In terms
+of PCC(A), our method achieves 0.331, which surpasses
+TRIPLEX (0.314) by +0.017, and shows the most sig-
+nificant gain in PCC(H) at 0.541, improving by +0.044
+over TRIPLEX (0.497). As for STNet dataset, Gene-DML
+achieves the best MSE of 0.179, a 0.002 reduction from
+Hist2ST (0.181), and attains a notable gain in PCC(A)
+with 0.237, improving upon TRIPLEX (0.206) by +0.031.
+In high-predictive gene correlation (PCC(H)), our method
+leads 0.384, ahead 0.353 of M2OST by +0.031. On the
+skin dataset skinST, Gene-DML achieves the most substan-
+tial improvements. Its MSE of 0.237 is better than 0.268 of
+TRIPLEX by +0.031. In PCC(A), it scores 0.433, signifi-
+cantly outperforming the second-best TRIPLEX (0.374) by
++0.059. For PCC(H), Gene-DML leads with 0.520, an im-
+6
+
+===== PAGE 7 =====
+Model
+Breast Visium-1
+Breast Visium-2
+Breast Visium-3
+MSE↓
+MAE↓
+PCC(A)↑
+PCC(H)↑
+MSE↓
+MAE↓
+PCC(A)↑
+PCC(H)↑
+MSE↓
+MAE↓
+PCC(A)↑
+PCC(H)↑
+ST-Net [14] 20’
+0.423
+0.505
+-0.026
+-0.000
+0.395
+0.492
+0.091
+0.193
+0.424
+0.508
+-0.032
+0.008
+EGN [42] 23’
+0.421
+0.512
+0.003
+0.024
+0.328
+0.443
+0.102
+0.157
+0.303
+0.425
+0.106
+0.220
+BLEEP [41] 23’
+0.367
+0.470
+0.106
+0.221
+0.289
+0.406
+0.104
+0.260
+0.298
+0.415
+0.114
+0.229
+TRIPLEX [7] 24’
+0.351
+0.464
+0.136
+0.241
+0.282
+0.407
+0.155
+0.356
+0.285
+0.410
+0.118
+0.282
+Gene-DML (ours)
+0.410
+0.512
+0.160
+0.415
+0.289
+0.407
+0.192
+0.411
+0.301
+0.408
+0.155
+0.393
+Table 2. Comparison of generalization performance with baselines. The best results are in bold; the second-best results are underlined.
+Ground Truth
+Gene-DML (0.772)
+TRIPLEX (0.621)
+WSI
+TRIPLEX (0.760)
+Ground Truth
+Gene-DML (0.810)
+WSI
+FASN
+Ground Truth
+Gene-DML (0.608)
+TRIPLEX (0.440)
+WSI
+TRIPLEX (0.813)
+Ground Truth
+Gene-DML (0.846)
+WSI
+GNAS
+Figure 3. Visualization of cancer biomarker gene expression level
+prediction. All predicted values of gene expression are normalized
+to the range [0, 1]. The values in parentheses are the PCC between
+the ground truth of gene expression and the prediction on genes
+GNAS and FASN.
+provement of +0.030 over M2OST and TRIPLEX (0.490).
+Due to space limitations, all MAE results are provided in
+the supplementary material.
+Across all datasets and metrics, Gene-DML consistently
+sets a new performance benchmark, which reflects its ca-
+pacity to capture biologically critical gene patterns. The
+consistent outperformance validates the strength of our
+dual-pathway multi-level alignments.
+4.3. Generalization Performance of Gene-DML
+Tab. 2 presents the generalization performance of Gene-
+DML compared to recent existing works across 3 unseen
+Visium ST datasets. The results are produced by using the
+pre-trained Gene-DML model on the breast cancer dataset
+(HER2ST). Our method achieves the highest Pearson Cor-
+relation Coefficient (PCC) on both PCC(A) and PCC(H)
+genes across all datasets, highlighting its superior abil-
+ity to capture biologically meaningful patterns that gener-
+alize beyond training distributions. Notably, Gene-DML
+achieves a new state-of-the-art PCC(A) of 0.160, 0.192,
+0.155 and PCC(H) of 0.415, 0.411, 0.393 on breast Visium-
+1, -2, and -3, respectively, surpassing all prior approaches.
+While our MSE and MAE scores are not always the best,
+this can be attributed to Gene-DML’s emphasis on seman-
+tic alignment and structure-preserving embeddings rather
+than purely minimizing per-spot regression loss. The slight
+trade-off in MSE/MAE is acceptable, as PCC offers a more
+interpretable measure of functional correlation, especially
+for HPGs critical in downstream biological interpretation.
+The result of the additional 2 skin Visium data (NCBI463
+and NCBI464) is included in the supplementary.
+4.4. Visualization of Cancer Biomarker Genes
+GNAS [1] and FASN [20] are two of the highly predictive
+genes across all datasets we utilized, and well-established
+cancer biomarker genes. Fig. 3 presents a qualitative com-
+parison of gene expression prediction with indicating PCC
+values for GNAS and FASN across two representative tis-
+sue WSIs from various patients, with the original WSI, gene
+expression ground truth, TRIPLEX prediction, and Gene-
+DML prediction. Specifically, each hexagonal tile corre-
+sponds to a spatial transcriptomics (ST) spot, with its color
+indicating the predicted gene expression level, normalized
+to the range [0, 1]. Gene-DML consistently outperforms the
+model TRIPLEX with the second-best quantitative results
+in Tab. 1 in accurately recovering the spatial expression
+patterns, as evidenced by the visibly sharper regional ex-
+pression and higher PCC values (e.g., 0.608 vs. 0.440 and
+0.846 vs. 0.813 for GNAS; 0.772 vs. 0.621 and 0.810 vs.
+0.760 for FASN) for both relatively hard (sample #1) and
+easy (sample #2) cases. The robust prediction of GNAS and
+FASN not only reflects the strength of features learned by
+the dual multi-scale discrimination but also is widely impli-
+cated in tumorigenesis and cancer progression, further un-
+derscoring the biological relevance and clinical utility of the
+Gene-DML framework for spatial biomarker discovery. Vi-
+sualizations of additional samples are provided in the sup-
+plementary material.
+7
+
+===== PAGE 8 =====
+Multi-scale
+I-L Dis.
+Global
+Rep.
+Cross-level
+I-G Dis.
+Feature
+Grouping MSE↓MAE↓PCC(A)↑PCC(H)↑
+✗
+✗
+✗
+✗
+0.297 0.430
+0.269
+0.396
+✓
+✓
+✗
+✗
+0.282 0.414
+0.308
+0.449
+✗
+✗
+✓
+✓
+0.280 0.413
+0.320
+0.478
+✓
+✗
+✓
+✓
+0.247 0.394
+0.421
+0.478
+✓
+✓
+✓
+✗
+0.253 0.399
+0.398
+0.456
+✓
+✓
+✓
+✓
+0.237 0.350
+0.433
+0.520
+Table 3. Ablation study on framework components on the dataset
+skinST. Abbreviations in this table include instance-level discrim-
+ination (I-L Dis.), global-scale representation (Global Rep.), and
+instance-group discrimination (I-G Dis.).
+k
+MSE↓
+MAE↓
+PCC(A)↑
+PCC(H)↑
+15
+0.252
+0.363
+0.426
+0.516
+20
+0.250
+0.363
+0.433
+0.503
+25
+0.237
+0.350
+0.433
+0.520
+30
+0.240
+0.352
+0.429
+0.513
+Table 4. Ablation study on the number of k-groups in the feature
+grouping process on the dataset skinST.
+4.5. Ablation Study
+We performed extensive experiments to assess the effective-
+ness of each framework module with its key component,
+values of hyperparameters k (feature group size), λ (the
+weight of instance-group alignment loss), and τI−G (the
+temperature of instance-group similarity calculation).
+We report the ablation results on each key compo-
+nent of Gene-DML, as illustrated in Tab. 3.
+This un-
+derscores the effectiveness of the multi-scale instance-
+level discrimination module and the cross-level instance-
+group discrimination module, together with their corre-
+sponding key components: the global-scale representa-
+tion and feature grouping. Incorporating the multi-scale
+instance-level discrimination improves performance 0.015
+on MSE, +0.039 on PCC(A), and +0.053 on PCC(H).
+Similarly, adding cross-level instance-group discrimination
+yields a gain 0.017 on MSE, 0.051 on PCC(A), and 0.082
+on PCC(H) from the plain bimodal framework.
+When
+both modules are integrated, Gene-DML achieves the best
+performance across all metrics, showing a cumulative im-
+provement of 0.060 MSE, +0.164 PCC(A), and +0.124
+PCC(H) over the baseline. Besides, comparative experi-
+ments with and without the global-scale representation and
+feature grouping further highlight their essential contri-
+bution to the effectiveness of the corresponding modules.
+These results validate the complementary benefits of a dual-
+pathway multi-level discrimination strategy.
+Tab. 4 demonstrates the impact of varying the num-
+ber of groups k in the feature grouping (Sec. 3.2.1). The
+model performance is relatively robust across different val-
+ues but achieves the best results when k
+= 25, with
+λ
+MSE↓
+MAE↓
+PCC(A)↑
+PCC(H)↑
+0.3
+0.263
+0.380
+0.391
+0.430
+0.5
+0.259
+0.373
+0.402
+0.493
+0.8
+0.237
+0.350
+0.433
+0.520
+1
+0.241
+0.365
+0.426
+0.510
+Table 5. Ablation study on the weight of instance-group loss λ on
+the dataset skinST. λ = 1 indicates that the weight of instance-
+group loss is not applied in the experimental setting.
+τI-G
+MSE↓
+MAE↓
+PCC(A)↑
+PCC(H)↑
+0.05
+0.269
+0.380
+0.420
+0.513
+0.07
+0.237
+0.350
+0.433
+0.520
+0.1
+0.273
+0.381
+0.412
+0.490
+Table 6. Ablation study on the temperature of instance-group sim-
+ilarity calculation τI-G on the dataset skinST.
+the lowest MSE and MAE, and the highest PCC(A) and
+PCC(H). These results suggest that an appropriately cho-
+sen group size provides a good balance between semantic
+expressiveness and discrimination, facilitating more effec-
+tive instance-group alignment. Tab. 5 presents an ablation
+study on the impact of the weighting coefficient λ for the
+instance-group contrastive loss. The results show that in-
+corporating instance-group discrimination consistently im-
+proves performance across all metrics. Specifically, when
+λ = 0.8, the best overall results are obtained, achieving the
+lowest MSE and MAE, along with the highest PCC scores.
+This indicates that moderately weighting the instance-group
+loss effectively enhances cross-modal instance-group align-
+ment without overwhelming the training objective. Tab. 6
+shows the effect of the temperature parameter τI-G used in
+the instance-group similarity calculation. τI-G controls the
+sharpness of the softmax distribution over similarity scores.
+The results show that setting τI-G = 0.07 achieves optimal
+performance across all evaluation metrics. The ablation of
+HER2ST and STNet is included in the supplementary.
+5. Conclusion
+In this work, we introduced Gene-DML, a novel framework
+that advances gene expression prediction from histopathol-
+ogy images by modeling dual-pathway multi-level discrimi-
+nation. By jointly integrating multi-scale instance-level and
+cross-level instance-group discriminations, Gene-DML ef-
+fectively captures both fine-grained and high-level semantic
+correspondences across visual and transcriptomic modal-
+ities. Validated through extensive experiments, our dual-
+pathway discrimination design facilitates robust and gener-
+alizable cross-modal representation learning in spatial tran-
+scriptomic data, enabling the model to better reflect the bio-
+logical and spatial complexities inherent in tissue samples.
+8
+
+===== PAGE 9 =====
+References
+[1] Hafeez Abiola Afolabi, Salzihan Md Salleh, Zaidi Za-
+karia, Ewe Seng Ch’ng, Siti Norasikin Mohd Nafi, Ahmad
+Aizat Bin Abdul Aziz, Ahmad Adebayo Irekeola, Yusuf
+Wada, and Sameer Badri Al-Mhanna.
+A gnas gene mu-
+tation’s independent expression in the growth of colorectal
+cancer: A systematic review and meta-analysis. Cancers, 14
+(22), 2022. 7
+[2] Alma Andersson, Ludvig Larsson, Linnea Stenbeck, Fredrik
+Salm´en, Anna Ehinger, Sunny Z Wu, Ghamdan Al-Eryani,
+Daniel Roden, Alex Swarbrick, ˚Ake Borg, et al. Spatial de-
+convolution of her2-positive breast cancer delineates tumor-
+associated cell type interactions. Nature communications, 12
+(1):6012, 2021. 5
+[3] Haodong Chen, Runnan Chen, Qiang Qu, Zhaoqing Wang,
+Tongliang Liu, Xiaoming Chen, and Yuk Ying Chung. Be-
+yond gaussians: Fast and high-fidelity 3d splatting with lin-
+ear kernels. arXiv preprint arXiv:2411.12440, 2024. 3
+[4] Kok Hao Chen, Alistair N Boettiger, Jeffrey R Moffitt,
+Siyuan Wang, and Xiaowei Zhuang.
+Spatially resolved,
+highly multiplexed rna profiling in single cells. Science, 348
+(6233):aaa6090, 2015. 1
+[5] Richard J Chen, Chengkuan Chen, Yicong Li, Tiffany Y
+Chen, Andrew D Trister, Rahul G Krishnan, and Faisal
+Mahmood. Scaling vision transformers to gigapixel images
+via hierarchical self-supervised learning. In Proceedings of
+the IEEE/CVF conference on computer vision and pattern
+recognition, pages 16144–16155, 2022. 2
+[6] Richard J Chen, Tong Ding, Ming Y Lu, Drew FK
+Williamson,
+Guillaume Jaume,
+Bowen Chen,
+Andrew
+Zhang, Daniel Shao, Andrew H Song, Muhammad Shaban,
+et al. Towards a general-purpose foundation model for com-
+putational pathology. Nature Medicine, 2024. 3
+[7] Youngmin Chung, Ji Hun Ha, Kyeong Chan Im, and
+Joo Sang Lee. Accurate spatial gene expression prediction
+by integrating multi-resolution features. In Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, pages 11591–11600, 2024. 1, 2, 3, 4, 6, 7, 11,
+13
+[8] Saisai Ding, Juncheng Li, Jun Wang, Shihui Ying, and Jun
+Shi. Multi-scale efficient graph-transformer for whole slide
+image classification. IEEE Journal of Biomedical and Health
+Informatics, 27(12):5926–5936, 2023. 2
+[9] Chee-Huat Linus Eng, Michael Lawson, Qian Zhu, Ruben
+Dries, Noushin Koulena, Yodai Takei, Jina Yun, Christo-
+pher Cronin, Christoph Karp, Guo-Cheng Yuan, et al.
+Transcriptome-scale super-resolved imaging in tissues by rna
+seqfish+. Nature, 568(7751):235–239, 2019. 1
+[10] Jianan Fan, Dongnan Liu, Hang Chang, and Weidong Cai.
+Learning to generalize over subpartitions for heterogeneity-
+aware domain adaptive nuclei segmentation. International
+Journal of Computer Vision, 2024. 2
+[11] Jianan Fan, Dongnan Liu, Canran Li, Hang Chang, Heng
+Huang, Filip Braet, Mei Chen, and Weidong Cai. Revisiting
+adaptive cellular recognition under domain shifts: A contex-
+tual correspondence view. In Computer Vision – ECCV 2024.
+Springer Nature Switzerland, 2024. 2
+[12] Bo Fang, Jianan Fan, Dongnan Liu, Hang Chang, Gerald J.
+Shami, Filip Braet, and Weidong Cai.
+Scsam: Debias-
+ing morphology and distributional variability in subcellular
+semantic segmentation.
+arXiv preprint arXiv:2507.17149,
+2025. 2
+[13] Aniruddha Ganguly, Debolina Chatterjee, Wentao Huang,
+Jie Zhang, Alisa Yurovsky, Travis Steele Johnson, and Chao
+Chen. Merge: Multi-faceted hierarchical graph-based gnn
+for gene expression prediction from whole slide histopathol-
+ogy images. In Proceedings of the Computer Vision and Pat-
+tern Recognition Conference, pages 15611–15620, 2025. 1
+[14] Bryan
+He,
+Ludvig
+Bergenstr˚ahle,
+Linnea
+Stenbeck,
+Abubakar Abid,
+Alma Andersson,
+˚Ake Borg,
+Jonas
+Maaskola, Joakim Lundeberg, and James Zou. Integrating
+spatial gene expression and breast tumour morphology
+via deep learning.
+Nature biomedical engineering, 4(8):
+827–834, 2020. 1, 2, 5, 6, 7, 11
+[15] Dan Hendrycks and Kevin Gimpel.
+Gaussian error linear
+units (gelus). arXiv preprint arXiv:1606.08415, 2016. 4
+[16] Gao Huang, Zhuang Liu, Laurens Van Der Maaten, and Kil-
+ian Q Weinberger.
+Densely connected convolutional net-
+works. In Proceedings of the IEEE conference on computer
+vision and pattern recognition, pages 4700–4708, 2017. 2
+[17] Wentao
+Huang,
+Meilong
+Xu,
+Xiaoling
+Hu,
+Shahira
+Abousamra, Aniruddha Ganguly, Saarthak Kapse, Alisa
+Yurovsky, Prateek Prasanna, Tahsin Kurc, Joel Saltz, et al.
+Rankbygene:
+Gene-guided histopathology representation
+learning through cross-modal ranking consistency.
+arXiv
+preprint arXiv:2411.15076, 2024. 1, 2
+[18] Guillaume Jaume, Paul Doucet, Andrew Song, Ming Yang
+Lu, Cristina Almagro P´erez, Sophia Wagner, Anurag Vaidya,
+Richard Chen, Drew Williamson, Ahrong Kim, et al. Hest-
+1k: A dataset for spatial transcriptomics and histology image
+analysis. Advances in Neural Information Processing Sys-
+tems, 37:53798–53833, 2024. 5, 11
+[19] Andrew L Ji, Adam J Rubin, Kim Thrane, Sizun Jiang,
+David L Reynolds, Robin M Meyers, Margaret G Guo, Ben-
+son M George, Annelie Mollbrink, Joseph Bergenstr˚ahle,
+et al.
+Multimodal analysis of composition and spatial ar-
+chitecture in human squamous cell carcinoma. Cell, 182(2):
+497–514, 2020. 5
+[20] Weihua Jiang, Xiao-Liang Xing, Chenguang Zhang, Lina Yi,
+Wenting Xu, Jianghua Ou, and Ning Zhu. Met and fasn as
+prognostic biomarkers of triple negative breast cancer: A
+systematic evidence landscape of clinical study. Frontiers
+in Oncology, 11:604801, 2021. 7
+[21] Yunfan Li, Mouxing Yang, Dezhong Peng, Taihao Li, Jiantao
+Huang, and Xi Peng. Twin contrastive learning for online
+clustering. International Journal of Computer Vision, 130
+(9):2205–2221, 2022. 3
+[22] Yuxiang Lin, Ling Luo, Ying Chen, Xushi Zhang, Zi-
+hui Wang, Wenxian Yang, Mengsha Tong, and Rongshan
+Yu. St-align: A multimodal foundation model for image-
+gene alignment in spatial transcriptomics.
+arXiv preprint
+arXiv:2411.16793, 2024. 1, 2
+[23] Gabriel Mejia, Daniela Ruiz, Paula C´ardenas, Leonardo
+Manrique, Daniela Vega, and Pablo Arbel´aez.
+Enhancing
+9
+
+===== PAGE 10 =====
+gene expression prediction from histology images with spa-
+tial transcriptomics completion. In International Conference
+on Medical Image Computing and Computer-Assisted Inter-
+vention, pages 91–101. Springer, 2024. 1
+[24] Wenwen Min, Zhiceng Shi, Jun Zhang, Jun Wan, and Chang-
+miao Wang. Multimodal contrastive learning for spatial gene
+expression prediction using histology images. Briefings in
+Bioinformatics, 25(6):bbae551, 2024. 1, 2
+[25] Minxing Pang, Kenong Su, and Mingyao Li.
+Leverag-
+ing information in spatial transcriptomics to predict super-
+resolution gene expression from histology images in tumors.
+BioRxiv, pages 2021–11, 2021. 1, 2, 6, 11
+[26] Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya
+Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sastry,
+Amanda Askell, Pamela Mishkin, Jack Clark, et al. Learning
+transferable visual models from natural language supervi-
+sion. In International conference on machine learning, pages
+8748–8763. PmLR, 2021. 3, 5
+[27] Anjali Rao, Dalia Barkley, Gustavo S Franc¸a, and Itai Yanai.
+Exploring tissue architecture using spatial transcriptomics.
+Nature, 596(7871):211–220, 2021. 1
+[28] Yang Song, Hang Chang, Yang Gao, Sidong Liu, Dong-
+hao Zhang, Junen Yao, Wojciech Chrzanowski, and Weidong
+Cai. Feature learning with component selective encoding for
+histopathology image classification. In 2018 IEEE 15th In-
+ternational Symposium on Biomedical Imaging (ISBI 2018),
+pages 257–260, 2018. 2
+[29] Patrik L St˚ahl, Fredrik Salm´en, Sanja Vickovic, Anna Lund-
+mark, Jos´e Fern´andez Navarro, Jens Magnusson, Stefania
+Giacomello, Michaela Asp, Jakub O Westholm, Mikael
+Huss, et al. Visualization and analysis of gene expression
+in tissue sections by spatial transcriptomics. Science, 353
+(6294):78–82, 2016. 1
+[30] Aiham Taleb, Matthias Kirchler, Remo Monti, and Christoph
+Lippert.
+Contig: Self-supervised multimodal contrastive
+learning for medical imaging with genetics. In Proceedings
+of the IEEE/CVF conference on computer vision and pattern
+recognition, pages 20908–20921, 2022. 3
+[31] Asher Trockman and J Zico Kolter. Patches are all you need?
+arXiv preprint arXiv:2201.09792, 2022. 2
+[32] Zhenchen
+Wan,
+Yanwu
+Xu,
+Zhaoqing
+Wang,
+Feng
+Liu, Tongliang Liu, and Mingming Gong.
+Ted-viton:
+Transformer-empowered diffusion models for virtual try-on.
+arXiv preprint arXiv:2411.17017, 2024. 2
+[33] Hao Wang, Euijoon Ahn, and Jinman Kim. A dual-branch
+self-supervised representation learning framework for tu-
+mour segmentation in whole slide images. arXiv preprint
+arXiv:2303.11019, 2023. 2
+[34] Hongyi Wang, Xiuju Du, Jing Liu, Shuyi Ouyang, Yen-Wei
+Chen, and Lanfen Lin. M2ost: Many-to-one regression for
+predicting spatial transcriptomics from digital pathology im-
+ages. In Proceedings of the AAAI Conference on Artificial
+Intelligence, pages 7709–7717, 2025. 2, 6, 11
+[35] Tianyi Wang, Jianan Fan, Dingxin Zhang, Dongnan Liu,
+Yong Xia, Heng Huang, and Weidong Cai. MIRROR: Multi-
+Modal Pathological Self-Supervised Representation Learn-
+ing via Modality Alignment and Retention. IEEE Transac-
+tions on Medical Imaging, 2025. 1
+[36] Xiao Wang, William E Allen, Matthew A Wright, Emily L
+Sylwestrak, Nikolay Samusik, Sam Vesuna, Kathryn Evans,
+Cindy Liu, Charu Ramakrishnan, Jia Liu, et al.
+Three-
+dimensional intact-tissue sequencing of single-cell transcrip-
+tional states. Science, 361(6400):eaat5691, 2018. 1
+[37] Xudong Wang, Ziwei Liu, and Stella X Yu. Unsupervised
+feature learning by cross-level instance-group discrimina-
+tion. In Proceedings of the IEEE/CVF conference on com-
+puter vision and pattern recognition, pages 12586–12595,
+2021. 2
+[38] Xiaofei Wang, Xingxu Huang, Stephen Price, and Chao Li.
+Cross-modal diffusion modelling for super-resolved spatial
+transcriptomics. In International Conference on Medical Im-
+age Computing and Computer-Assisted Intervention, pages
+98–108. Springer, 2024. 1
+[39] Zhaoqing Wang, Ziyu Chen, Yaqian Li, Yandong Guo, Jun
+Yu, Mingming Gong, and Tongliang Liu.
+Mosaic repre-
+sentation learning for self-supervised visual pre-training. In
+The eleventh international conference on learning represen-
+tations, 2023. 3
+[40] Tiange Xiang, Yang Song, Chaoyi Zhang, Dongnan Liu, Mei
+Chen, Fan Zhang, Heng Huang, Lauren O’Donnell, and Wei-
+dong Cai.
+Dsnet: A dual-stream framework for weakly-
+supervised gigapixel pathology image analysis. IEEE Trans-
+actions on Medical Imaging, pages 2180–2190, 2022. 2
+[41] Ronald Xie, Kuan Pang, Sai Chung, Catia Perciani, Sonya
+MacParland, Bo Wang, and Gary Bader. Spatially resolved
+gene expression prediction from histology images via bi-
+modal contrastive learning. Advances in Neural Information
+Processing Systems, 36:70626–70637, 2023. 1, 2, 5, 6, 7, 11
+[42] Yan Yang, Md Zakir Hossain, Eric A Stone, and Shafin Rah-
+man. Exemplar guided deep neural network for spatial tran-
+scriptomics analysis of gene expression prediction. In Pro-
+ceedings of the IEEE/CVF Winter Conference on Applica-
+tions of Computer Vision, pages 5039–5048, 2023. 1, 2, 6, 7,
+11
+[43] Yan Yang, Md Zakir Hossain, Xuesong Li, Shafin Rahman,
+and Eric Stone. Spatial transcriptomics analysis of zero-shot
+gene expression prediction. In International Conference on
+Medical Image Computing and Computer-Assisted Interven-
+tion, pages 492–502. Springer, 2024. 1
+[44] Jieping Ye, Zheng Zhao, and Mingrui Wu. Discriminative
+k-means for clustering. Advances in neural information pro-
+cessing systems, 20, 2007. 4, 6
+[45] Yuansong Zeng, Zhuoyi Wei, Weijiang Yu, Rui Yin, Yuchen
+Yuan, Bingling Li, Zhonghui Tang, Yutong Lu, and Yue-
+dong Yang. Spatial transcriptomics prediction from histol-
+ogy jointly through transformer and graph neural networks.
+Briefings in Bioinformatics, 23(5):bbac297, 2022. 1, 2, 6, 11
+[46] Sichen Zhu, Yuchen Zhu, Molei Tao, and Peng Qiu. Dif-
+fusion generative modeling for spatially resolved gene ex-
+pression inference from histology images.
+arXiv preprint
+arXiv:2501.15598, 2025. 2
+[47] Mohammadreza Zolfaghari, Yi Zhu, Peter Gehler, and
+Thomas Brox. Crossclr: Cross-modal contrastive learning
+for multi-modal video representations.
+In Proceedings of
+the IEEE/CVF international conference on computer vision,
+pages 1450–1459, 2021. 3
+10
+
+===== PAGE 11 =====
+Gene-DML: Dual-Pathway Multi-Level Discrimination for Gene Expression
+Prediction from Histopathology Images
+Supplementary Material
+This
+supplementary
+material
+complements
+the
+main
+manuscript by providing detailed information and addi-
+tional support. It is structured as follows:
+Sec. A: Additional Cross-validation Performance
+-
+Provides the MAE results on three ST datasets to further
+evaluate the cross-validation performance of Gene-DML.
+Sec. B: Additional Generalization Performance
+- Pro-
+vides the generalization performance of Gene-DML com-
+pared to TRIPLEX across 2 additional unseen skin cancer
+Visium ST data.
+Sec. C: Additional Ablation Study
+- Provides the effec-
+tiveness of each key component in the model Gene-DML
+and hyperparameter configurations of k, λ, and τI-G on
+datasets HER2ST and STNet.
+Sec. D: Additional Visualization
+- Provides additional
+sample visualizations of gene expression prediction of can-
+cer biomarker genes across three ST datasets.
+Sec. E: Additional Implementation Details
+- Provides
+specific 250 genes selected for each dataset to evaluate
+PCC(A) metric, the average of the Pearson Correlation Co-
+efficient of 250 selected genes, of the Gene-DML.
+A. Additional Cross-validation Performance
+Tab. 7 demonstrates a cross-validation comparison of mean
+absolute error (MAE) across three spatial transcriptomics
+datasets, HER2ST, STNet, and skinST, benchmarking our
+proposed method, Gene-DML, against several state-of-the-
+art baseline methods.
+Gene-DML consistently achieves
+the best performance across all datasets. Specifically, on
+HER2ST, Gene-DML attains an MAE of 0.350, outper-
+forming the second-best method, TRIPLEX (0.362), with
+0.012 improvement. On STNet, Gene-DML achieves an
+MAE of 0.327, improving upon Hist2ST (0.333) by 0.006.
+On skinST, Gene-DML reaches an MAE of 0.350, out-
+performing TRIPLEX (0.404) with a substantial 0.054 im-
+provement. These consistent gains across diverse datasets
+highlight the effectiveness of the dual-dimensional multi-
+level discrimination framework in capturing semantically
+aligned multi-level cross-modal representations.
+Model
+HER2ST
+STNet
+skinST
+MAE↓
+MAE↓
+MAE↓
+ST-Net [14]
+0.389 ± 0.03
+0.349 ± 0.02
+0.428 ± 0.05
+HistoGene [25]
+0.428 ± 0.07
+0.335 ± 0.04
+0.415 ± 0.07
+Hist2ST [45]
+0.413 ± 0.07
+0.333 ± 0.02
+0.924 ± 0.29
+EGN [42]
+0.377 ± 0.04
+0.337 ± 0.02
+0.418 ± 0.06
+BLEEP [41]
+0.401 ± 0.03
+0.369 ± 0.02
+0.430 ± 0.04
+TRIPLEX [7]
+0.362 ± 0.05
+0.343 ± 0.02
+0.404 ± 0.07
+M2OST [34]
+0.421 ± 0.02
+0.362 ± 0.01
+0.418 ± 0.03
+Gene-DML
+0.350 ± 0.04
+0.327 ± 0.02
+0.350 ± 0.05
+Table 7. Additional comparison of cross-validation experiments
+with baselines on metric MAE. The best results are in bold; the
+second-best results are underlined.
+Model
+NCBI463
+NCBI464
+MSE↓MAE↓PCC(A)↑PCC(H)↑MSE↓MAE↓PCC(A)↑PCC(H)↑
+TRIPLEX
+0.342 0.478
+0.103
+0.360
+0.416 0.538
+0.091
+0.261
+Gene-DML (ours) 0.253 0.413
+0.109
+0.377
+0.292 0.445
+0.140
+0.441
+Table 8. Generalization performance on NCBI463 and NCBI464.
+B. Additional Generalization Performance
+We further extend the evaluation by adding two skin can-
+cer Visium datasets (NCBI463 and NCBI464) [18] to ver-
+ify the skinST pre-trained models.
+Tab. 8 further un-
+derscores Gene-DML’s outstanding generalization perfor-
+mance, achieving state-of-the-art results across all evalua-
+tion metrics MSE, MAE, PCC(A), and PCC(H).
+C. Additional Ablation Study
+To evaluate the dual-pathway multi-level discrimination
+framework, Gene-DML, we perform an ablation study by
+adding each discrimination pathway sequentially together
+with their corresponding key components: the global-scale
+representation and feature grouping, and report the results
+of MSE, MAE, PCC(A), and PCC(H) metrics. Tab. 9 and
+Tab. 13 demonstrate the effectiveness of each component in
+Gene-DML on datasets HER2ST and STNet. They show
+that, by removing both pathways, a plain bimodal frame-
+work yields the weakest performance.
+By incorporating
+the multi-scale instance-level discrimination pathway and
+cross-level instance-group discrimination pathway, respec-
+tively, a significant improvement is achieved.
+For the hyperparameter configuration of k (number of
+groups), λ (the weight of instance-group cross-level loss),
+and τI-G (the temperature of instance-group similarity cal-
+11
+
+===== PAGE 12 =====
+culation), Tab. 10, Tab. 11, and Tab. 12 respectively present
+the result of the dataset HER2ST. As for the STNet dataset,
+please refer to Tab. 14, Tab. 15, and Tab. 16.
+Overall, all these results show that while k = 18 and λ =
+0.8 with τI-G = 0.07, Gene-DML could achieve optimal
+performance across all evaluation metrics, thus setting it as
+the default configuration for HER2ST dataset; besides, k =
+25 and λ = 0.8 with τI-G = 0.07 are set as the default
+configuration for STNet dataset.
+Multi-scale
+I-L Dis.
+Global
+Rep.
+Cross-level
+I-G Dis.
+Feature
+Grouping MSE↓MAE↓PCC(A)↑PCC(H)↑
+✗
+✗
+✗
+✗
+0.340 0.445
+0.231
+0.392
+✓
+✓
+✗
+✗
+0.298 0.412
+0.301
+0.463
+✗
+✗
+✓
+✓
+0.270 0.415
+0.302
+0.482
+✓
+✗
+✓
+✓
+0.221 0.364
+0.282
+0.416
+✓
+✓
+✓
+✗
+0.230 0.360
+0.303
+0.400
+✓
+✓
+✓
+✓
+0.210 0.350
+0.331
+0.541
+Table 9. Ablation study on components of the dataset HER2ST.
+Abbreviations in this table include instance-level discrimination
+(I-L Dis.), global-scale representation (Global Rep.) and instance-
+group discrimination (I-G Dis.).
+k
+MSE↓
+MAE↓
+PCC(A)↑
+PCC(H)↑
+15
+0.242
+0.371
+0.299
+0.510
+16
+0.235
+0.370
+0.323
+0.536
+18
+0.210
+0.350
+0.331
+0.541
+20
+0.250
+0.397
+0.320
+0.514
+Table 10. Ablation study on the number of k-groups in the feature
+grouping process on the dataset HER2ST.
+λ
+MSE↓
+MAE↓
+PCC(A)↑
+PCC(H)↑
+0.3
+0.231
+0.369
+0.326
+0.525
+0.5
+0.213
+0.359
+0.331
+0.532
+0.8
+0.210
+0.350
+0.331
+0.541
+1
+0.215
+0.360
+0.322
+0.537
+Table 11. Ablation study on the weight of instance-group loss λ on
+the dataset HER2ST. λ = 1 indicates that the weight of instance-
+group loss is not applied in the experimental setting.
+τI-G
+MSE↓
+MAE↓
+PCC(A)↑
+PCC(H)↑
+0.05
+0.220
+0.355
+0.329
+0.532
+0.07
+0.210
+0.350
+0.331
+0.541
+0.1
+0.238
+0.371
+0.320
+0.534
+Table 12. Ablation study on the temperature of instance-group
+similarity calculation τI-G on the dataset HER2ST.
+Multi-scale
+I-L Dis.
+Global
+Rep.
+Cross-level
+I-G Dis.
+Feature
+Grouping MSE↓MAE↓PCC(A)↑PCC(H)↑
+✗
+✗
+✗
+✗
+0.269 0.440
+0.160
+0.233
+✓
+✓
+✗
+✗
+0.246 0.400
+0.211
+0.308
+✗
+✗
+✓
+✓
+0.232 0.379
+0.198
+0.301
+✓
+✗
+✓
+✓
+0.184 0.339
+0.227
+0.361
+✓
+✓
+✓
+✗
+0.188 0.338
+0.216
+0.309
+✓
+✓
+✓
+✓
+0.179 0.327
+0.237
+0.384
+Table 13. Ablation study on components of the dataset STNet.
+Abbreviations in this table include instance-level discrimination
+(I-L Dis.), global-scale representation (Global Rep.) and instance-
+group discrimination (I-G Dis.).
+k
+MSE↓
+MAE↓
+PCC(A)↑
+PCC(H)↑
+80
+0.185
+0.331
+0.236
+0.376
+90
+0.179
+0.327
+0.237
+0.384
+100
+0.188
+0.332
+0.230
+0.368
+Table 14. Ablation study on the number of k-groups in the feature
+grouping process on the dataset STNet.
+λ
+MSE↓
+MAE↓
+PCC(A)↑
+PCC(H)↑
+0.5
+0.205
+0.350
+0.200
+0.349
+0.8
+0.179
+0.327
+0.237
+0.384
+1
+0.202
+0.345
+0.228
+0.361
+Table 15. Ablation study on the weight of instance-group loss λ
+on the dataset STNet. λ = 1 indicates that the weight of instance-
+group loss is not applied in the experimental setting.
+τI-G
+MSE↓
+MAE↓
+PCC(A)↑
+PCC(H)↑
+0.05
+0.201
+0.365
+0.222
+0.375
+0.07
+0.179
+0.327
+0.237
+0.384
+0.1
+0.186
+0.331
+0.235
+0.382
+Table 16. Ablation study on the temperature of instance-group
+similarity calculation τI-G on the dataset STNet.
+D. Additional Visualizations
+In this section, we provide additional visualizations of
+the gene expression prediction results, which are normal-
+ized into the range [0, 1], of the breast cancer biomarker
+genes GNAS and FASN. Fig. 4 demonstrates the spatial
+gene expression prediction for GNAS and FASN on the
+HER2ST dataset. Each row displays a WSI sample along-
+side the ground-truth expression map and predictions from
+TRIPLEX (the method achieved the second-best result eval-
+uated in Tab. 1 of Sec. 4.2.) and the proposed Gene-DML.
+Across both genes and multiple WSI samples, Gene-DML
+consistently produces spatial expression patterns that are vi-
+sually closer to the ground truth and quantitatively higher in
+performance, as reflected by the reported Pearson correla-
+tion coefficients in parentheses. The same conclusion holds
+12
+
+===== PAGE 13 =====
+for Fig. 5, which shows the spatial gene expression pre-
+diction results on the dataset STNet, further validating the
+strong gene expression prediction capacity of Gene-DML.
+E. Additional Implementation Details
+To ensure fairness, following TRIPLEX [7], we utilize the
+various 250 selected genes for each dataset, i.e., HER2ST,
+STNet, and skinST, that are related to morphology in
+histopathology to evaluate the performance of gene expres-
+sion prediction.
+For the results of the MSE, MAE, and
+PCC(A) metrics in the cross-validation experiments, the
+same 250 genes were utilized for both the training and test-
+ing processes. Fig. 6, Fig. 7, and Fig. 8 demonstrate the
+250 genes exploited to predict gene expression profiles on
+datasets HER2ST, STNet, and skinST, respectively.
+13
+
+===== PAGE 14 =====
+Ground Truth
+Gene-DML (0.763)
+TRIPLEX (0.721)
+WSI
+TRIPLEX (0.409)
+Ground Truth
+Gene-DML (0.467)
+WSI
+FASN
+Ground Truth
+Gene-DML (0.496)
+TRIPLEX (0.459)
+WSI
+TRIPLEX (0.499)
+Ground Truth
+Gene-DML (0.618)
+WSI
+GNAS
+Ground Truth
+Gene-DML (0.803)
+TRIPLEX (0.568)
+WSI
+TRIPLEX (0.592)
+Ground Truth
+Gene-DML (0.733)
+WSI
+Ground Truth
+Gene-DML (0.863)
+TRIPLEX (0.817)
+WSI
+TRIPLEX (0.699)
+Ground Truth
+Gene-DML (0.756)
+WSI
+Figure 4. Visualization of cancer biomarker genes GNAS and FASN prediction on the dataset HER2ST.
+14
+
+===== PAGE 15 =====
+Ground Truth
+Gene-DML (0.787)
+TRIPLEX (0.738)
+WSI
+TRIPLEX (0.765)
+Ground Truth
+Gene-DML (0.861)
+WSI
+FASN
+Ground Truth
+Gene-DML (0.647)
+TRIPLEX (0.587)
+WSI
+TRIPLEX (0.812)
+Ground Truth
+Gene-DML (0.871)
+WSI
+GNAS
+Ground Truth
+Gene-DML (0.673)
+TRIPLEX (0.462)
+WSI
+TRIPLEX (0.809)
+Ground Truth
+Gene-DML (0.811)
+WSI
+Ground Truth
+Gene-DML (0.817)
+TRIPLEX (0.749)
+WSI
+TRIPLEX (0.769)
+Ground Truth
+Gene-DML (0.864)
+WSI
+Figure 5. Visualization of cancer biomarker genes GNAS and FASN prediction on the dataset STNet.
+15
+
+===== PAGE 16 =====
+IGKC, TMSB10, ERBB2, IGHG3, IGLC2, IGHA1, GAPDH, ACTB, IGLC3, IGHM, SERF2, PSMB3, PFN1, ACTG1,
+KRT19, RACK1, MUCL1, CISD3, APOE, MIEN1, SSR4, CALR, PSAP, CTSD, FTL, FTH1, TPT1, PTPRF, UBA52,
+P4HB, BEST1, HLA-B, FAU, SLC9A3R1, FN1, COL1A1, EEF2, IGHG4, CALML5, CD74, B2M, FASN, S100A9,
+MGP, CFL1, PSMD3, IGHG1, HLA-A, S100A6, MYL6, COL1A2, PHB, TAGLN2, HLA-E, HLA-C, KRT7, CD63,
+SYNGR2, STARD3, PABPC1, GPX4, GRB7, SLC25A6, AEBP1, GNAS, NDUFB9, EDF1, CRIP2, DDX5, OAZ1,
+EIF4G1, LMNA, GNB2, CST3, PCGF2, SDC1, S100A11, PRDX1, GRINA, ATP6V0B, TFF3, HLA-DRA, EEF1D,
+AZGP1, PPP1CA, FLNA, COL3A1, ATP5E, SPDEF, AP000769.1, ALDOA, PLXNB2, TAGLN, TUBA1B, APOC1,
+PRRC2A, LAPTM5, PTMS, KRT18, IFI27, PLD3, ADAM15, C1QA, AES, TSPO, MLLT6, TAPBP, SCAND1,
+ATP1A1, CD81, SEC61A1, CLDN3, PPDPF, S100A14, BGN, C3, MZT2B, S100A8, MDK, PFDN5, H2AFJ,
+SH3BGRL3, ENO1, XBP1, CYBA, COX6B1, TRAF4, CD24, PRSS8, MMP14, MUC1, VIM, MIDN, SPINT2, BST2,
+TIMP1, GUK1, ACTN4, CTSB, COX4I1, CCT3, HNRNPA2B1, SEPW1, LY6E, SCD, HSPB1, EIF4G2, BSG, ZYX,
+TUBB, LASP1, CD99, COL6A2, H1FX, RALY, UBE2M, SPARC, ATG10, HSP90AB1, ORMDL3, LMAN2, CHCHD2,
+COX7C, ARHGDIA, VMP1, UBC, IGFBP2, COPE, NUPR1, PERP, KRT81, PPP1R1B, LGALS3BP, SSR2,
+KIAA0100, MYL9, CIB1, IDH2, STARD10, LGALS1, COX6C, GRN, MAPKAPK2, GNAI2, KDELR1, COL18A1,
+UQCRQ, COX5B, ELOVL1, CHPF, CLDN4, C12orf57, LGALS3, HSP90AA1, JUP, A2M, NDUFB7, PGAP3, HSPA8,
+TCEB2, PEBP1, COPS9, ATP5G2, ATP6AP1, MYH9, LSM4, COX8A, UQCR11, ATP5B, DHCR24, PTBP1, EIF3B,
+NDUFA3, FKBP2, MMACHC, RABAC1, ISG15, PTMA, RRBP1, POSTN, C1QB, BCAP31, PSMB4, LAPTM4A,
+INTS1, FNBP1L, JTB, NBL1, HM13, SLC2A4RG, ROMO1, SERINC2, NDUFA11, RHOC, TXNIP, TYMP, NACA,
+HSP90B1, SNRPB, PFKL, VCP, ERGIC1, NUCKS1, PSMD8, CALM2, AP2S1, DBI, C4orf48, SDF4, TPI1
+HER2ST
+Figure 6. 250 Genes for the dataset HER2ST.
+RPS3, IGLL5, RPLP1, TFF3, RPS18, GAPDH, TMSB10, RPLP2, RPS14, RPL37A, RPS19, RPL28, KRT19, RPL8,
+RPL13, RPL19, ACTB, RPL36, RPL18A, RPL35, RPL18, RPS2, RPS12, RPS21, RACK1, RPL13A, CTSD, FTL,
+PFN1, MGP, RPS15, RPS11, RPS16, HLA-B, UBA52, NHERF1, RPS17, PSAP, RPLP0, SERF2, RPS27, RPS8,
+RPL27A, MUC1, RPS28, H2AJ, RPL10, CALR, RPS29, RPL38, RPL11, P4HB, RPS6, CST3, FTH1, RPS4X, SSR4,
+RPL30, ERBB2, APOE, AZGP1, RPL3, COX6C, HLA-C, FAU, RPS9, EEF2, B2M, RPS5, RPL12, ACTG1, RPS27A,
+RPL37, RPL23, HLA-A, RPL31, RPL29, RPL7A, IFI27, PABPC1, CD74, BEST1, RPL32, FASN, S100A9, GPX4,
+RPL15, RPL27, MZT2B, RPL23A, HSPB1, MALAT1, RPS24, COL1A1, C4B, KRT18, CFL1, CD81, ALDOA,
+RPL35A, SYNGR2, PPP1CA, HLA-E, TAGLN, RPL9, CD63, RPS3A, LGALS3BP, IGFBP2, BST2, TPT1, EDF1,
+RPS25, ATP6V0B, TAPBP, GRINA, XBP1, S100A11, NBEAL1, AEBP1, CCND1, OAZ1, RPL14, TAGLN2, FN1,
+PPDPF, BCAP31, IFITM3, PRDX1, BGN, GNAS, PTMA, UBC, MZT2A, SLC25A6, RPS20, HSP90AB1, RPS10,
+MYL6, CLDN3, ATP6AP1, PRDX2, RPL24, GNB2, RPL34, RPL4, LMNA, NDUFA13, HLA-DRA, SNHG25, TIMP1,
+H1-10, RPS23, COX8A, KRT8, LY6E, ENO1, GRN, PTPRF, RPL7, UBB, BSG, ELOB, COX6B1, TMSB4X, C1QA,
+PRSS8, RPL5, UQCR11, RPS7, A2M, RPS15A, VIM, S100A6, NDUFA11, PSMD3, EVL, APOC1, H3-3B, ATP5F1E,
+PLXNB2, MYL9, TUBA1B, CTSB, ISG15, FLNA, RPS13, NDUFB9, EIF4A1, POLR2L, CYBA, CRIP2, EEF1D,
+ATP1A1, ELF3, TUFM, SH3BGRL3, STARD10, C3, GUK1, ZNF90, C12orf57, TLE5, SEC61A1, SDC1, PLD3,
+SPDEF, ARHGDIA, IFI6, LAPTM5, RPL41, CLU, GNAI2, PFDN5, RPL39, SSR2, COX4I1, RHOC, JUP, EIF4G1,
+FXYD3, TSPO, UQCRQ, COL1A2, RPL10A, S100A8, SELENOW, TPI1, ATP5MC2, PTMS, IGFBP5, LGALS1,
+SPINT2, RPSA, GSTP1, CHCHD2, EIF5A, COX5B, ATG10, RPL6, EEF1A1, CAPNS1, LMAN2, UBE2M, SPARC,
+EIF3C, GAS5, TUBB, ACTN4, IGFBP4
+STNet
+Figure 7. 250 Genes for the dataset STNet.
+16
+
+===== PAGE 17 =====
+S100A8, KRT6A, KRT14, S100A9, KRT5, KRT6B, KRT16, KRT6C, KRT17, MT-CO3, S100A7, MT-CO2, SFN,
+S100A2, MT-CO1, ACTB, PERP, SPRR1B, KRT10, KRT1, EEF1A1, RPLP1, LGALS7B, LGALS7, COL1A1, FABP5,
+RPS12, HLA-B, MT-ND4, RPLP2, ACTG1, GJB2, B2M, TPT1, RPL13, MT-ATP6, RPS24, PFN1, KRTDAP, RPS6,
+DMKN, RPLP0, MT-ND3, RPL37A, DSP, CXCL14, RPS18, RPS17, RPS8, RPL13A, MT-CYB, RPL11, RPL27A,
+RPL28, MT-ND1, RPS27, RPL32, CSTA, RPL34, RPL31, COL1A2, RPL8, SBSN, TMSB10, ENO1, RPS14, RPL36,
+SPRR2A, RPL39, GSTP1, RPS27A, JUP, RPS19, RPL37, RPL27, RPL3, RPS29, COL3A1, RPS11, CSTB, RPL9,
+RACK1, ANXA2, RPL7A, RPL23, RPL19, S100A11, RPS2, RPS28, EEF2, ANXA1, CD74, PABPC1, LDHA, RPS3,
+RPL35A, DSC2, AQP3, RPS25, IFI27, CALML5, YWHAZ, RPL6, TMSB4X, RPS23, RPL12, S100A14, RPS4X,
+UBA52, SLPI, PKP1, RPL38, HLA-A, RPS13, LY6D, RPL24, ATP1B3, MYL6, GJB6, S100A6, HSPB1, RPL18, MT-
+ND2, SDC1, IVL, FTL, RPS3A, RPL10, RPS15A, PI3, RPL18A, S100A10, RPS7, S100A7A, RPL29, RPL26, RPL41,
+RPL4, RPL7, SPARC, VIM, PTMA, RPS20, MMP1, SH3BGRL3, RPL15, MYH9, GJA1, ITM2B, PPIA, RPL14, UBC,
+RPL5, CD44, AHNAK, RPL21, DSC3, CNFN, CD24, CFL1, COL17A1, HSP90AA1, RPS16, PKM, NACA, RPS5,
+ALDOA, H3F3B, S100A16, TAGLN2, HLA-C, TRIM29, LYPD3, FAU, LMNA, SPINK5, SPRR2E, RPL22, KRT2,
+CST3, DSG3, CLCA2, RPSA, DSG1, RPS9, NDRG1, AC090498.1, GRN, TXN, HSPA8, TGFBI, CTSB, SPRR2D,
+HLA-DRA, ACTN4, RPS21, EIF1, CTSD, ARPC2, CALML3, KLK7, CALM1, GNAS, DYNLL1, FLG, FLNA, DST,
+SLC2A1, PSAP, EIF4G2, EEF1B2, FGFBP1, LGALS1, ITGA6, MYL12B, TPI1, RPL10A, TMEM45A, BTF3, DSTN,
+RTN4, HNRNPA2B1, LAD1, ATP1A1, SERPINB3, PRDX1, COL6A1, ATP5E, PPDPF, TYMP, CD63, EIF5A,
+YWHAQ, PGK1, HLA-E, IFITM3, RPS26, IGFBP4, OAZ1, NPM1, LCE3D, FXYD3, MT2A, COL6A2, POLR2L,
+CD59, HNRNPK, RPL35, TMBIM6, HSP90AB1
+skinST
+Figure 8. 250 Genes for the dataset skinST.
+17

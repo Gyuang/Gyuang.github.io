@@ -1,0 +1,1434 @@
+
+===== PAGE 1 =====
+When Genes Speak: A Semantic-Guided Framework for Spatially Resolved
+Transcriptomics Data Clustering
+Jiangkai Long1, Yanran Zhu1, Chang Tang2* Kun Sun1, Yuanyuan Liu1, Xuesong Yan1
+1School of Computer Science, China University of Geosciences, Wuhan 430074, China
+2School of Software Engineering, Huazhong University of Science and Technology, Wuhan 430074, China
+longjk@cug.edu.cn, tangchang@hust.edu.cn
+Abstract
+Spatial transcriptomics enables gene expression profiling
+with spatial context, offering unprecedented insights into
+the tissue microenvironment. However, most computational
+models treat genes as isolated numerical features, ignor-
+ing the rich biological semantics encoded in their symbols.
+This prevents a truly deep understanding of critical biolog-
+ical characteristics. To overcome this limitation, we present
+SemST, a semantic-guided deep learning framework for spa-
+tial transcriptomics data clustering. SemST leverages Large
+Language Models (LLMs) to enable genes to “speak” through
+their symbolic meanings, transforming gene sets within each
+tissue spot into biologically informed embeddings. These
+embeddings are then fused with the spatial neighborhood
+relationships captured by Graph Neural Networks (GNNs),
+achieving a coherent integration of biological function and
+spatial structure. We further introduce the Fine-grained Se-
+mantic Modulation (FSM) module to optimally exploit these
+biological priors. The FSM module learns spot-specific affine
+transformations that empower the semantic embeddings to
+perform an element-wise calibration of the spatial features,
+thus dynamically injecting high-order biological knowledge
+into the spatial context. Extensive experiments on public spa-
+tial transcriptomics datasets show that SemST achieves state-
+of-the-art clustering performance. Crucially, the FSM module
+exhibits plug-and-play versatility, consistently improving the
+performance when integrated into other baseline methods.
+Code — https://github.com/longjiangk/SemST
+Introduction
+Understanding the intricate spatial architecture of tissues
+is a cornerstone of modern biology and medicine, holding
+the key to deciphering mechanisms of organogenesis, dis-
+ease progression, and therapeutic response (St˚ahl et al. 2016;
+Longo et al. 2021). The advent of spatial transcriptomics has
+revolutionized this pursuit by enabling the measurement of
+gene expression profiles while preserving their native spatial
+coordinates (Rodriques et al. 2019; Marx 2021). A funda-
+mental computational task in spatial transcriptomics is the
+identification of spatial domains—regions with similar gene
+*Corresponding author
+Copyright © 2026, Association for the Advancement of Artificial
+Intelligence (www.aaai.org). All rights reserved.
+expression patterns that often reflect an underlying anatom-
+ical or functional organization (Biancalani et al. 2021). Ro-
+bust spatial domain identification lays a solid foundation for
+downstream biological analyses, such as differential gene
+expression analysis, functional enrichment analyses, and
+cell–cell interaction inference (Dong and Zhang 2022). This
+task is commonly formulated as a clustering problem, aim-
+ing to partition the tissue into biologically meaningful units
+(Du et al. 2023).
+Recent years have seen a surge in deep learning models,
+particularly those based on Graph Neural Networks (GNNs)
+(Li et al. 2022; Liu et al. 2024b; Zahedi et al. 2024). These
+methods have achieved considerable success by modeling
+the tissue as a graph, where spots (or cells) are nodes and
+spatial proximity defines the edges. By aggregating infor-
+mation from neighboring spots, GNNs can effectively learn
+representations that capture the spatial context of gene ex-
+pression. Another advantage is that the graph topology nat-
+urally reflects possible cell–cell interactions, offering an im-
+plicit yet biologically meaningful view of intercellular com-
+munication (Zhou 2022; Lampert et al. 2024).
+However, a critical and pervasive limitation persists:
+these models overwhelmingly treat genes as isolated, high-
+dimensional numerical features. This approach completely
+ignores the vast repository of biological knowledge encap-
+sulated in the gene symbols themselves—knowledge about
+their functions, pathways, and interactions. For example,
+“Postn” has been implicated in extracellular matrix remod-
+eling and fibroblast activation, whereas the co-expression of
+“Ttn” and “Actc1” is indicative of cardiac muscle identity.
+This semantic gap prevents the models from reasoning about
+the tissue in a biologically informed manner, thereby limit-
+ing their capacity for deeper biological discovery.
+The recent success of general-purpose Large Language
+Models (LLMs) in bioinformatics (Liu et al. 2024a) has
+opened new possibilities for leveraging textual gene knowl-
+edge in computational biology. For instance, GenePT (Chen
+and Zou 2025) leverages ChatGPT (Brown et al. 2020) to
+generate embeddings for individual genes based on their
+textual descriptions or symbols, facilitating diverse applica-
+tions in gene and single-cell analysis. In the context of inte-
+grating transcriptomics with histopathology, models such as
+SGN (Yang et al. 2024) and OmiCLIP (Chen et al. 2025)
+adopt a similar approach, generating gene semantic em-
+arXiv:2511.11380v1  [cs.LG]  14 Nov 2025
+
+===== PAGE 2 =====
+beddings alongside image embeddings, which enables joint
+modeling of gene symbols and tissue morphology. These
+works demonstrate the feasibility of translating gene sym-
+bols into biologically meaningful concepts. However, de-
+spite its promise, the direct application of this semantic-
+aware approach to spatial transcriptomics data clustering has
+remained challenging and largely unexplored. The primary
+challenge lies in the fundamental disparity between sym-
+bolic biological knowledge and quantitative spatial informa-
+tion, two modalities with inherently different characteristics
+that are difficult to reconcile.
+To bridge this gap, we introduce SemST, a novel
+semantic-guided framework for spatial transcriptomics data
+clustering. SemST explores the integration of gene seman-
+tics directly into the spatial modeling process. We leverage
+the power of LLMs, pre-trained on vast biomedical text cor-
+pora, to transform discrete gene symbols into dense, contin-
+uous embeddings that map spots within a meaningful bio-
+logical semantic space. The central challenge then becomes
+how to effectively integrate these powerful semantic priors
+with the spatial relationship features. A naive fusion risks di-
+luting the rich information from each modality, rather than
+creating a synergistic whole.
+To this end, we introduce the Fine-grained Semantic Mod-
+ulation (FSM) module. Instead of passively combining in-
+formation, the FSM module enables an active, dynamic “di-
+alogue” between biological functions and spatial contexts.
+Specifically, the FSM learns a spot-specific affine transfor-
+mation to perform an element-wise calibration of the GNN-
+derived spatial features. This mechanism allows high-order
+biological knowledge to dynamically guide and refine the
+representation of local spatial context, leading to more ro-
+bust and biologically plausible representations.
+The contributions of this work can be summarized as the
+following three-fold:
+• We propose SemST, a novel deep learning framework
+that effectively fuses LLM-derived gene semantics with
+GNN-captured spatial context for superior spatial do-
+main identification, moving beyond the conventional
+treatment of genes as isolated numerical features.
+• We design the Fine-grained Semantic Modulation (FSM)
+module, which enables semantic priors to dynamically
+calibrate spatial features in an element-wise manner, re-
+sulting in the infusion of high-order biological knowl-
+edge into spatial representations.
+• Extensive experiments on multiple benchmark spatial
+transcriptomics datasets demonstrate that SemST signifi-
+cantly outperforms existing state-of-the-art methods. We
+also show that our proposed module is a versatile, plug-
+and-play component that consistently boosts the perfor-
+mance of other baseline models.
+Related Work
+Large Language Models for Biological Semantics
+Recent studies have demonstrated the potential of LLMs
+in interpreting biological data by treating gene symbols as
+natural language. For instance, models like GPT-4 can per-
+form zero-shot cell type annotation with remarkable accu-
+racy by simply inputting lists of marker genes (Hou and Ji
+2024; Zeng and Du 2023). In addition, LLMs are capable
+of generating coherent biological summaries and GO (Ash-
+burner et al. 2000) terms, often rivaling the performance
+of human experts (Huang 2024; Hu et al. 2025). From the
+perspective of semantic embeddings, GenePT (Chen and
+Zou 2025) demonstrates the capability of GPT models to
+generate informative embeddings from either gene descrip-
+tion texts or gene symbols alone. When integrating tran-
+scriptomic data with histopathological images, SGN (Yang
+et al. 2024) performs dot-product operations between LLM-
+derived gene embeddings and visual features, enabling zero-
+shot gene expression prediction. Similarly, OmiCLIP (Chen
+et al. 2025) employs a contrastive learning framework to
+align gene semantics with image patch features within a uni-
+fied feature space, thereby establishing a visual-omics foun-
+dation model. These methods all successfully leverage the
+language processing power of LLMs to unlock biological in-
+sights, demonstrating the potential of incorporating linguis-
+tic information into spatial transcriptomic data analysis.
+Spatial Domain Identification
+The primary goal of spatial domain identification in spa-
+tial transcriptomics is to cluster spots with similar charac-
+teristics, a task crucial for understanding tissue architec-
+ture. Early approaches such as Louvain (Blondel et al. 2008)
+and Seurat (Satija et al. 2015) typically overlooked spatial
+context. To address this, methods specifically designed to
+incorporate spatial information have emerged. BayesSpace
+(Zhao et al. 2021) employs a Bayesian model with a spa-
+tial prior to encourage neighboring spots to belong to the
+same cluster. SpaGCN (Hu et al. 2021) was a pioneering
+deep learning approach, constructing a graph from the tissue
+and using a Graph Convolutional Network (GCN) to inte-
+grate gene expression with spatial coordinates. Building on
+this, a family of GNN-based models has become a dominant
+paradigm. STAGATE (Dong and Zhang 2022) uses a graph
+attention autoencoder to learn low-dimensional embeddings
+that capture both expression similarity and spatial proxim-
+ity. GraphST (Long et al. 2023) further enhances this by
+incorporating contrastive learning to better distinguish be-
+tween different spatial domains. Spatial-MGCN (Wang et al.
+2023) employs a multi-view GCN to model the complex
+relationships between gene expression and spatial informa-
+tion. However, a limitation persists across all these methods:
+they treat gene expression as a numerical matrix, discarding
+the rich biological knowledge encoded in gene symbols.
+Method
+In this section, we present SemST, a novel semantic-guided
+deep learning framework for spatial transcriptomics data
+clustering. The overall architecture of SemST is illustrated
+in Figure 1.
+Problem Formulation
+We consider a spatial transcriptomics dataset denoted as
+D = {X, S, G}. The normalized gene expression matrix is
+
+===== PAGE 3 =====
+...
+GCNfea
+GCNspa
+Afea
+Gene view
+Hfea
+Hspa
+Cross-view fusion
+Spatial view
+Spot 1: (x1,y1)
+Spot 2: (x2,y2)
+Spot 3: (x3,y3)
+Spot 4: (x4,y4)
+Spot N: (xn,yn)
+...
+...
+Aspa
+Highly expressed genes
+LLM
+MLP
+Zgcn
+Zmod
+α 
+β 
+Zfinal
+ZINB
+Spot 1: 
+Spot 2: 
+Spot 3: 
+Spot 4: 
+Spot N: 
+...
+Spot 1: 
+Spot 2: 
+Spot 3: 
+Spot 4: 
+Spot N: 
+...
+Spot 1: Hsp90ab1,Lrba, Igf2...
+Spot 2: mt-Nd1, Rpl37a, Tubb5...
+Spot 3: Hbb-y, Rack1, Rps18…
+Spot 4: Peg3, Ptma, Rpl18a...
+Spot N: Mest, Tmsb4x, Sem1...
+...
+System: You are an expert in 
+bioinformatics. Represent the 
+biological state of a cell 
+characterized  by the 
+following highly expressed 
+genes. Focus on capturing 
+the functional essence 
+relevant for spatial domain 
+identification.
+User: Highly expressed 
+genes : {gene symbols list}
+Prompts
+...
+Hllm
+FSM
+Figure 1: The framework of the proposed SemST. We integrate three distinct information as inputs. Two graphs are constructed
+based on expression and spatial data, and multi-view features are propagated and fused using GCN. Gene symbols are formatted
+into prompts and fed into an LLM to extract biologically informed embeddings, which are then used by the proposed FSM
+module to guide spatial feature refinement. Model optimization is achieved through data reconstruction based on ZINB.
+represented by X ∈RN×M, where N is the number of spots
+and M is the number of genes. The spatial coordinates of
+the spots are given by S ∈RN×2. The set of gene symbols
+is denoted by G = {g1, g2, . . . , gM}. The primary objec-
+tive of our framework is to learn a low-dimensional feature
+representation for each spot, such that these representations
+can be effectively utilized for clustering to reveal underlying
+spatial domains and functional regions within the tissue.
+Multi-View GNN for Spatial Representation
+To comprehensively capture the relationships among spots,
+we construct two distinct graphs: one based on spatial prox-
+imity and the other on gene expression similarity. The for-
+mer excels at modeling microenvironmental interactions,
+while the latter is well suited for identifying spots that be-
+long to the same layer but are spatially distant.
+Spatial Proximity Graph.
+We construct a spatial graph
+Aspa ∈{0, 1}N×N based on the physical coordinates S.
+An edge is established between two spots i and j if their
+Euclidean distance is within a predefined radius threshold r.
+The adjacency matrix is formally defined as:
+(Aspa)ij =
+1,
+if ∥Si −Sj∥2 ≤r,
+0,
+otherwise.
+(1)
+Gene Expression Similarity Graph.
+We construct a fea-
+ture graph Afea ∈{0, 1}N×N using the K-Nearest Neigh-
+bors (KNN) (Cover and Hart 1967) algorithm on the gene
+expression matrix X. An edge connects spot i to spot j if
+spot j is among the top kn most similar spots to spot i in the
+high-dimensional expression space. This is defined as:
+(Afea)ij =
+1,
+if j ∈N(i),
+0,
+otherwise,
+(2)
+where N(i) represents the set of kn nearest neighbors of
+spot i based on the cosine similarity of their expression pro-
+files Xi and Xj.
+Multi-View GCN Propagation.
+With the two graphs con-
+structed, we employ a multi-view GCN to learn latent repre-
+sentations from both spatial and feature perspectives. Each
+branch processes the gene expression matrix X as node fea-
+tures but uses a different graph structure.
+The propagation rule for a GCN layer is given by:
+H(l+1) = σ( ˜D−1
+2 ˜A ˜D−1
+2 H(l)W(l)),
+(3)
+where ˜A = A + I is the adjacency matrix with self-loops,
+˜D is the corresponding degree matrix, H(l) is the feature
+matrix at layer l (H(0) = X), W(l) is a trainable weight
+matrix at layer l, and σ is a non-linear activation function.
+The two branches generate embeddings as follows:
+Hspa = GCNspa(X, Aspa),
+(4)
+Hfea = GCNfea(X, Afea),
+(5)
+where GCNspa and GCNfea are multi-layer GCNs with sep-
+arate parameters. The fused spatial representation, Zgcn ∈
+RN×d, is obtained by concatenating the outputs of the two
+branches:
+Zgcn = Concat(Hspa, Hfea).
+(6)
+
+===== PAGE 4 =====
+This multi-view approach allows the model to learn a ro-
+bust representation that jointly captures local spatial proxim-
+ity and distance-independent expression profile similarity.
+Semantic-Guided Feature Modulation
+Fundamental to SemST is its ability to leverage the rich bio-
+logical knowledge inherent in gene symbols. We achieve this
+by generating semantic embeddings using a general LLM
+and then using these embeddings to modulate the GNN-
+derived representation Zgcn through our FSM module.
+Gene Semantics Extraction.
+For each spot i, we begin
+by identifying its key biological characteristics through the
+selection of the top kg most highly expressed genes, de-
+noted as Gk
+i = {gi,1, gi,2, . . . , gi,kg}. These gene symbols
+are formatted into a natural language string and incorporated
+into a descriptive prompt, which is subsequently fed into
+an LLM. The parameters of LLM remain frozen through-
+out training, allowing it to serve as a fixed, comprehensive
+biological knowledge base. From the LLM, we extract the
+final-layer hidden state, denoted as Hllm ∈RN×d′, which
+encodes rich, high-order biological knowledge.
+Fine-grained Semantic Modulation (FSM).
+Integrating
+semantic and spatial information is crucial for comprehen-
+sive biological understanding. While conventional fusion
+strategies (e.g., concatenation, addition, cross-attention) are
+commonly employed, they often exhibit limited efficacy
+in fully leveraging the biological prior knowledge from
+the LLM. A more fine-grained and expressive modulation
+is required to facilitate semantic-spatial integration (Perez
+et al. 2018). The proposed FSM module specifically aims
+to adapt the powerful LLM-derived biological prior for our
+task. Firstly, we project the Hllm through a trainable Multi-
+Layer Perceptron (MLP). This MLP transforms the high-
+dimensional Hllm into a task-specific modulation space,
+yielding the semantic modulation matrix Zmod ∈RN×2d
+with an output dimension of 2 × d:
+Zmod = fmlp(Hllm).
+(7)
+Subsequently, splitting Zmod along its feature dimension
+into two equal-sized tensors: a scaling factor α ∈RN×d and
+a bias factor β ∈RN×d:
+[α | β] = Zmod.
+(8)
+The final, semantically-calibrated representation Zfinal is
+computed as:
+Zfinal = ((1 + α) ⊙Zgcn + β)W,
+(9)
+where ⊙denotes the element-wise (Hadamard) product, and
+W is a trainable weight matrix. This affine transformation
+enables the semantic representation to dynamically modu-
+late each spot’s spatial features through fine-grained scal-
+ing and shifting, effectively leveraging the biological knowl-
+edge captured by the LLM to actively steer the representa-
+tion—letting the genes “speak” in the learning process.
+Notably, we intentionally generate α and β from the same
+MLP to ensure they are embedded in the same bio-semantic
+space. During backpropagation, the distinct gradients for
+scaling and shifting lead them to gradually differentiate and
+specialize, effectively decoupling identical semantics into
+distinct functions. Using two separate networks to generate
+α and β risks uncoordinated modulation.
+Model Optimization
+To train the entire framework without ground-truth labels,
+we adopt a self-supervised learning strategy based on data
+reconstruction.
+ZINB Loss.
+Given the sparse and over-dispersed nature of
+spatial transcriptomics data, we use a Zero-Inflated Nega-
+tive Binomial (ZINB) reconstruction loss (Yu et al. 2022).
+The decoder network transforms the final embedding Zfinal
+into the three parameter matrices of the ZINB distribution
+for each gene in each spot: the mean µ = fµ(Zfinal),
+the dispersion θ = fθ(Zfinal), and the dropout probabil-
+ity π = fπ(Zfinal). The ZINB loss is the negative log-
+likelihood of the observed expression counts X given these
+parameters:
+Lzinb = −
+N
+X
+i=1
+M
+X
+j=1
+log P(Xij | µij, θij, πij).
+(10)
+Furthermore, we adopt two additional loss functions, each
+of which has been demonstrated to be highly effective in
+prior studies (Zhu et al. 2024; He et al. 2024).
+Correlation Reduction Loss.
+To strengthen the GNN
+backbone, we introduce correlation reduction loss. Specif-
+ically, given two embeddings Hspa and Hfea, we compute
+the cosine similarity between the i-th feature in spatial view
+and the j-th feature in the feature view:
+Cij =
+(Hspa
+i
+)(Hfea
+j
+)⊤
+∥Hspa
+i
+∥∥Hfea
+j
+∥
+.
+(11)
+Then, the correlation reduction loss encourages correlation
+matrix C ∈Rp×p (where p = d/2) to be close to the identity
+matrix I, thereby promoting consistence of corresponding
+features across views while reducing correlations between
+distinct features. The loss is formulated as:
+Lcr = 1
+p2
+X
+i,j
+(Cij −Iij)2.
+(12)
+Spatial Regularization Loss.
+We introduce a spatial regu-
+larization loss to prevent the over-injection of semantics that
+may harm spatial coherence. This loss ensures that spatially
+neighboring spots are close, while non-neighboring spots are
+distant in the latent space Zfinal, formulated as:
+Ls = −
+N
+X
+i=1
+
+X
+j∈Ri
+log σ(ψij) +
+X
+k/∈Ri
+log
+ 1 −σ(ψik)
+
+
+,
+(13)
+where ψij denotes the cosine similarity between the repre-
+sentations of spots i and j, σ(·) denotes the sigmoid function
+and Ri represents the set of spatial neighbors of spot i.
+
+===== PAGE 5 =====
+Annotation
+GraphST
+Spatial-MGCN
+SEDR
+GAAEST
+MAFN
+stDCL
+DUSTED
+STAIG
+SemST
+DLPFC
+MBA
+HBC
+Figure 2: Visualization of manual annotations and clustering results produced by SemST and eight other methods on the DLPFC
+slice #151672, MBA, and HBC datasets. Color indicates spatial domains.
+Overall Loss Function.
+The total loss function for SemST
+is formulated as:
+L = Lzinb + γLcr + λLs,
+(14)
+where γ and λ are hyper-parameters that balance the contri-
+butions of the different loss terms.
+Experiments
+Experimental Setup
+Datasets.
+We evaluate our method on nine public spatial
+transcriptomics datasets. The human dorsolateral prefrontal
+cortex dataset (DLPFC), the human breast cancer dataset
+(HBC), and the mouse brain anterior dataset (MBA) are all
+generated using the 10x Genomics Visium platform. For the
+DLPFC dataset, we use five tissue slices—151508, 151509,
+151510, 151671, and 151672—obtained from two adult hu-
+man samples, with each section manually annotated into 5
+or 7 cortical layers. The HBC dataset is annotated into 20
+spatial domains, and the MBA dataset contains 52 annotated
+spatial domains. We also include the mouse embryo dataset
+(ME) from the Stereo-seq platform, which is derived from an
+E9.5 sample and includes 12 annotated spatial domains, and
+the mouse visual cortex dataset (MVC) from the STARmap
+platform, which contains 7 annotated spatial domains.
+Compared Methods.
+We compare our method with nine
+representative methods, including STAGATE (Dong and
+Zhang 2022), GraphST (Long et al. 2023), Spatial-MGCN
+(Wang et al. 2023), GAAEST (Wang et al. 2024), SEDR
+(Xu et al. 2024), MAFN (Zhu et al. 2024), stDCL (Yu et al.
+2025), DUSTED (Zhu et al. 2025), and STAIG (Yang et al.
+2025b). All baseline results are obtained by running official
+implementations with recommended parameters to achieve
+the best performance.
+Metrics.
+We adopt four standard clustering metrics to
+evaluate performance: Adjusted Rand index (ARI), Normal-
+ized Mutual Information (NMI), clustering accuracy (ACC),
+and F1-score (F1). These metrics comprehensively assess
+the agreement between the predicted clusters and ground-
+truth annotations. We multiplied all the results by 100.
+Implementation Details.
+Our model is implemented in
+PyTorch and trained using the Adam optimizer with an ini-
+tial learning rate of 0.001 and a weight decay of 5 × 10−4.
+All experiments are conducted on a machine equipped with
+an NVIDIA RTX 3090 GPU (24GB). More implementation
+details can be found in the supplementary materials.
+Quantitative and Qualitative Results
+Table 1 presents the quantitative clustering results on eight
+spatial transcriptomics datasets. SemST almost consistently
+outperforms all compared methods across most metrics and
+datasets. For example, on the 151508 slice, SemST sur-
+passes the closest competitor by over 10 ARI points. On
+the MBA dataset, characterized by highly complex spatial
+structures that make distinguishing small domains particu-
+larly challenging, SemST achieves an ARI improvement of
+more than 5 points over the best compared method.
+Complementing these quantitative findings, Figure 2 pro-
+vides a qualitative visualization of spatial clustering results
+on three representative datasets. The visualizations clearly
+show that SemST produces more anatomically coherent and
+biologically meaningful clusters, aligning closely with an-
+notated ground truth spatial domains. These results demon-
+strate that SemST effectively captures both functional and
+structural tissue patterns, achieving superior accuracy and
+biological consistency.
+Ablation Study
+To systematically evaluate the contribution of the key archi-
+tectural components of SemST and validate the versatility
+of the FSM module, we conducted comprehensive ablation
+experiments. Table 2 presents the performance of SemST
+variants on four representative datasets. Table 3 shows the
+clustering performance improvement achieved by integrat-
+ing the FSM module into all compared methods.
+Absence of Semantic Embeddings.
+The “w/o LLM”
+variant represents SemST trained without LLM-derived se-
+mantic embeddings. As shown, removing the semantic em-
+beddings leads to a performance drop across all metrics and
+
+===== PAGE 6 =====
+Datasets
+151508
+151509
+151510
+151671
+Methods
+ARI
+NMI
+ACC
+F1
+ARI
+NMI
+ACC
+F1
+ARI
+NMI
+ACC
+F1
+ARI
+NMI
+ACC
+F1
+STAGATE[Nat. Com.’22] 53.84 64.10 69.39 64.13 49.54 65.81 67.42 64.53 46.07 59.17 61.55 50.88 59.54 69.37 75.10 77.56
+GraphST[Nat. Com.’23]
+48.61 64.28 61.93 56.78 51.93 67.41 67.48 63.40 51.29 64.53 68.38 53.35 61.02 71.77 74.84 79.62
+Spatial-MGCN(BIB’23) 46.22 60.23 59.46 56.45 54.22 68.16 63.83 63.27 51.61 66.50 59.35 52.38 60.19 71.87 73.39 75.18
+GAAEST[Com. Biol.’24] 31.24 52.82 57.18 44.79 43.84 53.16 67.21 43.39 39.79 53.21 59.61 45.30 64.80 65.89 74.47 71.41
+SEDR[Genome Med.’24]
+47.47 62.07 61.79 60.53 49.69 63.30 66.54 58.36 50.52 64.76 60.20 60.70 59.97 68.25 74.44 76.96
+MAFN[TKDE’24]
+54.54 66.31 66.26 62.61 70.48 69.41 75.36 66.07 69.91 70.67 74.82 64.07 72.41 68.05 79.53 79.29
+stDCL[Adv. Sci.’25]
+57.13 66.78 71.42 60.48 41.63 61.41 62.87 53.99 57.91 62.49 71.95 71.95 66.74 73.91 79.23 81.30
+DUSTED[AAAI’25]
+46.53 59.12 64.00 61.63 51.10 66.38 67.08 63.68 43.08 62.76 64.35 58.60 60.31 69.29 75.76 75.94
+STAIG[Nat. Com.’25]
+50.36 64.09 63.02 57.19 59.45 69.51 71.60 67.42 52.88 67.02 65.46 60.33 45.17 65.56 59.25 58.48
+SemST
+67.93 71.08 74.53 67.59 73.90 72.73 76.57 67.49 73.92 73.09 77.30 68.29 78.70 75.20 81.21 82.01
+Datasets
+ME
+MVC
+HBC
+MBA
+Methods
+ARI
+NMI
+ACC
+F1
+ARI
+NMI
+ACC
+F1
+ARI
+NMI
+ACC
+F1
+ARI
+NMI
+ACC
+F1
+STAGATE[Nat. Com.’22] 32.34 55.51 46.07 47.77 52.38 56.37 66.86 65.55 44.66 67.36 48.97 53.50 35.81 72.49 45.49 48.80
+GraphST[Nat. Com.’23]
+29.75 53.54 46.12 44.95 36.16 45.61 60.73 61.69 52.63 66.96 64.98 55.58 41.32 71.46 47.05 48.23
+Spatial-MGCN(BIB’23) 44.54 59.91 56.79 57.38 53.32 59.89 74.31 74.40 65.68 70.83 64.67 65.71 48.34 68.03 44.12 44.87
+GAAEST[Com. Biol.’24] 26.27 49.18 44.78 45.45 59.41 68.15 75.89 73.75 52.02 67.22 55.71 55.97 43.35 70.64 50.09 49.29
+SEDR[Genome Med.’24]
+27.70 51.32 46.32 46.89 52.71 63.16 67.77 66.17 43.16 67.30 50.34 54.19 40.36 71.37 46.86 50.19
+MAFN[TKDE’24]
+38.48 54.83 53.37 54.37 59.12 67.37 76.97 74.91 59.20 62.26 60.61 61.34 44.15 67.73 44.64 45.48
+stDCL[Adv. Sci.’25]
+34.32 59.34 51.68 50.69 49.54 63.49 66.94 62.17 55.73 67.80 58.19 56.21 42.05 70.75 48.24 45.06
+DUSTED[AAAI’25]
+26.23 52.15 40.03 39.67 58.06 66.30 71.25 71.33 47.81 65.78 48.92 52.40 35.86 71.13 43.75 47.31
+STAIG[Nat. Com.’25]
+27.20 51.02 46.68 47.62 58.26 69.58 71.91 70.61 57.86 69.43 59.82 63.19 33.35 70.61 44.12 46.68
+SemST
+50.50 60.06 60.93 59.07 64.27 70.60 80.70 79.91 68.64 68.23 67.27 65.99 53.92 70.12 51.09 50.60
+Table 1: Quantitative comparison of clustering performance on eight spatial transcriptomics datasets using four evaluation
+metrics: ARI, NMI, ACC, and F1-score. Bold denotes the best result, and Underline denotes the second best.
+Variants
+151509
+151510
+151671
+MBA
+ARI
+NMI
+ACC
+F1
+ARI
+NMI
+ACC
+F1
+ARI
+NMI
+ACC
+F1
+ARI
+NMI
+ACC
+F1
+w/o LLM
+67.37 69.16 74.02 67.13 70.74 71.40 75.26 66.86 60.43 71.18 75.20 78.20 44.83 67.74 47.27 48.10
+Random Emb.
+59.95 59.45 69.61 60.74 63.16 60.84 73.23 54.40 50.56 62.79 67.99 71.35 41.72 65.35 42.97 41.65
+Unrelated Emb. 65.24 68.23 71.60 61.85 65.96 68.50 74.67 66.39 60.11 72.62 72.67 76.71 43.89 68.20 46.79 48.63
+BERT
+63.27 65.71 68.34 60.19 69.25 70.30 75.50 67.28 60.05 70.67 73.93 77.40 42.96 68.35 45.86 46.61
+Cross-Attention 62.40 56.75 64.68 66.26 66.07 67.48 72.36 64.70 63.14 74.03 75.64 78.87 47.69 67.45 48.50 49.25
+Concat
+69.25 68.91 72.99 62.50 67.43 69.88 73.69 65.79 73.21 67.64 80.23 80.12 46.64 68.05 47.01 47.97
+Add
+69.19 68.24 73.02 64.22 71.96 71.37 76.21 67.92 74.14 71.83 79.40 80.60 47.35 67.96 47.24 47.70
+SemST
+73.90 72.73 76.57 67.49 73.92 73.09 77.30 68.29 78.70 75.20 81.21 82.01 53.92 70.12 51.09 50.60
+Table 2: Ablation study evaluating the contributions of semantic embeddings and the FSM module.
+datasets. This confirms that the biologically informed se-
+mantic embeddings play a critical role in enabling the su-
+perior performance of SemST.
+Quality of Semantic Embeddings.
+To further validate the
+importance of meaningful semantic information, we intro-
+duced three additional variants. “Random Emb.” involved
+randomly initialized vectors with a mean of 0 and a vari-
+ance of 0.85, a distribution chosen to approximate the LLM
+embedding. For “Unrelated Emb.”, the LLM was prompted
+with entirely non-biological questions. The “BERT” vari-
+ant merely employs a basic pre-trained BERT model (De-
+vlin et al. 2019) as a plain text encoder, without incorporat-
+ing any specialized domain knowledge. They almost consis-
+tently showed notably lower performance compared to the
+“w/o LLM” variant. This highlights the importance of us-
+ing high-quality, biologically relevant semantic embeddings.
+Arbitrary or generic linguistic information may be ineffec-
+tive or even detrimental. The UMAP visualization (Figure 3)
+demonstrates the superior quality of LLM-generated embed-
+dings over that of BERT. The LLM captures a more smooth,
+biologically meaningful gradient across cortical layers (left),
+whereas the BERT embeddings are chaotic and lack clear
+structure (right). This illustrates that the LLM is capable of
+deriving deeper insights into gene symbols.
+Effectiveness of FSM for Feature Fusion.
+We compared
+FSM module against several alternative fusion strategies for
+
+===== PAGE 7 =====
+Datasets Methods
+ARI
+NMI
+ACC
+F1
+Before / After /
+∆
+Before / After /
+∆
+Before / After /
+∆
+Before / After /
+∆
+HBC
+STAGATE [Nat. Com.’22]
+44.66 / 58.16 / +13.50
+67.36 / 68.80 / +1.44
+48.97 / 58.77 / +9.80
+53.50 / 61.17 / +7.67
+GraphST [Nat. Com.’23]
+52.63 / 57.09 / +4.46
+66.96 / 68.20 / +1.24
+54.98 / 58.79 / +3.81
+55.58 / 59.06 / +3.48
+Spatial-MGCN [BIB’23]
+65.68 / 66.80 / +1.12
+70.83 / 69.44 /−1.39
+64.67 / 65.61 / +0.94
+65.71 / 66.61 / +0.90
+GAAEST [Com. Biol.’24]
+52.02 / 57.75 / +5.73
+67.22 / 68.29 / +1.07
+55.71 / 59.87 / +4.16
+55.97 / 58.95 / +2.98
+SEDR [Genome Med.’24]
+43.16 / 50.17 / +7.01
+67.30 / 68.57 / +1.27
+50.34 / 56.27 / +5.93
+54.19 / 60.30 / +6.11
+MAFN [TKDE’24]
+57.49 / 62.68 / +5.19
+62.78 / 64.58 / +1.80
+58.32 / 62.74 / +4.42
+59.55 / 62.47 / +2.92
+stDCL [Adv. Sci.’25]
+55.73 / 62.10 / +6.37
+70.05 / 70.22 / +0.17
+58.19 / 63.22 / +5.03
+56.21 / 61.62 / +5.41
+DUSTED [AAAI’25]
+47.81 / 50.95 / +3.14
+65.78 / 66.20 / +0.42
+48.92 / 52.24 / +3.32
+52.40 / 56.24 / +3.84
+STAIG [Nat. Com.’25]
+57.86 / 60.33 / +2.47
+69.43 / 70.59 / +1.16
+59.82 / 61.11 / +1.29
+63.19 / 64.32 / +1.13
+MBA
+STAGATE [Nat. Com.’22]
+35.81 / 38.79 / +2.98
+72.49 / 72.11 /−0.38
+45.49 / 46.64 / +1.15
+48.80 / 50.05 / +1.25
+GraphST [Nat. Com.’23]
+41.32 / 48.82 / +7.50
+71.46 / 71.98 / +0.52
+47.05 / 50.58 / +3.53
+48.23 / 48.33 / +0.10
+Spatial-MGCN [BIB’23]
+48.34 / 51.07 / +2.73
+68.03 / 68.90 / +0.87
+44.12 / 48.65 / +4.53
+44.87 / 49.56 / +4.69
+GAAEST [Com. Biol.’24]
+43.35 / 46.52 / +3.17
+70.64 / 71.78 / +1.14
+50.09 / 51.32 / +1.23
+49.29 / 49.77 / +0.48
+SEDR [Genome Med.’24]
+42.05 / 44.95 / +2.90
+71.37 / 71.97 / +0.60
+45.71 / 48.00 / +2.29
+45.90 / 48.02 / +2.12
+MAFN [TKDE’24]
+44.15 / 48.06 / +3.91
+67.73 / 67.83 / +0.10
+44.64 / 47.72 / +3.08
+45.48 / 47.88 / +2.40
+stDCL [Adv. Sci.’25]
+42.05 / 48.46 / +6.41
+70.75 / 71.77 / +1.02
+48.24 / 51.61 / +3.37
+45.06 / 47.40 / +2.34
+DUSTED [AAAI’25]
+35.86 / 38.30 / +2.44
+71.13 / 71.68 / +0.55
+43.75 / 45.68 / +1.93
+47.13 / 48.38 / +1.25
+STAIG [Nat. Com.’25]
+33.45 / 36.33 / +2.98
+70.61 / 71.47 / +0.86
+44.12 / 46.23 / +2.11
+46.68 / 49.00 / +2.32
+Table 3: Clustering performance comparison before and after integrating our proposed module into existing methods.
+UMAP Dimension 1
+UMAP Dimension 2
+(a) Embeddings from the LLM
+UMAP Dimension 1
+UMAP Dimension 2
+(b) Embeddings from BERT
+Layer1
+Layer2
+Layer3
+Layer4
+Layer5
+Layer6
+WM
+Layer1
+Layer2
+Layer3
+Layer4
+Layer5
+Layer6
+WM
+Figure 3: UMAP visualization of semantic embeddings gen-
+erated by the LLM and BERT on DLPFC slice #151508
+dataset, colored according to manual annotations.
+integrating semantic embeddings with spatial features, in-
+cluding “Cross-Attention”, “Concat” (concatenation), and
+“Add” (element-wise addition). SemST consistently outper-
+forms all these alternatives, underscoring the superiority of
+FSM in enabling nuanced feature modulation.
+Module Versatility.
+Based on the idea that biological se-
+mantics can universally enhance spatial representations, the
+FSM module is intended to function without reliance on
+any specific framework. To validate this plug-and-play ver-
+satility, we integrated semantic information via FSM into
+all baseline methods. As shown in Table 3, the results are
+compelling: the integration almost consistently yields signif-
+icant performance improvements across nearly all methods
+and metrics, demonstrating the effectiveness of our approach
+in enriching spatial representations and improving perfor-
+mance on spatial domain identification.
+Parameters Analysis
+We examine how the number of top expressed genes (kg)
+used as input affects clustering performance. As shown in
+5 10
+20
+30
+40
+50
+(a) ME
+40
+50
+60
+70
+80
+5 10
+20
+30
+40
+50
+(b) MBA
+5 10
+20
+30
+40
+50
+(c) MVC
+ARI
+NMI
+ACC
+F1
+Figure 4: Impact of kg (the number of top-expressed gene
+input to the LLM) on clustering performance across three
+datasets, evaluated by ARI, NMI, ACC, and F1.
+Figure 4, SemST was evaluated on three datasets with kg
+from 5 to 50. Performance generally improved with larger
+kg, peaking at kg=30 for ME and MVC, and kg=20 for
+MBA, then declined. This suggests that a moderate-sized
+gene set best captures key biological signals, balancing in-
+formation loss and gene redundancy.
+Conclusion
+In this work, we introduce SemST, a novel framework
+that addresses a critical limitation in spatial transcriptomics
+data clustering: the disregard for the biological semantics
+of gene symbols. By harnessing LLMs, SemST straight-
+forwardly transforms the symbol sets of highly expressed
+genes into biologically rich semantic embeddings, which
+then function with the designed FSM module to modulate
+and guide spatial features. Remarkably, extensive experi-
+ments demonstrate that this simple yet effective approach
+leads to substantial performance improvements. By enabling
+genes to “speak” their biological roles within a spatial con-
+text, SemST offers a more profound and insightful perspec-
+tive on the intricate tissue architecture.
+
+===== PAGE 8 =====
+Acknowledgements
+The work was supported in part by the National Natural
+Science Foundation of China under grants 62476258 and
+62522604, in part by the Natural Science Foundation of
+Hubei Province under grant 2025AFA113, and in part by
+the Fundamental Research Funds for National Universi-
+ties, China University of Geosciences (Wuhan) under grant
+2025XLB83.
+References
+Ashburner, M.; Ball, C. A.; Blake, J. A.; Botstein, D.; But-
+ler, H.; Cherry, J. M.; Davis, A. P.; Dolinski, K.; Dwight,
+S. S.; Eppig, J. T.; et al. 2000. Gene ontology: tool for the
+unification of biology. Nature genetics, 25(1): 25–29.
+Biancalani, T.; Scalia, G.; Buffoni, L.; Avasthi, R.; Lu, Z.;
+Sanger, A.; Tokcan, N.; Vanderburg, C. R.; Segerstolpe, ˚A.;
+Zhang, M.; et al. 2021. Deep learning and alignment of spa-
+tially resolved single-cell transcriptomes with Tangram. Na-
+ture methods, 18(11): 1352–1362.
+Blondel, V. D.; Guillaume, J.-L.; Lambiotte, R.; and Lefeb-
+vre, E. 2008. Fast unfolding of communities in large net-
+works. Journal of statistical mechanics: theory and experi-
+ment, 2008(10): P10008.
+Brown, T.; Mann, B.; Ryder, N.; Subbiah, M.; Kaplan, J. D.;
+Dhariwal, P.; Neelakantan, A.; Shyam, P.; Sastry, G.; Askell,
+A.; et al. 2020. Language models are few-shot learners. Ad-
+vances in neural information processing systems, 33: 1877–
+1901.
+Chen, W.; Zhang, P.; Tran, T. N.; Xiao, Y.; Li, S.; Shah, V. V.;
+Cheng, H.; Brannan, K. W.; Youker, K.; Lai, L.; et al. 2025.
+A visual–omics foundation model to bridge histopathology
+with spatial transcriptomics. Nature Methods, 1–15.
+Chen, Y.; and Zou, J. 2025. Simple and effective embed-
+ding model for single-cell biology built from chatgpt. Na-
+ture biomedical engineering, 9(4): 483–493.
+Cover, T.; and Hart, P. 1967. Nearest neighbor pattern clas-
+sification. IEEE transactions on information theory, 13(1):
+21–27.
+Devlin, J.; Chang, M.-W.; Lee, K.; and Toutanova, K. 2019.
+Bert: Pre-training of deep bidirectional transformers for lan-
+guage understanding. In Proceedings of the 2019 conference
+of the North American chapter of the association for compu-
+tational linguistics: human language technologies, volume 1
+(long and short papers), 4171–4186.
+Dong, K.; and Zhang, S. 2022.
+Deciphering spatial do-
+mains from spatially resolved transcriptomics with an adap-
+tive graph attention auto-encoder. Nature communications,
+13(1): 1739.
+Du, J.; Yang, Y.-C.; An, Z.-J.; Zhang, M.-H.; Fu, X.-H.;
+Huang, Z.-F.; Yuan, Y.; and Hou, J. 2023.
+Advances in
+spatial transcriptomics and related data analysis strategies.
+Journal of translational medicine, 21(1): 330.
+He, X.; Tang, C.; Liu, X.; Li, C.; An, S.; and Li, Z. 2024.
+Heterogeneous graph guided contrastive learning for spa-
+tially resolved transcriptomics data. In Proceedings of the
+32nd ACM International Conference on Multimedia, 8287–
+8295.
+Hou, W.; and Ji, Z. 2024. Assessing GPT-4 for cell type
+annotation in single-cell RNA-seq analysis. Nature methods,
+21(8): 1462–1465.
+Hu, J.; Li, X.; Coleman, K.; Schroeder, A.; Ma, N.; Ir-
+win, D. J.; Lee, E. B.; Shinohara, R. T.; and Li, M. 2021.
+SpaGCN: Integrating gene expression, spatial location and
+histology to identify spatial domains and spatially variable
+genes by graph convolutional network.
+Nature methods,
+18(11): 1342–1351.
+Hu, M.; Alkhairy, S.; Lee, I.; Pillich, R. T.; Fong, D.; Smith,
+K.; Bachelder, R.; Ideker, T.; and Pratt, D. 2025. Evaluation
+of large language models for discovery of gene set function.
+Nature methods, 22(1): 82–91.
+Huang, C. H. 2024.
+QuST-LLM: Integrating Large Lan-
+guage Models for Comprehensive Spatial Transcriptomics
+Analysis. arXiv:2406.14307.
+Lampert, M.; Bl¨ocker, C.; Scholtes, I.; and Gr¨un, D. 2024.
+Cell-Type Prediction in Spatial Transcriptomics Data using
+Graph Neural Networks. In ICLR 2024 Workshop on Ma-
+chine Learning for Genomics Explorations.
+Li, J.; Chen, S.; Pan, X.; Yuan, Y.; and Shen, H.-B. 2022.
+Cell clustering for spatial transcriptomics data with graph
+neural networks. Nature Computational Science, 2(6): 399–
+408.
+Liu, J.; Yang, M.; Yu, Y.; Xu, H.; Li, K.; and Zhou, X. 2024a.
+Large language models in bioinformatics: applications and
+perspectives. arXiv:2401.04155.
+Liu, T.; Fang, Z.-Y.; Zhang, Z.; Yu, Y.; Li, M.; and Yin,
+M.-Z. 2024b. A comprehensive overview of graph neural
+network-based approaches to clustering for spatial transcrip-
+tomics. Computational and Structural Biotechnology Jour-
+nal, 23: 106–128.
+Long, Y.; Ang, K. S.; Li, M.; Chong, K. L. K.; Sethi, R.;
+Zhong, C.; Xu, H.; Ong, Z.; Sachaphibulkij, K.; Chen, A.;
+et al. 2023. Spatially informed clustering, integration, and
+deconvolution of spatial transcriptomics with GraphST. Na-
+ture Communications, 14(1): 1155.
+Longo, S. K.; Guo, M. G.; Ji, A. L.; and Khavari, P. A. 2021.
+Integrating single-cell and spatial transcriptomics to eluci-
+date intercellular tissue dynamics. Nature Reviews Genetics,
+22(10): 627–644.
+Marx, V. 2021. Method of the Year: spatially resolved tran-
+scriptomics. Nature methods, 18(1): 9–14.
+Perez, E.; Strub, F.; De Vries, H.; Dumoulin, V.; and
+Courville, A. 2018. Film: Visual reasoning with a general
+conditioning layer. In Proceedings of the AAAI conference
+on artificial intelligence, volume 32.
+Rodriques, S. G.; Stickels, R. R.; Goeva, A.; Martin, C. A.;
+Murray, E.; Vanderburg, C. R.; Welch, J.; Chen, L. M.; Chen,
+F.; and Macosko, E. Z. 2019. Slide-seq: A scalable technol-
+ogy for measuring genome-wide expression at high spatial
+resolution. Science, 363(6434): 1463–1467.
+Satija, R.; Farrell, J. A.; Gennert, D.; Schier, A. F.; and
+Regev, A. 2015. Spatial reconstruction of single-cell gene
+expression data. Nature biotechnology, 33(5): 495–502.
+
+===== PAGE 9 =====
+St˚ahl, P. L.; Salm´en, F.; Vickovic, S.; Lundmark, A.;
+Navarro, J. F.; Magnusson, J.; Giacomello, S.; Asp, M.;
+Westholm, J. O.; Huss, M.; et al. 2016. Visualization and
+analysis of gene expression in tissue sections by spatial tran-
+scriptomics. Science, 353(6294): 78–82.
+Wang, B.; Luo, J.; Liu, Y.; Shi, W.; Xiong, Z.; Shen, C.; and
+Long, Y. 2023. Spatial-MGCN: a novel multi-view graph
+convolutional network for identifying spatial domains with
+attention mechanism.
+Briefings in Bioinformatics, 24(5):
+bbad262.
+Wang, T.; Zhu, H.; Zhou, Y.; Ding, W.; Ding, W.; Han, L.;
+and Zhang, X. 2024.
+Graph attention automatic encoder
+based on contrastive learning for domain recognition of spa-
+tial transcriptomics. Communications Biology, 7(1): 1351.
+Xu, H.; Fu, H.; Long, Y.; Ang, K. S.; Sethi, R.; Chong,
+K.; Li, M.; Uddamvathanak, R.; Lee, H. K.; Ling, J.; et al.
+2024. Unsupervised spatially embedded deep representation
+of spatial transcriptomics. Genome Medicine, 16(1): 12.
+Yang, A.; Li, A.; Yang, B.; Zhang, B.; Hui, B.; Zheng, B.;
+Yu, B.; Gao, C.; Huang, C.; Lv, C.; et al. 2025a. Qwen3
+technical report. arXiv:2505.09388.
+Yang, Y.; Cui, Y.; Zeng, X.; Zhang, Y.; Loza, M.; Park, S.-J.;
+and Nakai, K. 2025b. STAIG: Spatial transcriptomics anal-
+ysis via image-aided graph contrastive learning for domain
+exploration and alignment-free integration. Nature Commu-
+nications, 16(1): 1067.
+Yang, Y.; Hossain, M. Z.; Li, X.; Rahman, S.; and Stone, E.
+2024. Spatial Transcriptomics Analysis of Zero-Shot Gene
+Expression Prediction. In International Conference on Med-
+ical Image Computing and Computer-Assisted Intervention,
+492–502. Springer.
+Yu, Z.; Lu, Y.; Wang, Y.; Tang, F.; Wong, K.-C.; and Li, X.
+2022. Zinb-based graph embedding autoencoder for single-
+cell rna-seq interpretations. In Proceedings of the AAAI con-
+ference on artificial intelligence, volume 36, 4671–4679.
+Yu, Z.; Yang, Y.; Chen, X.; Wong, K.-C.; Zhang, Z.; Zhao,
+Y.; and Li, X. 2025. Accurate Spatial Heterogeneity Dis-
+section and Gene Regulation Interpretation for Spatial Tran-
+scriptomics using Dual Graph Contrastive Learning.
+Ad-
+vanced Science, 12(3): 2410081.
+Zahedi, R.; Ghamsari, R.; Argha, A.; Macphillamy, C.; Be-
+heshti, A.; Alizadehsani, R.; Lovell, N. H.; Lotfollahi, M.;
+and Alinejad-Rokny, H. 2024. Deep learning in spatially
+resolved transcriptomics: a comprehensive technical view.
+Briefings in Bioinformatics, 25(2): bbae082.
+Zeng, Z.; and Du, H. 2023. Revolutionizing single cell anal-
+ysis: The power of large language models for cell type an-
+notation. arXiv:2304.02697.
+Zhao, E.; Stone, M. R.; Ren, X.; Guenthoer, J.; Smythe,
+K. S.; Pulliam, T.; Williams, S. R.; Uytingco, C. R.; Tay-
+lor, S. E.; Nghiem, P.; et al. 2021. Spatial transcriptomics at
+subspot resolution with BayesSpace. Nature biotechnology,
+39(11): 1375–1384.
+Zhou, X. 2022. Graphing cell relations in spatial transcrip-
+tomics. Nature Computational Science, 2(6): 354–355.
+Zhu, J.; Li, Y.; Tang, Z.; and Chang, C. 2025. DUSTED:
+Dual-Attention Enhanced Spatial Transcriptomics Denoiser.
+In Proceedings of the AAAI Conference on Artificial Intelli-
+gence, volume 39, 1219–1227.
+Zhu, Y.; He, X.; Tang, C.; Liu, X.; Liu, Y.; and He, K.
+2024. Multi-view Adaptive Fusion Network for Spatially
+Resolved Transcriptomics Data Clustering. IEEE Transac-
+tions on Knowledge and Data Engineering.
+
+===== PAGE 10 =====
+Supplementary Material
+Datasets and Preprocessing
+Table 4 summarizes the datasets utilized throughout our ex-
+periments. To reduce technical noise, we begin by excluding
+spots located outside the main tissue regions in each spatial
+transcriptomics dataset. Next, we eliminate genes with low
+expression and low variability from the raw count matrices,
+retaining the top g most variable genes. In particular, we set
+g = 128 for the MVC dataset, while g = 3000 is used for all
+other datasets. The resulting data is then normalized using a
+scaling factor as follows:
+Xij =
+countij
+P
+j countij
+× 10000.
+(15)
+More Implementation details
+For all operations in the experimental process that involve
+randomness, we set the random seed to 100 to ensure repro-
+ducible results. We apply the K-means clustering algorithm
+to the modulated latent representations to obtain the final
+spatial domain results.
+There are five hyperparameters in our method: r and kn
+for constructing the adjacency matrix, kg for generating
+semantic embedding, and γ and λ for balancing the loss
+items. We follow the hyperparameter settings used in pre-
+vious works (Dong and Zhang 2022; Wang et al. 2023; Zhu
+et al. 2024). For the DLPFC dataset, we set the values to
+{560, 14, 20, 0.1, 0.1}; for the HBC and MBA datasets, to
+{15, 14, 20, 0.1, 0.1}; and for the ME and MVC datasets, to
+{15, 15, 30, 1, 1}.
+We believe that the choice of LLM is flexible, and vari-
+ous alternatives can be considered. In this study, we select
+Qwen3-4B (Yang et al. 2025a) as the LLM used in our ex-
+periments due to its ability to run on a single machine with
+a single GPU while maintaining strong performance. To re-
+duce training time, we extract and store the biological se-
+mantic embeddings in advance, and feed them directly into
+the model during training.
+The prompt we designed for the LLM is as follows:
+System: You are an expert in
+bioinformatics. Represent the
+biological state of a cell
+characterized by the following
+highly expressed genes. Focus on
+capturing the functional essence
+relevant for spatial domain
+identification.
+User: Highly expressed genes: {gene
+symbols set}.
+To integrate our proposed module with baseline models,
+we apply it to directly modulate their final latent representa-
+tions used for clustering during the training phase. The only
+modification is aligning the dimensionality of the modula-
+tion factors with the target latent space. All original archi-
+tectures and hyperparameters of the baseline models are kept
+unchanged to ensure a fair comparison.
+More Experiment Results
+Figure 5 presents the visualizations of manual annotations
+and clustering results obtained by SemST and eight baseline
+methods on the ME and MVC datasets. The spatial domains
+identified by SemST show greater consistency with the man-
+ual annotations.
+Table 2 details the performance of two naive fusion meth-
+ods (concatenation and addition) for incorporating LLM-
+derived semantic embeddings into the existing methods. Al-
+though these embeddings, which encode biological knowl-
+edge, generally augment the spatial representations, their
+simple integration fails to yield consistent gains in clustering
+performance and occasionally results in performance degra-
+dation. This finding motivates the development of a more
+refined mechanism for a synergistic integration of semantic
+and spatial information.
+To gain insight into the behavior of the FSM module,
+we visualize the distributions of the learned scaling (α)
+and shifting (β) parameters across four datasets, as shown
+in Figure 6. The distributions consistently exhibit non-zero
+means and significant variance, indicating that the mod-
+ule learns a diverse set of non-trivial modulations. Fig-
+ure 7 visualizes the modulation performance of the FSM
+module across four datasets. The method effectively refines
+the initial clustering (”Before”) to align with the ground
+truth (”Annotation”), yielding more accurate spatial do-
+mains (”After”).
+Discussion on Gene Texts
+We also explored an alternative approach for generating se-
+mantic embeddings. For each gene, we obtained its semantic
+embedding by inputting the gene along with its NCBI sum-
+mary into the Qwen3-Embedding-4B model. The semantic
+embedding for each spot was then calculated by average-
+pooling the embeddings of its highly expressed genes. As
+shown in Figure 8, the resulting clustering performance is
+very similar to that of the proposed method. Intuitively, the
+summary-based method has the advantage of reducing the
+likelihood of LLM hallucinations, whereas the gene symbol-
+based method is simpler and better at capturing synergis-
+tic interactions and holistic functions among genes. Over-
+all, these results collectively highlight that the integration
+of gene-level biological information can facilitate deeper in-
+sights into spatial transcriptomic data.
+
+===== PAGE 11 =====
+Annotation
+GraphST
+Spatial-MGCN
+SEDR
+GAAEST
+MAFN
+stDCL
+DUSTED
+STAIG
+SemST
+ME
+MVC
+Figure 5: Visualization of manual annotations and clustering results produced by SemST and eight other methods on the ME
+and MVC datasets. Color indicates spatial domains.
+DLPFC
+MBA
+ME
+MVC
+Figure 6: Distributions of modulation parameters α and β across the DLPFC slice #151672, MBA, ME, and MVC datasets.
+DLPFC
+ME
+Annotation
+After(ARI=81.91)
+Annotation
+Before(ARI=38.15)
+Annotation
+Annotation
+MBA
+MVC
+Before(ARI=72.38)
+Before(ARI=40.66)
+Before(ARI=30.70)
+After(ARI=50.50)
+After(ARI=53.92)
+After(ARI=64.27)
+Figure 7: Visualization of manual annotations and changes before and after FSM modulation across the DLPFC slice #151672,
+MBA, ME, and MVC datasets.
+
+===== PAGE 12 =====
+Platform
+Spatial resolution Tissue
+Slice
+Spots Genes clusters
+10X Visium
+55 µm
+Human dorsolateral prefrontal cortex (DLPFC)
+151508
+4383 33538
+7
+151509
+4789 33538
+7
+151510
+4634 33538
+7
+151671
+4110 33538
+5
+151672
+3888 33538
+5
+Human breast cancer (HBC)
+Section 1
+3798 36601
+20
+Mouse brain anterior (MBA)
+Section 1
+2695 32285
+52
+Stereo-seq
+∼0.5 µm
+Mouse embryo (ME)
+E9.5-E1S1 5913 25568
+12
+STARmap
+∼2 µm
+Mouse visual cortex (MVC)
+X
+1207 1020
+7
+Table 4: Description of the datasets used in the study.
+Datasets
+Methods
+ARI
+NMI
+ACC
+F1
+Before / Concat / Add
+Before / Concat / Add
+Before / Concat / Add
+Before / Concat / Add
+HBC
+STAGATE [Nat. Com.’22]
+44.66 / 52.89 / 54.89
+67.36 / 67.88 / 68.22
+48.97 / 55.66 / 52.66
+53.50 / 58.82 / 55.50
+GraphST [Nat. Com.’23]
+52.63 / 52.93 / 55.42
+66.96 / 66.82 / 68.74
+54.98 / 53.74 / 57.69
+55.58 / 54.14 / 58.46
+Spatial-MGCN [BIB’23]
+65.68 / 57.92 / 60.07
+70.83 / 64.90 / 65.40
+64.67 / 59.37 / 59.48
+65.71 / 61.12 / 61.26
+GAAEST [Com. Biol.’24]
+52.02 / 61.21 / 54.81
+67.22 / 69.71 / 67.86
+55.71 / 62.43 / 58.53
+55.97 / 60.69 / 55.83
+SEDR [Genome Med.’24]
+43.16 / 50.84 / 49.10
+67.30 / 69.13 / 67.42
+50.34 / 56.53 / 53.19
+54.19 / 59.95 / 56.64
+MAFN [TKDE’24]
+57.49 / 61.97 / 60.71
+62.78 / 64.82 / 64.58
+58.32 / 61.66 / 60.74
+59.55 / 61.91 / 61.95
+stDCL [Adv. Sci.’25]
+55.73 / 51.63 / 57.89
+70.05 / 66.27 / 68.82
+58.19 / 54.48 / 59.40
+56.21 / 53.93 / 58.25
+DUSTED [AAAI’25]
+47.81 / 50.01 / 43.99
+65.78 / 65.09 / 63.36
+48.92 / 51.00 / 47.58
+52.40 / 53.87 / 51.70
+STAIG [Nat. Com.’25]
+57.86 / 59.24 / 52.19
+69.43 / 69.70 / 66.65
+59.82 / 62.32 / 51.40
+63.19 / 64.69 / 53.68
+MBA
+STAGATE [Nat. Com.’22]
+35.81 / 37.30 / 34.27
+72.49 / 71.90 / 71.88
+45.49 / 45.71 / 44.56
+48.80 / 49.45 / 48.23
+GraphST [Nat. Com.’23]
+41.32 / 42.57 / 42.41
+71.46 / 70.93 / 70.26
+47.05 / 47.31 / 46.31
+48.23 / 46.22 / 45.81
+Spatial-MGCN [BIB’23]
+48.34 / 47.85 / 49.97
+68.03 / 66.94 / 67.93
+44.12 / 44.30 / 46.20
+44.87 / 45.57 / 47.66
+GAAEST [Com. Biol.’24]
+43.35 / 45.03 / 46.33
+70.64 / 70.45 / 71.20
+50.09 / 49.20 / 48.83
+49.29 / 47.13 / 45.68
+SEDR [Genome Med.’24]
+42.05 / 39.74 / 40.40
+71.37 / 70.84 / 71.13
+45.71 / 46.16 / 45.12
+45.90 / 48.47 / 48.48
+MAFN [TKDE’24]
+44.15 / 43.56 / 46.96
+67.73 / 66.79 / 68.87
+44.64 / 43.82 / 46.16
+45.48 / 44.16 / 47.17
+stDCL [Adv. Sci.’25]
+42.05 / 39.20 / 45.35
+70.75 / 69.87 / 70.33
+48.24 / 45.19 / 47.20
+45.06 / 43.74 / 42.85
+DUSTED [AAAI’25]
+35.86 / 32.89 / 31.65
+71.13 / 70.80 / 70.13
+43.75 / 42.08 / 40.96
+47.13 / 46.15 / 44.17
+STAIG [Nat. Com.’25]
+33.45 / 34.61 / 32.67
+70.61 / 70.88 / 70.86
+44.12 / 43.75 / 43.78
+46.68 / 45.66 / 44.92
+Table 5: A comparison of clustering performance between original baseline models (Before) and versions enhanced by an
+LLM-derived embedding via concatenation (Concat) or addition (Add). Bold values highlight the best result.
+ARI
+NMI
+ACC
+0
+10
+20
+30
+40
+50
+60
+70
+80
+90
+Score (%)
+MBA
+ARI
+NMI
+ACC
+MVC
+w/o LLM
+Gene Summaries
+Gene Symbols
+Figure 8: Comparison of clustering performance using Gene
+Summaries and Gene Symbols as input, and the baseline
+method (w/o LLM).
