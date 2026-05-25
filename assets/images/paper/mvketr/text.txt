@@ -1,0 +1,2167 @@
+
+===== PAGE 1 =====
+arXiv:2411.18309v3  [cs.CV]  26 Jun 2025
+IEEE TRANSACTIONS AND JOURNALS TEMPLATE
+1
+MvKeTR: Chest CT Report Generation with
+Multi-View Perception and Knowledge
+Enhancement
+Xiwei Deng
+, Xianchun He
+, Jianfeng Bao
+, Yudan Zhou
+, Shuhui Cai
+, Congbo Cai
+, and Zhong
+Chen
+Abstract— CT report generation (CTRG) aims to auto-
+matically generate diagnostic reports for 3D volumes, re-
+lieving clinicians’ workload and improving patient care.
+Despite clinical value, existing works fail to effectively in-
+corporate diagnostic information from multiple anatomical
+views and lack related clinical expertise essential for ac-
+curate and reliable diagnosis. To resolve these limitations,
+we propose a novel Multi-view perception Knowledge-
+enhanced TansfoRmer (MvKeTR) to mimic the diagnos-
+tic workflow of clinicians. Just as radiologists first ex-
+amine CT scans from multiple planes, a Multi-View Per-
+ception Aggregator (MVPA) with view-aware attention is
+proposed to synthesize diagnostic information from mul-
+tiple anatomical views effectively. Then, inspired by how
+radiologists further refer to relevant clinical records to
+guide diagnostic decision-making, a Cross-Modal Knowl-
+edge Enhancer (CMKE) is devised to retrieve the most
+similar reports based on the query volume to incorporate
+domain knowledge into the diagnosis procedure. Further-
+more, instead of traditional MLPs, we employ Kolmogorov-
+Arnold Networks (KANs) as the fundamental building
+blocks of both modules, which exhibit superior param-
+eter efficiency and reduced spectral bias to better cap-
+ture high-frequency components critical for CT interpre-
+tation while mitigating overfitting. Extensive experiments
+on the public CTRG-Chest-548K dataset demonstrate that
+our method outpaces prior state-of-the-art (SOTA) mod-
+els across almost all metrics. The code is available at
+https://github.com/xiweideng/MvKeTR.
+Index Terms— Radiology report generation, Multi-view
+learning,
+Knowledge
+enhancement,
+Kolmogorov-Arnold
+networks.
+I. INTRODUCTION
+I
+N clinical practice, medical imaging plays an indispensable
+role, serving as a cornerstone for disease diagnosis, report
+This work was supported by the National Natural Science Foundation
+of China (Grant No. 22161142024, 12375291, and 82071913). (Corre-
+sponding authors: Zhong Chen; Congbo Cai.)
+Xiwei Deng, Xianchun He, and Yudan Zhou are with the Institute
+of Artificial Intelligence, Xiamen University, Xiamen 361005, China
+(e-mail:
+xiweideng@stu.xmu.edu.cn;
+hexianchun@stu.xmu.edu.cn;
+ydzhou@stu.xmu.edu.cn).
+Jianfeng Bao is with the Department of Magnetic Resonance Imag-
+ing, The First Affiliated Hospital of Zhengzhou University, Zhengzhou
+University, Zhengzhou, 450000, China
+Shuhui Cai, Congbo Cai, and Zhong Chen are with the Department of
+Electronic Science, Xiamen University, Xiamen 361005, China (e-mail:
+shcai@xmu.edu.cn; cbcai@xmu.edu.cn; chenz@xmu.edu.cn).
+Findings:
+Thorax is symmetrical, lung window shows clear lung markings, 
+natural walking, good lung field transparency, patchy high-density 
+shadows can be seen in the anterior basal segment of the lower 
+lobe of the right lung, and bilateral pulmonary hili are not large.  
+The shape of heart shadow and heart big vessels is normal, and no 
+obvious mass or enlarged lymph node is found in mediastinum.  
+No pleural effusion or pleural thickening. 
+Impression:
+Inflammation of the anterior basal segment of the lower lobe of the 
+right lung, with partial consolidation. 
+Fig. 1.
+An example of chest CT volume and its corresponding report,
+including findings and impression.
+writing, and subsequent decision-making. After acquiring a
+patient’s radiology images, physicians examine all anatomical
+structures and regions of concern, then employ related expert
+knowledge to write a hand-crafted, clinically coherent report
+that documents the observations [1]. As evidenced in Fig. 1,
+such a radiology report typically comprises a findings section
+that describes thorough medical observations, followed by an
+impression summarizing the most significant observations. The
+process of report writing is time-intensive and error-prone
+for clinicians [2]–[4]. Hence, automation of report generation
+holds substantial value in lightening physicians’ burdens and
+improving the quality of reports.
+Despite recent advancements, there remain several con-
+straints in previous studies that have not been fully addressed:
+(i) Ineffective incorporation of diagnostic information from
+multiple anatomical views. In comparison with 2D imag-
+ing [5], [6], 3D medical imaging (e.g., chest CT) provides
+a more holistic view of anatomical detail and spatial informa-
+tion, preserving the volumetric nature of the human body [7].
+Furthermore, unlike a single view of 3D volumes [8]–[10],
+the multi-view nature of CT scans enables physicians to ex-
+amine the patient’s condition from different anatomical views
+- axial, sagittal, and coronal- allowing for a more accurate
+diagnosis of many diseases. As a common example, pulmonary
+nodules, especially smaller ones, may be easily obscured by
+adjacent structures or misdiagnosed when viewed from a single
+perspective [11]. Axial views might reveal the presence of a
+nodule, but coronal and sagittal views are crucial for accurately
+assessing its characteristics and relationships to surrounding
+tissues [12], thereby enhancing differential diagnosis [13]. (ii)
+Absence of pertinent medical knowledge crucial for precise
+and dependable diagnosis. Relying merely on radiology im-
+ages for report writing may be sub-optimal, overlooking the
+
+===== PAGE 2 =====
+2
+IEEE TRANSACTIONS AND JOURNALS TEMPLATE
+critical medical expertise [9], [14]. Experienced clinicians usu-
+ally consult analogous case reports to extract insights into di-
+agnostic patterns and imaging features, guiding their decision-
+making when faced with complex or ambiguous cases during
+the diagnostic process. This knowledge-driven approach is
+critical for interpreting imaging findings, identifying subtle
+abnormalities, and writing clinically accurate reports.
+Motivated by the aforementioned observations, we develop
+a novel Multi-view perception Knowledge-enhanced Trans-
+former (MvKeTR) to overcome the deficiencies of current
+methods. In particular, to mirror how radiologists examine 3D
+CT volumes from multiple anatomical planes, we design a
+Multi-View Perception Aggregator (MVPA) that utilizes view-
+aware attention to synthesize diagnostic information from
+different anatomical views effectively. To bridge the medi-
+cal knowledge gap, we introduce a Cross-Modal Knowledge
+Enhancer (CMKE) that retrieves the most similar radiology
+reports, analogous to how physicians consult relevant clin-
+ical records. Additionally, we employ Kolmogorov-Arnold
+Networks (KANs) [15], which feature learnable nonlinear
+activation functions, to learn the complicated diagnostic rela-
+tionships inherent in CT interpretation. Extensive experiments
+on the public CTRG-Chest-548K dataset showcase that our
+proposed MvKeTR surpasses previous state-of-the-art methods
+across almost all established metrics.
+In general, the main contributions of our work can be
+summarized as follows:
+1) We propose a novel Multi-view perception Knowledge-
+enhanced Transformer (MvKeTR) to achieve higher-
+quality CT report generation. To the best of our knowl-
+edge, MvKeTR is the first attempt to utilize multi-view
+diagnostic information, cross-modal medical expertise,
+and the potential of emerging KANs in this way.
+2) We recognize the inability of multi-view comprehension
+of current works and design a Multi-View Perception
+Aggregator that fuses diagnostic information from mul-
+tiple anatomical views, capturing comprehensive spatial
+features effectively.
+3) We introduce a Cross-Modal Knowledge Enhancer that
+leverages relevant reports to incorporate domain exper-
+tise into the report generation process, improving the
+clinical relevance and accuracy of the predicted reports.
+4) Extensive comparison and ablation experiments show-
+case the superiority of our method over the recent state-
+of-the-art (SOTA) models.
+The remainder of this paper is structured as follows.
+Section II reviews the related work. Section III details our
+proposed model. Section IV presents experimental results on
+a publicly available dataset. Section V concludes our work and
+points out crucial future work.
+II. RELATED WORK
+A. Image Captioning
+Image captioning [16], [17] aims to generate a brief human-
+like caption to describe an image. Traditional image captioning
+is template-based [18], [19], utilizing predefined templates
+with slots filled through property extraction and object de-
+tection. However, these methods suffer from rigid structural
+patterns, limiting their ability to generate diverse and natural
+descriptions. Neural network-based methods adopt an encoder-
+decoder architecture [18], [20], [21], which excels in capturing
+complex visual-linguistic relationships and generating more
+flexible and contextually appropriate captions. For instance,
+Xu et al. [22] created an attention-based model trained via
+deterministic back-propagation and stochastic maximization of
+a variational lower bound. Li et al. [23] proposed a global-local
+attention (GLA) method by integrating local representation
+at the object-level with global representation at the image-
+level through an attention mechanism. Lu et al. [24] employed
+an adaptive attention model with a visual sentinel, enabling
+dynamic determination of whether and where to focus on
+the input images during sequential word generation. Cornia
+et al. [25] introduced a meshed transformer with memory
+to learn a multi-level representation of the relationships be-
+tween image regions and exploit low- and high-level features.
+Liu et al. [26] proposed CaPtion TransformeR (CPTR), a
+convolution-free architecture that takes serialized input images
+and instills global contextual awareness across encoder layers
+from the outset. These methods were primarily designed for
+natural scene images and may not directly apply to radiology
+images, necessitating lengthy reports with fine-grained medical
+observations.
+B. Radiology Report Generation
+1) 2D X-ray Report Generation: The generation task of
+radiology reports can be regarded as the derivative task of
+image captioning, particularly for 2D X-rays. Motivated by the
+success of encoder-decoder architecture in image captioning,
+recent SOTA studies [27]–[30] have all utilized this framework
+to produce medical reports combined with a visual extractor.
+Xue et al. [28] proposed a recurrent model combining Con-
+volutional Neural Networks (CNNs) with Long Short-Term
+Memory (LSTM) networks, which integrates image encodings
+and previously generated sentences through attention guidance
+to ensure coherent report generation. Nooralahzadeh et al. [31]
+introduced a curriculum learning-inspired consecutive gener-
+ation framework that generates global concepts from medical
+images and then reforms them into detailed reports using
+a transformer-based architecture. Chen et al. [5] designed a
+cross-modal memory network (CMN) that employs a shared
+memory to record image-text alignments and facilitate cross-
+modal interactions. To enhance global feature learning, Yi
+et al. [32] incorporated two-stage global enhancement layers
+into the transformer backbone. Specifically, the first layer is
+integrated to capture global visual context by establishing
+relationships between image-level global features and previ-
+ously generated words, while the second layer is embedded
+to connect image-level global features with region-level infor-
+mation for comprehensive visual representations. Yi et al. [33]
+presented the unsupervised disease tags (UDT) model, which
+obtains disease tag features via clustering and then fuses these
+with the attended visual features to assist report generation.
+To address performance imbalance between easy and difficult
+
+===== PAGE 3 =====
+DENG et al.: MVKETR: CHEST CT REPORT GENERATION WITH MULTI-VIEW PERCEPTION AND KNOWLEDGE ENHANCEMENT
+3
+samples, Yi et al. [34] developed the Linear Hybrid-Reward
+based Reinforced Focal Learning (LHR-RFL). The framework,
+LHR-RFL, integrates a Linear Hybrid-Reward (LHR) module
+that quantifies learning difficulty via a linear weighting scheme
+combining BLEU-4, METEOR, and ROUGE-L metrics, and
+a Reinforced Focal Learning (RFL) mechanism that adap-
+tively adjusts the contributions from difficult samples during
+training. Wang et al. [35] constructed a Class Activation
+Map-guided Attention Network (CAMANet), which enhances
+disease-pertinent feature representation by explicitly aligning
+aggregated class activation maps with attention mechanisms
+to strengthen cross-modal feature acquisition.
+2) 3D CT Report Generation: While these methods have
+demonstrated effectiveness in 2D X-ray imaging, the extension
+to 3D CT imaging has been underexplored, owing to the
+scarcity of publicly available paired image-report datasets [8],
+[9] and the substantial computational resources [10]. For Brain
+CT report generation, Zhang et al. [36] designed WGAM-HI,
+a novel Weakly Guided Attention Model with Hierarchical
+Interaction. Specifically, a two-layer attention mechanism and
+report generator were employed to achieve many-to-many
+alignment between multiple CT images and report sentences.
+In addition, two weakly guided mechanisms based on patho-
+logical events and Grad-CAM were introduced to help the
+model focus on critical images and lesion areas, respectively.
+Furthermore, Zhang et al. [37] developed CRHAN, a Co-
+occurrence Relationship Driven Hierarchical Attention Net-
+work, which incorporates two novel attention modules: a
+co-occurrence relationship guided semantic attention (CRSA)
+module to extract critical semantic features by embedding co-
+occurrence patterns of common pathologies, and a common-
+rare topic driven visual attention (CRVA) module to fuse
+common and rare semantic features for capturing important
+lesion information. This encoder-decoder architecture aims
+to improve the accuracy and diversity of generated reports
+by considering both common and rare pathological condi-
+tions. Regarding Chest CT report generation, Tang et al. [8]
+introduced SL-DG, which consists of a self-attention-based
+scan localizer (SL) for salient lesion feature extraction and
+a dynamic generator (DG) for report recommendation and
+synthesis. Hamamci et al. [9] established CT2rep, the first
+framework that generates chest CT reports using a novel auto-
+regressive causal transformer. By adapting LLaMA2-7B [38]
+for CT report generation, Chen et al. [10] introduced Dia-
+llama to generate reports with diagnostic guidance prompts,
+which incorporates a disease-aware attention module and a
+disease prototype memory bank. To address the limitation of
+only considering global features, Chen et al. [39] proposed
+Reg2RG, a region-guided referring and grounding framework
+that leverages anatomical region masks and local feature
+decoupling to capture region-specific details with LLaMA2-
+7B [38] as the decoder. However, the aforementioned studies
+in 3D imaging often neglect the clinical value of multi-view
+diagnostic information inherent in volumetric medical imaging
+(e.g., chest CT scans). This oversight is critical because
+radiologists routinely analyze axial, coronal, and sagittal views
+to evaluate anatomical structures and pathological changes
+comprehensively.
+3) Multi-view Strategies in Medical Image Analysis: Multi-
+view strategies have been applied to medical image segmen-
+tation (e.g., liver segmentation [40], lung tumor segmenta-
+tion [41]) and 2D X-ray report generation (e.g., chest X-
+rays [42], [43]). Yet, the application in 3D CT report gener-
+ation remains underexplored. In medical image segmentation,
+Xia et al. [40] introduced a hybrid framework combining 2D
+Dual Self-Attention (DSA) networks on multiplanar slices
+with lightweight 3D fusion and full connection condition
+random field refinement, achieving Dice scores exceeding 95%
+by resolving ambiguities in low-context regions. Similarly, Liu
+et al. [41] proposed a multi-scale multi-view network(MSMV-
+Net) for lung tumor segmentation, integrating multi-scale
+features from axial, coronal, and sagittal views via attention-
+weighted fusion to address feature incompatibility in 3D U-Net
+architectures. These works highlight the efficacy of multi-view
+fusion in pixel-level localization but lack higher-level semantic
+reasoning capabilities (e.g., linking nodule characteristics to
+clinical findings) required for diagnostic report generation. In
+2D X-ray report generation, Yuan et al. [42] pioneered cross-
+view consistency enforcement between frontal and lateral X-
+rays through a generative encoder-decoder framework, synthe-
+sizing multi-view visual features via a sentence-level attention
+mechanism in a late fusion fashion to preserve complementary
+information across views. Yang et al. [43] introduced multi-
+modal attention to align visual features with medical concepts.
+However, these approaches are constrained by the simplicity
+of 2D planar X-ray imaging and short descriptions, failing
+to address the volumetric complexity and nuanced diagnostic
+requirements of 3D CT imaging.
+4) Professional Knowledge in Report Generation: Recent
+attempts [44]–[47] have explored diverse strategies to integrate
+medical expertise into radiology report generation, which
+can be broadly categorized into knowledge base-driven and
+knowledge graph-based frameworks. While these methods
+demonstrate progress, there are several limitations. Concerning
+knowledge base-driven approaches, Yang et al. [44] developed
+a report generation model that leverages a learnable medical
+knowledge base and multi-modal alignment mechanism to
+learn visual features comprehensively. However, this approach
+suffers from limited interpretability of the diagnostic pro-
+cess through the dynamic knowledge update mechanism. For
+knowledge graph-based models, Kale et al. [45] proposed KG-
+BART, which relies on knowledge graphs of ten abdominal
+organs and a prepared radiology dictionary. Hou et al. [46]
+proposed a Medical Knowledge with Contrastive Learning
+model (MKCL), which employs a chest abnormality graph
+to enhance lesion detection via contrastive learning. Huang
+et al. [47] developed a Knowledge-injected U-Transformer
+(KiUT), introducing symptom graphs to inject clinical knowl-
+edge into generation. Despite achieving improvements, these
+methods require labor-intensive pre-construction of domain-
+specific graphs.
+III. METHODOLOGY
+In this section, we elaborate on our proposed MvKeTR.
+Table I illustrates the key notations and their respective de-
+scriptions adopted in this study.
+
+===== PAGE 4 =====
+4
+IEEE TRANSACTIONS AND JOURNALS TEMPLATE
+Report Generator
+Multi-View Perception Aggregator
+Cross-Modal Knowledge Enhancer
+Query
+View-Aware
+Attention
+View-Aware
+Attention
+Concat
+KAN Layer
+V
+K
+Q
+V
+K
+Q
+View Embedding
+View Embedding
+Report Generator
+Concat
+View-Aware
+Attention
+V
+K
+Q
+View Embedding
+＋
+＋
+＋
+Norm
+Norm
+Norm
+Norm
+CT Report Bank
+......
+CT Report Bank
+...
+CT Report Bank
+...
+Cross Attention
+KAN Layer
+Retrieve
+CT-CLIP
+CT-CLIP
+K
+V
+Reference
+Norm
+＋
+Norm
+＋
+224 px
+Input CT Volume
+Input CT Volume
+Report
+...The shape of heart 
+shadow and heart big 
+vessels is normal, and 
+no obvious mass or 
+enlarged lymph node 
+is found in 
+mediastinum...
+＋
+Addition
+ Frozen
+Skip Connection
+＋
+Addition
+ Frozen
+Skip Connection
+3D Visual Extractor 
+CT-ViT
+CT-ViT
+CT-ViT
+Q
+Axial CT Volume
+Axial CT Volume
+Coronal CT Volume
+Coronal CT Volume
+Sagittal CT Volume
+Sagittal CT Volume
+Fig. 2.
+The overview of our proposed MvKeTR, which can be partitioned into four parts: 3D visual extractor, multi-view perception aggregator,
+cross-modal knowledge enhancer, and report generator. The 3D visual extractor extracts CT patches from the axial, coronal, and sagittal views of
+the input 3D CT volume. The multi-view perception aggregator aggregates diagnostic information from multiple anatomical views effectively. The
+cross-modal knowledge enhancer incorporates relevant clinical expertise into the diagnosis pipeline. The report generator predicts the final reports
+relying on the multi-view diagnostic information and the related professional knowledge.
+CT-ViT
+224 px
+224 px
+224 px
+Input CT Volume
+︙ 
+Spatial
+Transformer
+Spatial
+Transformer
+︙ 
+Spatial
+Transformer
+Spatial
+Transformer
+︙ 
+︙ 
+Casual 
+Transformer
+Casual 
+Transformer
+︙ 
+Casual 
+Transformer
+Casual 
+Transformer
+︙ 
+Spatial Tokens
+Spatial Tokens
+︙ 
+CT Tokens
+CT Tokens
+Embedded CT Tokens
+CT-ViT
+224 px
+224 px
+224 px
+Input CT Volume
+︙ 
+Spatial
+Transformer
+Spatial
+Transformer
+︙ 
+︙ 
+Casual 
+Transformer
+Casual 
+Transformer
+︙ 
+Spatial Tokens
+Spatial Tokens
+︙ 
+CT Tokens
+CT Tokens
+Embedded CT Tokens
+Fig. 3. Illustration of vision feature extraction pipeline through CT-ViT.
+A. Overview of the Proposed Approach
+The generation of radiology reports can be considered
+an image-to-text problem, for which we follow a sequence-
+to-sequence paradigm. In doing so, unlike previous ap-
+proaches [8]–[10] that typically process a single-view im-
+age, our network handles the input 3D CT volume X ∈
+R(224)×224×224 by transforming it into three source sequences
+of CT patches: Zv = {zv
+1, zv
+2, ..., zv
+N}, zv
+n ∈R(8)×8×8, where
+v ∈{a, c, s} represents the axial, coronal, and sagittal views
+respectively, Zv are embedded CT tokens extracted by 3D
+visual extractor for each view, and D is the dimension of the
+embedding. We regard the corresponding report as the target
+sequence Y = {y1, y2, ..., yL}, where yl ∈V are the predicted
+tokens, L the length of predicted tokens and V the vocabulary
+of all possible tokens. Thus, the aforementioned process of
+report generation can be formalized as follows:
+log p(Y |X) =
+T
+X
+l=1
+log p (yl|y1, . . . , yl−1, X)
+(1)
+Subsequently, the model is trained to maximize p(Y |X) by
+the negative conditional log-likelihood of Y given X:
+γ∗= arg max
+γ
+T
+X
+l=1
+log p (yl|y1, . . . , yl−1, X; γ)
+(2)
+where γ is the parameters of the model. The overall archi-
+tecture of our proposed framework is illustrated in Fig. 2,
+where the contributions of each component are detailed in the
+following subsections.
+B. 3D Visual Extractor
+Following the previous work [9], CT-ViT is employed to
+extract embedded CT tokens Zv ∈R8×8×8×512, by initially
+
+===== PAGE 5 =====
+DENG et al.: MVKETR: CHEST CT REPORT GENERATION WITH MULTI-VIEW PERCEPTION AND KNOWLEDGE ENHANCEMENT
+5
+TABLE I
+KEY NOTATIONS
+Notations
+Descriptions
+X
+The input 3D CT volume.
+Np
+The number of extracted CT patches.
+Nr
+The number of reports in the CT report bank.
+Φa
+ve, Φc
+ve, Φs
+ve The axial, coronal, and sagittal CT-ViT.
+Xa, Xc, Xs
+The axial, coronal, and sagittal 3D CT volume.
+Za, Zc, Zs
+The axial, coronal, and sagittal embedded CT tokens.
+B
+The batch size.
+D
+The dimension of the embedding.
+h, w
+The height and width of the CT slices
+Pt
+The temporal patch size.
+Ph, Pw
+The spatial patch sizes of height and width.
+Nt
+The number of temporal patches.
+Ztop-k
+The retrieved top-k report embeddings.
+Fke
+The features encoded by cross-modal knowledge enhancer.
+Fmv
+The features encoded by multi-view perception aggregator.
+γ
+The model parameters.
+Φk
+Nonlinear learnable parameters of the kth KAN Layer.
+Ev
+The view embedding of anatomical view v.
+extracting (28) × 28 × 28 non-overlapping patches from
+the given 3D CT volume Xv, where v ∈{a, c, s}. Then,
+each patch is embedded in a D-dimensional space, reshaped,
+and linearly transformed to an intermediate tensor Ti
+∈
+RB×Nt× h
+Ph × w
+Pw ×D. Here, Pt represents the temporal patch
+size, B the batch size, Nt the temporal patch count, h and w
+correspond to the height and width of the CT slices, and D
+the dimension of the embedding space. Ph and Pw denote
+the spatial patch sizes of height and width. Subsequently,
+Ti is processed and reshaped to the final outcome tensor
+To ∈R
+
+h
+Ph · w
+Pw
+
+×(B·Nt)×D consecutively by the spatial and
+causal transformer models. The 3D visual extractor comprises
+three independent CT-ViTs, which process the axial, coronal,
+and sagittal view CT volume, respectively. Fig. 3 illustrates
+the pipeline of visual feature extraction through CT-ViT.
+The whole procedure can be formally formulated as:
+Za = {za
+1, za
+2, ..., za
+Np} = Φa
+ve(Xa)
+(3)
+Zc = {zc
+1, zc
+2, ..., zc
+Np} = Φc
+ve(Xc)
+(4)
+Zs = {zs
+1, zs
+2, ..., zs
+Np} = Φs
+ve(Xs)
+(5)
+where Np denotes the number of extracted CT patches, Φa
+ve(·),
+Φc
+ve(·), and Φs
+ve(·) denote the axial, coronal, and sagittal CT-
+ViT, respectively.
+C. KAN as Effective Successor
+Multi-layer perceptrons (MLPs) [48], [49] serve as basic
+blocks of contemporary deep learning models and prevail
+in numerous tasks (e.g., radiology report generation). How-
+ever, two critical limitations emerge when applying typical
+MLPs to CT report generation: quadratic parameter scaling
+with network depth (Theorem 3.3 [50]) and spectral bias
+favoring low-frequency patterns [51]. These limitations render
+MLPs susceptible to overfitting when learning high-frequency
+components (e.g., ground-glass opacities, micronodules) from
+multi-view CT imaging data.
+Inspired by the superior parameter efficiency and re-
+duced spectral bias of the Kolmogorov-Arnold Network
+(KANs) [15], we explore using KANs as an alternative to
+traditional MLPs to address the above limitations. First, The-
+orem 3.2 [50] establishes that any MLP with the ReLUk
+activation function can be represented as a KAN with a
+comparable size, which shows KANs can achieve at least
+equivalent expressiveness as MLPs. Second, Theorem 3.3 [50]
+proves that MLP parameterization scales quadratically with
+grid size (O(G2W 4L)), whereas KANs maintain linear pa-
+rameter scaling (O(GW 2L)), where G is the number of spline
+interpolation points, W the number of neurons per hidden
+layer, and L the number of layers. This demonstrates that
+KANs achieve comparable expressiveness with significantly
+fewer parameters. For CT report generation, where fine-
+grained details (e.g., subtle lesions) require capturing intricate
+nonlinear patterns, KANs avoid the parameter bloat of MLPs,
+inherently reducing the risk of overfitting.
+Conventional MLPs employing ReLU activations (or even
+tanh) are documented to exhibit spectral bias [51], manifesting
+as a preferential fitting of low-frequency components. In the
+subsequent analysis, we investigate the spectral bias of KANs.
+As proven in Theorem 4.1( [50]), KANs exhibit less spectral
+bias than MLPs. Specifically, the eigenvalue ratio of the
+Hessian matrix satisfies:
+λN(M)
+λd′(d−1)+1(M) ≤Cd
+(6)
+for a constant C depending only on the spline degree k. This
+property enables KANs to learn high-frequency components
+(edges, textures, anomalies) more effectively, which is critical
+for capturing subtle pathological patterns in CT scans.
+Now, we detail the architecture of KANs [15]. Given an
+input x, a KAN network is a stack of multiple KAN layers(as
+illustrated in Fig. 4), which can be characterized as:
+KAN(x) = (Φk−1 ◦Φk−2 ◦· · · ◦Φ1 ◦Φ0) x
+(7)
+The learnable activation functions ϕ of the kth KAN layer can
+be formalized as
+Φk = {ϕi,j},
+i = 1, 2, · · · , Nin,
+j = 1, 2 · · · , Nout
+(8)
+where ϕi,j represents functions with trainable parameters,
+and Nin and Nout denote the input and output dimensions,
+respectively. Then, the calculation of the KAN network from
+the kth layer to the (k + 1)th layer can be represented as:
+xk+1 = Φkxk
+(9)
+Here, Φk is defined as a matrix form:
+Φk =
+
+
+
+
+
+ϕk,1,1(·)
+ϕk,1,2(·)
+· · ·
+ϕk,1,nk(·)
+ϕk,2,1(·)
+ϕk,2,2(·)
+· · ·
+ϕk,2,nk(·)
+...
+...
+...
+ϕk,nk+1,1(·)
+ϕk,nk+1,2(·)
+· · ·
+ϕk,nk+1,nk(·)
+
+
+
+
+
+(10)
+D. Multi-View Perception Aggregator
+The multi-view perception aggregator is devised to perceive
+and aggregate diagnostic information from three orthogonal
+planes of the input CT volume: axial, coronal, and sagittal
+views. The details are presented below.
+
+===== PAGE 6 =====
+6
+IEEE TRANSACTIONS AND JOURNALS TEMPLATE
+KAN Layer
+KAN(x)
+x
+KAN Layer
+KAN Layer
+KAN(x)
+x
+KAN Layer
+Fig. 4.
+The architecture of Kolmogorov–Arnold Networks (KANs) with
+a series of KAN layers.
+Softmax
+Scale
+Z
+×
+×
+V
+K
+Q
+H
+Softmax
+Scale
+Z
+×
+×
+V
+K
+Q
+H
+(a) Attention
+Softmax
+Scale
+Z
+×
+×
+V
+K
+Q
+H
+View Embedding
+×
+＋
+Softmax
+Scale
+Z
+×
+×
+V
+K
+Q
+H
+View Embedding
+×
+＋
+(b) View-aware Attention
+Fig. 5.
+The schematic diagram of Attention and View-aware Attention.
+“⊗” denotes matrix multiplication. “⊕” represents element-wise addition.
+1) View-aware Attention: The vanilla attention(see Fig. 5a)
+adopted in Transformer [52] is computed through the correla-
+tion between the query matrix Q and the key matrix K, which
+is then used to aggregate information from the value matrix
+V . The process can be formulated as follows:
+Attention(Q, K, V ) = Softmax
+QKT
+√dk
+
+V
+(11)
+where Q = ZWq, K = ZWk, V = ZWv are projected from
+the same input Z, Wq ∈RD×dk, Wk ∈RD×dk, Wv ∈RD×dv
+are learnable weight matrices.
+This mechanism has proven effective in various tasks,
+particularly in capturing global dependencies. However, it
+fails to perceive the inherent distinctiveness between different
+views of the input CT volume, which can lead to suboptimal
+performance.
+To effectively model the view-specific patterns, we design
+a view-aware attention module(see Fig. 5b), which introduces
+view embeddings Ev to characterize the uniqueness of each
+anatomical view explicitly. To be specific, given the query Q,
+key K, value V matrices, as well as Ev, view-aware attention
+is formulated as:
+VAAv = ViewAwareAttention(Q, K, V, Ev)
+= Softmax
+QKT
+√dk
++ QET
+v
+
+V
+(12)
+where Ev ∈RN×dk, v ∈{a, s, c}.
+2) Multi-view Aggregation: After obtaining view-specific
+representations through Eq. (12), we propose a multi-view
+CT CLIP
+Image Encoder
+CT CLIP
+Text Encoder
+CT CLIP
+Text Encoder
+Query
+Embedding Space
+Reference
+Retrieve
+CT Report Bank
+......
+CT Report Bank
+...
+CT Report Bank
+...
+Axial CT Volume
+Axial CT Volume
+CT CLIP
+Image Encoder
+CT CLIP
+Text Encoder
+Query
+Embedding Space
+Reference
+Retrieve
+CT Report Bank
+...
+Axial CT Volume
+Fig. 6.
+Illustration of retrieving top-k report embeddings given a query
+CT volume.
+aggregation strategy to effectively combine the complementary
+information from multiple anatomical views while preserving
+their distinctive characteristics. First, for each view v, we
+normalize the attended values with residual connections:
+ANv = Norm(VAAv + Zv)
+(13)
+where Zv denotes the embedded CT tokens from view v.
+To aggregate information across different views, we con-
+catenate the normalized outputs from the axial, sagittal, and
+coronal views. This concatenated representation is then fused
+by a KAN layer, followed by a final normalization:
+Concatmv = [ANa; ANs; ANc]
+Fmv = Norm(KANLayer(Concatmv))
+(14)
+Here, [·; ·; ·] denotes the concatenation operation. We utilize the
+KAN instead of the traditional MLP layer to capture complex
+interactions between different views.
+E. Cross-Modal Knowledge Enhancer
+Analogous to clinicians’ diagnostic practice of consulting
+relevant medical records, the cross-modal knowledge enhancer
+is developed to integrate medical expertise into report genera-
+tion through a multi-stage adaptive fusion procedure, designed
+to balance prior knowledge and novel observations. The entire
+procedure comprises two phases, as detailed below.
+1) Volume-to-Report Retrieval: As depicted in Fig. 6, the
+cross-modal knowledge enhancer performs volume-to-report
+retrieval through a well-trained CT-CLIP model on the CT-
+RATE [53]. Specifically, CT-CLIP is a contrastive report-
+volume model consisting of an image encoder for axial 3D
+chest CT volumes and a text encoder for radiology reports. To
+our knowledge, CT-RATE currently stands as the largest open-
+source dataset pairing 3D chest CT volumes with radiology re-
+ports, comprising 25,692 non-contrast CT volumes (expanded
+to 50,188 through reconstructions) from 21,304 patients. This
+dataset ensures clinical reliability through three key charac-
+teristics: (1) Comprehensive coverage of diverse pathologies,
+demographic profiles (age/sex), and imaging parameters (slice
+thickness/manufacturers); (2) Rigorous quality control with
+board-certified radiologist validation of all reports; (3) Robust
+abnormality labeling via RadBERT-based automated classifier
+demonstrating F1 scores exceeding 0.85 across 18 pathological
+categories [54], manually verified across 1,000 reports. This
+
+===== PAGE 7 =====
+DENG et al.: MVKETR: CHEST CT REPORT GENERATION WITH MULTI-VIEW PERCEPTION AND KNOWLEDGE ENHANCEMENT
+7
+Linear
+Softmax
+Transformer
+Decoder Layer
+×3
+Transformer
+Encoder Layer
+×3
+“thorax”
+“thorax”
+Linear
+Softmax
+Transformer
+Decoder Layer
+×3
+Transformer
+Encoder Layer
+×3
+“thorax”
+Fig. 7. Illustration of encoder-decoder architecture in report generator.
+large-scale, meticulously curated dataset minimizes the risk of
+retrieving erroneous or biased reports, as the retrieval process
+inherently prioritizes clinically validated cases through CT-
+CLIP’s semantic alignment in the shared embedding space.
+Given an input axial CT volume Xa and a CT report bank
+R = {R1, R2, ..., RNr} where Ri represents the i-th radiology
+report, Nr is the number of reports, we aim to retrieve the
+top-k most relevant report embeddings Ztop-k from R. Here,
+to maintain consistency with CT-CLIP’s self-supervised pre-
+training, we utilize axial CT volume as query images for report
+retrieval.
+The CT-CLIP image encoder Eimage maps the input volume
+Xa to a D-dimensional embedding v ∈RD:
+v = Eimage(Xa)
+(15)
+Similarly, each report Ri is encoded into a report embedding
+ri ∈RD by the CT-CLIP text encoder Etext:
+ri = Etext(Ri)
+(16)
+After encoding both the input CT volume and reports into
+the shared embedding space, we apply L2 normalization to
+standardize the embeddings and compute the cosine similarity
+between them to retrieve the most relevant report embeddings:
+sim(v, ri) =
+vT ri
+||v||||ri||
+(17)
+Ztop-k = arg max
+ri∈R′
+top-k sim(v, ri)
+(18)
+where R′ = {r1, r2, ..., rNr} is the set of report embeddings.
+2) Knowledge Enhancement: To effectively integrate visual
+features with retrieved medical knowledge, we introduce a
+knowledge enhancement mechanism. This mechanism em-
+ploys a cross-attention module that enables the model to
+adaptively focus on relevant information from both the axial
+embedded CT tokens Za and the retrieved report embeddings
+Ztop-k. Specifically, the cross-attention mechanism assigns
+learnable weights to the retrieved reports via scaled dot-
+product operations, prioritizing features consistent with the
+visual evidence from the input CT volume while suppressing
+conflicting or low-confidence information. For example, if
+retrieved reports contain contradictory findings (e.g., con-
+flicting descriptions of nodule characteristics), the attention
+weights inherently downweight such inconsistencies, ensuring
+the model’s reliance on both visual evidence and clinically
+validated knowledge. Formally, given the query Q, key K,
+value V matrices, the cross-attention can be computed as
+follows:
+CAa = CrossAttention(Q, K, V )
+= Softmax
+QKT
+√dk
+
+V
+(19)
+where Q = ZaWq, K = Ztop-kWk, V
+= Ztop-kWv, Wq,
+Wk, and Wv are learnable projection matrices. The output
+is further processed through residual connection and layer
+normalization:
+ANa = Norm(CAa + Za)
+(20)
+Here, the residual connection preserves the original visual fea-
+tures as direct observations. This prevents retrieved knowledge
+(prior) from overriding novel findings, ensuring the model
+retains the capacity to detect unseen abnormalities. Then, we
+process the enhanced features through a KAN layer, followed
+by another residual connection and layer normalization:
+Fke = Norm(KANLayer(ANa) + ANa)
+(21)
+F. Report Generator
+To efficiently produce reports, a significant body of recent
+works [5], [8]–[10], [31]–[33], [35], [44] adopt the encoder-
+decoder architecture, which is built upon the standard Trans-
+former. We follow the R2GenCMN proposed by Chen et
+al. [5], which enhances the alignment between visual and
+textual modalities by introducing cross-modal memory net-
+works(CMN). In detail, this network employs a learnable
+memory matrix and revises memory vectors by the attention
+mechanism during the multi-threaded querying and responding
+procedure, so as to better align the visual and textual rep-
+resentations. For an input 3D CT volume, We first concate-
+nate the multi-view diagnostic features Fmv and knowledge-
+enhanced features Fke to obtain the fused representation FS =
+[Fmv; Fke], which implements a Bayesian posterior estimation:
+p(Y | X, K) ∝
+p(X | Y )
+|
+{z
+}
+Likelihood (Fmv )
+· p(K | Y )
+|
+{z
+}
+Prior (Fke )
+(22)
+where Fmv denotes direct CT observations (e.g., ground-
+glass opacities) as the likelihood term, and Fke provides
+evidence-based priors from retrieved reports (e.g., typical
+nodule descriptions). The report generator then utilizes the
+fused representation FS to generate the final report, em-
+ulating radiologists’ diagnostic workflow of combining ev-
+idence and domain knowledge. Here, retrieved knowledge
+complements direct diagnostic observations instead of replac-
+ing them, ensuring the integration of prior domain exper-
+tise. By doing so, our model retains its ability to identify
+novel clinical findings not present in retrieved cases. Given a
+source sequence FS = {f1, f2, f3, . . . , fS}, a target sequence
+
+===== PAGE 8 =====
+8
+IEEE TRANSACTIONS AND JOURNALS TEMPLATE
+0
+5
+10
+15
+20
+25
+30
+Epochs
+0.5
+1.0
+1.5
+2.0
+2.5
+Loss
+Loss of CTRG-Chest-548k
+Fig. 8. The loss curve during training on the CTRG-Chest-548K.
+Y
+=
+{y1, y2, y3, . . . , yT }, and a memory matrix M
+=
+{m1, m2, m3, . . . , ml}, the memory responses of FS and Y
+can be obtained by:
+rFS = FS · mT
+l
+√
+d
+· ml
+(23)
+ryt = YT · mT
+l
+√
+d
+· ml
+(24)
+where l denotes the number of memory vectors, mj
+∈
+Rd the memory vector at row j with d indicating its dimen-
+sion. As illustrated in Fig. 7, the report generator of our model
+integrates a three-layer transformer with the above-mentioned
+cross-modal memory mechanism. The features encoded by
+MVPA and CMKE modules are concatenated and fed into
+this module, where the encoder processes only multi-modal
+features while the decoder takes only textual features as input.
+This process can be formulated as:
+ZS = Re(rf1, rf2, . . . , rfS)
+(25)
+yt = Rd(ZS, ry1, ry2, . . . , ry(t−1))
+(26)
+where Rd(·) and Re(·) denote the decoder and encoder
+of the report generator, respectively, {rf1, rf2, . . . , rfS} and
+
+ry1, ry2, . . . , ry(t−1)
+	
+represent the memory responses for
+multi-modal features and textual features from previously
+generated tokens, respectively, ZS denotes the intermediate
+encoded states, yt the predicted output at the current time step
+t. The complete report is produced by:
+Yt = Softmax (Linear (yt))
+(27)
+where Linear(·) and Softmax(·) denote the Linear and Soft-
+max layer of the module, respectively, and Yt represents the
+predicted token at time step t.
+IV. EXPERIMENTS
+A. Dataset
+To validate the superiority of our proposed model, extensive
+experiments are carried out on the public chest CT report
+dataset CTRG-Chest-548K [8]1, which encompasses 1,804
+image-report pairs. Conforming to the same split propor-
+tion [8], 80% of the dataset is randomly allocated for training
+and 20% for testing.
+1https://github.com/tangyuhao2016/CTRG
+As evident in Fig. 8, we present the loss value of the model
+trained on the CTRG-Chest-548K dataset. We can observe
+that the loss curve exhibits a consistent downward trend and
+eventually converges to a stable state.
+B. Evaluation Metrics
+The quality of the predicted reports is accessed through the
+most widely used evaluation metrics2: BLEU (i.e., BLEU-
+1, BLEU-2, BLEU-3, and BLEU-4) [55], METEOR [56],
+and ROUGE-L [57]. BLEU (Bilingual Evaluation Understudy)
+computes the overlap of n-grams between the candidate and
+reference reports and incorporates a brevity penalty to dis-
+courage overly short candidate sentences. METEOR (Metric
+for Evaluation of Translation with Explicit ORdering) extends
+beyond standard exact word matching by incorporating stem-
+ming and synonymy matching, which builds on the harmonic
+mean of unigram precision and recall, with more emphasis on
+recall than precision. ROUGE-L(Recall-Oriented Understudy
+for Gisting Evaluation-Longest Common Subsequence) calcu-
+lates the longest common subsequence between the candidate
+and reference reports, allowing non-consecutive matches while
+maintaining word order.
+C. Implementation Details
+For both the compared methods and our method, CT-
+ViT [58] is employed as the 3D visual extractor, while all other
+configurations for the compared methods remain consistent
+with the original paper. The resolution of each CT volume is
+resized to 224×224×224. The temporal and spatial patch sizes
+are both 28. The order of dimensions is transposed to form
+multi-view input volumes: axial view (d × h × w), sagittal
+view (h × d × w), and coronal view (h × w × d). Here, d
+stands for depth, h for height, and w for width. The top-k
+of CMKE is 16. The learning rates of the 3D visual extractor
+in the axial, coronal, and sagittal views, along with the other
+parameters, are set to 5 × 10−5, 5 × 10−5, 5 × 10−5, and
+1 × 10−4, respectively. We decay the learning rate by a factor
+of 0.8 per epoch and set the beam size to 3. The model
+is trained with a batch size of 2 for 30 epochs using one
+NVIDIA RTX 4090 D, with Adam [59] as the optimizer and
+automatic mixed precision in PyTorch. The maximum length
+of generated reports is specified as 150. The words with a
+frequency of greater than three are retained, resulting in a
+vocabulary of 931 words.
+D. Quantitative Analysis
+To showcase the validity of the proposed MvKeTR, we
+compare it with the recent state-of-the-art methods, in-
+cluding CNN-RNN(i.e., MRMA [28]), CNN-Transformer(i.e.,
+Vanilla Transformer [52], M2TR [31], R2GenCMN [5], TS-
+GET [32], UDT [33], LHR-RFL [34], CAMANet [35],
+SL-DG [8]), Vit-Transformer(i.e., CT2Rep [9]), knowledge
+base(i.e., M2KT [44]) and large language model(i.e., Dia-
+LLaMA [10], Reg2RG [39]). As Table II shows, on the
+2https://github.com/tylin/coco-caption
+
+===== PAGE 9 =====
+DENG et al.: MVKETR: CHEST CT REPORT GENERATION WITH MULTI-VIEW PERCEPTION AND KNOWLEDGE ENHANCEMENT
+9
+CTRG-Chest-548K dataset, MvKeTR outperforms the re-
+cent SOTA approaches in almost all evaluation metrics by
+a considerable margin. Compared to MRMA, our method
+achieves an average gain of 17.13 across all metrics, with
+the most considerable improvement of 20.8 in ROUGE-L.
+Among CNN-Transformer methods, the vanilla Transformer
+yields relatively poor performance, showing a significant gap
+compared with our MvKeTR. More recent works like M2TR
+and R2GenCMN show improved performance but still fall
+behind our method. The latest transformer-based approaches,
+including TSGET, UDT, LHR-RFL, and CT2Rep, achieve
+competitive performance by proposing specialized architec-
+tural designs or reinforcement learning strategies, while our
+method surpasses them all. It is worth noting that in the
+BLEU-1 metric, LHR-RFL achieves a second-best result.
+Nevertheless, our method showcases superior performance
+across all evaluation metrics, with an average improvement
+of 4.40. M2KT achieves moderate performance, suggesting
+that merely incorporating a knowledge base and additional
+disease labels may be insufficient. By adapting the pretrained
+LLaMA2-7B for CT report generation, Dia-LLaMA shows
+promising results. However, there remains potential for further
+improvement. Another large language model (LLM)-based
+method, Reg2RG, achieves the best METEOR score of 49.71
+by leveraging a region-guided referring and grounding mech-
+anism, while our approach demonstrates superior performance
+in other metrics. Notably, compared to the second-best method,
+CAMANet, our approach achieves an average improvement of
+2.51 in terms of all metrics, demonstrating the superiority of
+our multi-view knowledge-enhanced architecture.
+E. Qualitative Analysis
+In addition to quantitative analysis, we also conduct qual-
+itative analysis on test cases by comparing their ground
+truths with the reports generated from our proposed method,
+MvKeTR, and its baseline, R2GenCMN, upon which our
+approach is built. Fig. 9 shows two examples from CTRG-
+Chest-548K and their corresponding reports, where green and
+red highlights denote correct and incorrect content, respec-
+tively. In both cases, MvKeTR generates reports that resemble
+radiologists’ observations in terms of clinical accuracy and
+professional terminology. To better illustrate the performance
+difference between MvKeTR and R2GenCMN, a detailed
+analysis of these two cases is presented below.
+In the first case(top row of Fig.9), MvKeTR accurately
+detects key abnormalities such as increased lung trans-
+parency and patchy shadows in the left lower lobe. Although
+both methods make some errors in describing pleural effu-
+sion/thickening, MvKeTR provides a more comprehensive and
+accurate description similar to the ground truth report. For
+the second case (bottom row of Fig.9), MvKeTR successfully
+spots the presence of multiple nodules in both lungs, which
+is a critical diagnostic finding that R2GenCMN completely
+overlooks. These two cases suggest that MvKeTR not only
+provides more accurate and comprehensive reports but also
+shows better capability in detecting clinically significant ab-
+normalities, which is essential for reliable medical diagnosis.
+F. Human Evaluation
+To further validate the clinical utility of our method, we
+conduct human evaluations. Two board-certified radiologists
+from a leading tertiary care hospital in China (8–15 years of
+experience) were invited to independently assess the reports
+from four clinical quality dimensions: completeness (coverage
+of all key clinical findings, including lesion location, size,
+density characteristics, and absence of critical information
+omissions), diagnostic precision (ability to differentiate am-
+biguous lesions), readability (logical flow, terminology ac-
+curacy, and clarity), and diagnostic confidence (likelihood
+of adopting the generated report in clinical practice). They
+are required to give an overall 5-scale grade (5: Accept, 4:
+Weakly Accept, 3: Borderline, 2: Weakly Reject, 1: Reject).
+This hospital ranks among the nation’s top 50 hospitals and
+processes approximately 250,000 to 300,000 chest CT exam-
+inations annually, ensuring clinically representative expertise
+in thoracic imaging. We randomly select 10 chest CT scans
+from the testing set of CTRG-Chest-548K and provide their
+corresponding reports generated by MRMA [28], M2KT [44],
+M2TR [31], and our model for the radiologists. They are
+unaware of which model generates these reports and are
+encouraged to select a higher-quality report among the four
+methods based on the predefined clinical dimensions. As
+depicted in Table IV, our method surpasses all comparative
+approaches with significant margins across four clinical quality
+metrics. Notably, our approach achieves the highest scores
+in completeness (4.2), diagnostic precision (3.9), readability
+(4.15), and diagnostic confidence (4.1), yielding an average
+improvement of 32% over the second-best method, M2KT.
+This significant margin highlights that our model generates
+clinically reliable and radiologist-preferred reports, directly
+addressing concerns about practical relevance and diagnostic
+accuracy in radiology workflows.
+G. Ablation Study
+Furthermore, we perform a body of ablation experiments to
+investigate the contributions of each component. The following
+baselines are used:
+• BASE: The base model employs CT-ViT as the 3D visual
+extractor and the encoder-decoder of R2GenCMN as the
+report generator.
+• BASE+MVPA: The base model enhanced with the pro-
+posed multi-view perception aggregator.
+• BASE+CMKE: The base model integrated with the pro-
+posed cross-modal knowledge enhancer.
+• Ours-MLP: This is the complete model with KAN layers
+replaced by MLP layers.
+• Ours: This is the complete model with all proposed
+components.
+As shown in Table III, we can draw several key obser-
+vations. First, compared to BASE, BASE+MVPA achieves
+an average improvement of 17.2%, which confirms the ef-
+ficacy of integrating diagnostic information across multi-
+ple anatomical views through view-aware attention. Sec-
+ond,
+BASE+CMKE
+shows
+a
+14.5%
+average
+improve-
+ment over BASE, indicating the usefulness of incorpo-
+
+===== PAGE 10 =====
+10
+IEEE TRANSACTIONS AND JOURNALS TEMPLATE
+TABLE II
+THE PERFORMANCE COMPARISON OF OUR PROPOSED METHOD WITH RECENT SOTA WORKS ON THE TEST SET OF CTRG-CHEST-548K. ‡
+DENOTES RESULTS DIRECTLY CITED FROM THE ORIGINAL PAPER. ∗REPRESENTS REPLICATED RESULTS BY THEIR PUBLIC CODES. THE BEST AND
+SECOND-BEST RESULTS ARE HIGHLIGHTED IN BOLD AND UNDERSCORED, RESPECTIVELY.
+Method
+Year
+BLEU-1
+BLEU-2
+BLEU-3
+BLEU-4
+METEOR
+ROUGE-L
+Vanilla Transformer [52]∗
+2017
+32.37
+28.4
+25.82
+23.93
+22.22
+51.28
+MRMA [28]∗
+2018
+40.85
+30.16
+23.77
+19.54
+19.52
+33.45
+M2TR [31]∗
+2021
+39.46
+32.76
+28.56
+25.72
+22.35
+47.63
+R2GenCMN [5]∗
+2022
+48.29
+38.34
+32.53
+28.42
+23.89
+48.91
+M2KT [44]∗
+2023
+39.71
+33.17
+29.12
+26.16
+20.11
+47.19
+TSGET [32]∗
+2024
+46.12
+38.15
+32.92
+28.84
+23.02
+50.19
+UDT [33]∗
+2024
+46.54
+39.17
+34.48
+31.08
+23.42
+53.36
+CAMANet [35]∗
+2024
+54.28
+45.26
+39.42
+35.38
+26.48
+54.2
+CT2Rep [9]∗
+2024
+49.81
+40.7
+35.19
+31.28
+24.82
+51.18
+SL-DG [8]‡
+2024
+-
+–
+–
+23.70
+21.90
+43.80
+Dia-LLaMA [10]‡
+2024
+51.16
+–
+–
+29.64
+26.28
+42.15
+LHR-RFL [34]∗
+2024
+55.56
+44.76
+37.62
+32.64
+25.4
+47.7
+Reg2RG [39]‡
+2024
+49.63
+41.43
+35.91
+32.04
+49.71
+47.76
+MvKeTR(Ours)
+–
+58.36
+48.79
+42.43
+37.86
+28.36
+54.25
+All evaluation metrics are illustrated as percentage (%).
+TABLE III
+RESULTS OF ABLATION EXPERIMENTS. THE AVERAGE PERFORMANCE IMPROVEMENT OVER ALL METRICS COMPARED TO BASE IS PRESENTED IN
+THE “AVG.∆" COLUMN. THE BEST RESULTS ARE HIGHLIGHTED IN BOLD.
+Method
+BLEU-1
+BLEU-2
+BLEU-3
+BLEU-4
+METEOR
+ROUGE-L
+AVG.∆
+BASE
+48.29
+38.34
+32.53
+28.42
+23.89
+48.91
+-
+BASE+MVPA
+54.81
+45.82
+39.85
+35.49
+26.54
+54.68
+17.2%
+BASE+CMKE
+53.76
+44.61
+38.63
+34.43
+26.77
+52.59
+14.5%
+Ours-MLP
+53.98
+45.3
+39.55
+35.39
+27.16
+54.05
+14.1%
+Ours
+58.36
+48.79
+42.43
+37.86
+28.36
+54.25
+23.6%
+All evaluation metrics are illustrated as percentage (%).
+thorax is symmetrical . the lung window 
+shows that the bilateral lung markings are 
+clear and natural . the lung field 
+transparency is good . multiple ground glass 
+nodules are seen in both lungs . the larger 
+one is located in the upper lobe of the right 
+lung with a diameter of about 0 . 5cm and 
+the bilateral pulmonary hili are not large . 
+the shape of heart shadow and heart big 
+vessels is normal and no obvious mass or 
+enlarged lymph node is found in 
+mediastinum . no pleural effusion or pleural 
+thickening .
+thorax is symmetrical no abnormality is 
+found in rib and chest wall soft tissue . the 
+lung window shows that the markings of 
+both lungs are clear and natural the 
+transparency of the lung field is good no 
+abnormal consolidation is found in both 
+lungs and the bilateral hilum is not large . 
+the shape of heart shadow and large vessels 
+is normal and no mass or enlarged lymph 
+node is found in mediastinum . no pleural 
+effusion or pleural hypertrophy .
+thorax is symmetrical bilateral lung 
+markings are clear the walking is natural the 
+lung field transmittance is good multiple 
+small nodules are seen in both lungs the 
+diameter is not more than 5mm and bilateral 
+pulmonary hili are not large . the shape of 
+heart shadow and large vessels is normal and 
+no mass or enlarged lymph node is found in 
+mediastinum . no pleural effusion or pleural 
+hypertrophy .
+thorax is symmetrical . the lung window 
+shows that the bilateral lung markings are 
+clear and natural . the transparency of the 
+lung field is increased . patchy fuzzy 
+shadows are seen in the lower lobe of the left 
+lung and the bilateral pulmonary hili are not 
+large . the shape of heart shadow and heart 
+big vessels is normal and no obvious mass or 
+enlarged lymph node is found in 
+mediastinum . no pleural effusion or pleural 
+thickening .
+thorax is symmetrical no abnormality is 
+found in rib and chest wall soft tissue . the 
+lung window shows that the markings of 
+both lungs are clear and natural the 
+transparency of the lung field is good no 
+abnormal consolidation is found in both 
+lungs and the bilateral hilum is not large . 
+the shape of heart shadow and large vessels 
+is normal and no mass or enlarged lymph 
+node is found in mediastinum . no pleural 
+effusion or pleural hypertrophy .
+thorax is symmetrical trachea is in the 
+middle . the markings of both lungs are 
+slightly disordered the transparency of both 
+lungs is increased and multiple small fine 
+light transmission areas can be seen . the left 
+lower lobe and the right lung showed 
+multiple flocculent patchy and slightly high-
+density fuzzy shadows especially in the right 
+lung the bronchial tube wall of the right lung 
+was thickened . bilateral pulmonary hili are 
+not large . the heart is enlarged and no mass 
+or enlarged lymph node is found in the 
+mediastinum . right pleural effusion right 
+pleural thickening .
+Ours
+R2GenCMN
+Ground Truth
+Input CT Volume
+Ours
+R2GenCMN
+Ground Truth
+Input CT Volume
+thorax is symmetrical . the lung window 
+shows that the bilateral lung markings are 
+clear and natural . the lung field 
+transparency is good . multiple ground glass 
+nodules are seen in both lungs . the larger 
+one is located in the upper lobe of the right 
+lung with a diameter of about 0 . 5cm and 
+the bilateral pulmonary hili are not large . 
+the shape of heart shadow and heart big 
+vessels is normal and no obvious mass or 
+enlarged lymph node is found in 
+mediastinum . no pleural effusion or pleural 
+thickening .
+thorax is symmetrical no abnormality is 
+found in rib and chest wall soft tissue . the 
+lung window shows that the markings of 
+both lungs are clear and natural the 
+transparency of the lung field is good no 
+abnormal consolidation is found in both 
+lungs and the bilateral hilum is not large . 
+the shape of heart shadow and large vessels 
+is normal and no mass or enlarged lymph 
+node is found in mediastinum . no pleural 
+effusion or pleural hypertrophy .
+thorax is symmetrical bilateral lung 
+markings are clear the walking is natural the 
+lung field transmittance is good multiple 
+small nodules are seen in both lungs the 
+diameter is not more than 5mm and bilateral 
+pulmonary hili are not large . the shape of 
+heart shadow and large vessels is normal and 
+no mass or enlarged lymph node is found in 
+mediastinum . no pleural effusion or pleural 
+hypertrophy .
+thorax is symmetrical . the lung window 
+shows that the bilateral lung markings are 
+clear and natural . the transparency of the 
+lung field is increased . patchy fuzzy 
+shadows are seen in the lower lobe of the left 
+lung and the bilateral pulmonary hili are not 
+large . the shape of heart shadow and heart 
+big vessels is normal and no obvious mass or 
+enlarged lymph node is found in 
+mediastinum . no pleural effusion or pleural 
+thickening .
+thorax is symmetrical no abnormality is 
+found in rib and chest wall soft tissue . the 
+lung window shows that the markings of 
+both lungs are clear and natural the 
+transparency of the lung field is good no 
+abnormal consolidation is found in both 
+lungs and the bilateral hilum is not large . 
+the shape of heart shadow and large vessels 
+is normal and no mass or enlarged lymph 
+node is found in mediastinum . no pleural 
+effusion or pleural hypertrophy .
+thorax is symmetrical trachea is in the 
+middle . the markings of both lungs are 
+slightly disordered the transparency of both 
+lungs is increased and multiple small fine 
+light transmission areas can be seen . the left 
+lower lobe and the right lung showed 
+multiple flocculent patchy and slightly high-
+density fuzzy shadows especially in the right 
+lung the bronchial tube wall of the right lung 
+was thickened . bilateral pulmonary hili are 
+not large . the heart is enlarged and no mass 
+or enlarged lymph node is found in the 
+mediastinum . right pleural effusion right 
+pleural thickening .
+Ours
+R2GenCMN
+Ground Truth
+Input CT Volume
+Fig. 9. The examples of report from ground-truth, R2GenCMN, and our method. Green/red highlights denotes correct/incorrect content respectively.
+rating medical expertise from similar cases. The 14.5%
+BLEU-4 degradation without CMKE confirms that retrieved
+knowledge primarily enhances model generalization instead
+of replacing intrinsic visual reasoning capabilities. Par-
+ticularly, BASE+MVPA achieves better performance than
+BASE+CMKE. This observation is attributed to the fact that
+multi-view perception is more crucial than clinical knowledge
+enhancement. Third, the comparison between Ours-MLP and
+
+===== PAGE 11 =====
+DENG et al.: MVKETR: CHEST CT REPORT GENERATION WITH MULTI-VIEW PERCEPTION AND KNOWLEDGE ENHANCEMENT
+11
+TABLE IV
+HUMAN EVALUATION BY TWO BOARD-CERTIFIED RADIOLOGISTS (5-POINT SCALE: 1=REJECT; 5=ACCEPT). SCORES WERE AVERAGED ACROSS 10
+CLINICAL CASES. THE BEST AND SECOND-BEST RESULTS ARE HIGHLIGHTED IN BOLD AND UNDERSCORED, RESPECTIVELY.
+Method
+completeness
+diagnostic precision
+readability
+diagnostic confidence
+MRMA [28]
+3.45
+1.7
+1.75
+1.75
+M2KT [44]
+3.7
+2.8
+3.05
+2.95
+M2TR [31]
+2.8
+2.05
+2.05
+2
+Ours
+4.2
+3.9
+4.15
+4.1
+TABLE V
+THE PERFORMANCE COMPARISON OF THE MVKETR FRAMEWORK UNDER DIFFERENT 3D VISUAL EXTRACTOR. THE BEST RESULTS ARE
+HIGHLIGHTED IN BOLD.
+Visual Extractor
+BLEU-1
+BLEU-2
+BLEU-3
+BLEU-4
+METEOR
+ROUGE-L
+3D ViT [60]
+58.39
+47.27
+39.87
+34.59
+26.99
+49.43
+CT-Net [61]
+50.1
+42.24
+37.03
+33.33
+26.17
+53.67
+U-Net [62]
+48.55
+39.87
+34.72
+31.1
+24.75
+52.27
+CT-ViT [58]
+58.36
+48.79
+42.43
+37.86
+28.36
+54.25
+All evaluation metrics are illustrated as percentage (%).
+TABLE VI
+PERFORMANCE ANALYSIS OF VIEW-AWARE ATTENTION UNDER VARYING ROTATION ANGLES AND SUBOPTIMAL IMAGING CONDITIONS. THE AVERAGE
+PERFORMANCE CHANGE ACROSS ALL METRICS COMPARED TO THE BASELINE (OUR PROPOSED MVKETR) IS PRESENTED IN THE “AVG.∆"
+COLUMN, WITH POSITIVE VALUES INDICATING IMPROVEMENT AND NEGATIVE VALUES INDICATING DEGRADATION. THE BEST RESULTS IN EACH
+SCENARIO GROUP ARE HIGHLIGHTED IN BOLD.
+Scenario
+Type
+BLEU-1
+BLEU-2
+BLEU-3
+BLEU-4
+METEOR
+ROUGE-L
+AVG.∆
+Baseline
+Original
+58.36
+48.79
+42.43
+37.86
+28.36
+54.25
+-
+Rotation
+Angle
+±5°
+55.91
+46.62
+40.46
+36.00
+27.20
+54.06
+-3.80%
+±10°
+56.60
+47.27
+41.12
+36.69
+27.57
+54.34
+-2.50%
+±15°
+55.69
+46.94
+41.12
+36.91
+27.80
+54.42
+-2.60%
+±20°
+56.44
+47.30
+41.21
+36.84
+27.62
+54.70
+-2.30%
+Imaging
+Condition
+Motion Artifacts [63]
+58.15
+48.94
+42.82
+38.40
+28.51
+55.21
++0.80%
+Ring Artifacts [63]
+59.78
+49.58
+42.90
+38.13
+28.53
+53.03
++0.70%
+MPR Blurring [64]
+57.79
+48.53
+42.37
+37.95
+28.33
+53.94
+-0.30%
+All evaluation metrics are illustrated as percentage (%).
+8
+16
+32
+64
+Top-k
+55.0
+55.5
+56.0
+56.5
+57.0
+57.5
+58.0
+58.5
+59.0
+BLEU-1
+CTRG-Chest-548k
+Fig. 10. Effect of varying top-k on CTRG-Chest-548K.
+Ours reveals a performance gap of 9.5% (23.6% vs 14.1%
+in average improvement). This observation owes to the fact
+that KAN layers are more effective in modeling complicated
+diagnostic relationships compared to conventional MLP layers.
+When combining all components, Ours achieves the best
+overall performance, with a 23.6% average improvement over
+BASE. This suggests that multi-view perception, knowledge
+enhancement, and the KAN network work complementarily
+to improve the quality of CT reports.
+H. Discussion
+1) Comparison of different 3D visual extractors: We conduct
+experiments to assess the impact of various 3D visual ex-
+tractors, including CNN-based methods: U-Net [62], and CT-
+Net [61] as well as recent Vit-based methods: 3D ViT [60],
+and CT-ViT [58]. As demonstrated in Table V, we find that
+CT-ViT(see Fig. 3) is the most suitable 3D visual extractor
+for our proposed MvKeTR, which leverages the advantages
+of two types of transformers: spatial transformers and causal
+transformers. Specifically, the spatial transformers excel at
+capturing local spatial features and relationships within CT
+slices, which is crucial for understanding anatomical structures
+and lesion locations. Meanwhile, the causal transformers are
+adept at modeling long-range dependencies across different
+slices or depth levels of the 3D CT volume, ensuring com-
+prehensive feature extraction. This combination effectively
+preserves spatial and volumetric information throughout the
+3D visual feature extraction pipeline. Moreover, the ViT-based
+methods show relatively higher performance compared to the
+CNN-based counterparts, suggesting that the self-attention
+mechanism is more effective in capturing global dependencies
+and long-range interactions within visual features, which is
+crucial for CT report generation.
+2) Effect of varying top-k: The top-k is a key hyperparameter
+of CMKE module, which determines the number of most rel-
+evant reports to be retrieved for the current report generation.
+
+===== PAGE 12 =====
+12
+IEEE TRANSACTIONS AND JOURNALS TEMPLATE
+As revealed in Fig. 10, we observe that increasing the top-k
+at first improves the BLEU-1 score, reaching a peak at top-
+k=16, beyond which the performance deteriorates. This trend
+suggests that while retrieving more relevant reports provides
+richer reference information, excessive retrieval beyond a cer-
+tain threshold may introduce noise without additional benefits.
+Hence, the top-k is set to 16, balancing noise suppression and
+information retention.
+3) Limitations and Future Work: Notwithstanding our contri-
+butions to automatic radiology report generation, there are still
+limitations. We have conducted comprehensive experiments to
+evaluate the robustness of our proposed MvKeTR (the baseline
+model, as clearly labeled in Table VI) under challenging
+scenarios. First, to analyze the performance of view-aware at-
+tention under varying rotation angles, we conducted controlled
+experiments on the CTRG-Chest-548K dataset using rotations
+(±5°, ±10°, ±15°, and ±20°). As shown in Table VI, we
+observed an interesting nonlinear degradation pattern. While
+the smallest rotation (±5°) resulted in the largest average
+performance drop (3.80%), larger rotations exhibited more
+moderate degradation (2.50%, 2.60%, and 2.30% for ±10°,
+±15°, and ±20°, respectively). This counterintuitive finding
+suggests that MVPA dynamically adapts to misalignment
+severity, possibly by redistributing attention weights across
+views. The detailed metrics reveal that certain performance
+indicators (e.g., METEOR at ±15° and ROUGE-L at ±20°)
+remain robust even under significant misalignment, demon-
+strating the architecture’s ability to leverage multi-view redun-
+dancy. This adaptive behavior indicates that MVPA suppresses
+features from severely misaligned views while amplifying
+more stable features from other perspectives, resulting in a
+graceful degradation pattern rather than catastrophic failure.
+Controlled rotational perturbations during training empower
+MVPA to learn alignment-invariant representations while pre-
+serving its adaptive attention mechanism, thereby ensuring
+robust generalization to real-world scenarios with inevitable
+misalignment.
+Second, we further evaluated our method under three com-
+mon suboptimal imaging conditions where anatomical view
+discrimination becomes challenging: motion artifacts caus-
+ing slice discontinuity [63], ring artifacts from CT detector
+miscalibration [63], and multiplanar reconstruction (MPR)
+blurring at oblique angles [64]. Surprisingly, as shown in
+Table VI, our model maintains performance and demonstrates
+slight improvement under certain conditions (e.g., motion
+artifacts). For motion artifacts that induce slice discontinuity
+and view misregistration, the model achieved a 0.80% average
+performance improvement, as the axial view (less affected
+by respiratory motion) provided stable features that compen-
+sated for corrupted coronal/sagittal views. In cases of ring
+artifacts, the average performance improved by 0.70%. Since
+ring artifacts predominantly affect axial slices, the view-aware
+attention mechanism naturally shifted focus to coronal/sagittal
+planes where anatomical continuity remained intact, repli-
+cating radiologists’ cross-plane verification strategies. Under
+MPR blurring, the negligible 0.30% performance drop reflects
+MVPA’s tolerance to resolution variations, achieved through
+its multi-scale feature fusion design that combines native-
+plane high-frequency components with cross-view contextual
+representations. These findings collectively validate that view-
+aware attention functions as an adaptive spatial filter rather
+than a rigid view selector. By dynamically adjusting cross-
+view feature contributions based on anatomical coherence
+and imaging quality, MVPA emulates clinicians’ diagnostic
+reasoning under uncertainty. The results confirm our architec-
+ture’s clinical viability in real-world scenarios where perfect
+alignment and optimal imaging conditions are often unattain-
+able. These limitations underscore two strategic extensions
+for future research: 1) Integration of CT physics-informed
+artifact models (e.g., low-dose Poisson noise propagation) to
+enhance domain shift robustness; 2) Geometric adaptation of
+the view-aware attention mechanism for non-orthogonal mul-
+tiplanar reconstructions, directly addressing emerging clinical
+requirements in volumetric imaging analysis.
+In addition to the aforementioned limitations in the view-
+aware attention mechanism, our CMKE also presents chal-
+lenges. While CMKE demonstrates robustness to noisy re-
+ports, its performance relies on the quality of the CT-RATE
+dataset. To further enhance reliability, we plan to introduce: 1)
+Uncertainty-aware retrieval: Filtering reports with low similar-
+ity scores (e.g., below a threshold) to exclude low-confidence
+cases. 2) Human-in-the-loop validation: Enabling radiologists
+to review and adjust retrieved reports during inference. 3) Bias
+mitigation: Training CT-CLIP with debiasing techniques (e.g.,
+adversarial training) to reduce dataset-specific biases. These
+improvements will strengthen the alignment between retrieved
+knowledge and clinical ground truth.
+To bridge the gap between technical advancements and
+clinical deployment, we will focus on validating the gener-
+alizability and effectiveness of our proposed model through
+a real-world pilot study across local hospitals and extending
+the framework to other 3D medical imaging modalities (e.g.,
+MRI) and different body parts.
+V. CONCLUSION
+In this paper, we present MvKeTR, a novel framework that
+integrates multi-view perception and knowledge enhancement
+for high-quality radiology report generation from 3D CT vol-
+umes. First, multi-view features are extracted by a 3D visual
+extractor, which comprises three separate CT-ViT networks.
+The multi-view perception aggregator is then utilized to syn-
+thesize visual features from three anatomical views. Following
+this, the cross-modal knowledge enhancer is responsible for
+incorporating clinical knowledge from the most relevant cases
+into the diagnostic process. Finally, these features encoded by
+the two aforementioned modules are concatenated and fed into
+the report generator to produce the final report. Experimental
+results on the CTRG-Chest-548K dataset demonstrate the
+superiority of our method over prior state-of-the-art studies.
+REFERENCES
+[1] S. K. Goergen, F. J. Pool, T. J. Turner, J. E. Grimm, M. N. Appleyard,
+C. Crock, M. C. Fahey, M. F. Fay, N. J. Ferris, S. M. Liew et al.,
+“Evidence-based guideline for the written radiology report: Methods,
+recommendations and implementation challenges,” J. Med. Imaging
+Radiat. Oncol., vol. 57, no. 1, pp. 1–7, 2013.
+
+===== PAGE 13 =====
+DENG et al.: MVKETR: CHEST CT REPORT GENERATION WITH MULTI-VIEW PERCEPTION AND KNOWLEDGE ENHANCEMENT
+13
+[2] A. B. Rosenkrantz, D. R. Hughes, and R. Duszak Jr, “The us radiologist
+workforce: an analysis of temporal and geographic variation by using
+large national datasets,” Radiology, vol. 279, no. 1, pp. 175–184, 2016.
+[3] A. Rimmer, “Radiologist shortage leaves patient care at risk, warns royal
+college,” BMJ-BRIT. MED. J., vol. 359, 2017.
+[4] M. A. Bruno, E. A. Walker, and H. H. Abujudeh, “Understanding and
+confronting our mistakes: the epidemiology of error in radiology and
+strategies for error reduction,” Radiographics, vol. 35, no. 6, pp. 1668–
+1676, 2015.
+[5] Z. Chen, Y. Shen, Y. Song, and X. Wan, “Cross-modal memory networks
+for radiology report generation,” in Proc. 59th Ann. Meeting Assoc.
+Comput. Linguistics, 11th Int. Joint Conf. Natural Lang. Process, 2021,
+pp. 5904–5914.
+[6] Y. Jin, W. Chen, Y. Tian, Y. Song, C. Yan, and Z. Mao, “Improving
+radiology report generation with d 2-net: When diffusion meets dis-
+criminator,” in Proc. IEEE Int. Conf. Acoust. Speech Signal Process.,
+2024, pp. 2215–2219.
+[7] N. M¨uller, “Computed tomography and magnetic resonance imaging:
+past, present and future,” Eur. Respir. J., vol. 19, no. 35 suppl, pp. 3s–
+12s, 2002.
+[8] Y. Tang, H. Yang, L. Zhang, and Y. Yuan, “Work like a doctor:
+Unifying scan localizer and dynamic generator for automated computed
+tomography report generation,” Expert Syst. Appl., vol. 237, p. 121442,
+2024.
+[9] I. E. Hamamci, S. Er, and B. Menze, “Ct2rep: Automated radiology
+report generation for 3d medical imaging,” in Proc. Int. Conf. Med.
+Image Comput. Comput.-Assisted Intervention, 2024, pp. 476–486.
+[10] Z. Chen, L. Luo, Y. Bie, and H. Chen, “Dia-llama: Towards large
+language model-driven ct report generation,” arXiv:2403.16386, 2024.
+[11] A. A. A. Setio, F. Ciompi, G. Litjens, P. Gerke, C. Jacobs, S. J. Van Riel,
+M. M. W. Wille, M. Naqibullah, C. I. S´anchez, and B. Van Ginneken,
+“Pulmonary nodule detection in ct images: false positive reduction using
+multi-view convolutional networks,” IEEE Trans. Med. Imaging, vol. 35,
+no. 5, pp. 1160–1169, 2016.
+[12] A. A. Bankier, H. MacMahon, J. M. Goo, G. D. Rubin, C. M. Schaefer-
+Prokop, and D. P. Naidich, “Recommendations for measuring pulmonary
+nodules at ct: a statement from the fleischner society,” Radiology, vol.
+285, no. 2, pp. 584–600, 2017.
+[13] H. MacMahon, D. P. Naidich, J. M. Goo, K. S. Lee, A. N. Leung,
+J. R. Mayo, A. C. Mehta, Y. Ohno, C. A. Powell, M. Prokop et al.,
+“Guidelines for management of incidental pulmonary nodules detected
+on ct images: from the fleischner society 2017,” Radiology, vol. 284,
+no. 1, pp. 228–243, 2017.
+[14] Z. Chen, Y. Song, T.-H. Chang, and X. Wan, “Generating radiology re-
+ports via memory-driven transformer,” in Proc. Conf. Empirical Methods
+Natural Lang. Process., Nov. 2020, pp. 1439–1449.
+[15] Z. Liu, Y. Wang, S. Vaidya, F. Ruehle, J. Halverson, M. Soljacic, T. Y.
+Hou, and M. Tegmark, “KAN: Kolmogorov–arnold networks,” in Proc.
+13th Int. Conf. Learn. Represent., 2025.
+[16] S. Bai and S. An, “A survey on automatic image caption generation,”
+Neurocomputing, vol. 311, pp. 291–304, 2018.
+[17] H. Wang, Y. Zhang, and X. Yu, “An overview of image caption
+generation methods,” Comput. Intell. Neurosci., vol. 2020, no. 1, p.
+3062706, 2020.
+[18] B. Z. Yao, X. Yang, L. Lin, M. W. Lee, and S.-C. Zhu, “I2t: Image
+parsing to text description,” Proc. IEEE, vol. 98, no. 8, pp. 1485–1508,
+2010.
+[19] R. Socher and L. Fei-Fei, “Connecting modalities: Semi-supervised
+segmentation and annotation of images using unaligned text corpora,”
+in Proc. IEEE Conf. Comput. Vis. Pattern Recognit., 2010, pp. 966–973.
+[20] O. Vinyals, A. Toshev, S. Bengio, and D. Erhan, “Show and tell: A neural
+image caption generator,” in Proc. IEEE Conf. Comput. Vis. Pattern
+Recognit., 2015, pp. 3156–3164.
+[21] S. J. Rennie, E. Marcheret, Y. Mroueh, J. Ross, and V. Goel, “Self-
+critical sequence training for image captioning,” in Proc. IEEE Conf.
+Comput. Vis. Pattern Recognit., 2017, pp. 7008–7024.
+[22] K. Xu, “Show, attend and tell: Neural image caption generation with
+visual attention,” arXiv:1502.03044, 2015.
+[23] L. Li, S. Tang, L. Deng, Y. Zhang, and Q. Tian, “Image caption with
+global-local attention,” in Proc. AAAI Conf. Artif. Intell., vol. 31, no. 1,
+2017.
+[24] J. Lu, C. Xiong, D. Parikh, and R. Socher, “Knowing when to look:
+Adaptive attention via a visual sentinel for image captioning,” in Proc.
+IEEE Conf. Comput. Vis. Pattern Recognit., 2017, pp. 375–383.
+[25] M. Cornia, M. Stefanini, L. Baraldi, and R. Cucchiara, “Meshed-memory
+transformer for image captioning,” in Proc. IEEE Conf. Comput. Vis.
+Pattern Recognit., 2020, pp. 10 578–10 587.
+[26] W. Liu, S. Chen, L. Guo, X. Zhu, and J. Liu, “Cptr: Full transformer
+network for image captioning,” arXiv:2101.10804, 2021.
+[27] B. Jing, P. Xie, and E. Xing, “On the automatic generation of medical
+imaging reports,” arXiv:1711.08195, 2017.
+[28] Y. Xue, T. Xu, L. Rodney Long, Z. Xue, S. Antani, G. R. Thoma, and
+X. Huang, “Multimodal recurrent model with attention for automated
+radiology report generation,” in Proc. 21st Int. Conf. Med. Image
+Comput. Comput.-Assisted Intervention, 2018, pp. 457–466.
+[29] A. Hoogi, A. Mishra, F. Gimenez, J. Dong, and D. Rubin, “Natural
+language generation model for mammography reports simulation,” IEEE
+J. Biomed. Health Inform., vol. 24, no. 9, pp. 2711–2717, 2020.
+[30] Z. Wang, L. Zhou, L. Wang, and X. Li, “A self-boosting framework for
+automated radiographic report generation,” in Proc. IEEE Conf. Comput.
+Vis. Pattern Recognit., 2021, pp. 2433–2442.
+[31] F. Nooralahzadeh, N. Perez Gonzalez, T. Frauenfelder, K. Fujimoto, and
+M. Krauthammer, “Progressive transformer-based generation of radiol-
+ogy reports,” in Proc. Findings Assoc. Comput. Linguistics: EMNLP
+2021, 2021, pp. 2824–2832.
+[32] X. Yi, Y. Fu, R. Liu, H. Zhang, and R. Hua, “Tsget: Two-stage global
+enhanced transformer for automatic radiology report generation,” IEEE
+J. Biomed. Health Inform., vol. 28, no. 4, pp. 2152–2162, 2024.
+[33] X. Yi, Y. Fu, R. Hua, R. Liu, and H. Zhang, “Unsupervised disease
+tags for automatic radiology report generation,” Biomed Signal Process
+Control, vol. 89, p. 105742, 2024.
+[34] X. Yi, Y. Fu, J. Yu, R. Liu, H. Zhang, and R. Hua, “Lhr-rfl: Linear
+hybrid-reward based reinforced focal learning for automatic radiology
+report generation,” IEEE Trans. Med. Imaging, 2024.
+[35] J. Wang, A. Bhalerao, T. Yin, S. See, and Y. He, “Camanet: Class
+activation map guided attention network for radiology report generation,”
+IEEE J. Biomed. Health Inform., vol. 28, no. 4, pp. 2199–2210, 2024.
+[36] X. Zhang, S. Yang, Y. Shi, J. Ji, Y. Liu, Z. Wang, and H. Xu, “Weakly
+guided attention model with hierarchical interaction for brain ct report
+generation,” Comput. Biol. Med., vol. 167, p. 107650, 2023.
+[37] X. Zhang, S. Dou, J. Ji, Y. Liu, and Z. Wang, “Co-occurrence relation-
+ship driven hierarchical attention network for brain ct report generation,”
+IEEE Trans. Emerging Top. Comput. Intell., 2024.
+[38] H. Touvron, L. Martin, K. Stone, P. Albert, A. Almahairi, Y. Babaei,
+N. Bashlykov, S. Batra, P. Bhargava, S. Bhosale et al., “Llama 2: Open
+foundation and fine-tuned chat models,” arXiv:2307.09288, 2023.
+[39] Z. Chen, Y. Bie, H. Jin, and H. Chen, “Large language model with
+region-guided referring and grounding for ct report generation,” IEEE
+Trans. Med. Imaging, 2025.
+[40] Z. Xia, M. Liao, S. Di, Y. Zhao, W. Liang, and N. N. Xiong, “Automatic
+liver segmentation from ct volumes based on multi-view information
+fusion and condition random fields,” Optics & Laser Technology, vol.
+179, p. 111298, 2024.
+[41] C. Liu, H. Liu, X. Zhang, J. Guo, and P. Lv, “Multi-scale and multi-view
+network for lung tumor segmentation,” Comput. Biol. Med., vol. 172, p.
+108250, 2024.
+[42] J. Yuan, H. Liao, R. Luo, and J. Luo, “Automatic radiology report
+generation based on multi-view image fusion and medical concept
+enrichment,” in Proc. 22nd Int. Conf. Med. Image Comput. Comput.-
+Assisted Intervention, 2019, pp. 721–729.
+[43] S. Yang, J. Niu, J. Wu, and X. Liu, “Automatic medical image report
+generation with multi-view and multi-modal attention mechanism,” in
+International Conference on Algorithms and Architectures for Parallel
+Processing.
+Springer, 2020, pp. 687–699.
+[44] S. Yang, X. Wu, S. Ge, Z. Zheng, S. K. Zhou, and L. Xiao, “Radiology
+report generation with a learned knowledge base and multi-modal
+alignment,” Med. Image Anal., vol. 86, p. 102798, 2023.
+[45] K. Kale, P. Bhattacharyya, A. Shetty, M. Gune, K. Shrivastava,
+R. Lawyer, and S. Biswas, ““knowledge is power”: Constructing
+knowledge graph of abdominal organs and using them for automatic
+radiology report generation,” in Proc. 61st Ann. Meeting Assoc. Comput.
+Linguistics (Vol. 5: Industry Track), 2023, pp. 11–24.
+[46] X. Hou, Z. Liu, X. Li, X. Li, S. Sang, and Y. Zhang, “Mkcl: medical
+knowledge with contrastive learning model for radiology report gener-
+ation,” J. Biomed. Inf., vol. 146, p. 104496, 2023.
+[47] Z. Huang, X. Zhang, and S. Zhang, “Kiut: Knowledge-injected u-
+transformer for radiology report generation,” in Proc. IEEE Conf.
+Comput. Vis. Pattern Recognit., 2023, pp. 19 809–19 818.
+[48] D. E. Rumelhart, G. E. Hinton, and R. J. Williams, “Learning repre-
+sentations by back-propagating errors,” nature, vol. 323, no. 6088, pp.
+533–536, 1986.
+[49] K. Hornik, M. Stinchcombe, and H. White, “Multilayer feedforward
+networks are universal approximators,” Neural networks, vol. 2, no. 5,
+pp. 359–366, 1989.
+
+===== PAGE 14 =====
+14
+IEEE TRANSACTIONS AND JOURNALS TEMPLATE
+[50] Y. Wang, J. W. Siegel, Z. Liu, and T. Y. Hou, “On the expressiveness
+and spectral bias of KANs,” in Proc. 13th Int. Conf. Learn. Represent.,
+2025.
+[51] N. Rahaman, A. Baratin, D. Arpit, F. Draxler, M. Lin, F. Hamprecht,
+Y. Bengio, and A. Courville, “On the spectral bias of neural networks,”
+in Proc. Int. Conf. Mach. Learn.
+PMLR, 2019, pp. 5301–5310.
+[52] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez,
+L. Kaiser, and I. Polosukhin, “Attention is all you need,” in Proc. 31st
+Int. Conf. Neural Inf. Process. Syst., 2017, p. 6000–6010.
+[53] I. E. Hamamci, S. Er, F. Almas, A. G. Simsek, S. N. Esirgun, I. Dogan,
+M. F. Dasdelen, B. Wittmann, E. Simsar, M. Simsar et al., “A foundation
+model utilizing chest ct volumes and radiology reports for supervised-
+level zero-shot detection of abnormalities,” arXiv:2403.17834, 2024.
+[54] A. Yan, J. McAuley, X. Lu, J. Du, E. Y. Chang, A. Gentili, and
+C.-N. Hsu, “Radbert: adapting transformer-based language models to
+radiology,” Radiol. Artif. Intell., 2022.
+[55] K. Papineni, S. Roukos, T. Ward, and W.-J. Zhu, “Bleu: a method
+for automatic evaluation of machine translation,” in Proc. 40th Annu.
+Meeting Assoc. Comput. Linguistics, Jul. 2002, pp. 311–318.
+[56] M. Denkowski and A. Lavie, “Meteor 1.3: Automatic metric for reliable
+optimization and evaluation of machine translation systems,” in Proc. 6th
+Workshop Stat. Mach. Transl., 2011, pp. 85–91.
+[57] C.-Y. Lin, “ROUGE: A package for automatic evaluation of summaries,”
+in Proc. Text Summarization Branches Out, Jul. 2004, pp. 74–81.
+[58] I. E. Hamamci, S. Er, A. Sekuboyina, E. Simsar, A. Tezcan, A. G.
+Simsek, S. N. Esirgun, F. Almas, I. Do˘gan, M. F. Dasdelen et al.,
+“Generatect: Text-conditional generation of 3d chest ct volumes,” in
+Proc. Eur. Conf. Comput. Vis.
+Springer, 2024, pp. 126–143.
+[59] D. P. Kingma and J. Ba, “Adam: A method for stochastic optimization,”
+arXiv:1412.6980, 2014.
+[60] A. Dosovitskiy, L. Beyer, A. Kolesnikov, D. Weissenborn, X. Zhai,
+T. Unterthiner, M. Dehghani, M. Minderer, G. Heigold, S. Gelly,
+J. Uszkoreit, and N. Houlsby, “An image is worth 16x16 words:
+Transformers for image recognition at scale,” in Proc. Int. Conf. Learn.
+Represent., 2021.
+[61] R. L. Draelos, D. Dov, M. A. Mazurowski, J. Y. Lo, R. Henao, G. D.
+Rubin, and L. Carin, “Machine-learning-based multiple abnormality
+prediction with large-scale chest computed tomography volumes,” Med.
+Image Anal., vol. 67, p. 101857, 2021.
+[62] O. Ronneberger, P. Fischer, and T. Brox, “U-net: Convolutional networks
+for biomedical image segmentation,” in Proc. Int. Conf. Med. Image
+Comput. Comput.-Assisted Intervention, 2015, pp. 234–241.
+[63] T. M. Buzug, “Computed tomography,” in Springer handbook of medical
+technology.
+Springer, 2011, pp. 311–342.
+[64] J. Remy, M. Remy-Jardin, D. Artaud, and M. Fribourg, “Multiplanar
+and three-dimensional reconstruction techniques in ct: impact on chest
+diseases,” Eur. Radiol., pp. 335–351, 1998.

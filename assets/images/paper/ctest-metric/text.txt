@@ -1,0 +1,420 @@
+
+===== PAGE 1 =====
+CTEST-METRIC: A UNIFIED FRAMEWORK TO ASSESS CLINICAL VALIDITY OF
+METRICS FOR CT REPORT GENERATION
+Vanshali Sharma, Andrea Mia Bejar, Gorkem Durak, and Ulas Bagci
+Machine and Hybrid Intelligence Lab, Northwestern University, Chicago, IL, USA
+In the generative AI era, where even critical medical
+tasks are increasingly automated, radiology report generation
+(RRG) continues to rely on suboptimal metrics for quality as-
+sessment. Developing domain-specific metrics has therefore
+been an active area of research, yet it remains challenging due
+to the lack of a unified, well-defined framework to assess their
+robustness and applicability in clinical contexts. To address
+this, we present CTest-Metric, a first unified metric assess-
+ment framework with three modules determining the clinical
+feasibility of metrics for CT RRG. The modules test: (i) Writ-
+ing Style Generalizability (WSG) via LLM-based rephrasing;
+(ii) Synthetic Error Injection (SEI) at graded severities; and
+(iii) Metrics-vs-Expert correlation (MvE) using clinician rat-
+ings on 175 “disagreement” cases. Eight widely used metrics
+(BLEU, ROUGE, METEOR, BERTScore-F1, F1-RadGraph,
+RaTEScore, GREEN Score, CRG) are studied across seven
+LLMs built on a CT-CLIP encoder. Using our novel frame-
+work, we found that lexical NLG metrics are highly sensitive
+to stylistic variations; GREEN Score aligns best with expert
+judgments (Spearman 0.70), while CRG shows negative cor-
+relation; and BERTScore-F1 is least sensitive to factual error
+injection. We will release the framework, code, and allowable
+portion of the anonymized evaluation data (rephrased/error-
+injected CT reports), to facilitate reproducible benchmarking
+and future metric development.
+1. INTRODUCTION
+With recent breakthroughs in Large Language Models (LLMs)
+for automated radiology report generation (RRG) [1, 2], a
+crucial question arises: Do existing metrics capture what ac-
+tually matters to trace the clinical efficacy and acceptability
+of LLM-generated reports?
+A clinically grounded metric
+must be insensitive to report writing styles and sensitive to
+subtle yet critical factual mismatches. It should also identify
+synonymous medical terminologies, and be robust enough
+to capture overfitting in AI-based generative models before
+deploying them for clinical use.
+Despite the availability of a large number of metrics, most
+are developed for general-domain text [3, 4, 5], and even a
+few domain-specific metrics overlook deeper clinical rele-
+This research is partially supported by the NIH grant R01-HL171376.
+vance or ignore synonymous terminologies. Therefore, the
+existing RRG methods [2, 6] continue to rely on metrics that
+are not reflective of clinical fidelity. Consequently, the de-
+signing of radiology-specific metrics has been an active area
+of research with the aim of evaluating both clinical aspects
+and linguistic similarity between generated radiology reports
+and the ground truth. However, due to the absence of any
+standardized tool and well-defined criteria to test these met-
+rics, RRG tasks still rely on inconsistent metrics, resulting in
+misleading model selections. This underscores the need for a
+system that can serve as a well-defined framework for metrics
+developers to assess the clinical applicability of the metrics.
+Few prior studies [7, 8] have addressed this problem; how-
+ever, their focus has predominantly been on the X-ray RRG.
+Since X-ray images are 2D scans, the corresponding reports
+are limited to a specific anatomical context and span shorter
+sentences. In contrast, 3D CT scans capture volumetric multi-
+slice information, resulting in semantically denser narratives
+and a broader vocabulary that includes richer anatomical de-
+tail, diverse medical terminology, lesion descriptions, and
+measurements. Most existing clinical-efficacy (CE) metrics
+were originally tailored to X-ray-based vocabulary and thus
+struggle to capture complex and diverse terminologies present
+in CT reports. Despite this limitation, CT-based studies still
+use these metrics for reporting results and model comparison.
+Therefore, CT RRG requires special attention in terms of
+both designing appropriate metrics and developing a tool to
+assess their applicability and feasibility.
+In this paper, we develop CTest-Metric, a framework for
+evaluating the extent to which a given metric satisfies the cri-
+teria for being clinically grounded. This assessment is con-
+ducted on eight benchmarking metrics that have been exten-
+sively used in recent CT report generation studies, ensuring
+consistency with established evaluation practices. The pro-
+posed framework includes three analytical modules: a) Writ-
+ing Style Generalizability Test (WSG) examines the metrics’
+generalizability across different writing styles, b) Synthetic
+Error Injection Test (SEI) introduces factual errors in the re-
+ports at three different levels and investigates their impact on
+the metrics’ outcomes, and c) Metrics-vs-Expert Correlation
+Test (MvE) obtains expert ratings for reports exhibiting dis-
+agreement among the metrics. Further, a correlation is es-
+tablished between the eight metrics and expert ratings for a
+arXiv:2601.11488v1  [cs.CL]  16 Jan 2026
+
+===== PAGE 2 =====
+Fig. 1: (a) The propsoed framework, CTest-Metric, comprises three modules: (i) Writing Style Generalizability Test (WSG);
+(ii) Synthetic Error Injection Test (SEI); and (iii) Metrics-vs-Expert Correlation Test (MvE). (b) Sample reports are given.
+comprehensive study. By leveraging reports generated using
+seven different LLMs in conjunction with expert assessment,
+the proposed framework presents a robust pathway that met-
+rics developers can utilize when designing new metrics. The
+paper’s contributions are summarized below:
+• First framework to assess metrics for CT RRG: We de-
+veloped CTest-Metric, a novel unified framework to as-
+sess metrics for CT RRG. It investigates eight benchmark-
+ing metrics on CT reports generated by seven different
+LLMs and analyzes the behavior of both NLG (text-based)
+and CE metrics for CT report evaluation.
+• Expert assessment: Our study selected 175 cases across
+predictions from seven LLMs where the metrics showed
+conflicting assessments. These specific reports were then
+reviewed by clinical experts, and correlations were de-
+rived between expert ratings and the metrics’ scores.
+• Analyzed the impact of stylistic variations and graded
+synthetic errors: We introduced stylistic variations and
+factual errors at three severity levels in the CT reports. We
+quantified the effect of these changes on metric sensitivity.
+2. RELATED WORK
+The RRG literature reveals that various NLG and CE met-
+rics are commonly used to assess predicted CT reports. The
+earlier studies primarily relied on NLG metrics, including
+BLEU [3], ROUGE [4], METEOR [5], and BERTScore-
+F1 [9]. These metrics quantify textual similarity, for exam-
+ple, BLEU measures n-gram overlap, ROUGE emphasizes
+sequence-level recall, and METEOR incorporates synonym
+matches between the generated and the ground truth report.
+Similarly, BERTScore-F1 computes similarity using contex-
+tual embeddings. To validate the clinical context, CE metrics
+including F1-RadGraph [10] and CheXpert [11] were intro-
+duced. While the former extracts entities and relations from
+the given reports and measures graph-level scores, the latter
+adopts a rule-based labeler for 14 chest X-ray findings. More
+recently, RaTEScore [12], GREEN Score [13], and CRG [14]
+were introduced. The RaTEScore compares reports on the
+entity embedding level and the GREEN score uses regu-
+lar expressions to parse error counts from their pre-trained
+model output. Unlike other score, the CRG balances penal-
+ities based on label distribution in the reports and ignores
+clinically irrelevant true negatives.
+For the X-ray RRG tasks, prior works [15, 16] followed
+a similar trend, relying on the same set of standard metrics
+including the four BLEU n-gram levels, METEOR, ROUGE,
+and CheXpert. A largely identical evaluation strategy is also
+observed in CT RRG, where most studies [1, 2] adopt a sim-
+ilar set of NLG and CE metrics, despite the latter being X-
+ray-oriented and thus, do not fully capture the semantic and
+anatomical complexity of CT reporting. Although the liter-
+ature lacks any unified framework for evaluating CT RRG
+metrics, some X-ray-focused works such as Yu et al.[8] and
+Banerjee et al. [7] highlighted that even advanced metrics can
+be inconsistent and poorly correlated with expert ratings.
+3. METHODOLOGY
+Overview.
+Given a 3D CT scan i ∈I with correspond-
+ing ground truth report r ∈R, we employed seven report
+generation models to generate CT report pj
+i ∈P, where
+j = 1, 2, .., 7. The seven deep learning models adopt a CT-
+CLIP [17] image encoder to extract image features combined
+
+===== PAGE 3 =====
+with seven different LLMs, including variants of GPT (Dis-
+tilgpt, GPT2, GPT2-Medium, LLaMA-3.2-1B) and LLaMA
+(LLaMA-3.2-1B, LLaMA-2-7b-chat-hf), with a biomedical-
+domain LLM (BioGPT-Large).
+These variants are paired
+with two configurations: LLM fine-tuning1 and a frozen-
+LLM setup (R2GenGPT’s shallow alignment [15]).
+The predictions obtained from each model are assessed
+using a set of eight metrics M, where M= {BLEU, ROUGE,
+METEOR, BERTScore-F1, F1-RadGraph, RaTEScore, GREEN
+Score, CRG}. The first four metrics are NLG-based whereas
+the last four are designed for clinical-efficacy check.
+The
+proposed CTest-Metric framework is illustrated in Fig. 1,
+comprising three analytical modules, as detailed below.
+3.1. Writing Style Generalizability Test (WSG)
+In the WSG module, metrics are tested for sensitivity to re-
+port writing style. It evaluates whether they exhibit signifi-
+cant performance shifts in response to variations in stylistic
+modifications despite unchanged clinical semantics. This test
+employs an LLM-based approach using zero-shot instruction-
+based prompting on LLaMA-3.1-8B-Instruct. This approach
+rephrases the predicted reports P generated by the seven mod-
+els into P ′, while preserving clinical outcomes and semantics.
+Each metric is applied on P and P ′, and the final difference
+is analyzed. A lower difference indicates metrics’ robustness
+towards stylistic variations.
+3.2. Synthetic Error Injection Test (SEI)
+The SEI module monitors how the metrics penalizes factual
+errors of varying severity. We study three levels of errors in-
+tentionally injected using the same prompting technique used
+in Sec 3.1. It involved introducing one, two and multiple syn-
+thetic errors in ground truth reports, followed by evaluation
+at each level using the eight metrics from M. Specifically, it
+examines the deviation of scores (∆(Sj, SG) = Sj −SG) be-
+tween the ideal case SG (where the ground truth is evaluated
+against itself) and report scores Sj with intentionally injected
+errors at level j. A substantial difference in metrics’ scores for
+varying levels of discrepancy shows its strong discriminative
+ability to capture factual inconsistencies.
+3.3. Metrics-vs-Expert Correlation Test (MvE)
+In this module, we systematically quantified the correlation
+between metrics in M and expert ratings E. We also exam-
+ined inter-metric correlations to understand how they agree or
+disagree in report quality evaluation. We computed this cor-
+relation on 175 patient reports for which automated metrics
+provided conflicting assessments. To this end, we initially
+derived per-patient scores for all eight metrics correspond-
+ing to each LLM. After normalizing the per-patient scores,
+1https://github.com/fkodom/clip-text-decoder
+we calculated the standard deviation across all metrics to as-
+sess disagreement. The top 25 cases with the highest stan-
+dard deviation (i.e, highest variable) were selected. These 175
+cases were finally reviewed by clinical experts, yielding ex-
+pert ratings E. We then quantified the alignment by comput-
+ing Spearman’s rank correlation coefficient (ρ) between every
+pair of metrics (for inter-metric correlation) and between each
+metric in M and the expert ratings E. A higher ρ signifies that
+the two metrics tend to rank patients in a similar order while
+a lower ρ shows disagreement in their assessment.
+4. EXPERIMENTS AND RESULTS
+4.1. Dataset and Training Details
+We used a publicly available 3D medical imaging dataset, CT-
+RATE [17]. It comprises 50,188 non-contrast chest CT vol-
+umes, along with their corresponding radiology reports. We
+used their official training and validation split. All RRG mod-
+els were trained for 10 epochs on NVIDIA A100 GPU using
+the hyperparameters specified in the publicly released code.
+4.2. Analyzing Writing Style Generalizability Test (WSG)
+The WSG results are presented in Fig. 2a, where each
+heatmap cell value represents the percentage difference (∆%)
+between the original score (S) and the score obtained after
+rephrasing (S
+′) for the corresponding model-metric pair.
+It can be observed that NLG-based metrics were the most
+impacted by the stylistic variations (ranging from -48.82%
+to -1.16%) because they primarily measure lexical overlap
+rather than underlying clinical semantics. Among CE met-
+rics, F1-RadGraph experienced the most significant deviation
+(ranging from -42.29% to 68.95%) indicating its high sensi-
+tivity to rephrasing. The best two performing metrics include
+the CRG and the GREEN Score. Since all CE metrics ex-
+cept CRG were introduced focusing on X-Ray datasets, their
+scores are likely to shift substantially on a vast terminology
+set of CT reports, especially when rephrased. Although built
+on X-Ray corpora, the GREEN score was originally tested
+on out-of-domain modalities, including CT scans, making
+it relatively robust. Consequently, it performs comparably
+to CRG, which was developed for CT reports. CRG con-
+siders the presence/absence of multi-label clinical entities
+instead of sentence-level structure, making it less susceptible
+to performance shift under rephrasing.
+4.3. Analyzing Synthetic Error Injection Test (SEI)
+The SEI results in Fig. 3 signify that the metric least impacted
+by synthetic errors is the BERTScore-F1 with ∆(SM, SG) of
+-0.02 (approximately -2%), whereas the most affected metrics
+include the GREEN Score (∆(S1, SG) = -0.0812, ∆(S2, SG)
+= -0.1277, ∆(SM, SG) = -0.6053) and the F1-RadGraph
+(∆(S1, SG) = -0.0891 , ∆(S2, SG) = -0.1647, ∆(SM, SG) =
+
+===== PAGE 4 =====
+(a) Rephrasing robustness (WSG).
+(b) Inter-metric and expert correlation.
+Fig. 2: Evaluation of metric reliability and robustness across rephrasing, factual error severity, and metric-expert correlations.
+-0.3970). It can be observed that all metrics exhibit similar
+behavior when the report has minimal difference from the
+ideal case but the performance significantly diverges when
+multiple errors are injected. Therefore, it is crucial to ex-
+amine various error levels to identify metrics’ sensitivity to
+critical factual errors.
+Fig. 3: Metric response across increasing error levels.
+4.4. Analyzing Metrics-vs-Expert Correlation Test (MvE)
+As discussed in Sec. 3.3, we considered 175 conflicting cases
+for this test. As shown in Fig. 2b, the GREEN Score closely
+resembles the Expert Rating E with ρ = 0.7 followed by F1-
+RadGraph with ρ = 0.53. The NLG-based metrics demon-
+strated a similar correlation trend with E, reporting ρ in a
+narrow range of 0.26 to 0.35. The worst performance was ob-
+served using the CRG, which presented a negative correlation
+with E and other metrics. A high correlation range among
+NLP-based metrics indicates strong agreement in their assess-
+ment. While F1-RadGraph exhibits consistent alignment to
+other metrics, it shows a slight bias to NLG-based metric out-
+comes rather than the GREEN Score and Expert Rating.
+5. DISCUSSION AND CONCLUDING REMARKS
+This study introduces CTest-Metric, a modular framework to
+evaluate automated metrics used in CT RRG, assessing their
+ability to capture clinical context in reports. By consider-
+ing style robustness (WSG), factual-error sensitivity (SEI),
+and alignment with expert judgment (MvE), the work demon-
+strates that widely used NLG metrics are brittle to rephras-
+ing and incompletely capture factual correctness, whereas CE
+metrics vary substantially in their agreement with experts.
+In particular, GREEN Score exhibits the highest association
+with expert ratings on a curated set of “disagreement” cases,
+while CRG remains robust to stylistic changes but correlates
+negatively with expert scores. This can be attributed to its
+reliance on label-level information which makes it largely in-
+sensitive to rephrasing, yet it remains less aligned with expert
+evaluations. These findings have immediate implications for
+metric choice in CT RRG and for how future metrics should
+be stress-tested before deployment.
+Expert validation involved two reviewers, with a second
+opinion sought for ambiguous cases, which limits the diver-
+sity of assessment. WSG and SEI depend on an LLM-based
+prompting, which primarily introduced laterality and nega-
+tion errors, though the fidelity of these edits was not indepen-
+dently validated. Finally, all experiments are conducted on
+CT-RATE (one of the largest in the literature); broader gener-
+alization to other institutions, contrast phases, or body regions
+remains to be established. These constraints highlight oppor-
+tunities for expanded validation and reporting in subsequent
+versions.
+
+===== PAGE 5 =====
+6. COMPLIANCE WITH ETHICAL STANDARDS
+This research study was conducted retrospectively using hu-
+man subject data made available in open access by (CT-Rate).
+Ethical approval was not required as confirmed by the license
+attached to the open-access data.
+7. REFERENCES
+[1] Yu Xin, Gorkem Can Ates, Kuang Gong, and Wei
+Shao,
+“Med3dvlm:
+An efficient vision-language
+model for 3d medical image analysis,” arXiv preprint
+arXiv:2503.20047, 2025.
+[2] Theo Di Piazza, Carole Lazarus, Olivier Nempont, and
+Loic Boussel, “Ct-agrg: Automated abnormality-guided
+report generation from 3d chest ct volumes,” in 2025
+IEEE 22nd International Symposium on Biomedical
+Imaging (ISBI). IEEE, 2025, pp. 01–05.
+[3] Kishore Papineni, Salim Roukos, Todd Ward, and Wei-
+Jing Zhu, “Bleu: a method for automatic evaluation of
+machine translation,” in Proceedings of the 40th annual
+meeting of the Association for Computational Linguis-
+tics, 2002, pp. 311–318.
+[4] Chin-Yew Lin, “Rouge: A package for automatic eval-
+uation of summaries,” in Text summarization branches
+out, 2004, pp. 74–81.
+[5] Satanjeev Banerjee and Alon Lavie, “Meteor: An au-
+tomatic metric for mt evaluation with improved correla-
+tion with human judgments,” in Proceedings of the acl
+workshop on intrinsic and extrinsic evaluation measures
+for machine translation and/or summarization, 2005,
+pp. 65–72.
+[6] Yiming Shi, Xun Zhu, Kaiwen Wang, Ying Hu, Chenyi
+Guo, Miao Li, and Ji Wu, “Med-2e3: A 2d-enhanced
+3d medical multimodal large language model,” arXiv
+preprint arXiv:2411.12783, 2024.
+[7] Oishi Banerjee, Agustina Saenz, Kay Wu, Warren
+Clements, Adil Zia, Dominic Buensalido, Helen Kav-
+noudias, Alain S Abi-Ghanem, Nour El Ghawi, Cibele
+Luna, et al., “Rexamine-global: A framework for un-
+covering inconsistencies in radiology report generation
+metrics,” in Biocomputing 2025: Proceedings of the Pa-
+cific Symposium. World Scientific, 2024, pp. 185–198.
+[8] Feiyang Yu, Mark Endo, Rayan Krishnan, Ian Pan,
+Andy Tsai, Eduardo Pontes Reis, Eduardo Kaiser Uru-
+rahy Nunes Fonseca, Henrique Min Ho Lee, Zahra
+Shakeri Hossein Abad, Andrew Y Ng, et al., “Evalu-
+ating progress in automatic chest x-ray radiology report
+generation,” Patterns, vol. 4, no. 9, 2023.
+[9] Tianyi Zhang, Varsha Kishore, Felix Wu, Kilian Q
+Weinberger, and Yoav Artzi, “Bertscore: Evaluating text
+generation with bert,” arXiv preprint arXiv:1904.09675,
+2019.
+[10] Saahil
+Jain,
+Ashwin
+Agrawal,
+Adriel
+Saporta,
+Steven QH Truong, Du Nguyen Duong, Tan Bui,
+Pierre Chambon, Yuhao Zhang, Matthew P Lungren,
+Andrew Y Ng, et al., “Radgraph: Extracting clinical
+entities and relations from radiology reports,”
+arXiv
+preprint arXiv:2106.14463, 2021.
+[11] Jeremy Irvin, Pranav Rajpurkar, Michael Ko, Yifan Yu,
+Silviana Ciurea-Ilcus, Chris Chute, Henrik Marklund,
+Behzad Haghgoo, Robyn Ball, Katie Shpanskaya, et al.,
+“Chexpert: A large chest radiograph dataset with uncer-
+tainty labels and expert comparison,”
+in Proceedings
+of the AAAI conference on artificial intelligence, 2019,
+vol. 33, pp. 590–597.
+[12] Weike Zhao, Chaoyi Wu, Xiaoman Zhang, Ya Zhang,
+Yanfeng Wang, and Weidi Xie, “Ratescore: A metric
+for radiology report generation. medrxiv,” 2024.
+[13] Sophie Ostmeier, Justin Xu, Zhihong Chen, Maya
+Varma, Louis Blankemeier, Christian Bluethgen, Arne
+Edward Michalson Md, Michael Moseley, Curtis Lan-
+glotz, Akshay S Chaudhari, et al.,
+“Green: Genera-
+tive radiology report evaluation and error notation,” in
+Findings of the association for computational linguis-
+tics: EMNLP 2024, 2024, pp. 374–390.
+[14] Ibrahim Ethem Hamamci, Sezgin Er, Suprosanna Shit,
+Hadrien Reynaud, Bernhard Kainz, and Bjoern Menze,
+“Crg score: A distribution-aware clinical metric for radi-
+ology report generation,” in Medical Imaging with Deep
+Learning-Short Papers, 2025.
+[15] Zhanyu Wang, Lingqiao Liu, Lei Wang, and Luping
+Zhou,
+“R2gengpt: Radiology report generation with
+frozen llms,” Meta-Radiology, vol. 1, no. 3, pp. 100033,
+2023.
+[16] Zhixuan Chen, Luyang Luo, Yequan Bie, and Hao Chen,
+“Dia-llama: Towards large language model-driven ct re-
+port generation,” in International Conference on Medi-
+cal Image Computing and Computer-Assisted Interven-
+tion. Springer, 2025, pp. 141–151.
+[17] Ibrahim Ethem Hamamci, Sezgin Er, Furkan Almas,
+Ayse Gulnihan Simsek, Sevval Nil Esirgun, Irem Do-
+gan, Muhammed Furkan Dasdelen, Bastian Wittmann,
+Enis Simsar, Mehmet Simsar, et al.,
+“A foundation
+model utilizing chest ct volumes and radiology reports
+for supervised-level zero-shot detection of abnormali-
+ties,” CoRR, 2024.

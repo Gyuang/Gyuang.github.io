@@ -1,0 +1,1369 @@
+
+===== PAGE 1 =====
+CT-GRAPH: Hierarchical Graph Attention Network for Anatomy-Guided
+CT Report Generation
+Hamza Kalisch1,2
+Fabian H¨orst1,3
+Jens Kleesiek1,3
+Ken Herrmann2
+Constantin Seibold1
+1Institute for AI in Medicine (IKIM), University Hospital Essen (A¨oR), Essen, Germany
+2Department of Nuclear Medicine, University Hospital Essen (A¨oR), Essen, Germany
+3Department of Physics, TU Dortmund, Dortmund, Germany
+{hamza.kalisch, fabian.hoerst, jens.kleesiek, ken.herrmann}@uk-essen.de
+constantin.seibold@gmail.com
+Abstract
+As medical imaging is central to diagnostic processes, au-
+tomating the generation of radiology reports has become
+increasingly relevant to assist radiologists with their heavy
+workloads. Most current methods rely solely on global im-
+age features, failing to capture fine-grained organ relation-
+ships crucial for accurate reporting. To this end, we pro-
+pose CT-GRAPH, a hierarchical graph attention network
+that explicitly models radiological knowledge by structur-
+ing anatomical regions into a graph, linking fine-grained
+organ features to coarser anatomical systems and a global
+patient context. Our method leverages pretrained 3D med-
+ical feature encoders to obtain global and organ-level fea-
+tures by utilizing anatomical masks.
+These features are
+further refined within the graph and then integrated into a
+large language model to generate detailed medical reports.
+We evaluate our approach for the task of report generation
+on the large-scale chest CT dataset CT-RATE. We provide
+an in-depth analysis of pretrained feature encoders for CT
+report generation and show that our method achieves a sub-
+stantial improvement of absolute 7.9% in F1 score over cur-
+rent state-of-the-art methods. The code is publicly available
+at https://github.com/hakal104/CT-GRAPH.
+1. Introduction
+Radiology reports play a pivotal role in clinical workflows,
+translating complex imaging findings into actionable diag-
+nostic insights for clinical personal. However, manual doc-
+umentation of 3D computed tomography (CT) scans takes
+up considerable amounts of time [8].
+While automated
+methods have advanced significantly for X-rays [16, 20],
+extending these successes to 3D CTs remains challenging.
+One key challenge is the high computational cost of pro-
+cessing 3D volumes. Most existing approaches [4, 14, 32]
+rely on end-to-end training pipelines that are memory-
+intensive and require long training times. To reduce these
+demands, some methods fall back on workarounds such as
+operating on significantly downsampled volumes [4, 32]
+or processing 2D slices rather than full 3D volumes [17].
+However, the former discards anatomical details because
+of its reduced resolution, whereas the latter compromises
+spatial coherence and overlooks long-range anatomical re-
+lationships that are crucial for holistic analysis.
+Another key limitation of many existing methods [2, 4,
+14, 19, 32] is their sole reliance on global representations,
+which are passed directly to the language model for report
+generation. This neglects fine-grained anatomical features
+that are critical for capturing organ-specific details, thereby
+limiting the model’s ability to localize findings and reason
+about distinct regions within the scan.
+Our experiments
+show that integrating such fine-grained features consistently
+improves performance over global representations alone.
+Notably, we observe substantial gains on localized patholo-
+gies such as consolidation and pericardial effusion, where
+spatial precision and region-aware context are essential for
+accurate clinical reporting. Region-level features have been
+used in X-Ray report generation, first via bounding boxes
+[28] and more recently through segmentation masks [11].
+Similarly, for CT report generation, recent methods such
+as Reg2RG [5] and VividMed [22] incorporate region-wise
+information to improve fine-grained feature extraction. In
+contrast to Reg2RG, our method not only models the rela-
+tionships between regional features and the global context,
+but also effectively utilizes anatomical masks at finer gran-
+ularity (e.g., lung lobes instead of entire lungs), enabling
+more precise and localized feature representations.
+This highlights the need for more efficient and anatomi-
+cally informed methods for CT report generation that can
+arXiv:2508.05375v1  [cs.CV]  7 Aug 2025
+
+===== PAGE 2 =====
+better capture both local detail and global context.
+A
+promising solution is a two-stage approach that first lever-
+ages frozen visual features to reduce computational cost.
+These features can be obtained, for example, from pre-
+trained 3D volumetric encoders and subsequently used to
+guide report generation.
+This setup significantly lowers
+training time and memory requirements while still captur-
+ing rich spatial information. To this extent, we explore the
+potential of pretrained 3D feature encoders to capture fine-
+grained organ-level features.
+However, while such a two-stage approach improves
+efficiency, it alone is insufficient for capturing the com-
+plex anatomical structures and their dependencies. To ad-
+dress this, we propose a hierarchy-aware framework that
+integrates these pretrained features into anatomically struc-
+tured graph representations. By explicitly modeling both
+local detail and global anatomical context, our graph-based
+method structures features into an anatomical hierarchy,
+leading to improved clinical accuracy. The main contribu-
+tions of this work are summarized in the following:
+1. We leverage frozen, pretrained 3D feature encoders for
+both global and organ-specific feature extraction via 3D
+mask pooling, preserving fine-grained spatial informa-
+tion.
+2. We conduct an extensive study on the effective use of
+pretrained features for multi-abnormality classification
+and CT report generation.
+3. We propose CT-GRAPH, a graph attention network
+(GAT) that hierarchically aggregates fine-grained organ
+features (e.g., lung lobes) into coarse anatomical regions
+(e.g., lungs), enabling region-guided report generation.
+Our experiments on the CT-RATE [13] dataset show
+that the proposed hierarchical graph method consistently
+outperforms competitive baselines, achieving an F1 im-
+provement of 7.9% over state-of-the-art approaches for
+CT report generation.
+2. Related work
+CT report generation.
+As the first approach to 3D CT re-
+port generation, CT2REP [14] leverages an auto-regressive
+causal transformer for 3D visual extraction and a memory-
+driven decoder to generate detailed reports from global
+volume features. Dia-LLaMA [4] incorporates diagnostic
+prompts as medical priors, enabling symptom-driven re-
+porting. Similarly, AG-RG [6] proposes an abnormality-
+guided approach where the report is generated based on pre-
+dicted abnormalities. In M3D [2] the patch tokens of the
+Vision Transformer are first reduced with a 3-D average-
+pooling layer, after which an MLP maps them to the LLM’s
+embedding size. By contrast, RadFM [32] feeds the tokens
+into a Perceiver module that compresses them into 64 learn-
+able query vectors. Most recently, Argus [19] investigates
+the effectiveness of different pretraining and visual token
+compression strategies. They introduce a family of vision-
+language models specifically tailored to 3D report genera-
+tion, that are able to efficiently process high-resolution 3D
+images. A common limitation across these methods is their
+exclusive use of global image representations, which over-
+looks organ-specific details essential for anatomy-aware re-
+port generation. In contrast, our approach explicitly incor-
+porates fine-grained anatomical features to address this gap.
+Region-based methods.
+Prior work in X-ray report gen-
+eration has explored region-level features, initially through
+the use of bounding boxes [28] and more recently via seg-
+mentation masks to provide more precise anatomical guid-
+ance [10, 11, 26]. Specifically, ORID [11] introduces an
+organ-region-driven framework for radiology report genera-
+tion that integrates cross-modal organ-level information us-
+ing a importance weighting module to suppress noise from
+unrelated regions and improve diagnostic relevance. Recent
+methods for CT report generation, including Reg2RG [5]
+and VividMed [22], utilize region-level cues to refine fea-
+ture representations and capture more detailed anatomical
+information.
+VividMed [22] enables region-level visual
+grounding by supporting both semantic segmentation and
+instance-level bounding boxes across 2D and 3D modali-
+ties, using a three-stage training pipeline to enhance report
+generation. Reg2RG [5] introduces a region-guided frame-
+work for CT report generation that leverages anatomical
+masks to extract local features from referring regions via
+cropping. These features are combined with global repre-
+sentations to improve contextual understanding and support
+report generation through a region-report alignment strat-
+egy. While Reg2RG [5] incorporates regional information,
+it does not explicitly model fine-grained anatomical struc-
+tures or their relationships to the global context in a struc-
+tured way. In contrast, our approach hierarchically orga-
+nizes regional features and integrates them with the global
+context in a more structured and coherent manner.
+Self-supervised 3D vision encoders.
+Recent advances in
+self-supervised learning [9, 12, 27, 34] have enabled the
+pretraining of 3D vision encoders on large-scale medical
+datasets without requiring manual annotations.
+Methods
+such as VoCo [33, 34] have demonstrated strong generaliza-
+tion across various downstream tasks. These encoders cap-
+ture volumetric context and structural priors, making them
+well-suited for complex medical analysis. Frozen features
+from such pretrained models offer a computationally effi-
+cient alternative to end-to-end training, while retaining rich
+anatomical representations essential for downstream tasks
+like report generation. We leverage these features in a multi-
+stage training procedure by first extracting globally- as well
+as anatomically-pooled features for our graph generation.
+
+===== PAGE 3 =====
+Anatomy
+Features
+Feature
+Maps
+Anatomy
+Segmentation
+Mask
+Pool
+Anatomy
+Graph
+ + 
+Medical
+Report
+Lungs
+Abdomen
+Mediastinum
+Bones
+3D
+Back-
+bone
+Global
+Features
+GAT 
+Figure 1. Illustration of our main method. The left visualizes the report generation pipeline. We extract 3D feature maps using a generic
+frozen encoder, and anatomical masks using TotalSegmentator. From these, we obtain regional features via mask-based pooling and a
+global feature via volume-level aggregation. These features form the basis of a hierarchical anatomical graph, which is processed by a
+GAT and then passed to a LLaMA model to generate the medical report. On the right, the hierarchical graph structure is shown, with
+organs (e.g. spleen, liver...) being connected towards corresponding broader anatomical regions (e.g. abdomen), which subsequently
+connect to a global node.
+3. Methodology
+Our framework (see Fig. 1) first extracts both global and lo-
+cal features from the input CT volume using a frozen, pre-
+trained 3D encoder. The global representation is obtained
+by aggregating the full volume into a compact feature em-
+bedding, while local, organ-specific features are extracted
+through mask-based pooling over anatomical regions of in-
+terest.
+The extracted features are then organized into a
+hierarchical graph, where nodes represent anatomical re-
+gions at different levels of granularity: fine-level structures
+(e.g., lung lobes), coarse-level groupings (e.g., lungs), and a
+global context node. Edges are defined by a fixed anatomi-
+cal hierarchy, linking each fine-level node to its correspond-
+ing coarse-level parent and ultimately to the global node. A
+graph attention network (GAT) is applied to this graph to
+propagate contextual information across different anatomi-
+cal levels. Finally, the graph features are combined with an
+embedded textual input prompt and passed to a large lan-
+guage model (LLM) which generates a radiology report.
+3.1. Feature Extraction
+Given a 3D CT volume X ∈RH×W ×D of height H, width
+W, and depth D, and its multi-label segmentation mask
+M ∈{0, 1, . . . , K}H×W ×D, where K is the number of
+anatomical structures, our method extracts features via three
+stages.
+Global Feature Encoding.
+A pretrained 3D feature en-
+coder processes X to produce hierarchical feature maps F l
+at resolution (Hl, Wl, Dl) and channel dimension Cl, where
+Hl, Wl, Dl denote the height, width, and depth of the 3D
+feature map at layer l, respectively. The global feature map
+is defined as the output feature from the final layer L.
+Organ Mask Pooling.
+For each anatomical structure k ∈
+{1, . . . , K}, we resize the multi-label mask M to the en-
+coder’s spatial resolution of layer l via nearest-neighbor in-
+terpolation, obtaining Ml of size Hl ×Wl ×Dl. The organ-
+specific feature f l
+k ∈RCl is computed via mask-guided av-
+erage pooling:
+f l
+k =
+1
+|Vl
+k|
+X
+(i,j,t)∈Vl
+k
+F l[i, j, t, :],
+(1)
+where Vl
+k = {(i, j, t) | Ml[i, j, t] = k} denotes the voxels
+of organ k at resolution level l, and |Vl
+k| is the organ’s voxel
+count.
+Layer Fusion.
+Mask pooling as displayed in Eq.
+(1)
+is applied at every layer to produce layer-specific features
+f l
+k ∈RCl.
+These multi-scale features are concatenated
+along the channel dimension to form the final organ rep-
+resentation fk = [f 1
+k; . . . ; f L
+k ] ∈RCtotal, combining fine-
+grained textures from early layers with semantic context
+from deeper layers. Ctotal is defined by PL
+l=1 Cl.
+3.2. Hierarchical Graph Attention Network
+Radiological findings occur at different anatomical levels,
+ranging from localized abnormalities (e.g., lung nodule) to
+organ-level pathologies (e.g., atelectasis). To capture this
+hierarchy, our graph model aggregates information bottom-
+up: fine-grained features (e.g., upper left lung lobe) con-
+tribute to higher-level representations (e.g., the whole lung),
+enabling a structured integration of local abnormalities into
+a broader diagnostic context.
+Graph Structure and Node Definitions.
+Our graph ar-
+chitecture organizes anatomical structures into three hierar-
+
+===== PAGE 4 =====
+chical levels (see Fig. 1):
+• Fine-level Nodes (F): These nodes represent individ-
+ual anatomical structures, with each fine-level node cor-
+responding to an anatomical mask. The feature pooled
+from this region is processed by an multi-layer perceptron
+(MLP) to produce the corresponding node embedding hf.
+• Coarse-level Nodes (C): Coarse-level nodes represent
+broader anatomical systems or regions (e.g., the ab-
+domen). The corresponding anatomical mask is formed
+by the union of the masks of fine-level nodes belonging to
+the same system. A feature is extracted via mask pooling
+from these combined masks and passed through an MLP
+to obtain the coarse-level embedding hc. Some anatom-
+ical structures (e.g., the esophagus) do not belong to any
+specific system; thus, we use them as coarse-level node
+and link them directly to the global node.
+• Global Node (vg): The global node represents the en-
+tire scan. Its feature map is derived from a downsampled
+version of the global feature map, obtained by applying
+adaptive average pooling to reduce the map to a size of
+(4, 4, 2). These pooled features are then passed through
+a multi-layer perceptron (MLP) to obtain the final feature
+embedding for the global node.
+Hierarchical Connectivity.
+Edges Efc and Ecg in the
+graph represent hierarchical anatomical relationships. Fine-
+level nodes are connected to their corresponding coarse-
+level nodes, and coarse-level nodes are connected to the
+global node:
+Efc = {(vf, vc) | vc ∈C, vf ∈Fvc}
+|
+{z
+}
+fine→coarse
+,
+(2)
+Ecg = {(vc, vg) | vc ∈C}
+|
+{z
+}
+coarse→global
+.
+(3)
+Here, Fvc denotes the subset of all fine-level nodes vf
+assigned to coarse node vc. The full edge set of the hierar-
+chical graph is given by the union of Efc and Ecg.
+Graph Attention Mechanism.
+Message passing occurs
+through a graph attention mechanism [30], applied hierar-
+chically between fine-level nodes, coarse-level nodes and
+the global node.
+In the fine-to-coarse attention step, each coarse node vc
+computes an updated feature h′
+c by aggregating the features
+of its corresponding fine-level nodes vf ∈Fvc. Self-loops
+are included to allow each node to attend to itself:
+h′
+c =
+X
+vf ∈Fvc∪{vc}
+αvf vc Whf.
+(4)
+The attention coefficients αvf vc are computed as
+αvf vc =
+exp
+ LReLU(a⊤[Whf ∥Whc])
+
+X
+v∈Fvc∪{vc}
+exp
+ LReLU(a⊤[Whv ∥Whc])
+,
+(5)
+where W is a learnable weight matrix, LReLU refers to
+Leaky ReLU [35], a is a shared attention vector, and ∥de-
+notes feature concatenation. Layer Normalization [1] is ap-
+plied to all node features before applying attention.
+The coarse-to-global attention is applied analogously,
+with the global node updated by aggregating the features
+of the coarse nodes. A skip connection is added to preserve
+the original global features. We employ multi-head atten-
+tion and concatenate the resulting outputs across heads for
+both the fine-to-coarse and coarse-to-global aggregation.
+Report Generation.
+The output graph features from the
+global, coarse-level, and fine-level nodes are first projected
+into the LLM’s latent space. These features are then con-
+catenated with the embedded input prompt p, which is de-
+fined as: ”Generate a medical report based on the visual in-
+formation of the given CT image.”. The resulting combined
+input x = [g; p] is subsequently fed into the LLM, which is
+trained to minimize cross-entropy loss for next-token pre-
+diction in the context of anatomy-guided CT report genera-
+tion.
+4. Preliminaries
+4.1. Datasets and preprocessing
+CT-RATE [13] is a publicly available, large-scale dataset
+consisting of 3D chest CT volumes paired with correspond-
+ing medical reports. It includes 25,701 non-contrast CT vol-
+umes from 21,314 unique patients, expanding to 49,138 vol-
+umes through multiple reconstructions optimized for vari-
+ous window settings. We retain only CT volumes with non-
+duplicate and non-empty reports. For these selected vol-
+umes, we use reports from the Radgenome-chest CT [36]
+dataset, which also provides region-wise reports for the ex-
+act same CT scans. In total, our training set consists of
+22,778 samples, with a test set of 1,505 samples. CT-RATE
+also offers abnormality labels, which categorizes each CT
+volume into multiple of 18 different pathologies. We fur-
+ther split the training data into 90% for training and 10%
+for validation.
+4.2. Evaluation protocol
+For pathology classification, we assess the performance
+of pretrained features on the multi-label classification task
+using linear probing.
+Evaluation metrics include macro-
+averaged F1 score, precision, and recall, which treat each
+
+===== PAGE 5 =====
+Table 1. Comparison of pre-trained 3D feature encoders.
+Feature Encoder
+Architecture
+Dataset Size
+Feature Dimensions
+SwinUNETR [27]
+SwinViT [21]
+5,050
+[48,96,192,384,768]
+VoCo-10k [34]
+SwinViT [21]
+10,500
+[48,96,192,384,768]
+VoCo-160k [33]
+SwinViT [21]
+160,167
+[48,96,192,384,768]
+Vox2Vec [9]
+FPN [9]
+6,550
+[16,32,64,128,256,512]
+TransVW [12]
+3D U-Net [7]
+623
+[64,128,256,512]
+CT-FM [24]
+SegResNet [23]
+148,000
+[32,64,128,256,512]
+class equally and highlight performance across both com-
+mon and rare pathologies. For report generation, we utilize
+clinical efficacy (CE) metrics, including macro-averaged
+F1, precision, and recall computed on labels extracted from
+generated reports. Label extraction is performed using the
+pathology classifier introduced in CT-CLIP [13].
+In ad-
+dition, we report natural language generation (NLG) met-
+rics such as BLEU-1 to BLEU-4 [25], METEOR [3], and
+ROUGE-L [18]. These evaluate lexical similarity, semantic
+alignment, and sentence-level structure compared to refer-
+ence reports. Reported values are evaluated on the test set.
+4.3. Implementation details
+We resize all volumes to a size of 512x512x256 using trilin-
+ear interpolation and apply further normalization depending
+on the pretrained feature encoder being used. For multi-
+scale feature extraction, pretrained features are obtained via
+sliding window inference with a patch overlap of 0.25. We
+utilize TotalSegmentator [31] to obtain anatomical segmen-
+tation masks from the CT volumes. For our hierarchical
+graph structure we define the bones, lungs, abdomen, me-
+diastinum, heart, esophagus, trachea, and thyroid as the
+coarse nodes. The detailed listing of the 34 fine-grained
+nodes can be found in the code. For pathology classifi-
+cation, we employ linear probing with a batch size of 32,
+training for 40 epochs with a learning rate of 0.0001 and
+weight decay of 0.0001 to mitigate overfitting. For report
+generation, we use the base LLaMA2-7B [29] model as our
+language backbone and apply LoRA [15] for efficient fine-
+tuning. In addition to LoRA adapters, we also allow the
+embedding layer and output head to remain trainable. We
+use a LoRA rank of 32, a scaling factor of 32, and a dropout
+rate of 0.1. The model is optimized using AdamW with a
+fixed learning rate of 5 × 10−5. Training for 6 epochs with
+pre-extracted features and a batch size of 8 takes approxi-
+mately 10 hours on a single NVIDIA A100 GPU.
+5. Experimental Results
+5.1. Feature Aggregation
+The effectiveness of our hierarchical graph depends criti-
+cally on the representational quality of the input features
+used to model anatomical regions. To this end, we evaluate
+different strategies to extract features from pretrained en-
+coders by linear probing on the multi-label pathology clas-
+sification task. We consider three pooling strategies: (1)
+Global pooling, applying global average pooling over the
+entire feature map; (2) Coarse-level pooling, using mask
+pooling with coarse anatomical masks; and (3) Fine-level
+pooling, using mask pooling with fine-level masks.
+We first investigate the impact of encoder layer depth by
+extracting pooled features from different individual layers
+of the network. For each layer, the total mask-pooled fea-
+tures from all pooling-levels are utilized as input for classifi-
+cation. We subsequently evaluate the effect of pooling gran-
+ularity by comparing global, coarse, and fine-level pool-
+ing using multi-scale fused features as input for pathology
+classification. As pretrained feature encoders we consider
+six options: SwinUNETR [27], VoCo [33, 34] (with 10k
+and 160k pretraining samples respectively), Vox2Vec [9],
+TransVW [12], and CT-FM [24]. Details regarding archi-
+tecture, pretraining dataset size and feature dimensions of
+different layers can be seen in Table 1.
+Effect of Layers.
+The results (see Table 2) indicate that
+higher layers generally yield better performance for pathol-
+ogy classification, with features from the penultimate and
+last layer producing the strongest results. Applying Layer
+Fusion consistently improves performance across all fea-
+ture encoders, with particularly notable gains for architec-
+tures such as VoCo and SwinUNETR. Interestingly, VoCo-
+10k and VoCo-160k achieve nearly identical performance
+despite a large gap in pretraining dataset size. Vox2Vec
+shows strong performance even in earlier layers and CT-FM
+achieves the largest F1 score overall.
+Effect of Pooling Level.
+Tab. 3 shows that fine-level fea-
+tures exhibit the strongest performance for Recall and F1,
+indiciating its effectiveness in capturing localized patholog-
+ical patterns. Except for VoCo-160k, coarse-level pooling
+yields the highest precision across all feature encoders. In
+contrast, global pooling leads to drastically reduced perfor-
+mance, with near-zero recall and F1 scores, confirming that
+excessive spatial compression discards critical anatomical
+information.
+5.2. Ablations on the Graph Construction
+To investigate the impact of structured input representations
+on report generation, we conduct a series of ablation studies
+that vary in how anatomical and spatial information is en-
+coded and integrated into the LLM. Each variant produces
+a different set of input features, which are then passed to
+the language model. In addition to our full method (CT-
+GRAPH), we evaluate the following baselines:
+• Global: A single token is obtained by compressing the
+global feature map via a 2-layer MLP. This serves as the
+
+===== PAGE 6 =====
+Table 2. Performance comparison of feature encoders for pathology classification across different layers and layer fusion.
+Feature Encoder
+Layers
+Layer Fusion
+Layer 1
+Layer 2
+Layer 3
+Layer 4
+Layer 5
+Layer 6
+SwinUnetr[27]
+0.097
+0.219
+0.235
+0.251
+0.243
+/
+0.350
+VoCo-10k[34]
+0.118
+0.249
+0.305
+0.289
+0.171
+/
+0.394
+VoCo-160k[34]
+0.118
+0.245
+0.306
+0.297
+0.185
+/
+0.394
+Vox2Vec [9]
+0.303
+0.331
+0.358
+0.367
+0.387
+0.350
+0.441
+TransVW [12]
+0.172
+0.217
+0.273
+0.351
+/
+/
+0.372
+CT-FM [12]
+0.051
+0.173
+0.275
+0.397
+0.429
+/
+0.448
+standard global representation used in all ablations that
+include a global token, unless otherwise specified.
+• Global (multiple): All spatial tokens from the global fea-
+ture map are projected to the LLM input dimension via a
+2-layer MLP.
+• Local: All mask-pooled region features are projected via
+a 2-layer MLP and used as input tokens to the LLM.
+• Global + Local: Global and local features are separately
+projected via independent MLPs, and the resulting tokens
+are concatenated before being fed into the LLM.
+• Random Graph: A graph is constructed with randomly
+assigned edges between fine-grained nodes, removing
+any anatomical structure.
+• Single-Level Hierarchy Graph:
+A simplified graph
+where all fine-level nodes connect directly to the global
+node, omitting the intermediate coarse-level hierarchy.
+• CT-GRAPH: Our proposed graph-based method that hi-
+erarchically aggregates fine-grained region features to
+coarse-level nodes and then to the global context using
+graph attention.
+Table 3. Performance comparison of different feature encoders
+across pooling levels.
+Feature Encoder
+Pooling Level
+CE Metrics
+P
+R
+F1
+SwinUnetr[27]
+Global
+0.309
+0.011
+0.020
+Coarse
+0.718
+0.155
+0.226
+Fine
+0.604
+0.259
+0.341
+VoCo-10k[34]
+Global
+0.281
+0.019
+0.010
+Coarse
+0.728
+0.167
+0.238
+Fine
+0.687
+0.287
+0.375
+VoCo-160k[34]
+Global
+0.274
+0.010
+0.019
+Coarse
+0.631
+0.176
+0.247
+Fine
+0.679
+0.301
+0.385
+TransVW[12]
+Global
+0.000
+0.000
+0.000
+Coarse
+0.717
+0.203
+0.278
+Fine
+0.668
+0.315
+0.371
+Vox2Vec[9]
+Global
+0.293
+0.036
+0.060
+Coarse
+0.592
+0.279
+0.345
+Fine
+0.558
+0.384
+0.434
+CT-FM[24]
+Global
+0.507
+0.074
+0.116
+Coarse
+0.613
+0.286
+0.372
+Fine
+0.496
+0.386
+0.431
+Feature Inputs and Graph Structures.
+The results (see
+Table 4) show that the global (compressed) variant out-
+performs the global (multiple) setup across both NLG and
+CE metrics. We attribute this to the compressed token’s
+ability to aggregate spatial information across the full fea-
+ture map, capturing inter-region relationships. In contrast,
+the multiple-token variant treats spatial locations indepen-
+dently, which limits its ability to model global context, es-
+pecially under sliding window inference, where each patch
+has restricted spatial coverage.
+The local baseline per-
+forms comparably to the global variant overall, but shows
+stronger CE metrics, indicating that region-level features
+derived from anatomical masks provide valuable semantic
+cues even without global features. Combining global and
+local representations yields a modest improvement across
+all metrics.
+Among the graph-based models, CT-GRAPH achieves
+the highest overall performance, particularly improving CE
+F1 from 0.245 to 0.296. This highlights the benefit of ex-
+plicitly modeling anatomical relationships through hierar-
+chical structure and attention-based message passing. Re-
+moving the intermediate hierarchy in the single-level graph
+leads to slightly lower scores, suggesting that coarse-level
+Figure 2. F1 score comparison of feature input configurations for
+across different encoders.
+
+===== PAGE 7 =====
+Table 4. Performance comparison of different training setups leading up to our proposed method (CT-GRAPH) using VoCo-160k features.
+Method
+NLG Metrics
+CE Metrics
+BLEU-1
+BLEU-2
+BLEU-3
+BLEU-4
+ROUGE-L
+METEOR
+Precision
+Recall
+F1
+Global (compressed)
+0.4660
+0.3610
+0.2903
+0.2370
+0.3073
+0.4088
+0.282
+0.133
+0.171
+Global (multiple)
+0.4582
+0.3551
+0.2855
+0.2333
+0.3044
+0.4014
+0.227
+0.081
+0.111
+Local
+0.4685
+0.3624
+0.2904
+0.2365
+0.3053
+0.4084
+0.338
+0.182
+0.230
+Global + Local
+0.4751
+0.3702
+0.2986
+0.2446
+0.3089
+0.4159
+0.343
+0.201
+0.245
+Random Graph
+0.4690
+0.3631
+0.2918
+0.2384
+0.3103
+0.4092
+0.328
+0.172
+0.216
+Single-Level hierarchy graph
+0.4743
+0.3651
+0.2914
+0.2360
+0.3060
+0.4097
+0.385
+0.202
+0.253
+CT-GRAPH
+0.4850
+0.3765
+0.3024
+0.2467
+0.3126
+0.4205
+0.396
+0.248
+0.296
+nodes contribute meaningfully to performance. The random
+graph baseline performs substantially worse, reinforcing the
+importance of anatomically informed graph topology over
+arbitrary structure.
+Effect of Feature Encoders.
+To evaluate the generaliz-
+ability of our method across different pretrained encoders,
+we compare three input configurations: Global only, Global
++ Local, and our full model CT-GRAPH across six repre-
+sentative backbones (see Fig. 2). In all cases, the Global
++ Local setup outperforms the Global-only baseline, con-
+firming that region-level features derived from anatomical
+masks provide complementary information to global con-
+text.
+While the magnitude of improvement varies,
+CT-
+GRAPH generally matches or exceeds the performance of
+the unstructured baselines. Particularly strong gains are ob-
+served for VoCo-160k and TransVW, while improvements
+for CT-FM are more modest (e.g., +0.015 F1). Notably,
+TransVW achieves performance comparable to VoCo-160k
+despite being pretrained on fewer than 1,000 scans, suggest-
+ing that pretraining scale alone does not dictate downstream
+effectiveness. These differences likely reflect how well en-
+coder features align with anatomical semantics, rather than
+architectural or dataset size factors alone.
+Lastly, while
+NLG scores vary only slightly across encoders, clinical en-
+tity metrics show much larger variance indicating that the
+choice of visual encoder has a greater impact on factual con-
+tent preservation than on surface-level fluency. Among all
+feature encoders, VoCo-160k achieves the highest overall
+performance across metrics, ranking first in every score ex-
+cept precision highlighting its strength as a general-purpose
+encoder (see Table 5).
+5.3. Baseline comparisons
+We evaluate the following three competitive baselines for
+report generation.
+CT2Rep [14]. We follow the original training and adapt
+the preprocessing pipeline to ours as closely as possible,
+with the exception that we retain the native input resolution
+of 480×480×240. The model is trained for 20 epochs, con-
+sistent with the original setup.
+CT2Rep w/ LLaMA. To better match our architecture’s
+language decoding setup, we replace the original decoder
+in CT2Rep with a pretrained LLaMA2-7B model. The out-
+put features from the CTViT encoder are first downsampled
+to a spatial resolution of 4×4×2 and then passed through
+a transformer encoder. All 32 tokens are fed into the lan-
+guage model and the same input prompt as for our method
+is utilized. This variant is trained for 6 epochs to align with
+our method’s training schedule.
+Reg2RG [5]. We adapt the official implementation to
+use TotalSegmentator region masks. Since masks for the
+breasts are unavailable, this region is excluded. Due to its
+low prevalence in the dataset, this omission is expected to
+have minimal impact on the results. Given their anatomical
+proximity, we utilize the lung masks for the pleura region.
+This decision is based on findings in [5], where these two
+regions were not reliably distinguishable. Input volumes
+are resampled to 256×256×128, which both matches the
+resolution used for the coronal and sagittal planes during
+RadFM pretraining and avoids the high memory costs asso-
+Table 5. Performance comparison for report generation of different feature encoders using our proposed pipeline.
+Feature Encoder
+NLG Metrics
+CE Metrics
+BLEU-1
+BLEU-2
+BLEU-3
+BLEU-4
+ROUGE-L
+METEOR
+Precision
+Recall
+F1
+SwinUNETR[27]
+0.4730
+0.3656
+0.2931
+0.2390
+0.3077
+0.4106
+0.359
+0.200
+0.249
+VoCo-10k[34]
+0.4779
+0.3687
+0.2950
+0.2398
+0.3077
+0.413
+0.394
+0.212
+0.264
+VoCo-160k[34]
+0.4850
+0.3765
+0.3024
+0.2467
+0.3126
+0.4205
+0.396
+0.248
+0.296
+Vox2Vec[9]
+0.4707
+0.3654
+0.2943
+0.2408
+0.3090
+0.4102
+0.364
+0.187
+0.238
+TransVW[12]
+0.4779
+0.3685
+0.2943
+0.2383
+0.3039
+0.4132
+0.421
+0.236
+0.292
+CT-FM[24]
+0.4820
+0.3733
+0.2994
+0.2437
+0.3104
+0.4169
+0.386
+0.219
+0.271
+
+===== PAGE 8 =====
+Table 6. Performance comparison of our final method (CT-GRAPH + VoCo-160k features) with CT2Rep and Reg2RG.
+Method
+NLG Metrics
+CE Metrics
+BLEU-1
+BLEU-2
+BLEU-3
+BLEU-4
+ROUGE-L
+METEOR
+Precision
+Recall
+F1
+CT2Rep [14]
+0.4872
+0.3712
+0.2959
+0.2390
+0.2992
+0.4132
+0.230
+0.140
+0.141
+CT2Rep (w/ LLaMA)
+0.4875
+0.3752
+0.2989
+0.2426
+0.3027
+0.4212
+0.317
+0.172
+0.214
+Reg2RG [5]
+0.4728
+0.3681
+0.2975
+0.2437
+0.2725
+0.4005
+0.457
+0.156
+0.217
+CT-GRAPH (ours)
+0.4850
+0.3765
+0.3024
+0.2467
+0.3126
+0.4205
+0.396
+0.248
+0.296
+ciated with upsampling to 512×512×256.
+Overall performance.
+Table 6 shows that CT-GRAPH
+achieves the strongest overall performance across clinical
+entity (CE) metrics, with the highest recall and F1 score.
+In terms of natural language generation (NLG), it performs
+competitively, matching or slightly exceeding the best mod-
+els across most metrics. These results highlight the effec-
+tiveness of CT-GRAPH’s fine-grained, hierarchical feature
+design in producing clinically informative and linguistically
+coherent reports.
+Both CT2Rep variants yield comparable NLG scores,
+suggesting that with sufficient training, even the stan-
+dard decoder can approach the generation quality of a
+LLM. However, CT2Rep w/ LLaMA shows clear improve-
+ments in entity-level accuracy, though it still lags behind
+CT-GRAPH. Reg2RG achieves similar F1 to CT2Rep w/
+LLaMA but slightly underperforms on NLG metrics, pos-
+sibly due to limitations in the alignment of the provided
+region-wise reports and TotalSegmentator masks. Overall,
+while LLMs and region-aware models provide partial gains,
+neither alone achieves the consistency or balance offered by
+CT-GRAPH’s structured, multi-scale approach.
+Table 7.
+Per–pathology F1 comparison and class prevalence
+(Prev). For CT2Rep, the LLaMA variant is evaluated.
+Pathology
+CT2Rep
+Reg2RG
+CT-GRAPH
+Prev.
+Medical material
+0.094
+0.013
+0.284
+10.5%
+Arterial wall calcification
+0.446
+0.367
+0.604
+28.9%
+Cardiomegaly
+0.131
+0.390
+0.208
+10.9%
+Pericardial effusion
+0.014
+0.018
+0.136
+7.3%
+Coronary artery wall calcification
+0.411
+0.378
+0.543
+25.8%
+Hiatal hernia
+0.138
+0.075
+0.160
+14.5%
+Lymphadenopathy
+0.212
+0.038
+0.246
+26.4%
+Emphysema
+0.271
+0.201
+0.314
+20.3%
+Atelectasis
+0.275
+0.245
+0.279
+24.2%
+Lung nodule
+0.465
+0.383
+0.480
+46.8%
+Lung opacity
+0.326
+0.534
+0.449
+40.2%
+Pulmonary fibrotic sequela
+0.188
+0.125
+0.223
+28.4%
+Pleural effusion
+0.400
+0.574
+0.546
+12.6%
+Mosaic attenuation pattern
+0.058
+0.118
+0.133
+8.4%
+Peribronchial thickening
+0.062
+0.022
+0.082
+11.6%
+Consolidation
+0.185
+0.253
+0.382
+19.8%
+Bronchiectasis
+0.071
+0.032
+0.109
+11.2%
+Interlobular septal thickening
+0.104
+0.138
+0.150
+8.2%
+Per-pathology performance.
+Table 7 shows that CT-
+GRAPH achieves the highest F1 score on 15 of 18 patholo-
+gies, outperforming both global (CT2Rep) and region-
+based (Reg2RG) baselines. The model performs well across
+a range of conditions, including focal findings like lung
+nodule and consolidation, as well as more diffuse or struc-
+turally complex ones such as emphysema and pulmonary
+fibrotic sequela. These gains reflect the advantage of mod-
+eling fine-grained anatomical units (e.g., lung lobes) and
+aggregating them hierarchically, allowing CT-GRAPH to
+reason across spatial scales. Notably, it also outperforms
+Reg2RG on other localized abnormalities, such as arte-
+rial wall calcification (0.604 vs. 0.367), where finer spa-
+tial granularity enables more precise feature modeling than
+Reg2RG’s coarser, whole-organ segmentation. In contrast,
+CT2Rep, which relies solely on global volumetric features,
+struggles on small or spatially concentrated findings and
+fails to lead on any pathology class, highlighting the lim-
+itations of global features for fine-grained clinical detail.
+6. Conclusion
+In this work, we presented CT-GRAPH, a novel approach
+for CT report generation that effectively leverages pre-
+trained 3D feature encoders and anatomically structured
+graph representations. We conducted an extensive evalua-
+tion of how pretrained features could be effectively utilized,
+focusing on both global and organ-specific features to main-
+tain fine-grained spatial context. We have shown the effect
+of multi-layer fusions for the recognition of volume-level
+pathologies as well as the effect of different pooling level
+strategies. We have further demonstrated how these features
+can be aggregated for report generation purposes, highlight-
+ing the limitations of relying solely on either global or lo-
+cal features for report generation.
+In contrast, our pro-
+posed hierarchical graph attention network effectively in-
+tegrates multi-level anatomical information, improving the
+model’s ability to produce accurate, anatomy-aware reports.
+Through extensive experimentation, we showed that our
+method not only outperformed the baseline setups but also
+existing concurrent work, achieving significant improve-
+ments, particularly in clinical efficacy metrics.
+
+===== PAGE 9 =====
+References
+[1] Jimmy Lei Ba, Jamie Ryan Kiros, and Geoffrey E Hin-
+ton. Layer normalization. arXiv preprint arXiv:1607.06450,
+2016. 4
+[2] Fan Bai, Yuxin Du, Tiejun Huang, Max Q-H Meng, and
+Bo Zhao.
+M3d: Advancing 3d medical image analysis
+with multi-modal large language models.
+arXiv preprint
+arXiv:2404.00578, 2024. 1, 2
+[3] Satanjeev Banerjee and Alon Lavie. Meteor: An automatic
+metric for mt evaluation with improved correlation with hu-
+man judgments. In Proceedings of the acl workshop on in-
+trinsic and extrinsic evaluation measures for machine trans-
+lation and/or summarization, pages 65–72, 2005. 5
+[4] Zhixuan Chen, Luyang Luo, Yequan Bie, and Hao Chen.
+Dia-llama: Towards large language model-driven ct report
+generation. arXiv preprint arXiv:2403.16386, 2024. 1, 2
+[5] Zhixuan Chen, Yequan Bie, Haibo Jin, and Hao Chen. Large
+language model with region-guided referring and ground-
+ing for ct report generation. IEEE Transactions on Medical
+Imaging, 2025. 1, 2, 7, 8
+[6] Theo Di Piazza.
+Ct-agrg: Automated abnormality-guided
+report generation from 3d chest ct volumes. arXiv preprint
+arXiv:2408.11965, 2024. 2
+[7] David G Ellis and Michele R Aizenberg. Trialing u-net train-
+ing modifications for segmenting gliomas using open source
+deep learning framework. In International MICCAI Brainle-
+sion Workshop, pages 40–49. Springer, 2020. 5
+[8] Stacy K Goergen, Felicity J Pool, Tari J Turner, Jane E
+Grimm, Mark N Appleyard, Carmel Crock, Michael C Fa-
+hey, Michael F Fay, Nicholas J Ferris, Susan M Liew, et al.
+Evidence-based guideline for the written radiology report:
+Methods, recommendations and implementation challenges.
+Journal of medical imaging and radiation oncology, 57(1):
+1–7, 2013. 1
+[9] Mikhail Goncharov,
+Vera Soboleva,
+Anvar Kurmukov,
+Maxim Pisov, and Mikhail Belyaev. vox2vec: a framework
+for self-supervised contrastive learning of voxel-level repre-
+sentations in medical images. In International Conference
+on Medical Image Computing and Computer-Assisted Inter-
+vention, pages 605–614. Springer, 2023. 2, 5, 6, 7
+[10] Tiancheng Gu, Dongnan Liu, Zhiyuan Li, and Weidong Cai.
+Complex organ mask guided radiology report generation. In
+Proceedings of the IEEE/CVF Winter Conference on Appli-
+cations of Computer Vision, pages 7995–8004, 2024. 2
+[11] Tiancheng Gu, Kaicheng Yang, Xiang An, Ziyong Feng,
+Dongnan Liu, and Weidong Cai. Orid: Organ-regional in-
+formation driven framework for radiology report generation.
+arXiv preprint arXiv:2411.13025, 2024. 1, 2
+[12] Fatemeh Haghighi, Mohammad Reza Hosseinzadeh Taher,
+Zongwei Zhou, Michael B Gotway, and Jianming Liang.
+Transferable visual words:
+Exploiting the semantics of
+anatomical patterns for self-supervised learning. IEEE trans-
+actions on medical imaging, 40(10):2857–2868, 2021. 2, 5,
+6, 7
+[13] Ibrahim Ethem Hamamci,
+Sezgin Er,
+Furkan Almas,
+Ayse Gulnihan Simsek, Sevval Nil Esirgun, Irem Dogan,
+Muhammed Furkan Dasdelen, Omer Faruk Durugol, Bastian
+Wittmann, Tamaz Amiranashvili, et al. Developing general-
+ist foundation models from a multimodal dataset for 3d com-
+puted tomography. arXiv preprint arXiv:2403.17834, 2024.
+2, 4, 5
+[14] Ibrahim Ethem Hamamci, Sezgin Er, and Bjoern Menze.
+Ct2rep: Automated radiology report generation for 3d medi-
+cal imaging. In International Conference on Medical Image
+Computing and Computer-Assisted Intervention, pages 476–
+486. Springer, 2024. 1, 2, 7, 8
+[15] Edward J Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-
+Zhu, Yuanzhi Li, Shean Wang, Lu Wang, Weizhu Chen, et al.
+Lora: Low-rank adaptation of large language models. ICLR,
+1(2):3, 2022. 5
+[16] Zhongzhen Huang, Xiaofan Zhang, and Shaoting Zhang.
+Kiut: Knowledge-injected u-transformer for radiology re-
+port generation. In Proceedings of the IEEE/CVF conference
+on computer vision and pattern recognition, pages 19809–
+19818, 2023. 1
+[17] Changsun Lee, Sangjoon Park, Cheong-Il Shin, Woo Hee
+Choi, Hyun Jeong Park, Jeong Eun Lee, and Jong Chul
+Ye.
+Read like a radiologist:
+Efficient vision-language
+model for 3d medical imaging interpretation. arXiv preprint
+arXiv:2412.13558, 2024. 1
+[18] Chin-Yew Lin. Rouge: A package for automatic evaluation
+of summaries. In Text summarization branches out, pages
+74–81, 2004. 5
+[19] Che Liu, Zhongwei Wan, Yuqi Wang, Hui Shen, Haozhe
+Wang, Kangyu Zheng, Mi Zhang, and Rossella Arcucci.
+Benchmarking and boosting radiology report generation
+for 3d high-resolution medical images.
+arXiv preprint
+arXiv:2406.07146, 2024. 1, 2
+[20] Guanxiong Liu, Tzu-Ming Harry Hsu, Matthew McDermott,
+Willie Boag, Wei-Hung Weng, Peter Szolovits, and Marzyeh
+Ghassemi. Clinically accurate chest x-ray report generation.
+In Machine Learning for Healthcare Conference, pages 249–
+269. PMLR, 2019. 1
+[21] Ze Liu, Yutong Lin, Yue Cao, Han Hu, Yixuan Wei, Zheng
+Zhang, Stephen Lin, and Baining Guo. Swin transformer:
+Hierarchical vision transformer using shifted windows. In
+Proceedings of the IEEE/CVF international conference on
+computer vision, pages 10012–10022, 2021. 5
+[22] Lingxiao Luo, Bingda Tang, Xuanzhong Chen, Rong Han,
+and Ting Chen.
+Vividmed: Vision language model with
+versatile visual grounding for medicine.
+arXiv preprint
+arXiv:2410.12694, 2024. 1, 2
+[23] Andriy Myronenko. 3d mri brain tumor segmentation using
+autoencoder regularization. In International MICCAI brain-
+lesion workshop, pages 311–320. Springer, 2018. 5
+[24] Suraj Pai, Ibrahim Hadzic, Dennis Bontempi, Keno Bressem,
+Benjamin H Kann, Andriy Fedorov, Raymond H Mak, and
+Hugo JWL Aerts. Vision foundation models for computed
+tomography. arXiv preprint arXiv:2501.09001, 2025. 5, 6, 7
+[25] Kishore Papineni, Salim Roukos, Todd Ward, and Wei-Jing
+Zhu. Bleu: a method for automatic evaluation of machine
+translation. In Proceedings of the 40th annual meeting of the
+Association for Computational Linguistics, pages 311–318,
+2002. 5
+
+===== PAGE 10 =====
+[26] Constantin Seibold, Simon Reiß, Saquib Sarfraz, Matthias A
+Fink, Victoria Mayer, Jan Sellner, Moon Sung Kim, Klaus H
+Maier-Hein, Jens Kleesiek, and Rainer Stiefelhagen.
+De-
+tailed annotations of chest x-rays via ct projection for report
+understanding. arXiv preprint arXiv:2210.03416, 2022. 2
+[27] Yucheng Tang, Dong Yang, Wenqi Li, Holger R Roth,
+Bennett Landman, Daguang Xu, Vishwesh Nath, and Ali
+Hatamizadeh.
+Self-supervised pre-training of swin trans-
+formers for 3d medical image analysis. In Proceedings of
+the IEEE/CVF conference on computer vision and pattern
+recognition, pages 20730–20740, 2022. 2, 5, 6, 7
+[28] Tim Tanida, Philip M¨uller, Georgios Kaissis, and Daniel
+Rueckert. Interactive and explainable region-guided radiol-
+ogy report generation. In Proceedings of the IEEE/CVF Con-
+ference on Computer Vision and Pattern Recognition, pages
+7433–7442, 2023. 1, 2
+[29] Hugo Touvron, Louis Martin, Kevin Stone, Peter Albert,
+Amjad Almahairi, Yasmine Babaei, Nikolay Bashlykov,
+Soumya Batra, Prajjwal Bhargava, Shruti Bhosale, et al.
+Llama 2: Open foundation and fine-tuned chat models. arXiv
+preprint arXiv:2307.09288, 2023. 5
+[30] Petar Veliˇckovi´c, Guillem Cucurull, Arantxa Casanova,
+Adriana Romero, Pietro Lio, and Yoshua Bengio. Graph at-
+tention networks. arXiv preprint arXiv:1710.10903, 2017.
+4
+[31] Jakob Wasserthal, Hanns-Christian Breit, Manfred T Meyer,
+Maurice Pradella, Daniel Hinck, Alexander W Sauter, Tobias
+Heye, Daniel T Boll, Joshy Cyriac, Shan Yang, et al. To-
+talsegmentator: robust segmentation of 104 anatomic struc-
+tures in ct images. Radiology: Artificial Intelligence, 5(5):
+e230024, 2023. 5
+[32] Chaoyi Wu, Xiaoman Zhang, Ya Zhang, Yanfeng Wang, and
+Weidi Xie. Towards generalist foundation model for radi-
+ology by leveraging web-scale 2d&3d medical data. arXiv
+preprint arXiv:2308.02463, 2023. 1, 2
+[33] Linshan Wu, Jiaxin Zhuang, and Hao Chen.
+Large-scale
+3d medical image pre-training with geometric context priors.
+arXiv preprint arXiv:2410.09890, 2024. 2, 5
+[34] Linshan Wu, Jiaxin Zhuang, and Hao Chen. Voco: A simple-
+yet-effective volume contrastive learning framework for 3d
+medical image analysis. In Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recognition,
+pages 22873–22882, 2024. 2, 5, 6, 7
+[35] Bing Xu, Naiyan Wang, Tianqi Chen, and Mu Li. Empirical
+evaluation of rectified activations in convolutional network.
+arXiv preprint arXiv:1505.00853, 2015. 4
+[36] Xiaoman Zhang, Chaoyi Wu, Ziheng Zhao, Jiayu Lei, Ya
+Zhang, Yanfeng Wang, and Weidi Xie. Radgenome-chest
+ct: A grounded vision-language dataset for chest ct analysis.
+arXiv preprint arXiv:2404.16754, 2024. 4
