@@ -1,0 +1,2393 @@
+
+===== PAGE 1 =====
+ 
+1 
+Pixel2Gene enables histology-guided reconstruction and prediction of spatial gene 
+1 
+expression 
+2 
+Sicong Yao1*, Amelia Schroeder2, Shunzhou Jiang1, Soyoung Im3, Jeong Hwan Park4, Bernhard 
+3 
+Dumoulin5,6, Tae Hyun Hwang7,8, Katalin Susztak5,6, Mingyao Li1,9* 
+4 
+1. Statistical Center for Single-Cell and Spatial Genomics, Department of Biostatistics, 
+5 
+Epidemiology and Informatics, University of Pennsylvania Perelman School of Medicine, 
+6 
+Philadelphia, PA, USA. 
+7 
+2. Department of Computational Biology, St. Jude Children’s Research Hospital, Memphis, TN, 
+8 
+USA. 
+9 
+3. Department of Pathology, St. Vincent's Hospital, College of Medicine, The Catholic University 
+10 
+of Korea, Seoul, Republic of Korea. 
+11 
+4. Department of Pathology, Seoul Metropolitan Government-Seoul National University Baramae 
+12 
+Medical Center, Seoul National University College of Medicine, Seoul, Republic of Korea. 
+13 
+5. Renal, Electrolyte, and Hypertension Division, Department of Medicine, University of 
+14 
+Pennsylvania Perelman School of Medicine, Philadelphia, PA, USA. 
+15 
+6. Penn/CHOP Kidney Innovation Center, University of Pennsylvania Perelman School of 
+16 
+Medicine, Philadelphia, PA, USA. 
+17 
+7. Department of Surgery, Vanderbilt University Medical Center, Nashville, TN, USA. 
+18 
+8. Center for Systems Biology, Vanderbilt University, Nashville, TN, USA. 
+19 
+9. Department of Pathology and Laboratory Medicine, University of Pennsylvania Perelman 
+20 
+School of Medicine, Philadelphia, PA, USA. 
+21 
+*Correspondence: 
+22 
+Sicong Yao, Sicong.Yao@Pennmedicine.upenn.edu 
+23 
+Mingyao Li, mingyao@pennmedicine.upenn.edu
+ 
+24 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 2 =====
+ 
+2 
+Abstract 
+25 
+Advances in spatial transcriptomics (ST) have fundamentally transformed our understanding of 
+26 
+tissue biology by enabling gene expression profiling within intact spatial contexts and uncovering 
+27 
+tissue organization and microenvironmental interactions. However, current high-resolution ST 
+28 
+platforms remain constrained by high costs, limited tissue coverage, and technical artifacts, often 
+29 
+yielding noisy, sparse, and incomplete data that compromise analytical accuracy, biological 
+30 
+interpretation, and clinical utility. To address these challenges, we introduce Pixel2Gene, a deep 
+31 
+learning framework that integrates co-registered histology images with ST data to enable 
+32 
+histology-guided reconstruction and prediction of spatial gene expression. Pixel2Gene enhances 
+33 
+existing expression measurements by denoising low-confidence data and reconstructing coherent 
+34 
+expression patterns, while also predicting gene expression in unmeasured tissue regions and 
+35 
+new samples lacking direct transcriptomic profiling. We systematically evaluated Pixel2Gene 
+36 
+across multiple high-resolution ST platforms, including Visium HD, Xenium, and CosMx, spanning 
+37 
+diverse tissue types and disease contexts using downsampling simulations and cross-platform 
+38 
+comparisons in clinical samples. Across all settings, Pixel2Gene consistently improved data 
+39 
+consistency, mitigated dropout effects, restored biologically meaningful spatial structure, and 
+40 
+enabled accurate downstream analyses. By leveraging the scalability and ubiquity of routine 
+41 
+histology, Pixel2Gene facilitates comprehensive, cost-effective ST profiling at whole-tissue scale, 
+42 
+supporting large cohort studies, translational research, and next-generation biomarker discovery. 
+43 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 3 =====
+ 
+3 
+Introduction 
+44 
+Spatial transcriptomics (ST) enables gene expression profiling within intact tissues, offering a 
+45 
+powerful framework to investigate cellular organization, molecular heterogeneity, and cell-cell 
+46 
+interactions in situ1,2. Unlike dissociative single-cell sequencing methods, ST preserves tissue 
+47 
+architecture, providing critical insights into development, disease progression, and immune 
+48 
+dynamics3. The field has rapidly evolved from early spot-based platforms with multicellular 
+49 
+resolution to high-resolution technologies such as NanoString’s CosMx4, Vizgen’s MERSCOPE5, 
+50 
+and 10x Genomics’ Visium HD6 and Xenium7, which achieve near-cellular or even subcellular 
+51 
+resolution. These next-generation platforms enable fine-grained single-cell mapping, detection of 
+52 
+rare cell populations, and characterization of spatial gradients across diverse tissue types, 
+53 
+substantially expanding the analytical scope of spatial omics. 
+54 
+ 
+55 
+Despite these advances, high-resolution ST platforms still face significant limitations. High costs, 
+56 
+lengthy processing times, and restricted fields of view (FOVs) limit scalability and prevent 
+57 
+comprehensive tissue analysis8,9. Even within profiled regions, incomplete capture of molecules 
+58 
+results in sparsity and technical artifacts, such as dropout and signal leakage. For instance, 
+59 
+although Visium HD enables gene expression profiling at 2 µm, 8 µm, and 16 µm bin sizes, the 
+60 
+resulting expression maps are often patchy and discontinuous, which complicates downstream 
+61 
+analyses that require coherent spatial patterns. Similarly, CosMx generates sparse and 
+62 
+fragmented tissue coverage across discrete FOVs, which limits comprehensive tissue 
+63 
+characterization. These challenges hinder the robust analysis of heterogeneous or large 
+64 
+specimens, where complete and reliable gene expression maps are most crucial.  
+65 
+ 
+66 
+Nevertheless, high-resolution ST data do retain substantial biological signals, where many genes 
+67 
+show consistent and biologically meaningful expression patterns in certain regions, even when 
+68 
+others are degraded or sparsely captured. This observation presents an opportunity for 
+69 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 4 =====
+ 
+4 
+computational methods to leverage high-confidence regions and underlying tissue structure to 
+70 
+recover, enhance, and predict gene expression in low-quality or unmeasured tissue areas, 
+71 
+thereby extending the utility of existing ST datasets beyond their experimental limitations. 
+72 
+ 
+73 
+Hematoxylin and eosin (H&E) staining provides a powerful complement to ST. Routinely used in 
+74 
+clinical practice, H&E captures nuclear morphology, cellular organization, and tissue architecture, 
+75 
+representing features that reflect underlying gene expression states. Whole-slide imaging 
+76 
+achieves subcellular resolution (<0.5 µm/pixel)10 across centimeter-scale tissue sections, with 
+77 
+rapid turnaround (<24 hours)11 and minimal cost (~$10 per slide)12, making it both high-quality 
+78 
+and highly scalable. Prior studies have demonstrated strong correlations between histological 
+79 
+features and transcriptomic profiles, suggesting that histomorphology can serve as a surrogate 
+80 
+for molecular state13-22. These observations raise an opportunity: by systematically learning the 
+81 
+relationship between histological features and reliable gene expression in high-quality ST regions, 
+82 
+one can enhance gene expression quality in low-quality regions and computationally predict gene 
+83 
+expression where direct measurements are missing or unreliable. Integrating histology with ST 
+84 
+thus leverages the complementary strengths of both modalities and enables the reconstruction 
+85 
+and prediction of accurate, high-resolution molecular tissue maps that overcome the limitations 
+86 
+of current ST platforms. 
+87 
+ 
+88 
+In this paper, we present Pixel2Gene, a deep learning framework that enhances single-cell 
+89 
+resolution ST data by integrating co-registered histology images. Unlike prior methods23,24 that 
+90 
+aim solely to infer gene expression de novo from histology, Pixel2Gene jointly leverages high-
+91 
+confidence ST measurements and histological features to both enhance existing expression data 
+92 
+and predict gene expression in regions with low-quality or missing measurements. By integrating 
+93 
+preprocessed high-quality transcriptomic data with histological features in a unified framework, 
+94 
+Pixel2Gene reconstructs biologically faithful expression maps that scale to whole-slide tissue 
+95 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 5 =====
+ 
+5 
+sections while preserving native architecture. Our results demonstrate that Pixel2Gene maintains 
+96 
+genuine biological signals, mitigates dropout and platform-specific artifacts, and enables accurate, 
+97 
+biologically meaningful spatial analyses that uncover fine-grained tissue organization and 
+98 
+disease-associated patterns. 
+99 
+ 
+100 
+Results 
+101 
+Overview of Pixel2Gene 
+102 
+An overview of the Pixel2Gene workflow is shown in Fig. 1. The framework aims to reconstruct 
+103 
+high-resolution spatial gene expression maps by integrating co-registered H&E images with 
+104 
+filtered single-cell resolution ST data, to enhance existing measurements and infer expression in 
+105 
+unmeasured tissue regions. The pipeline begins by aligning the two modalities within a shared 
+106 
+coordinate system. Here, 16 ´ 16-pixel H&E superpixels, approximately 8 µm ´ 8 µm in size, are 
+107 
+paired with gene expression data assigned to the corresponding superpixels, either directly from 
+108 
+8 µm ST bins in Visium HD or by aggregating molecule counts according to transcript coordinates. 
+109 
+A tissue mask is then derived from HistoSweep25, a high-resolution H&E image quality control 
+110 
+and preprocessing method to identify biologically relevant regions and exclude artifacts such as 
+111 
+tissue folds or staining debris, ensuring that analysis focuses on informative tissue areas.  
+112 
+ 
+113 
+Next, Pixel2Gene extracts multiscale histological features for each superpixel, capturing nuclear 
+114 
+morphology, local cellular neighborhoods, and broader microenvironmental context. These 
+115 
+features are used to segment the tissue into histologically coherent regions, which guide quality 
+116 
+filtering and localized model training. Within each cluster, superpixels with UMI counts below a 
+117 
+predefined threshold are excluded to retain only high-quality data for robust model learning.  
+118 
+ 
+119 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 6 =====
+ 
+6 
+Using these filtered data pairs, a feed-forward neural network is trained to capture the relationship 
+120 
+between histology and gene expression. The resulting model serves two complementary 
+121 
+functions: (1) it enhances existing ST by denoising low-confidence measurements, and (2) it infers 
+122 
+gene expression de novo in unmeasured regions, including gaps within the ST field of view or 
+123 
+areas lacking transcriptomic profiles. This integrated framework generates enhanced, biologically 
+124 
+faithful expression maps that preserve native tissue architecture and scale to whole-slide 
+125 
+specimens, enabling practical analysis of datasets containing hundreds of thousands to millions 
+126 
+of spatial units (Supplementary Tables 1 and 2). These reconstructed maps enable downstream 
+127 
+applications such as cell type annotation, spatial domain detection, and discovery of disease-
+128 
+associated tissue patterns at single-cell resolution. 
+129 
+ 
+130 
+Downsampling evaluation on human colorectal cancer and mouse brain samples 
+131 
+To rigorously assess Pixel2Gene’s ability to recover accurate gene expression from degraded ST 
+132 
+data, we performed downsampling simulations on two high-resolution datasets: a human 
+133 
+colorectal cancer sample (CRC-P2) from patient 2 and a fresh-frozen mouse brain sample, both 
+134 
+profiled using 10x Genomics Visium HD. These datasets provided dense, spatially resolved gene 
+135 
+expression profiles paired with co-registered H&E images, providing an ideal testbed for 
+136 
+simulating realistic data sparsity while maintaining biological relevance. 
+137 
+ 
+138 
+Since ground truth expression values are not directly available due to the inherent noise and 
+139 
+incompleteness of single-cell resolution ST data, we restricted our evaluation to the top 300 highly 
+140 
+expressed genes, which are less susceptible to dropout and provide a more stable reference for 
+141 
+assessing reconstruction accuracy. To benchmark Pixel2Gene’s performance, we simulated 
+142 
+degraded input data by applying a controlled downsampling procedure that mimics spatial 
+143 
+variability and technical sparsity observed in low-quality ST experiments (Methods). 
+144 
+ 
+145 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 7 =====
+ 
+7 
+Pixel2Gene was trained to reconstruct high-fidelity gene expression maps using downsampled 
+146 
+ST data and the corresponding H&E images in CRC-P2 as input. Comparative analysis revealed 
+147 
+Pixel2Gene's superior ability to recover coherent spatial patterns from degraded inputs while 
+148 
+preserving critical tissue structures. We highlight five representative genes, including KRT8, 
+149 
+SPARC, PLAC8, SELENOP, and TAGLN, selected for their distinct spatial expression profiles 
+150 
+and tissue-specific distributions (Fig. 2a). Pixel2Gene accurately recovered their characteristic 
+151 
+expression patterns, preserving expression gradients and anatomical boundaries that were 
+152 
+obscured in the downsampled data. 
+153 
+ 
+154 
+To quantitatively evaluate Pixel2Gene's reconstruction accuracy, we compared the predicted 
+155 
+expression values with the original expression values using five complementary metrics: Pearson 
+156 
+correlation, Spearman correlation, cosine similarity, root mean squared error (RMSE), and mean 
+157 
+absolute error (MAE). Across all metrics, Pixel2Gene consistently outperformed the 
+158 
+downsampled inputs, demonstrating robust recovery of biological signal from degraded data (Fig. 
+159 
+2b). Spatial autocorrelation analysis via Moran's I at multiple scales (16 µm, 32 µm and 64 µm) 
+160 
+further showed that Pixel2Gene not only recovered, but in some cases enhanced, the spatial 
+161 
+organization relative to both the downsampled and the original data. These results validate the 
+162 
+model's dual capability to: (1) denoise technical artifacts, and (2) reinforce genuine biological 
+163 
+patterns through histology-guided reconstruction. 
+164 
+ 
+165 
+Our unsupervised clustering analysis also highlighted the benefits of Pixel2Gene reconstruction. 
+166 
+Clusters derived from the downsampled data failed to capture coherent tissue organization or 
+167 
+biologically meaningful spatial domains. In contrast, clustering based on Pixel2Gene-enhanced 
+168 
+expression successfully recovered fine-grained spatial patterns, in some regions even more 
+169 
+distinctly than those observed in the original data, suggesting improved signal-to-noise ratios and 
+170 
+enhanced resolution of tissue architecture (Fig. 2c). To quantitatively assess the biological 
+171 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 8 =====
+ 
+8 
+coherence of reconstructed expression profiles, we computed the intra-cluster correlations (ICC) 
+172 
+for observed, downsampled, and downsampled-enhanced data, using the unsupervised 
+173 
+clustering labels derived from each respective dataset (Supplementary Fig. 2a). Pixel2Gene 
+174 
+substantially improved ICC relative to the downsampled baseline and, in many cases, even 
+175 
+exceeded the ICC of the original data, indicating that prediction not only restored but also 
+176 
+enhanced the internal consistency of gene expression within biologically defined regions. 
+177 
+Additionally, the normalized mutual information (NMI) between Pixel2Gene-enhanced and 
+178 
+observed clusters was higher than that between downsampled and observed clusters, further 
+179 
+supporting the biological consistency of the enhanced expression landscape. 
+180 
+ 
+181 
+We observed similar performance trends in the fresh-frozen mouse brain dataset, supporting the 
+182 
+generalizability of Pixel2Gene across tissue types (Supplementary Figs. 1 and 2b). These 
+183 
+findings demonstrate that Pixel2Gene effectively denoises and reconstructs sparse ST data by 
+184 
+leveraging histological context and spatial structure, enabling high-fidelity recovery of gene 
+185 
+expression across tissue sections, particularly for biologically important genes with spatial 
+186 
+patterns. 
+187 
+ 
+188 
+Pixel2Gene enables scalable enhancement across diverse ST platforms 
+189 
+While our downsampling experiments focused on the top 300 highly expressed genes as reliable 
+190 
+benchmarks, standard Visium HD profiling captures the whole transcriptome, where the majority 
+191 
+of genes are affected by substantial technical noise that hampers immediate biological 
+192 
+interpretation. To evaluate Pixel2Gene’s ability to enhance transcriptome-wide data, we trained 
+193 
+the model on a Visium HD sample derived from the same tissue block as the CRC-P2 Xenium 
+194 
+dataset. Following Pixel2Gene reconstruction, the spatial expression profiles of those lower-
+195 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 9 =====
+ 
+9 
+confidence genes became markedly clearer and more biologically coherent, revealing spatial 
+196 
+structure that was largely obscured in the original data (Fig. 3). 
+197 
+ 
+198 
+As an illustrative example, CDCA7, a gene associated with mitotic epithelial cells, appeared 
+199 
+sparse and fragmented in the raw Visium HD data, especially in the fine-grained tumor regions 
+200 
+(Fig. 3a). After Pixel2Gene enhancement, its spatial pattern became markedly clearer and more 
+201 
+coherent, closely aligning with expression in the adjacent high-resolution Xenium CRC-P2 
+202 
+dataset, which was used here as an independent reference. Similarly, SDCBP2, another gene 
+203 
+outside the highly expressed gene set, exhibited enhanced spatial pattern after Pixel2Gene’s 
+204 
+enhancement. These examples demonstrate Pixel2Gene’s ability to recover biologically spatial 
+205 
+patterns even for noisy, low-confidence genes, yielding expression profiles comparable to those 
+206 
+in the higher-quality Xenium CRC-P2 data. Additional examples further demonstrate that 
+207 
+Pixel2Gene consistently recovers biologically coherent spatial patterns across genes with diverse 
+208 
+and distinct spatial distributions (Supplementary Fig. 3). 
+209 
+ 
+210 
+To further evaluate biological utility beyond individual genes, we performed unsupervised 
+211 
+clustering using genes stratified by expression level. For the top 0–20% highly expressed genes, 
+212 
+Pixel2Gene enhancement revealed well-structured tissue compartments that were partially 
+213 
+resolved in the observed data. Notably, the advantages of Pixel2Gene became especially 
+214 
+pronounced in the mid-expression bins (20–40% and 40–60%), where native expression was 
+215 
+sparse and noisy. In these tiers, typically enriched for functionally relevant but weakly expressed 
+216 
+genes, clustering based on raw expression failed to capture coherent spatial domains. In contrast, 
+217 
+Pixel2Gene recovered well-organized, biologically meaningful structures, uncovering tissue 
+218 
+compartments and microenvironments that were otherwise obscured (Fig. 3b). These results 
+219 
+demonstrate that Pixel2Gene not only enhances individual gene profiles but also uniquely 
+220 
+restores latent spatial architecture across the entire expression spectrum, including mid-
+221 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 10 =====
+ 
+10 
+abundance genes that are essential for nuanced tissue characterization but often lost in 
+222 
+conventional analyses. 
+223 
+ 
+224 
+We next evaluated Pixel2Gene’s generalizability on Xenium, an imaging-based spatial 
+225 
+transcriptomics platform with higher resolution but lower gene coverage (~400 genes). Applying 
+226 
+Pixel2Gene to a centimeter-scale large gastric cancer tissue section profiled with 10x Xenium 
+227 
+(DOI: 10.5281/zenodo.15164980)26, we observed marked improvements in spatial coherence 
+228 
+across key marker genes, including ACTA2, CD3D, EPCAM, and KRT20, whose native Xenium 
+229 
+expression was noisy or spatially fragmented (Fig. 4a).  
+230 
+ 
+231 
+To further highlight Pixel2Gene’s strengths, we focused on the upper-left region of the tissue 
+232 
+containing signet ring cells, which are known to be associated with aggressive gastric cancer, 
+233 
+unfavorable prognosis, and pivotal for treatment decisions27,28. Pixel2Gene precisely delineated 
+234 
+the interface between the poorly cohesive carcinoma area enriched for signet ring cells and the 
+235 
+neighboring gastric mucosa, with the predicted boundary closely matching the pathologist’s 
+236 
+manual annotation. In contrast, the observed Xenium data exhibited a noisy transition zone, 
+237 
+lacking clearly separable clusters, which made the boundary between tissue types difficult to 
+238 
+discern (Fig. 4b). We further evaluated its capacity to identify key immune features, such as 
+239 
+tertiary lymphoid structures (TLSs). TLSs are important markers of the tumor microenvironment, 
+240 
+linked to stronger immune responses, enhanced anti-tumor activity, and better patient 
+241 
+prognosis29,30. Notably, Pixel2Gene-based clustering successfully detected all TLSs annotated by 
+242 
+the pathologist, underscoring its sensitivity to subtle but biologically significant immune niches 
+243 
+(Fig. 4c). 
+244 
+ 
+245 
+We further applied Pixel2Gene to Xenium 5K, a more recent platform that expands gene coverage 
+246 
+to ~5,000 genes but with increased noise compared to standard Xenium with default gene panels. 
+247 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 11 =====
+ 
+11 
+Using a human breast cancer sample, we analyzed marker genes including ERBB2, CD44, CD4, 
+248 
+and MS4A1 (Fig. 4d). While the observed expression was noisy and spatially diffuse, Pixel2Gene 
+249 
+enhancement yielded cleaner patterns that matched known biological distributions. 
+250 
+Correspondingly, unsupervised clustering based on enhanced data revealed sharper tumor-
+251 
+immune boundaries and clearer cell-type segregation, in closer agreement with pathologist 
+252 
+annotations than clustering based on raw data (Fig. 4e). 
+253 
+ 
+254 
+Collectively, these results demonstrate Pixel2Gene’s scalability and generalizability across ST 
+255 
+platforms with distinct resolutions, noise levels, and gene panels. From reconstructing 
+256 
+transcriptome-wide expression in noisy, full-coverage platforms like Visium HD, or refining sparse 
+257 
+measurements from high-resolution but limited-gene platforms like Xenium and Xenium 5K, 
+258 
+Pixel2Gene consistently recovers biologically meaningful spatial structures. Importantly, its ability 
+259 
+to process centimeter-scale tissue sections, such as those from gastric and breast cancer 
+260 
+samples, illustrates its potential for whole-slide spatial analysis in both research and clinical 
+261 
+contexts. 
+262 
+ 
+263 
+Pixel2Gene reconstructs complete expression maps from data with sparse coverage 
+264 
+To further demonstrate the broad applicability of Pixel2Gene, we further applied it to CosMx, a 
+265 
+high-resolution ST platform that provides subcellular resolution across multiple small, discrete 
+266 
+targeted fields of view (FOVs). While CosMx achieves high spatial granularity, it is fundamentally 
+267 
+constrained by its limited spatial coverage. A typical CosMx experiment profiles approximately 
+268 
+200 discrete FOVs (each 0.5 mm ´ 0.5 mm), covering only less than 5% of a standard tissue 
+269 
+section (~15 mm ´ 20 mm per slide). Expanding coverage beyond this limit is costly, time-
+270 
+consuming, and prone to RNA degradation and technical dropout, often resulting in drastically 
+271 
+reduced molecule capture, with average molecule counts often dropping below 100 transcripts 
+272 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 12 =====
+ 
+12 
+per cell, which compromises biological interpretability and reliable downstream analysis. More 
+273 
+critically, even within the selected FOVs, gene expression signals are sparse, with many 
+274 
+expressed molecules uncaptured. This severely hinders the ability to delineate tissue structures. 
+275 
+Such limitations are especially problematic in complex tissues like the kidney, where fine-grained 
+276 
+spatial continuity, such as that of nephron substructures including glomeruli and proximal tubules, 
+277 
+is biologically essential but cannot be reliably inferred from fragmented gene expression 
+278 
+measurements alone. These challenges underscore the need for computational approaches that 
+279 
+compensate for sparse and incomplete measurements to enable the reconstruction of continuous, 
+280 
+high-resolution gene expression maps across entire tissue sections and to improve the 
+281 
+interpretability of CosMx datasets. 
+282 
+ 
+283 
+Pixel2Gene addresses these limitations by reconstructing continuous, high-resolution expression 
+284 
+maps from sparse, noisy CosMx data. We applied the model to two kidney samples: one from a 
+285 
+healthy donor (HK3039; Fig. 5a-c) and one from a patient with type 2 diabetes (HK2844; Fig. 5d-
+286 
+f). In both cases, the raw CosMx data exhibited incomplete FOV coverage, discontinuous 
+287 
+expression patterns, and weak molecular signals. Pixel2Gene effectively filled in the large spatial 
+288 
+gaps between FOVs while denoising the existing measurements, yielding spatially coherent gene 
+289 
+expression landscapes across the whole tissue sections. To better illustrate this, we visualized 
+290 
+the expression patterns of four biologically distinct marker genes: AQP2 (collecting duct principal 
+291 
+cells), TAGLN (vascular smooth muscle), NPHS2 (podocytes in glomeruli), and EMCN 
+292 
+(endothelial cells). In the original CosMx data, these markers appeared fragmented and 
+293 
+discontinuous, making it difficult to link expression to anatomical compartments. Pixel2Gene 
+294 
+restored their spatial organization with sharply defined regional boundaries, clearly delineating 
+295 
+glomeruli, vascular structures, and epithelial zones with high fidelity. 
+296 
+ 
+297 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 13 =====
+ 
+13 
+In addition, unsupervised clustering based on Pixel2Gene-enhanced expression substantially 
+298 
+outperformed clustering derived from the raw CosMx data, resolving biologically meaningful 
+299 
+domains, such as glomeruli and proximal tubules, that were blurred or entirely missing in the 
+300 
+original measurements. These reconstructions not only improved biological interpretability but 
+301 
+also enabled continuous tissue segmentation and structural annotation across otherwise 
+302 
+disconnected FOVs. Notably, Pixel2Gene’s benefits were consistent across both the healthy and 
+303 
+diseased tissues. In the diabetic kidney sample (HK2844), where pathology-associated spatial 
+304 
+disorganization further obscured structure in the raw CosMx data, Pixel2Gene produced 
+305 
+interpretable expression maps that revealed preserved and altered tissue microenvironments. 
+306 
+This highlights Pixel2Gene’s ability to bridge molecular and spatial gaps in high-resolution but 
+307 
+low-coverage ST datasets, which empowers robust and biologically meaningful spatial analysis 
+308 
+even in highly fragmented or degraded tissue samples. 
+309 
+ 
+310 
+Pixel2Gene enables full-tissue prediction and out-of-sample prediction 
+311 
+Pixel2Gene not only enhances gene expression within measured regions but also supports de 
+312 
+novo inference in unprofiled areas, extending spatial gene expression mapping beyond 
+313 
+experimentally measured tissue regions. This capability is particularly useful for platforms like 
+314 
+Visium HD, where the H&E image spans a large tissue section while gene expression is profiled 
+315 
+in only a small 6.5 mm ´ 6.5 mm region. To demonstrate this, we applied Pixel2Gene to the Visium 
+316 
+HD CRC-P2 sample, where only partial coverage was available, and reconstructed spatial gene 
+317 
+expression across the entire tissue section using the co-registered H&E image (Fig. 6a). Marker 
+318 
+genes such as COL1A1, a stromal collagen gene, exhibited spatially coherent expression patterns 
+319 
+that aligned closely with histologically defined tissue compartments. Furthermore, unsupervised 
+320 
+clustering of the full-tissue predictions revealed biologically distinct spatial domains, including the 
+321 
+tumor core, invasive front, and normal mucosa, which were consistent with pathologist 
+322 
+annotations. These results illustrate Pixel2Gene’s ability to extrapolate expression patterns into 
+323 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 14 =====
+ 
+14 
+unmeasured tissue regions while preserving fine-grained tissue architecture and biological 
+324 
+interpretability. Additional examples further demonstrate that Pixel2Gene consistently supports 
+325 
+full-tissue prediction across genes (Supplementary Fig. 4). 
+326 
+ 
+327 
+Pixel2Gene also generalizes robustly across patients. We trained a model on Xenium data from 
+328 
+CRC-P2 (patient 2) and applied it to two independent colorectal cancer samples, CRC-P1 (patient 
+329 
+1) and CRC-P5 (patient 5), profiled using the same platform but from different patients. Despite 
+330 
+partial overlap in gene panels across the three samples, Pixel2Gene successfully predicted the 
+331 
+full CRC-P2 gene panel in both CRC-P1 and CRC-P5, demonstrating the model’s ability to 
+332 
+transfer learned spatial patterns across biologically similar tissues. As an illustrative example, the 
+333 
+expression of ANO7, a gene present in all three panels and associated with epithelial 
+334 
+differentiation, was consistently recovered in CRC-P1 and CRC-P5, showing clear enrichment 
+335 
+along tumor glands that closely mirrored patterns in the training sample CRC-P2 (Fig. 6b). 
+336 
+Importantly, beyond overlapping genes, Pixel2Gene also effectively inferred the expression of 
+337 
+non-measured genes in CRC-P1 and CRC-P5 by leveraging histological features and spatial 
+338 
+context. Consistent enhancement and out-of-sample prediction performance across additional 
+339 
+genes is shown in Supplementary Figs. 7-9. These results demonstrate that Pixel2Gene not 
+340 
+only generalizes across patients but also effectively expands the set of spatially profiled genes in 
+341 
+each tissue beyond the limits of experimentally designed gene panels.  
+342 
+ 
+343 
+Finally, Pixel2Gene’s dual ability to perform out-of-sample prediction and full-tissue reconstruction 
+344 
+unlocks substantial practical advantages. By training on a single preprocessed and well-filtered 
+345 
+sample such as Visium HD CRC-P2, researchers can apply the model to H&E-only full-slide 
+346 
+images from additional tissue samples (e.g., CRC-P1 and CRC-P5) without requiring further ST 
+347 
+profiling (Fig. 6c). This strategy substantially reduces experimental cost and turnaround time by 
+348 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 15 =====
+ 
+15 
+requiring spatial profiling of only a small, representative region, guided by experimental design 
+349 
+tools such as S2-omics, while leveraging routine H&E images for large-scale inference, thereby 
+350 
+eliminating the need for costly and time-consuming spatial profiling of every sample. By 
+351 
+capitalizing on the affordability and scalability of routine H&E workflows, Pixel2Gene enables 
+352 
+comprehensive ST analyses across large patient cohorts. This approach facilitates cost-effective 
+353 
+and scalable spatial omics studies and opens the door to broader clinical and translational 
+354 
+applications through systematic exploration of tissue heterogeneity at scale. Additional examples 
+355 
+of full-tissue and out-of-sample prediction using Visium HD are provided in Supplementary Figs. 
+356 
+5-6. 
+357 
+ 
+358 
+Pixel2Gene enables robust spatial pattern discovery from technically degraded post-
+359 
+Xenium Visium HD data 
+360 
+ST profiling performed after Xenium imaging provides an opportunity to obtain complementary 
+361 
+measurements from the same tissue section but also introduces additional technical challenges. 
+362 
+The Xenium workflow preserves overall tissue morphology and enables downstream applications, 
+363 
+including H&E staining and post-Xenium Visium HD whole-transcriptome profiling, to be 
+364 
+performed on the same tissue section. However, post-Xenium Visium HD data are generated 
+365 
+after multiple rounds of in situ processing, often resulting in reduced RNA capture efficiency and 
+366 
+increased technical noise compared with standard Visium HD experiments.  
+367 
+ 
+368 
+A common strategy to mitigate this limitation is the joint integration of Xenium and post-Xenium 
+369 
+Visium HD profiles, leveraging the higher molecular resolution of Xenium to stabilize clustering 
+370 
+and spatial pattern discovery while retaining whole-transcriptome coverage from Visium HD. 
+371 
+However, Visium HD profiling is restricted to a selected 6.5 mm ´ 6.5 mm capture area, leaving 
+372 
+substantial portions of the tissue section unmeasured. As a result, joint integration is inherently 
+373 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 16 =====
+ 
+16 
+confined to regions with overlapping coverage, limiting spatial pattern discovery to Visium HD-
+374 
+profiled areas and preventing inference of tissue organization beyond those regions. 
+375 
+ 
+376 
+To assess whether Pixel2Gene can overcome the technical degradation of post-Xenium Visium 
+377 
+HD data, we applied Pixel2Gene exclusively to post-Xenium Visium HD data from a human lung 
+378 
+cancer sample. We then compared the resulting spatial gene expression clustering with both 
+379 
+observed post-Xenium Visium HD clustering and clustering obtained from joint integration of 
+380 
+Xenium and post-Xenium Visium HD data, which serves as a higher-quality reference (Fig. 7). 
+381 
+Despite using only post-Xenium Visium HD expression as input, Pixel2Gene produced spatial 
+382 
+domains that were more coherent and spatially continuous than those derived from joint 
+383 
+integration, with clearer alignment to histological structures observed in the corresponding H&E 
+384 
+image. 
+385 
+ 
+386 
+Importantly, Pixel2Gene additionally enabled prediction of spatial gene expression patterns in 
+387 
+regions lacking direct Visium HD measurements, extending clustering and tissue 
+388 
+compartmentalization beyond the experimentally profiled capture area. In contrast, joint 
+389 
+integration approaches remained restricted to regions with overlapping Xenium and Visium HD 
+390 
+coverage and could not infer structure in unmeasured tissue. These results demonstrate that 
+391 
+Pixel2Gene can leverage histological context to denoise technically degraded post-Xenium 
+392 
+Visium HD data and infer biologically meaningful spatial organization across entire tissue 
+393 
+sections, achieving reconstruction quality comparable to or exceeding joint multi-platform 
+394 
+integration while requiring only a single post-Xenium Visium HD assay. 
+395 
+ 
+396 
+Discussion 
+397 
+Pixel2Gene addresses fundamental limitations of current high-resolution ST technologies, 
+398 
+including data sparsity, technical noise, and incomplete gene and spatial coverage. By integrating 
+399 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 17 =====
+ 
+17 
+multiscale histological features with high-quality, filtered ST measurements, Pixel2Gene 
+400 
+reconstructs high-resolution, biologically coherent expression maps that uncover fine-grained 
+401 
+tissue architecture often obscured in the raw data. This capability is particularly valuable in 
+402 
+complex tissues such as tumors and kidneys, where preserving the spatial continuity of tissue 
+403 
+structures, such as tumor invasive fronts or nephron components including glomeruli, is essential 
+404 
+for accurate biological interpretation. Notably, these advantages persist even under technically 
+405 
+degraded, highlighting Pixel2Gene’s robustness in challenging experimental scenarios. 
+406 
+ 
+407 
+A major strength of Pixel2Gene is its flexible, superpixel-based hierarchical framework. Unlike 
+408 
+approaches that depend on explicit cell or nucleus segmentation, Pixel2Gene operates directly 
+409 
+on H&E images, using superpixels with multiscale visual cues to offer robustness to staining 
+410 
+variability and morphological heterogeneity. This design enables generalization across diverse 
+411 
+ST platforms, including Visium HD, Xenium, and CosMx, and supports various tissue types and 
+412 
+gene panel sizes without platform-specific tuning. To obtain cell-level gene expression estimates, 
+413 
+one can calculate the weighted sum of gene expression for superpixels that overlap with a cell, 
+414 
+an approach employed by iStar31.  
+415 
+ 
+416 
+In contrast, recent methods such as GHIST22, while demonstrating promising results on Xenium 
+417 
+data, remain limited in scope and flexibility. GHIST requires nucleus segmentation as a 
+418 
+prerequisite, introducing dependencies on nuclear staining quality and adding extra 
+419 
+computational steps. Moreover, GHIST relies on a non-hierarchical CNN for image feature 
+420 
+extraction, which may restrict its ability to capture multiscale tissue context. Pixel2Gene avoids 
+421 
+these limitations by operating on a segmentation-free, superpixel-based representation, and by 
+422 
+leveraging hierarchical feature extraction to model tissue organization across multiple spatial 
+423 
+scales. Finally, GHIST has been demonstrated only on Xenium data, whereas Pixel2Gene 
+424 
+generalizes robustly across multiple platforms and tissue types without reliance on cell-level 
+425 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 18 =====
+ 
+18 
+annotations. These features underscore Pixel2Gene’s adaptability, scalability, and architectural 
+426 
+advantages for comprehensive inference of spatial molecular profiles. 
+427 
+ 
+428 
+Beyond enhancing directly measured tissue regions, Pixel2Gene also supports out-of-sample, 
+429 
+full-tissue prediction, where models trained on a small number of profiled regions can be applied 
+430 
+to new samples profiled only by H&E staining. This capability substantially reduces experimental 
+431 
+costs while expanding spatial coverage, leveraging the widespread availability and low cost of 
+432 
+routine histology. As a result, Pixel2Gene opens new avenues for broader clinical and 
+433 
+translational applications, including population-scale studies to prospective biomarker discovery. 
+434 
+ 
+435 
+Despite 
+these 
+strengths, 
+Pixel2Gene’s 
+performance 
+depends 
+on 
+the 
+quality 
+and 
+436 
+representativeness of its training data. Accurate inference requires training sets that capture 
+437 
+biologically informative regions, preserve tissue morphology, and include genes with sufficient 
+438 
+expression signal. Additionally, since ground truth expression is not available in unprofiled regions, 
+439 
+the current performance evaluation of Pixel2Gene relies on downsampling-based benchmarks, 
+440 
+which may not fully reflect real-world complexity. Future work may focus on optimizing training 
+441 
+set selection, incorporating self-supervised or multimodal learning objectives, and developing an 
+442 
+active sampling strategy for informative regions to improve generalization and robustness. 
+443 
+ 
+444 
+In summary, Pixel2Gene provides a robust and generalizable solution for enhancing and 
+445 
+predicting spatial gene expression across tissue sections. Its platform-agnostic design, reliance 
+446 
+on routine histology, and capacity for out-of-sample prediction make it well-suited for widespread 
+447 
+adoption in biomedical research and clinical settings. By bridging histology and transcriptomics, 
+448 
+Pixel2Gene advances scalable and interpretable spatial analyses and lays the foundation for 
+449 
+future broader applications in precision medicine.
+ 
+450 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 19 =====
+ 
+19 
+Acknowledgments 
+451 
+M.L. was partly supported by the following NIH grants R01HG013185, R01LM014592, 
+452 
+U19NS135582, R01HL171595, and U01CA294518. 
+453 
+ 
+454 
+Author Contributions 
+455 
+This study was conceived of and led by M.L. S.Y. designed the model and algorithm with input 
+456 
+from M.L., implemented the software, and led data analyses. A.S. developed the HistoSweep 
+457 
+package for histology image quality control and high-resolution tissue masking. S.J. helped with 
+458 
+data analysis. B.D. and K.S. provided the kidney CosMx data and advised on interpretation. S.I. 
+459 
+annotated the breast cancer sample. J.H.P. annotated the CRC samples. T.H.H. provided the 
+460 
+gastric cancer Xenium data. S.Y. and M.L. wrote the paper with feedback from other co-authors. 
+461 
+ 
+462 
+Competing Interests 
+463 
+M.L. receives research funding from Biogen Inc. unrelated to the current manuscript. M.L. is a co-
+464 
+founder of OmicPath AI LLC. T.H.H. is a co-founder of Kure.ai therapeutics, and has received 
+465 
+consulting fees from IQVIA; these affiliations and financial compensations are unrelated to the 
+466 
+current manuscript.
+ 
+467 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 20 =====
+ 
+20 
+Figure Legends 
+468 
+Fig. 1 | Overview of Pixel2Gene workflow.  Pixel2Gene reconstructs high-resolution spatial 
+469 
+gene expression maps by integrating co-registered H&E images with filtered single-cell resolution 
+470 
+ST data. H&E images and ST measurements are spatially aligned into a shared coordinate 
+471 
+framework, where histological features are extracted hierarchically at superpixel resolution. 
+472 
+Pixel2Gene applies semantic tissue masks to exclude artifacts and aggregates transcriptomic 
+473 
+signals into spatially coherent clusters. Within each cluster, high-confidence ST data guide model 
+474 
+training to learn histology-expression relationships using a feed-forward neural network. 
+475 
+Pixel2Gene enhances noisy gene expression within profiled regions by leveraging spatial and 
+476 
+morphological context to recover biologically coherent patterns. Beyond in-tissue enhancement, 
+477 
+it also enables full-tissue reconstruction and out-of-sample prediction—inferring gene expression 
+478 
+in unprofiled areas or entirely new tissue sections using only H&E images. 
+479 
+ 
+480 
+Fig. 2 | Evaluation of Pixel2Gene enhancement in the CRC simulation data. 
+481 
+a, Visualization of spatial expression patterns of selected genes in CRC-P2 Visium HD data at 
+482 
+8 µm resolution, shown for the observed, downsampled, and Pixel2Gene-enhanced 
+483 
+(downsampled-enhanced) gene expression. b, Quantitative comparison of prediction accuracy 
+484 
+using Pearson correlation, Spearman correlation, cosine similarity (higher is better), RMSE, and 
+485 
+MAE (lower is better), together with spatial autocorrelation measured by Moran’s I (higher is 
+486 
+better), computed across the top 300 highly expressed genes. Pearson, Spearman, Cosine, 
+487 
+RMSE, and MAE were calculated by comparing observed expression with downsampled or 
+488 
+downsampled-enhanced predictions at 8 µm resolution. Moran’s I was computed independently 
+489 
+for each modality across multiple spatial resolutions. In each boxplot, boxes indicate the 
+490 
+interquartile range (IQR; 25th–75th percentile), the center dashed line denotes the median, and 
+491 
+whiskers extend to the most extreme values within 1.5×IQR c, Comparison of spatial clustering 
+492 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 21 =====
+ 
+21 
+results across different input modalities using top 300 highly expressed genes. From left to right: 
+493 
+pathologist annotation (serving as biological reference), clustering based on observed gene 
+494 
+expression, downsampled gene expression, and Pixel2Gene-enhanced expression. Cluster 
+495 
+labels for the downsampled and enhanced results were aligned to the observed clustering using 
+496 
+a one-to-one assignment (Hungarian algorithm) based on the overlap of spot assignments, 
+497 
+enabling consistent color coding across panels. NMI scores with respect to the observed 
+498 
+clustering are shown in the top-left corner of each panel. The Sankey diagram summarizes the 
+499 
+correspondence of cluster memberships across downsampled (left), observed (middle), and 
+500 
+enhanced (right) results after label alignment. 
+501 
+ 
+502 
+Fig. 3 | Pixel2Gene enhances transcriptome-wide expression and recovers spatial 
+503 
+structure from noisy Visium HD data. a, Visualization of selected genes from Visium HD CRC-
+504 
+P2 not included in the top 300 highly expressed gene set. Expression of CDCA7 and SDCBP2 is 
+505 
+shown for observed Visium HD data, Pixel2Gene-enhanced predictions, and matched adjacent 
+506 
+Xenium measurements. Enhanced predictions yield sharper, spatially coherent patterns that align 
+507 
+closely with high-resolution Xenium references, despite noise in the original Visium HD data. b, 
+508 
+Unsupervised clustering using different expression abundance bins: top 0–20% (high), 20–40% 
+509 
+(mid), and 40–60% (mid-low) highly expressed genes. Pixel2Gene-enhanced data reveals fine-
+510 
+grained spatial domains across all tiers, whereas clustering on observed expression fails to 
+511 
+resolve tissue architecture, particularly for mid and mid-low expression bins. This demonstrates 
+512 
+Pixel2Gene’s ability to recover biologically meaningful spatial organization even from weak 
+513 
+expression signals. 
+514 
+ 
+515 
+Fig. 4 | Generalization of Pixel2Gene across high-resolution spatial transcriptomics 
+516 
+platforms and large tissue areas. 
+517 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 22 =====
+ 
+22 
+a, Selected gene expression (ACTA2, CD3D, EPCAM, KRT20) from a Xenium gastric cancer 
+518 
+sample. Pixel2Gene-enhanced predictions exhibit improved spatial coherence and delineate 
+519 
+tissue boundaries and compartmentalization more clearly than the noisy observed expression. b, 
+520 
+From top to bottom: pathologist annotation, clustering based on observed expression, and 
+521 
+clustering based on Pixel2Gene-enhanced expression. In the mucosa region, observed data 
+522 
+yields noisy and fragmented clusters, while Pixel2Gene recovers structures that align with expert 
+523 
+annotations. c, Detection of tertiary lymphoid structures (TLS) in the same sample. Pathologist-
+524 
+annotated TLS regions (left) are successfully recovered via unsupervised clustering of the 
+525 
+Pixel2Gene-enhanced expression (right), demonstrating the method’s ability to uncover complex 
+526 
+immune niches. d, Application to a Xenium 5K breast cancer sample with noisy whole-
+527 
+transcriptome expression. Expression of ERBB2, CD44, CD4, and MS4A1 shows clearer spatial 
+528 
+organization after enhancement. e, From top to bottom: pathologist annotation, observed 
+529 
+clustering, and clustering on Pixel2Gene-enhanced expression. Enhanced clustering resolves 
+530 
+spatial compartments consistent with expert-labeled regions, illustrating Pixel2Gene’s 
+531 
+generalizability to different sample types and platforms. 
+532 
+ 
+533 
+Fig. 5 | Pixel2Gene reconstructs spatial expression maps from sparse CosMx data. a–c, 
+534 
+HK3039 (healthy kidney sample). a, Observed UMI counts across the tissue (top) and the 
+535 
+corresponding H&E image (bottom), showing the sparse coverage typical of CosMx. b, Spatial 
+536 
+clustering results from observed expression (left) and Pixel2Gene-enhanced expression (middle). 
+537 
+Right: glomeruli identified using enhanced gene expression clustering. c, Expression of selected 
+538 
+marker genes (AQP2, TAGLN, NPHS2, EMCN) in a zoomed-in region. Left: observed; right: 
+539 
+enhanced. Pixel2Gene restores compartment-specific boundaries obscured in the raw data. d–f, 
+540 
+HK2844 (type 2 diabetic kidney disease sample). d, Observed UMI counts (top) and H&E image 
+541 
+(bottom). e, Clustering results from observed expression (left) and enhanced expression (middle). 
+542 
+Right: glomeruli identified based on enhanced expression. f, Zoomed-in comparison of observed 
+543 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 23 =====
+ 
+23 
+vs. enhanced expression for selected genes, showing improved spatial resolution and tissue 
+544 
+delineation after Pixel2Gene enhancement. 
+545 
+ 
+546 
+Fig. 6 | Full-tissue and out-of-sample spatial gene expression prediction using Pixel2Gene. 
+547 
+a, Full-tissue prediction for Visium HD CRC-P2. Top row shows observed spatial expression of 
+548 
+COL1A1 (left) and PIGR (middle) within the profiled region, alongside the pathologist’s annotation 
+549 
+(right). Bottom row shows Pixel2Gene-predicted full-tissue expression of COL1A1 (left) and PIGR 
+550 
+(middle) across the entire slide, together with unsupervised clustering based on the full-tissue 
+551 
+predicted expression (right), revealing spatial domains corresponding to tumor core, invasive 
+552 
+front, and normal mucosa. b, Xenium out-of-sample prediction. Pixel2Gene was trained on 
+553 
+Xenium CRC-P2 and applied to held-out samples CRC-P1 and CRC-P5. Spatial expression of 
+554 
+ANO7 is shown across: Row 1 – CRC-P2 observed and Pixel2Gene-enhanced expression 
+555 
+(training sample); Row 2 – CRC-P1 observed expression and Pixel2Gene-predicted expression; 
+556 
+Row 3 – CRC-P5 observed expression and Pixel2Gene-predicted expression. c, Out-of-sample 
+557 
+full-tissue prediction using Visium HD CRC-P2 as training. Spatial expression of COL1A1 is 
+558 
+shown over full-slide H&E images: top row – CRC-P1 observed (left) and Pixel2Gene-predicted 
+559 
+(right) expression; bottom row – CRC-P5 observed (left) and predicted (right) expression. 
+560 
+ 
+561 
+Fig. 7 | Pixel2Gene outperforms joint Xenium–Visium HD integration for post-Xenium 
+562 
+spatial reconstruction and enables prediction in unmeasured regions. 
+563 
+a, Comparison of spatial gene expression clustering across three analysis strategies applied to a 
+564 
+post-Xenium Visium HD sample. From left to right: clustering based on observed post-Xenium 
+565 
+Visium HD expression, clustering based on joint integration of Xenium and post-Xenium Visium 
+566 
+HD expression, and clustering based on Pixel2Gene-enhanced and predicted post-Xenium 
+567 
+Visium HD expression. Three regions of interest are highlighted for detailed comparison. b–d, 
+568 
+Zoom-in comparisons for the three highlighted regions. For each region, panels show the 
+569 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 24 =====
+ 
+24 
+corresponding H&E image, clustering from observed post-Xenium Visium HD expression, 
+570 
+clustering from joint Xenium + post-Xenium Visium HD expression, and clustering from 
+571 
+Pixel2Gene-enhanced and predicted post-Xenium Visium HD expression. Pixel2Gene predicts 
+572 
+biologically plausible structures in regions lacking direct gene expression measurements, 
+573 
+demonstrating its ability to extrapolate beyond experimentally profiled areas.
+ 
+574 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 25 =====
+ 
+25 
+References 
+575 
+1 
+Marx, V. Method of the Year: spatially resolved transcriptomics. Nat Methods 18, 9–14 
+576 
+(2021). https://doi.org/10.1038/s41592-020-01033-y 
+577 
+2 
+Holt, C. E. & Bullock, S. L. Subcellular mRNA Localization in Animal Cells and Why It 
+578 
+Matters. Science 326, 1212–1216 (2009). https://doi.org/10.1126/science.1176488 
+579 
+3 
+Arora, R. et al. Spatial transcriptomics reveals distinct and conserved tumor core and edge 
+580 
+architectures that predict survival and targeted therapy response. Nat Commun 14, 5029 
+581 
+(2023). https://doi.org/10.1038/s41467-023-40271-4 
+582 
+4 
+He, S. et al. High-plex imaging of RNA and proteins at subcellular resolution in fixed tissue 
+583 
+by 
+spatial 
+molecular 
+imaging. 
+Nat 
+Biotechnol 
+40, 
+1794–1806 
+(2022). 
+584 
+https://doi.org/10.1038/s41587-022-01483-z 
+585 
+5 
+Moffitt, J. R. et al. Molecular, spatial, and functional single-cell profiling of the hypothalamic 
+586 
+preoptic region. Science 362, eaau5324 (2018). https://doi.org/10.1126/science.aau5324 
+587 
+6 
+Oliveira, M. F. D. et al. High-definition spatial transcriptomic profiling of immune cell 
+588 
+populations 
+in 
+colorectal 
+cancer. 
+Nat 
+Genet 
+57, 
+1512–1523 
+(2025). 
+589 
+https://doi.org/10.1038/s41588-025-02193-3 
+590 
+7 
+Janesick, A. et al. High resolution mapping of the tumor microenvironment using 
+591 
+integrated single-cell, spatial and in situ analysis. Nat Commun 14, 8353 (2023). 
+592 
+https://doi.org/10.1038/s41467-023-43458-x 
+593 
+8 
+Zhang, L. et al. Clinical and translational values of spatial transcriptomics. Sig Transduct 
+594 
+Target Ther 7, 111 (2022). https://doi.org/10.1038/s41392-022-00960-w 
+595 
+9 
+Lim, H. J., Wang, Y., Buzdin, A. & Li, X. A practical guide for choosing an optimal spatial 
+596 
+transcriptomics technology from seven major commercially available options. BMC 
+597 
+Genomics 26, 47 (2025). https://doi.org/10.1186/s12864-025-11235-3 
+598 
+10 
+Ghaznavi, F., Evans, A., Madabhushi, A. & Feldman, M. Digital Imaging in Pathology: 
+599 
+Whole-Slide Imaging and Beyond. Annu. Rev. Pathol. Mech. Dis. 8, 331–359 (2013). 
+600 
+https://doi.org/10.1146/annurev-pathol-011811-120902 
+601 
+11 
+MD Anderson Cancer Center. Service Price List. (Research Histology Core Laboratory, 
+602 
+MD 
+Anderson 
+Cancer 
+Center, 
+2019). 
+603 
+https://www.mdanderson.org/content/dam/mdanderson/documents/core-
+604 
+facilities/Research%20Histology%20Core%20Laboratory%20(RHCL)/RHCL%20Service
+605 
+%20Prices%20Fina%20III%2005.20.19.pdf 
+606 
+12 
+Roche 
+Canada. 
+H&E 
+and 
+Special 
+Stains. 
+607 
+https://www.rochecanada.com/solutions/diagnostics-solutions/laboratories/pathology-
+608 
+lab/he-and-special-stains (2024). 
+609 
+13 
+Schmauch, B. et al. A deep learning model to predict RNA-Seq expression of tumours 
+610 
+from whole slide images. Nat Commun 11, 3877 (2020). https://doi.org/10.1038/s41467-
+611 
+020-17678-4 
+612 
+14 
+He, B. et al. Integrating spatial gene expression and breast tumour morphology via deep 
+613 
+learning. Nat Biomed Eng 4, 827–834 (2020). https://doi.org/10.1038/s41551-020-0578-x 
+614 
+15 
+Bergenstråhle, L. et al. Super-resolved spatial transcriptomics by deep data fusion. Nat 
+615 
+Biotechnol 40, 476–479 (2022). https://doi.org/10.1038/s41587-021-01075-3 
+616 
+16 
+Jia, Y., Liu, J., Chen, L., Zhao, T. & Wang, Y. THItoGene: a deep learning method for 
+617 
+predicting spatial transcriptomics from histological images. Briefings in Bioinformatics 25, 
+618 
+bbad464 (2023). https://doi.org/10.1093/bib/bbad464 
+619 
+17 
+Lin, Y. et al. A contrastive learning approach to integrate spatial transcriptomics and 
+620 
+histological images. Computational and Structural Biotechnology Journal 23, 1786–1795 
+621 
+(2024). https://doi.org/10.1016/j.csbj.2024.04.039 
+622 
+18 
+Coleman, K. et al. Resolving tissue complexity by multimodal spatial omics modeling with 
+623 
+MISO. Nat Methods 22, 530–538 (2025). https://doi.org/10.1038/s41592-024-02574-2 
+624 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 26 =====
+ 
+26 
+19 
+Coleman, K., Schroeder, A. & Li, M. Unlocking the power of spatial omics with AI. Nat 
+625 
+Methods 21, 1378–1381 (2024). https://doi.org/10.1038/s41592-024-02363-x 
+626 
+20 
+Schroeder, A. et al. Scaling up spatial transcriptomics for large-sized tissues: uncovering 
+627 
+cellular-level tissue architecture beyond conventional platforms with iSCALE. Nat Methods 
+628 
+22, 1911–1922 (2025). https://doi.org/10.1038/s41592-025-02770-8 
+629 
+21 
+Yuan, M. et al. Smart spatial omics (S2-omics) optimizes region of interest selection to 
+630 
+capture molecular heterogeneity in diverse tissues. Nat Cell Biol 27, 2225–2238 (2025). 
+631 
+https://doi.org/10.1038/s41556-025-01811-w 
+632 
+22 
+Fu, X. et al. Spatial gene expression at single-cell resolution from histology using deep 
+633 
+learning with GHIST. Nat Methods 22, 1900–1910 (2025). https://doi.org/10.1038/s41592-
+634 
+025-02795-z 
+635 
+23 
+Wan, X. et al. Integrating spatial and single-cell transcriptomics data using deep 
+636 
+generative 
+models 
+with 
+SpatialScope. 
+Nat 
+Commun 
+14, 
+7848 
+(2023). 
+637 
+https://doi.org/10.1038/s41467-023-43629-w 
+638 
+24 
+Zhao, C. et al. Innovative super-resolution in spatial transcriptomics: a transformer model 
+639 
+exploiting histology images and spatial gene expression. Briefings in Bioinformatics 25, 
+640 
+bbae052 (2024). https://doi.org/10.1093/bib/bbae052 
+641 
+25 
+Schroeder, A. et al. HistoSweep enables cellular-resolution tissue quality control for 
+642 
+gigapixel images in digital pathology and spatial omics. bioRxiv, 2026.2001.2030.702675 
+643 
+(2026). https://doi.org/10.64898/2026.01.30.702675 
+644 
+26 
+Hwang Lab. Gastric cancer Xenium sample – BS06-9313-8_Tumor. Zenodo 
+645 
+https://doi.org/10.5281/zenodo.15164980 (2025).    
+646 
+27 
+Pernot, S. Signet-ring cell carcinoma of the stomach: Impact on prognosis and specific 
+647 
+therapeutic challenge. WJG 21, 11428 (2015). https://doi.org/10.3748/wjg.v21.i40.11428 
+648 
+28 
+Alcindor, T. et al. Phase 2 trial of perioperative chemo-immunotherapy for gastro-
+649 
+esophageal adenocarcinoma: The role of M2 macrophage landscape in predicting 
+650 
+response. 
+Cell 
+Reports 
+Medicine 
+6, 
+102045 
+(2025). 
+651 
+https://doi.org/10.1016/j.xcrm.2025.102045 
+652 
+29 
+Weng, Y. et al. The impact of tertiary lymphoid structures on tumor prognosis and the 
+653 
+immune microenvironment in non-small cell lung cancer. Sci Rep 14, 16246 (2024). 
+654 
+https://doi.org/10.1038/s41598-024-64980-y 
+655 
+30 
+Peyraud, F. et al. Tertiary lymphoid structures and cancer immunotherapy: From bench to 
+656 
+bedside. Med 6, 100546 (2025). https://doi.org/10.1016/j.medj.2024.10.023 
+657 
+31 
+Zhang, D. et al. Inferring super-resolution tissue architecture by integrating spatial 
+658 
+transcriptomics 
+with 
+histology. 
+Nat 
+Biotechnol 
+42, 
+1372–1377 
+(2024). 
+659 
+https://doi.org/10.1038/s41587-023-02019-9 
+660 
+ 
+661 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 27 =====
+ 
+27 
+Methods 
+662 
+Data preprocessing 
+663 
+Xenium and Xenium 5K. After aligning the transcriptomic profiling data to the post-Xenium H&E 
+664 
+pixel space, transcripts are aggregated into square spatial bins based on their transformed 
+665 
+coordinates, with each bin corresponding to a 16 ´ 16-pixel region in the rescaled H&E image, 
+666 
+referred to as a superpixel, to enable one-to-one alignment with the superpixel grid used for further 
+667 
+analysis. 
+668 
+Rescaling. The H&E image is rescaled so that each pixel represents 0.5 µm ´ 0.5 µm. This 
+669 
+standardization ensures that each 16 ´ 16-pixel superpixel tile corresponds to an 8 µm ´ 8 µm 
+670 
+area, approximately the size of a single cell. To support hierarchical feature extraction in later 
+671 
+stages, the rescaled H&E image is padded so that its height and width are both divisible by 256. 
+672 
+The spatial coordinates of each gene expression bin or cell, expressed in the H&E pixel coordinate 
+673 
+system, are rescaled using the same factor to maintain alignment between the image and the 
+674 
+transcriptomic data. Due to technical variation, some Visium HD bins may fall partially outside the 
+675 
+grid or overlap with others after rescaling; these bins are excluded during preprocessing to ensure 
+676 
+consistent and reliable spatial mapping. 
+677 
+ 
+678 
+Extracting hierarchical histology image features 
+679 
+Inspired by how pathologists examine tissues, i.e., starting with large-scale structures and 
+680 
+zooming in to fine cellular features, we adopt a hierarchical image feature extraction framework 
+681 
+to capture spatial patterns at multiple resolutions. This approach employs a Vision Transformer 
+682 
+(ViT) to extract features across scales, beginning with small local patches to capture detailed 
+683 
+morphological information, and progressively expanding to larger contextual regions to encode 
+684 
+global tissue organization. Each 16 ´ 16-pixel tile ultimately results in a feature vector of length 
+685 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 28 =====
+ 
+28 
+579, containing multi-level features as well as raw RGB values. Implementation details of this 
+686 
+multi-scale feature extraction pipeline follow the methodology described in iStar. 
+687 
+ 
+688 
+Selecting high-quality spatial profiling data 
+689 
+To ensure only high-quality spatial profiling data are used in the training step, we apply a two-
+690 
+step filtering procedure that integrates both tissue morphology and gene expression quality: 
+691 
+ 
+692 
+1. Tissue-detection masking. In this step, we aim to exclude unwanted regions such as 
+693 
+background, debris, and low-content areas while retaining only histologically meaningful tissue. 
+694 
+Specifically, we identify and remove (i) background and acellular regions lacking sufficient stain 
+695 
+or structural content, and (ii) visually irregular, potentially damaged, or noisy regions that may still 
+696 
+contain some stain but are unlikely to yield reliable data. This is accomplished by analyzing both 
+697 
+stain density and texture features across the tissue, resulting in a binary mask that preserves 
+698 
+dense, textured, and well-stained tissue regions. 
+699 
+ 
+700 
+2. Spatial profiling-quality masking. Beyond histological relevance, we also prioritize regions with 
+701 
+robust gene expression capture. To achieve this, we first perform K-means clustering on 
+702 
+superpixel-level histological features to account for tissue heterogeneity. Within each cluster, we 
+703 
+filter out superpixels whose gene expression profiles, as represented by total UMI counts, fall 
+704 
+below a specified quantile threshold (e.g., bottom 30%), thereby removing regions likely to contain 
+705 
+low-quality or noisy molecular data. 
+706 
+ 
+707 
+By combining these two masks, we ensure that downstream analysis is performed only on regions 
+708 
+that are both histologically valid and molecularly informative, thereby improving the reliability and 
+709 
+interpretability of spatial transcriptomic results. 
+710 
+ 
+711 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 29 =====
+ 
+29 
+Predicting super-resolution gene expression in large tissues 
+712 
+The previously developed iStar method enhances spatial resolution for Visium data by utilizing a 
+713 
+single ST sample as both input and training data. In contrast, our setting involves ST samples 
+714 
+from various platforms that already provide single-cell resolution, allowing for a one-to-one 
+715 
+correspondence between each cell bin and its associated image superpixel. 
+716 
+ 
+717 
+To leverage high-quality ST data, we incorporate ST samples with reliable gene expression 
+718 
+profiling to perform both in-sample super-resolution enhancement and out-of-sample full-tissue 
+719 
+prediction. Given an input histology image, histological features are extracted as 
+720 
+𝐻= [ℎ!"]!#$,"#$
+&,'
+ 
+721 
+where ℎ!" represents the feature at superpixel (𝑚, 𝑛). Let 𝑋(!" denote the observed expression 
+722 
+of gene 𝑘 at superpixel (𝑚, 𝑛) in the training ST sample, and let 𝑃 be the set of superpixels with 
+723 
+measured gene expression. Then for each gene 𝑘, a prediction model 𝑔((∙) is trained by 
+724 
+minimizing the mean squared error (MSE) loss between predicted and observed gene expression 
+725 
+values: 
+726 
+ℒ= 2
+2 (𝑋(!" − 𝑔((ℎ!")))
+(!,")∈-
+.
+(#$
+ 
+727 
+ 
+728 
+After training, gene expression at each superpixel (𝑚, 𝑛) ∈𝑃 of the training sample is predicted 
+729 
+as 
+730 
+𝑦6(!" = 𝑔((ℎ!") 
+731 
+effectively leveraging information from all training superpixels across the entire tissue image, 
+732 
+yielding enhanced super-resolution gene expression within the profiled region. 
+733 
+  
+734 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 30 =====
+ 
+30 
+The trained model can further be applied to all superpixels across the entire tissue image, yielding 
+735 
+a continuous gene expression prediction 
+736 
+𝑌8 = [𝑦6(!"](#$,!#$,"#$
+.,&!,'!
+∈ℝ.×&!×'! 
+737 
+including regions without measured expression. Moreover, the same model can be directly 
+738 
+applied to histologically similar regions in new, unseen tissue samples to perform out-of-sample 
+739 
+expression prediction. 
+740 
+ 
+741 
+Neural network architecture and hyperparameter tuning 
+742 
+We employed a multi-layer perceptron (MLP) architecture consisting of a feed-forward neural 
+743 
+network with four hidden layers, each containing 256 neurons. A leaky ReLU activation function 
+744 
+with a negative slope of α = 0.1 was applied to each hidden layer to allow for non-linearity while 
+745 
+avoiding neuron inactivity. The model was trained using the Adam optimizer with a batch size of 
+746 
+128 for 1,200 epochs. The learning rate was adjusted based on the size of the input training 
+747 
+dataset to ensure stable convergence across samples of varying coverage. 
+748 
+ 
+749 
+Downsampling simulation 
+750 
+Due to the inherent noise and incompleteness of single-cell resolution ST data generated from 
+751 
+Visium HD, ground truth expression values are not directly available. Therefore, we restricted the 
+752 
+evaluation to the top 300 highly expressed genes in the Visium HD platform, as these genes are 
+753 
+less affected by dropout events and provide a more stable reference for assessing reconstruction 
+754 
+accuracy. 
+755 
+ 
+756 
+The downsampling procedure was implemented as follows: 
+757 
+1. Shrinkage factor generation: 
+758 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 31 =====
+ 
+31 
+For each superpixel 𝑖, we independently sample a shrinkage factor t0  from a shared 
+759 
+Gamma distribution, enabling systematic yet heterogeneous coverage reduction across 
+760 
+the spatial domain, 
+761 
+t0 ~ Gamma(mean =  0.1, sd =  0.03) 
+762 
+2. Library size adjustment: 
+763 
+The original total UMI count for each superpixel 𝑖, 𝑁0, is multiplied by its corresponding 
+764 
+shrinkage factor to generate a new, reduced library size: 
+765 
+𝑁0
+∗= 𝑁0 × t0  = 2 𝑋02
+3
+2#$
+× t0 
+766 
+3. Library size adjustment, 
+767 
+For each superpixel, we generate synthetic counts by sampling from a multinomial 
+768 
+distribution: 
+769 
+𝑋4∗
+IIII⃗ ~ Multinomial(𝑁0
+∗, 𝑝4III⃗) 
+770 
+where the probability vector 𝑝4III⃗ represents the relative abundance of each gene in the 
+771 
+original gene expression count data. 
+772 
+ 
+773 
+Evaluation metrics  
+774 
+For the downsampling experiments, we assessed reconstruction accuracy by comparing the 
+775 
+predicted gene expression profiles to the original (pre-downsampled) ground truth across spatial 
+776 
+locations. To capture different aspects of agreement between the downsampled, enhanced, and 
+777 
+ground truth data, we compute a comprehensive set of evaluation metrics. These included 
+778 
+Pearson and Spearman correlation coefficients, which quantify linear and rank-based 
+779 
+concordance, respectively; cosine similarity, which assesses directional alignment between 
+780 
+normalized expression vectors; and error-based metrics such as root mean squared error (RMSE) 
+781 
+and mean absolute error (MAE). All expression values are normalized to the [0, 1] range prior to 
+782 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 32 =====
+ 
+32 
+evaluation, and metrics are computed either across all spatial spots or restricted to regions with 
+783 
+nonzero ground truth expression. 
+784 
+ 
+785 
+To evaluate spatial autocorrelation at multiple resolutions, we evaluate spatial autocorrelation at 
+786 
+multiple resolutions using Moran’s I, a statistic that measures how spatially clustered or dispersed 
+787 
+the expression signal is, with a fast convolution-based method that handles missing values. To 
+788 
+simulate different spatial scales, we applied sum pooling to the expression matrix using window 
+789 
+sizes corresponding to 1´ (no pooling), 2´, and 4´ pooling factors. These correspond to 
+790 
+neighborhood radii of 16 pixels, 32 pixels, and 64 pixels, respectively, and are reported as Moran’s 
+791 
+I-16, Moran’s I-32, and Moran’s I-64. At each scale, the pooled expression matrix is passed to the 
+792 
+Moran’s I function to measure the degree of local spatial autocorrelation. This multi-scale 
+793 
+approach captures both fine-grained and broader spatial continuity, offering a robust view of how 
+794 
+well the reconstructed data preserves biologically relevant spatial structure. 
+795 
+ 
+796 
+Spatial clustering analysis 
+797 
+We perform spatial clustering in a two-stage manner to ensure both stability and interpretability 
+798 
+of the resulting clusters. First, we apply MiniBatch K-means clustering to the superpixel-level data, 
+799 
+intentionally specifying a slightly higher number of clusters than the desired number. This over-
+800 
+partitioning ensures that fine-grained spatial structures are captured early in the process. 
+801 
+ 
+802 
+Next, we refine the clustering results using an iterative hierarchical clustering-based merging 
+803 
+strategy. Specifically, we construct a hierarchical tree based on the centroids of the initial K-
+804 
+means clusters using a linkage matrix to merge clusters based on a dynamically adjusted distance 
+805 
+threshold. We then further merge small clusters whose superpixel counts fall below a predefined 
+806 
+fraction of the total counts (e.g., 0.5%). Samples from these small clusters are reassigned to their 
+807 
+nearest larger clusters based on Euclidean distances in feature space. 
+808 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 33 =====
+ 
+33 
+ 
+809 
+We repeat this process, adjusting the threshold at which the hierarchical clustering dendrogram 
+810 
+is cut to produce flat clusters, until the number of resulting clusters closely matches the target 
+811 
+number. In this sense, the hierarchical merging serves as a flexible post-processing step that 
+812 
+balances between over-segmentation and under-segmentation, producing spatial clusters that 
+813 
+are both meaningful and size regularized. 
+814 
+ 
+815 
+Data Availability 
+816 
+We analyzed the following datasets in this study: (1) 10x Genomics human colorectal cancer 
+817 
+Visium HD data, P1 CRC, P2 CRC, P5 CRC (https://www.10xgenomics.com/products/visium-hd-
+818 
+spatial-gene-expression/dataset-human-crc). (2) the corresponding 10x Genomics Xenium 
+819 
+human colorectal cancer datasets for CRC-P1, CRC-P2, and CRC-P5, available from the same 
+820 
+data 
+source. 
+(3) 
+10x 
+Genomics 
+mouse 
+brain 
+Visium 
+HD 
+data, 
+fresh 
+frozen 
+821 
+(https://www.10xgenomics.com/datasets/visium-hd-cytassist-gene-expression-mouse-brain-
+822 
+fresh-frozen). (4) 10x Genomics human gastric cancer tumor sample Xenium data (Gastric Patient 
+823 
+1, 
+Tumor, 
+IRB 
+No. 
+30-2023-1) 
+generated 
+by 
+Tae 
+Hyun 
+Hwang 
+lab 
+(DOI: 
+824 
+10.5281/zenodo.15164980). (5) 10x Genomics human breast cancer Xenium Prime 5K data 
+825 
+(https://www.10xgenomics.com/datasets/xenium-prime-ffpe-human-breast-cancer). (6) human 
+826 
+kidney CosMx data generated by Katalin Susztak (https://zenodo.org/records/17228449). (7) 10x 
+827 
+Genomics human lung cancer Xenium data (https://www.10xgenomics.com/datasets/xenium-
+828 
+human-lung-cancer-post-xenium-technote) 
+and 
+post-Xenium 
+Visium 
+HD 
+data 
+829 
+(https://www.10xgenomics.com/datasets/visium-hd-cytassist-gene-expression-human-lung-
+830 
+cancer-post-xenium-expt). Details of the datasets analyzed in this paper are described in 
+831 
+Supplementary Table 1. 
+832 
+ 
+833 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 34 =====
+ 
+34 
+Code Availability 
+834 
+Pixel2Gene 
+was 
+implemented 
+in 
+Python 
+and 
+is 
+available 
+on 
+GitHub 
+at 
+835 
+https://github.com/yaosicong1999/Pixel2Gene. 
+836 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 35 =====
+ 
+ 
+ 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 36 =====
+ 
+ 
+ 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 37 =====
+ 
+ 
+ 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 38 =====
+ 
+ 
+ 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 39 =====
+ 
+ 
+ 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 40 =====
+ 
+ 
+ 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
+
+===== PAGE 41 =====
+ 
+.
+CC-BY-NC-ND 4.0 International license
+available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is made 
+The copyright holder for this preprint
+this version posted February 23, 2026. 
+; 
+https://doi.org/10.64898/2026.02.21.707168
+doi: 
+bioRxiv preprint 
