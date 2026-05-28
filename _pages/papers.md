@@ -23,6 +23,7 @@ Researcher-focused reviews of work in medical AI, vision-language models, prompt
 <ul style="columns: 2; -webkit-columns: 2; -moz-columns: 2; list-style: none; padding-left: 0;">
 <li><a href="#cat-pathology">Pathology</a> &middot; <span style="color:#888;">{{ site.categories["Pathology"] | size }}</span></li>
 <li><a href="#cat-spatial-transcriptomics">Spatial Transcriptomics</a> &middot; <span style="color:#888;">{{ site.categories["Spatial-Transcriptomics"] | size }}</span></li>
+<li><a href="#cat-spatial-proteomics">Spatial Proteomics</a> &middot; <span style="color:#888;">{{ site.categories["Spatial-Proteomics"] | size }}</span></li>
 <li><a href="#cat-bioinformatics">BioInformatics</a> &middot; <span style="color:#888;">{{ site.categories["BioInformatics"] | size }}</span></li>
 <li><a href="#cat-llm">LLM</a> &middot; <span style="color:#888;">{{ site.categories["LLM"] | size }}</span></li>
 <li><a href="#cat-multimodal-alignment">Multimodal Alignment</a> &middot; <span style="color:#888;">{{ site.categories["Multimodal-Alignment"] | size }}</span></li>
@@ -35,9 +36,9 @@ Researcher-focused reviews of work in medical AI, vision-language models, prompt
 
 <hr>
 
-{% assign cat_keys = "Pathology,Spatial-Transcriptomics,BioInformatics,LLM,Multimodal-Alignment,VLM-Alignment,LLM-Agents,CT-Report-Generation,Generative-Models,Dataset" | split: "," %}
-{% assign cat_labels = "Pathology,Spatial Transcriptomics,BioInformatics,LLM,Multimodal Alignment,VLM Alignment,LLM Agents,CT Report Generation,Generative Models,Datasets" | split: "," %}
-{% assign cat_slugs = "pathology,spatial-transcriptomics,bioinformatics,llm,multimodal-alignment,vlm-alignment,llm-agents,ct-report-generation,generative-models,dataset" | split: "," %}
+{% assign cat_keys = "Pathology,Spatial-Transcriptomics,Spatial-Proteomics,BioInformatics,LLM,Multimodal-Alignment,VLM-Alignment,LLM-Agents,CT-Report-Generation,Generative-Models,Dataset" | split: "," %}
+{% assign cat_labels = "Pathology,Spatial Transcriptomics,Spatial Proteomics,BioInformatics,LLM,Multimodal Alignment,VLM Alignment,LLM Agents,CT Report Generation,Generative Models,Datasets" | split: "," %}
+{% assign cat_slugs = "pathology,spatial-transcriptomics,spatial-proteomics,bioinformatics,llm,multimodal-alignment,vlm-alignment,llm-agents,ct-report-generation,generative-models,dataset" | split: "," %}
 
 {% for key in cat_keys %}
 {% assign idx = forloop.index0 %}

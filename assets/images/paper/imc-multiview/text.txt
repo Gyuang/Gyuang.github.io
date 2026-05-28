@@ -1,0 +1,2274 @@
+
+===== PAGE 1 =====
+Multi-view deep learning of highly multiplexed 
+1 
+imaging data improves association of cell states 
+2 
+with clinical outcomes 
+3 
+ 
+4 
+Shanza Ayub1, 2, Hartland W. Jackson1,2,3, Alina Selega1,4,5 and Kieran R. Campbell1, 2, 3, 4, 6, 7, * 
+5 
+ 
+6 
+1 Lunenfeld-Tanenbaum Research Institute, Sinai Health System, Toronto, ON M5G 1X5, Canada 
+7 
+2 Department of Molecular Genetics, University of Toronto, Toronto, ON M5S 1A8, Canada 
+8 
+3 Ontario Institute of Cancer Research, Toronto, ON M5G 1M1, Canada  
+9 
+4 Vector Institute, Toronto, ON M5G 1M1, Canada 
+10 
+5 Present address: Recursion Canada 
+11 
+6 Department of Statistical Sciences, University of Toronto, Toronto, ON M5S 3G3, Canada 
+12 
+7 Department of Computer Science, University of Toronto, Toronto, ON M5T 3A1, Canada 
+13 
+* Correspondence: kierancampbell@lunenfeld.ca 
+14 
+Abstract 
+15 
+Highly multiplexed imaging technologies can quantify the expression of 10s-100s of proteins and their 
+16 
+modifications at sub-cellular resolution. Applications to tissue specimens across a broad array of 
+17 
+pathologies have enabled patient subtyping in terms of novel cell states and spatial cell communities 
+18 
+and linked their prevalence and overall architecture to patient outcomes. While highly multiplexed 
+19 
+imaging analysis workflows typically summarize each cell in terms of its post-segmentation mean 
+20 
+expression, additional cellular information can be quantified including cell morphology, sub-cellular 
+21 
+expression patterns, and spatial cellular context, ultimately giving a multi-modal view of each cell. While 
+22 
+deep latent variable models such as variational autoencoders (VAEs) are well established for other 
+23 
+multi-modal single-cell assays, their ability to integrate these multiple views of a cell from highly 
+24 
+multiplexed imaging data remains largely unknown. 
+25 
+ 
+26 
+Here, we explore the abilities of multi-modal VAEs to learn unified latent cellular representations from 
+27 
+multiple views of each single-cell quantified from highly multiplexed imaging, including mean 
+28 
+expression, morphology, sub-cellular protein co-localization, and spatial cellular context, while 
+29 
+conditioning on technical and batch specific effects. We first discuss strategies for training and 
+30 
+hyperparameter optimization of such models across a set of highly multiplexed imaging datasets of 
+31 
+breast and melanoma cancers. We next quantify the relevance of the integrated multi-modal latent 
+32 
+space in predicting patient-specific clinical outcomes and demonstrate competitive performance across 
+33 
+a range of outcomes compared to existing baselines. Then, we explore the ability of the cellular 
+34 
+representations to learn cellular phenotypes that align with known cell types and find that the 
+35 
+expression-specific latent representation can identify clusters more closely aligned with known 
+36 
+lymphocyte and epithelial subpopulations compared to established workflows. Finally, we test the ability 
+37 
+of each representation to perform consistent batch integration across different cohorts and discuss the 
+38 
+considerations on taking known background variables into account.  
+39 
+ 
+40 
+ 
+41 
+ 
+42 
+ 
+43 
+ 
+44 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 2 =====
+1 
+ 
+Introduction 
+45 
+Highly multiplexed imaging (HMI) technologies can quantify the expression of 10-100  proteins and their 
+46 
+modifications 
+within 
+single 
+cells 
+while 
+retaining 
+their 
+spatial 
+locations. 
+These 
+include 
+47 
+immunofluorescence based assays such as cyclic immunofluorescence which use optical imaging1,2, 
+48 
+and mass cytometry based assays such as Imaging Mass Cytometry (IMC) and Multiplexed Ion Beam 
+49 
+Imaging3,4. These technologies have revolutionized cancer research by elucidating spatial tumour 
+50 
+heterogeneity with significant consequences for patient outcomes5,6. The standard analytical workflow 
+51 
+of HMI data includes cell segmentation that identifies single cells within the image and generates a cell 
+52 
+segmentation mask, containing cell IDs and their spatial locations. Most studies subsequently cluster 
+53 
+cells based on the mean protein expression and use spatial information contained in these images to 
+54 
+detect patterns in tissue architecture2. However, cellular states and functions are additionally 
+55 
+determined by protein subcellular localization, cellular morphology, and the influence of local spatial 
+56 
+architecture within a tissue7–9.  
+57 
+  
+58 
+Deep learning methods are gaining popularity as analysis tools for HMI data but have been largely 
+59 
+limited to image segmentation and cell type annotation10. Improved segmentation using deep learning 
+60 
+in HMI data allows for accurate identification of cells within a tissue image which is crucial for cell type 
+61 
+assignment and further downstream analysis has revealed distinct communities in the tumour 
+62 
+microenvironment (TME) associated with clinical outcomes11–13. Deep learning methods have also 
+63 
+improved and automated identification of major cell types in tissues14–16, but these methods cannot be 
+64 
+used to identify variations within these major cell types as they are limited to using single-cell protein 
+65 
+expression alone and do not take into account the spatial context of the cells. Some studies incorporate 
+66 
+spatial information and the tissue context to understand cell states17,18 but these ignore the impacts of 
+67 
+protein subcellular localization on cell state and differences in cell morphology. 
+68 
+  
+69 
+Spatial transcriptomics (ST) and single-cell RNA sequencing (scRNA-seq) have seen more application 
+70 
+of deep learning methods, largely for batch correction and spot deconvolution with the aim to identify 
+71 
+cell types and states19–21. Further, existing deep learning methods integrate different modalities such as 
+72 
+totalVI, which integrates cell surface protein expression with transcriptomics data22 and DeepST and 
+73 
+SpatialDIVA which use data from histology and spatial transcriptomics images to identify spatial 
+74 
+domains of clinical importance23,24. Many of these models follow a Variational Autoencoder (VAE) 
+75 
+framework and have shown state-of-the-art performance in integrating multi-modal data inputs, 
+76 
+enabling the classification of cell states not identifiable by a single data type alone25. VAEs are 
+77 
+generative deep unsupervised models that learn a latent space—a compressed lower dimensional 
+78 
+representation of the high dimensional input data—that tries to strike a balance between accurate data 
+79 
+reconstruction and model generalizability26–28. The lower dimensional latent representation learnt by a 
+80 
+VAE captures relevant features in the data that can be used for downstream analysis such as clustering 
+81 
+and cell state identification as well as associations with clinical variables using patient data29,30. 
+82 
+ 
+83 
+Here, we propose a multi-modal VAE for highly multiplexed imaging data (hmiVAE) that learns 
+84 
+combined and mode-specific latent representations from input mean expression, morphology, protein 
+85 
+nuclear co-localization, and spatial cellular context, while conditioning on technical and batch specific 
+86 
+effects. We apply this model to several IMC datasets of breast and melanoma cancers5,6,31 and quantify 
+87 
+the extent to which the integrated multi-modal latent space is predictive of specific clinical outcomes 
+88 
+compared to existing approaches. Next, we show that our expression-specific representation can 
+89 
+identify cell clusters more closely aligned with known lymphocyte and epithelial subpopulations 
+90 
+compared to established workflows. Finally, we test the ability of our model to perform consistent batch 
+91 
+integration across different cohorts. Together, this study provides the first exploration of using multi-
+92 
+modal VAEs to learn meaningful cell representations from highly multiplexed imaging data and 
+93 
+demonstrates its utility on several common downstream analysis tasks. 
+94 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 3 =====
+2 
+ 
+Results 
+95 
+Exploring hyperparameter effects and unveiling cellular heterogeneity using multi-view 
+96 
+integration with hmiVAE 
+97 
+We first developed a data processing pipeline to extract four views from IMC data: (i) mean protein 
+98 
+expression, (ii) protein nuclear co-localization, (iii) cell morphology and (iv) cell spatial context. We 
+99 
+extract these views for each cell within an image. First, we extract mean protein cellular expression by 
+100 
+taking the mean of the protein expression across all the pixels belonging to a cell. Second, we use the 
+101 
+per-pixel protein expression counts and find the correlation between these and the mean nuclear score 
+102 
+as a proxy for nuclear co-localization. Third, we compute the cell morphology features using image 
+103 
+processing libraries in Python (Methods). Finally, we summarise the expression counts, nuclear co-
+104 
+localization, and morphology for the k nearest neighbours of each cell to get the spatial context. 
+105 
+Furthermore, highly multiplexed imaging data suffers from technical artefacts such as speckles resulting 
+106 
+from non-specific antibody binding and uneven signal intensities across samples32. To control for such 
+107 
+batch effects, we condition on sample specific identifiers and likely technical artefacts by including a 
+108 
+one-hot encoding of cells belonging to each sample and computing covariates such as per-sample 
+109 
+mean image intensity (Methods). These views and covariates form the input to our highly multiplexed 
+110 
+imaging variational autoencoder (hmiVAE). hmiVAE builds on a standard VAE architecture consisting 
+111 
+of two neural networks, an encoder and decoder. The encoder takes in each view (expression, nuclear 
+112 
+co-localization, morphology and spatial context) and batch-specific information to first learn a separate 
+113 
+representation for each view and then concatenates them to learn an integrated latent space. The 
+114 
+decoder then samples from this integrated latent space to reconstruct each view (Fig. 1A & Methods). 
+115 
+The integrated latent space, as well as the view-specific embeddings can then be used for downstream 
+116 
+tasks such as cell type interpretation and associations with clinical variables. 
+117 
+  
+118 
+As tuning hyperparameters is a key aspect of successfully training any  deep learning method33,we 
+119 
+considered how varying a set of parameters affected the validation loss. Specifically, we selected (i) the 
+120 
+number of hidden layers, (ii) the size of the hidden layers (i.e. hidden layer dimension), (iii) latent space 
+121 
+dimensionality, (iv) batch size, and (v) the weight of the KL divergence term with a warmup and constant 
+122 
+schedule (Methods) and applied grid search over these to test how each impacted the reconstruction 
+123 
+likelihood. We found that implementing a schedule on the weight resulted in  better reconstruction than 
+124 
+keeping it constant throughout training (Fig. 1C), a result also observed in other studies22,34. We also 
+125 
+noticed that while the dimensionality of the latent space and the number of hidden layers did not have 
+126 
+a large effect on the reconstruction likelihood (Fig. 1D&E), a larger hidden layer size resulted in better 
+127 
+reconstruction (Fig. 1F). Similarly, having a smaller batch size during training also resulted in better 
+128 
+reconstruction (Fig. 1G). We trained the models with the best-performing hyperparameters for each 
+129 
+dataset, Jackson-BC and Ali-BC which are breast cancer IMC datasets from Jackson et al. (2020)5 and 
+130 
+Ali et al. (2020)6 respectively with epithelial and stromal marker panel, and Hoch-Melanoma which is a 
+131 
+melanoma IMC dataset from Hoch et al.(2022)31 with an immune marker panel (Methods, 
+132 
+Supplementary Table S1). The resulting latent spaces from hmiVAE can be used for downstream 
+133 
+analysis19,22,23. Using leiden clustering from the single-cell analysis Python library, scanpy35 (Methods), 
+134 
+we clustered the resulting latent spaces, we refer to these as integrated clusters below.  
+135 
+  
+136 
+To quantify the influence of each view on the resulting cell clusters, we individually ranked the features 
+137 
+corresponding to each view (Methods) by the magnitude of their association with each integrated 
+138 
+cluster (Methods). Visualizing the top three features per cluster shows that for each dataset many 
+139 
+clusters had similar average expression profiles but differed in the localization of different proteins or 
+140 
+the context of their neighbouring cells (Fig. 2). In the Ali-BC dataset (Fig. 2B), integrated clusters 12 
+141 
+and 21 both represent stromal cell clusters based on expression of Vimentin and Smooth muscle actin 
+142 
+(SMA). However, they differ in terms of their spatial context: cluster 12 indicates stromal cells 
+143 
+surrounded by apoptotic epithelial cells, given by cluster 12’s association with the expression of 
+144 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 4 =====
+3 
+ 
+cPARP/cCasp3 and EpCAM in the neighbourhood, whereas cells in cluster 21 show a negative 
+145 
+association with neighbourhood expression of cPARP/cCasp3 and EpCAM.  Similarly, in the Hoch-
+146 
+Melanoma dataset, integrated clusters 4, 9 and 15 represent tumour cells, with cells in clusters in 9 and 
+147 
+15 having atypical morphology. Cluster 4 differs from others by the presence of a tumour suppressive 
+148 
+environment indicated by the neighbourhood expression of markers for T regulatory cells (CD3, FOXP3 
+149 
+and TOX1) and macrophages (CD11b) (Fig. 2C). In the Jackson-BC dataset, we find integrated clusters 
+150 
+1, 7 and 5, which represent epithelial cells as indicated by expression but cells in cluster 1 differ in the 
+151 
+self and neighbourhood expression of the hypoxia marker CAIX and Epidermal growth factor receptor 
+152 
+(EGFR) as well as the nuclear co-localization of these markers (Fig. 2A). 
+153 
+Expression-only embeddings improve cell type interpretation 
+154 
+Cell type annotation represents an important step in IMC data analysis workflow to provide insights into 
+155 
+the cellular compositions of the tissues. Since this is commonly performed using the mean expression 
+156 
+of proteins, we aimed to evaluate the efficacy of using the expression-specific cell representations from 
+157 
+hmiVAE for this task and compared it to cell types found by clustering over the mean protein expression 
+158 
+values using a standard community detection algorithm, Louvain36 and a popular clustering method, 
+159 
+FlowSOM37 (Methods). 
+160 
+ 
+161 
+For the Ali-BC and Jackson-BC datasets that contain markers for major cell type lineages within 
+162 
+epithelial, stromal and immune compartments, hmiVAE identified distinct clusters corresponding to 
+163 
+CD3+ T cells, CD20+ B cells and CD68+ macrophages (Fig. 3 A&B). For Ali-BC, FLowSOM and 
+164 
+Louvain found a general immune cluster which showed a mix of CD45, CD3 and CD68 markers (Fig. 
+165 
+3A). For Jackson-BC, FlowSOM found two clusters that corresponded to T cells and general immune 
+166 
+cells, while Louvain found a cluster which corresponded to B cells (Fig. 3B). Majority of clusters found 
+167 
+by all methods represent luminal epithelial cells. In both datasets, hmiVAE identified a distinct basal 
+168 
+epithelial cell cluster with clear expression of CK5 and CK14. Louvain clustering found two basal 
+169 
+epithelial cell clusters in the Ali-BC one of which shows a mix of other stromal markers like SMA while 
+170 
+the other only shows expression of CK14. In the Jackson-BC dataset, Louvain finds a basal epithelial 
+171 
+cell cluster only showing expression of CK14 with low expression of CK5 (Fig. 3). For both datasets, 
+172 
+FlowSOM resulted in many clusters which did not show high expression of any markers and therefore 
+173 
+could not be assigned to any cell types represented by the marker panels. 
+174 
+ 
+175 
+To further compare the clusters found by hmiVAE to those found by Louvain and FlowSOM, we treated 
+176 
+the single-cell type assignments from Jackson et. al (2020)5 and Ali et al. (2020)6 as the ground truth 
+177 
+labels for the Jackson-BC and Ali-BC datasets. For the Jackson-BC datasets, we also retrieved manual 
+178 
+single-cell annotations by two independent annotators for a subset of 500 cells from Geuenich et al. 
+179 
+(2021)14. We contrasted clusters with ground truth using the Adjusted Rand Index (ARI), a metric that 
+180 
+quantifies the similarity between two clusterings of data points38. We found that for both datasets, 
+181 
+hmiVAE achieves the highest ARI when compared to Louvain and FlowSOM indicating that it is better 
+182 
+able to recapitulate the original, published cell type assignments (Fig. 4C). For the Ali-BC dataset, the 
+183 
+ARI for hmiVAE is comparable to FlowSOM, but this is expected since FlowSOM was used in the 
+184 
+original publication for clustering (Fig. 4B). In the comparisons with the manual-labelled single cell 
+185 
+annotations, we found that only by using the expression embedding from hmiVAE to cluster, we were 
+186 
+able to correctly identify B cells, macrophages and endothelial cells, while Louvain and FlowSOM failed 
+187 
+to correctly identify these cell types in the subset of 500 cells. Louvain showed higher precision but 
+188 
+similar recall in calling basal epithelial cells while hmiVAE had higher precision but lower recall for 
+189 
+stromal cells. All methods had very similar precision and recall for luminal epithelial cell populations. 
+190 
+This highlights that the expression-only cell representations learnt by hmiVAE may allow for the 
+191 
+discernment of subtle immune and epithelial cell subtypes. 
+192 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 5 =====
+4 
+ 
+ 
+193 
+Figure 1. Multi-view integration of highly multiplexed imaging data using multi-modal variational 
+194 
+autoencoders. A hmiVAE architecture. hmiVAE takes in inputs from 4 cell-specific views: protein 
+195 
+expression, protein-nuclear co-localization, cell morphology and cell spatial context. At the encoder 
+196 
+stage, it first learns separate embeddings for each view which are then concatenated to learn a 
+197 
+combined latent space. The decoder samples from this latent space to reconstruct the inputs. B 
+198 
+Downstream tasks. The latent space and view-specific embeddings can be used for tasks such as cell 
+199 
+type interpretation and association with clinical variables. We can also project cells from different 
+200 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 6 =====
+5 
+ 
+datasets into the learnt latent space to find representations for these cells. C - G Hyperparameter tuning. 
+201 
+Hyperparameter tuning results across datasets for beta scheme for KL-Divergence weighting (constant 
+202 
+or warm-up) (C), latent space size (D), number of hidden layers (E), size of hidden layers (F), and batch 
+203 
+size (G). 
+204 
+205 
+Figure 2. Ranking features across each view for integrated space clusters. Heatmaps showing 
+206 
+the t-values for each feature representing their association with each integrated cluster in the dataset. 
+207 
+Clusters in each dataset show differing patterns of within-cell protein expression, nuclear colocalization 
+208 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 7 =====
+6 
+ 
+and morphology, and neighbourhood-cell protein expression, nuclear colocalization and morphology. A 
+209 
+Association of clusters found from the integrated latent space of hmiVAE run on Jackson-BC. B 
+210 
+Association of clusters found from the integrated latent space of hmiVAE run on Ali-BC. C Association 
+211 
+of clusters found from the integrated latent space of hmiVAE run on Hoch-Melanoma. Spatial context - 
+212 
+E (neighbourhood-cell protein expression), Spatial context - NC (neighbourhood-cell protein nuclear co-
+213 
+localization), Spatial context - M (neighbourhood-cell morphology).  
+214 
+ 
+215 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 8 =====
+7 
+ 
+Figure 3. Cell type interpretation using expression-specific embeddings from hmiVAE and 
+216 
+comparisons with Louvain and FlowSOM. Heatmaps showing expression values of expression-only 
+217 
+features scaled to be between 0 and 1. Cell counts within each cluster are shown as logarithmized cell 
+218 
+counts. A Cell types identified using hmiVAE vs identified by Louvain and FlowSOM in Ali-BC using 
+219 
+only the expression features set. FlowSOM finds clusters with a mix of cell type markers, with one 
+220 
+generalised immune cell cluster and some clusters that do not show high expression for any markers. 
+221 
+Louvain also finds a general immune cell cluster and luminal and basal epithelial cell clusters. Clusters 
+222 
+from the expression-only embeddings from hmiVAE finds specific immune cell clusters corresponding 
+223 
+to B cells, T cells and macrophages, as well as luminal and epithelial cell clusters. B Cell types identified 
+224 
+using hmiVAE vs those identified by Louvain and FlowSOM in Jackson-BC using only the expression 
+225 
+features set. Similar to Ali-BC, FlowSOM finds clusters showing a mix of markers with two clusters 
+226 
+corresponding to T cells and general immune cells, one cluster of endothelial cells and many clusters 
+227 
+which do not show high expression for any markers. Louvain finds a cluster corresponding to B cells 
+228 
+and clusters corresponding to basal and luminal epithelial cells. As before, clusters from the expression-
+229 
+only embeddings from hmiVAE finds clusters corresponding to B cells, T cells and macrophages, as 
+230 
+well as clusters corresponding to endothelial cells, basal and luminal epithelial cells.  
+231 
+ 
+232 
+ 
+233 
+Figure 4. Comparisons of expression-only clusters found by hmiVAE, Louvain and FlowSOM. 
+234 
+Using manual ground truth annotations for Jackson-BC, clusters found using the expression embedding 
+235 
+of hmiVAE had higher precision in calling immune cells (B cells and macrophages), endothelial, and 
+236 
+stomal cell populations (A) and higher recall for all immune cell populations in the dataset (B). C 
+237 
+Comparison to published annotations. When comparing to single-cell annotations from publications, 
+238 
+hmiVAE was best in recapitulating the annotations for both datasets when compared to FlowSOM and 
+239 
+Louvain.  
+240 
+Clusters from integrated space are associated with clinical variables and patient 
+241 
+survival 
+242 
+Existing approaches have used the latent space of a deep unsupervised models to encode spatial 
+243 
+information and marker expression to derive patterns that provide clinically meaningful differences 
+244 
+between patient groups18,29,39,40. Therefore, we examined whether the presence of the integrated 
+245 
+clusters was associated with clinical variables such as stage, grade and cancer subtype 
+246 
+(Supplementary Table S1) and survival. We first established two metrics quantifying the presence of 
+247 
+cells from a specific cluster within a patient’s tissue sample:  (i) cluster proportions, which can be 
+248 
+described as the relative abundance of a cluster compared to others, and (ii) cluster prevalence per 
+249 
+mm2 of tissue, which can be seen as a measure of a cluster’s density within the tissue (Fig. 5A, 
+250 
+Methods). We calculated these metrics both the integrated clusters from hmiVAE as well as a baseline 
+251 
+of the FlowSOM and Louvain clusters when using the full input feature set. We also compared with the 
+252 
+clusters found by hmiVAE using only the expression feature embedding and the clusters found by 
+253 
+FlowSOM and Louvain using the expression features only. For both prevalence measures, we 
+254 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 9 =====
+8 
+ 
+computed its association with each cluster for each dataset. We also applied a Cox proportional hazards 
+255 
+model to identify the clusters that were predictive of survival after stratifying on cancer stage (Methods). 
+256 
+Across the Jackson-BC and Ali-BC datasets, we observed that although the difference between the 
+257 
+mean cluster association with clinical variables across methods was not statistically significant, hmiVAE 
+258 
+integrated clusters exhibited stronger associations with clinical variables compared to clusters from 
+259 
+other methods, as assessed by both measures (Fig. 5B). For the Hoch-Melanoma dataset, we found 
+260 
+the cluster proportions for the expression-only clusters had significantly higher associations with clinical 
+261 
+variables than the clusters found by running FlowSOM and Louvain on only the expression (Fig. 5B). 
+262 
+Our findings suggest that the integrated latent space learned by hmiVAE may provide a more robust 
+263 
+representation of cellular phenotypes associated with clinical variables compared to traditional 
+264 
+clustering methods. 
+265 
+To quantify the association between cluster prevalence and patient survival, we evaluated the 
+266 
+concordance indices of Cox proportional hazards (CoxPH) models applied to clusters obtained as 
+267 
+described above while controlling for disease stage. We observed that the hmiVAE integrated clusters 
+268 
+consistently showed the highest concordance indices across all datasets, indicating better predictive 
+269 
+performance in survival analysis (Fig. 6A). Furthermore, the superior performance of hmiVAE 
+270 
+integrated clusters was statistically significant compared to directly clustering the entire feature set, 
+271 
+particularly when using the cluster prevalence per mm2 of tissue. This significance was consistent 
+272 
+across all datasets, suggesting that the integrated latent space learned by hmiVAE captures meaningful 
+273 
+biological variation associated with patient outcomes. Specifically, in the Ali-BC dataset, the difference 
+274 
+in concordance index between the hmiVAE integrated clusters and other methods was statistically 
+275 
+significant using both measures, further supporting the robustness of our model. 
+276 
+We next interpreted the biological features of the clusters with significant hazards ratios for both cluster 
+277 
+prevalence measures in Ali-BC and Hoch-Melanoma (Supplementary Fig. 4&5). In the Ali-BC dataset, 
+278 
+hmiVAE found a cluster (integrated cluster 0) whose higher prevalence was significantly associated 
+279 
+with higher risk based on a Cox proportional hazards model for both cluster proportion and tissue 
+280 
+prevalence. According to marker expression, this cluster consists of luminal epithelial cells expressing 
+281 
+the hypoxia marker, CAIX, and the proliferation marker, Ki67. Given the depletion of myoepithelial cells 
+282 
+(expressing SMA, CK5 or CK14) in this cluster and its spatial context (Fig. 1), we hypothesized it may 
+283 
+represent the hypoxic tumour core41. To investigate this further, we examined images from patients with 
+284 
+high and low presence of cluster 0 in their tissue sample (Fig. 6 & Supplementary Fig. 10). We found 
+285 
+that samples with a high presence of cluster 0 had high expression of the tumour cell marker panCK 
+286 
+and hypoxia marker CAIX, with little to no expression of SMA, CK5 or CK14. Also, in the few regions 
+287 
+that showed expression of SMA, the luminal epithelial cells were not surrounding the tumour cells. On 
+288 
+the other hand, for patients with a low number of cluster 0 cells, samples had high expression of SMA, 
+289 
+CK5 and CK14, low expression of panCK or CAIX, and the luminal epithelial cells were surrounded by 
+290 
+myoepithelial cells (Fig. 6B). This spatial pattern supports our hypothesis that cells belonging to cluster 
+291 
+0 found by hmiVAE might belong to the tumour core. 
+292 
+In the Hoch-Melanoma dataset, integrated cluster 10 was significantly associated with survival for both 
+293 
+measures whereas the hazard ratio for integrated cluster 15 was only significant using cluster 
+294 
+proportions. We found that cluster 10 represented tumour cells expressing and surrounded by cells 
+295 
+expressing IDO, which has been implicated in degrading T cell function42. These tumour cells were also 
+296 
+surrounded by T regulatory cells (given by the neighbourhood expression of FOXP3) and macrophages 
+297 
+(denoted by the neighbourhood expression of CD11b), both of which are canonical markers of a 
+298 
+immunosuppressive microenvironment43. In contrast, cluster 15 represented tumour cells without such 
+299 
+markers in their neighbourhood. A patient sample that had a high number of cells belonging to both 
+300 
+clusters exhibited a mixed pattern with cells closer to IDO expressing cells belonging to cluster 10 and 
+301 
+those away from these cells belonging to cluster 15 (Supplementary Fig. 7). We note that such spatially 
+302 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 10 =====
+9 
+ 
+informed patterns would be difficult to identify using mean protein expression alone, which highlights 
+303 
+the importance of incorporating neighbourhood information to identify cell states. 
+304 
+Our analysis demonstrates that the integrated clusters derived from the hmiVAE framework exhibit 
+305 
+significant associations with various clinical variables and patient survival outcomes across multiple 
+306 
+datasets, highlighting their potential as robust biomarkers for clinical stratification. Further investigations 
+307 
+with larger datasets and additional statistical tests may provide deeper insights into the significance of 
+308 
+these findings. Our results demonstrate the value of incorporating multi-view information and leveraging 
+309 
+deep learning approaches for more accurate and clinically relevant insights into cellular phenotypes 
+310 
+and their associations with patient outcomes in complex biological systems. 
+311 
+ 
+312 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 11 =====
+10 
+ 
+Figure 5. Clinical association with hmiVAE latent space. A Measures of cluster prevalence within a 
+313 
+patient sample. We used two methods to describe cluster prevalence. (i) Cluster proportion - proportion 
+314 
+of cells belonging to a given cluster within a patient and (ii) Cluster prevalence per mm2 of tissue or 
+315 
+tissue prevalence - the abundance of cells from one cluster relative to the overall size of the tissue 
+316 
+image. B Clinical variable associations across methods for all datasets. hmiVAE, using either clusters 
+317 
+from the expression embedding or integrated latent space, found clusters with higher associations than 
+318 
+Louvain and FlowSOM. Both Louvain and FlowSOM found clusters with higher clinical associations 
+319 
+when run over the full features set. P-value annotation: *: 0.01 < p <= 0.05; **: 0.001 < p <= 0.01; ***: 
+320 
+0.0001 < p <= 0.001; ****: p <= 0.0001. All n.s. comparisons are omitted. 
+321 
+ 
+ 
+322 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 12 =====
+11 
+ 
+Figure 6. Survival analysis across methods for all datasets.  A IMC images from the Ali-BC dataset. 
+323 
+Images showing DNA, panCK, CAIX, SMA, CK5 and CK14 expression, as well as cell masks coloured 
+324 
+by cell type and hmiVAE integrated space cluster ID for a patient with low number of cells belonging to 
+325 
+integrated space cluster 0 (bottom) and a patient with high number of cells belonging to integrated 
+326 
+space cluster 0 (top). B Concordance index for CoxPH models for each dataset across methods. 
+327 
+Clusters from the latent space learned by hmiVAE show higher concordance in comparison to Louvain 
+328 
+and FlowSOM across all datasets, especially using cluster prevalence per mm2 of tissue to summarise 
+329 
+cluster presence within a patient sample. P-value annotation:  *: 0.01 < p <= 0.05; **: 0.001 < p <= 0.01; 
+330 
+***: 0.0001 < p <= 0.001; ****: p <= 0.0001. All n.s. comparisons are omitted. 
+331 
+Latent space projection with hmiVAE 
+332 
+The latent space of a VAE captures the salient features that explain the variation in high dimensional 
+333 
+data26,44. Therefore, given shared original features in the high dimensional space, we sought to 
+334 
+investigate how similar and transferable the learnt latent space and feature embeddings were between 
+335 
+two IMC datasets. To do so we used the Ali-BC and Jackson-BC datasets, which share an antibody 
+336 
+panel. We trained hmiVAE on one dataset (reference dataset) and used it to generate latent space and 
+337 
+view-specific cell representations for the other dataset (query dataset). We did this by first clustering 
+338 
+cells from the reference dataset using their latent space representations or view-specific embeddings 
+339 
+and assigning them to a cluster ID. These latent cell representations or view-specific embeddings and 
+340 
+their associated cluster IDs were then used to train a K Nearest Neighbour model (KNN)45, we call this 
+341 
+the hmiVAE-KNN model. We then used the hmiVAE model trained on the reference dataset to generate 
+342 
+latent space representations and view-specific embeddings for cells in the query dataset and these 
+343 
+were then fed into the trained KNN model to generate cluster IDs. This approach was compared to a 
+344 
+baseline model where we clustered the cells from the reference dataset using their original features—
+345 
+full (including features from all views), expression, nuclear co-localization, morphology and spatial 
+346 
+context—and trained the KNN model using the resulting cluster IDs, we call this the baseline-KNN 
+347 
+model. We then used this baseline-KNN model to generate cluster IDs for cells in the query dataset 
+348 
+using their original features (Methods). For ground truth comparisons in the case of using the latent 
+349 
+space learnt by hmiVAE, we compared the labels for the query dataset from the hmiVAE-KNN model 
+350 
+to the cluster IDs resulting from training hmiVAE on the query dataset and clustering the cells to assign 
+351 
+cluster IDs. In the baseline-KNN case, we used cluster IDs generated by directly clustering the cells 
+352 
+from the query dataset using their original features for comparison. We applied KNN using both cosine 
+353 
+and Euclidean distance metrics and compared clustering results to ground truth (hmiVAE or baseline) 
+354 
+using the Adjusted rand index (ARI) and a balanced ARI score which adjusts the ARI score to weight 
+355 
+underrepresented and overrepresented classes similarly46 (Fig. 7A). 
+356 
+Our analysis revealed distinct performance trends based on the feature sets used. ARI and balanced 
+357 
+ARI also did not differ much except in the case of morphology-only features for hmiVAE-KNN especially 
+358 
+when projecting cells from Ali-BC onto the morphology-only embedding learnt from Jackson-BC (Fig. 
+359 
+7B&C). We notice that the baseline-KNN model consistently achieved higher ARI and balanced ARI 
+360 
+scores when applied to the full feature set and nuclear co-localization features in both datasets. While 
+361 
+hmiVAE exhibited superior performance in clustering when leveraging expression and spatial context 
+362 
+features (Fig. 7). Furthermore, the choice of distance metrics did not influence the projection capability 
+363 
+of the features learnt by hmiVAE but did when using the original features, especially for the full feature 
+364 
+set and morphology features. This delineation underscores the importance of considering which 
+365 
+features are being used for projection. Latent space projection is considered a beneficial potential 
+366 
+extension for applications in biology47, but our study demonstrates that this might not be so 
+367 
+straightforward when projecting cells from a different dataset onto a latent space or view-/modality-
+368 
+specific embedding.  
+369 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 13 =====
+12 
+ 
+ 
+370 
+ 
+371 
+Figure 7. Latent space projection analysis with hmiVAE and comparisons with baseline KNN. A 
+372 
+Schematic showing latent space workflow. A KNN model is trained using (i) labels from latent space or 
+373 
+view-specific embeddings of hmiVAE trained on Dataset 1 (hmiVAE-KNN) or (ii) labels from clustering 
+374 
+directly on the full or view-specific features set from Dataset 1 (baseline-KNN). Labels for an 
+375 
+independent dataset, Dataset 2, are generated from this trained KNN model. The KNN clustering results 
+376 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 14 =====
+13 
+ 
+are compared to cluster labels from ground truth Dataset 2 using adjusted rand index (ARI) or balanced 
+377 
+ARI. B - C Projection results for Jackson-BC as Dataset 1 and Ali-BC as Dataset 2 using both cosine 
+378 
+and euclidean distance metrics for KNN reported as ARI (B) and balanced ARI (C). D - E Projection 
+379 
+results for Ali-BC as Dataset 1 and Jackson-BC as Dataset 2 using both cosine and euclidean distance 
+380 
+metrics for KNN reported as ARI (D) and balanced ARI (E). Full - integrated space or full features set. 
+381 
+Discussion 
+382 
+Here, we have investigated the use of VAEs for multi-view modelling of IMC data. Our approach 
+383 
+revealed integrated clusters corresponding to diverse cellular phenotypes characterised by subtle 
+384 
+variations in protein expression, subcellular localization, and microenvironmental context. Notably, our 
+385 
+findings highlight the necessity of incorporating nuclear co-localization, morphological features, and 
+386 
+spatial information to capture the complexity of cellular states more accurately than from using 
+387 
+expression alone. We show that the view-specific embeddings and integrated latent representations for 
+388 
+each cell led to the identification of clusters which had strong associations with clinical variables and 
+389 
+patient survival, as well as improved performance for common downstream tasks such as cell type 
+390 
+annotation. We note that while this investigation followed the standard approach of extracting single 
+391 
+cells and identifying cell-level phenotypes, other studies have improved the performance on  
+392 
+downstream tasks by creating pixel-level annotations and thereby increasing robustness of the features 
+393 
+extracted48. This approach could be used to adapt our input features, such as pixel-level protein 
+394 
+expression and spatial context, and to investigate the effects on the learnt representations and the 
+395 
+performance on downstream tasks. Further, in this study, our exploration of hyperparameters in the 
+396 
+hmiVAE architecture unveiled effects on reconstruction performance, emphasising the importance of 
+397 
+dynamically adjusting the weight of the KL-Divergence term and optimising hidden layer size and batch 
+398 
+size for superior reconstruction. Leveraging these insights, we identified optimal hyperparameter 
+399 
+configurations for each dataset, maximising reconstruction likelihood to construct integrated clusters 
+400 
+representative of the underlying cellular heterogeneity. However, we  considered only a subset of 
+401 
+possible hyperparameters that could be expanded in future work to contain the learning rate known to 
+402 
+have a big impact on model performance49. In our case, it could also be beneficial to vary the size of 
+403 
+the view-specific embeddings given the differences in the number of features for each input view. 
+404 
+In our comparisons, all three methods, hmiVAE, FlowSOM and Louvain tended to find clusters with 
+405 
+higher associations with clinical variables when run on the set of features from all four views. Further, 
+406 
+hmiVAE was able to find distinct spatial patterns with poor survival outcomes without any prior 
+407 
+knowledge, indicating that this information is contained in IMC data and can be learned with deep 
+408 
+learning approaches in an integrated way. This shows the importance of incorporating views beyond 
+409 
+per-cell mean protein expression to learn cell states associated with disease. We expect that spatial 
+410 
+patterns and novel cell states learned by hmiVAE can be related to transcriptome or genome data where 
+411 
+there exist match patient samples. Such a study could reveal whether different genomic programs are 
+412 
+present in patients exhibiting higher or lower prevalence of specific cell states or spatial patterns, 
+413 
+thereby increasing our understanding of patient heterogeneity in disease. 
+414 
+Our analysis demonstrated that while hmiVAE performed well on integrating the different views of HMI 
+415 
+data and a variety of downstream analysis tasks, the applicability of such a method was not without its 
+416 
+limitations. The latent projection analysis showed that the learnt expression and spatial context 
+417 
+embedding generalised well over datasets with similar panel designs, but this was not the case for the 
+418 
+integrated latent space and the nuclear co-localization embedding, underlying the need to investigate 
+419 
+batch effects during projection for the different views. It may also be beneficial to understand how 
+420 
+network architecture affects this projection of new cells onto the latent space or view-specific 
+421 
+embeddings. Further work is also required to determine how well the learnt latent space generalises 
+422 
+over datasets with different panel designs, tissue types and disease conditions as well as which dataset 
+423 
+characteristics may impact generalisation. Further, using a KNN model for projection analysis, 
+424 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 15 =====
+14 
+ 
+especially of the latent space may not be suitable as it relies on distance metrics such as Euclidean 
+425 
+distance or cosine similarity to determine closeness of points. These metrics for similarity have been 
+426 
+seen to lead to arbitrary results when applied to learned latent space vectors50. It is worth noting that 
+427 
+finding effective quantitative benchmarks and metrics for deep learning methods using HMI data is 
+428 
+challenging since there is a lack of ground truth annotations as it involves time and expertise which 
+429 
+might not be readily available51. Further, established evaluation metrics do not exist for assessing the 
+430 
+biological validity of the found clusters and so some studies create their own metrics22, but these may 
+431 
+be hard to replicate in different studies. Therefore, there is a need to create robust and reliable metrics 
+432 
+and labels for testing and validating the application of deep learning methods to HMI data, which will 
+433 
+give us a better understanding of their utility beyond manual inspection and visualisation.  
+434 
+Overall, our investigation shows that deep learning methods such as VAEs can successfully integrate 
+435 
+different views of HMI data to learn cell state representations associated with clinically relevant variables 
+436 
+in cancer. Deep learning methods for HMI data are still in their infancy and our work highlights their 
+437 
+potential to improve understanding of patient-level disease presentation by leveraging rich information 
+438 
+captured by HMI technologies. 
+439 
+Methods 
+440 
+Datasets used 
+441 
+The Jackson-BC dataset comprised 358 images obtained from a Tissue Microarray (TMA) of tissue 
+442 
+sections sourced from breast cancer patients, encompassing 802,591 cells and incorporating 36 
+443 
+proteins, including two DNA intercalators5. The Ali-BC dataset, derived from the METABRIC study52, 
+444 
+featured 548 images from a TMA of tissue sections of patients with primary invasive carcinoma. This 
+445 
+dataset included 536,883 cells and utilised 39 stains, including two DNA intercalators6. Notably, both 
+446 
+datasets shared an antibody panel designed to target epitopes specific to breast cancer, encompassing 
+447 
+markers for cell cycle regulation, phosphorylation-based signalling, and distinctive markers for 
+448 
+epithelial, endothelial, mesenchymal, and immune cell types. The Hoch-Melanoma dataset comprised 
+449 
+167 images extracted from a TMA of biopsies originating from patients with stage 4 or stage 3 
+450 
+melanoma. This dataset encompassed 989,404 cells and employed 46 stains, incorporating two DNA 
+451 
+intercalators. The antibody panel for the Hoch-Melanoma dataset included markers for tumour cells, 
+452 
+alongside those targeting various immune cell types and their activation states31. Each dataset was 
+453 
+accompanied by comprehensive clinical and survival information, detailed in table S1. 
+454 
+Feature derivation 
+455 
+Each dataset consists of a: (1) 3-dimensional expression array which contains the pixel-level protein 
+456 
+expression counts, (2) cell segmentation mask array which contains cell ID assignments for each pixel 
+457 
+and (3) channel-to-protein identification dataframe which associates each z-stack in the expression 
+458 
+array to a protein measured in the experiment. The mask and expression arrays have the same x and 
+459 
+y coordinates, and the size of the z-axis in the expression array corresponds to the number of channels 
+460 
+in the channel file. 
+461 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 16 =====
+15 
+ 
+Expression features: To create the protein mean expression features, we subset to pixels belonging to 
+462 
+the same cell ID (as contained in the mask array) in the expression array for each protein. We average 
+463 
+over the counts over these pixels for each protein to give the average count for expression within that 
+464 
+individual cell. We do this for each cell creating a N x P matrix where N is the number of cells in the 
+465 
+dataset and P is the number of proteins measured in the experiment. We denote this matrix Y.  
+466 
+Protein nuclear localization score features: Due to the resolution of IMC, we restricted protein 
+467 
+subcellular localization to in-nucleus or not in-nucleus. Therefore, this should be treated as a protein 
+468 
+nuclear localization score. We generate this score by first creating a “mean nuclear stain” by taking the 
+469 
+average of the two Iridium DNA stains for each pixel. We subset to pixels belonging to the same cell ID 
+470 
+and then do a pixel-wise correlation between each protein and this mean nuclear stain. A high 
+471 
+correlation means that the same pixels within a cell have high expression of a given protein and a high 
+472 
+mean nuclear stain, suggesting that this protein is expressed in the nucleus. We do this for each cell 
+473 
+creating a N x P matrix where P is the number of correlations (note here that the number of correlations 
+474 
+equals the number of proteins measured in the experiment). We call this matrix S. 
+475 
+Morphology features: We use Python’s regionprops function from the scikit-image library53 to create the 
+476 
+morphology features: area, perimeter and eccentricity. We also adopt the concavity and asymmetry 
+477 
+features from DeepCell11. We compute these features for each cell, thereby creating a N x M matrix 
+478 
+where M is the number of morphology features. In our case, M = 5. We call this matrix M. 
+479 
+Spatial context features: For the spatial context features, we first compute the 10 nearest neighbours 
+480 
+based on spatial coordinates for each cell using scanpy35,45. Using these neighbours, we create a N x 
+481 
+N sparse matrix D s.t. Dij = 1 if cell i is the neighbour of cell j and 0 otherwise. We then scale Y, S, and 
+482 
+M to be such that each feature in these matrices has a mean 0 and variance 1 and concatenate these 
+483 
+together. The sparse matrix D is then multiplied with this concatenated matrix, with each component 
+484 
+normalised by the number of each cell’s neighbours. This gives us a N x L matrix, where L = P + C + 
+485 
+M. We call each row the spatial context of a cell, and denote this matrix by C.  
+486 
+Background features and one-hot encoding: We create a sample-wise one-hot encoding for each cell 
+487 
+i.e., for a given cell, the vector is of length R for R number of samples and has a 1 in position r  if the 
+488 
+cell belongs to sample r and 0 otherwise. Along with the one-hot encoding, we create several 
+489 
+background covariates. (1) When background stains such as ArAr80 were available, we computed the 
+490 
+mean background channel staining per cell and correlated this mean background stain with the mean 
+491 
+protein expression per cell for all proteins. A high correlation between the background stain and a 
+492 
+protein’s expression across cells would suggest a non-specific staining for that protein. (2) Since 
+493 
+staining efficiency can vary between tissue samples32, we also computed the ‘mean sample intensity’ 
+494 
+which we define as the average pixel intensity over all channels for an image. (3) We also computed 
+495 
+the average value of signal intensity across all the background channels per sample.  
+496 
+In the case where information about background stains was not available, we computed the sample 
+497 
+intensity and the average background stain of each protein.  These background stains were defined as 
+498 
+the mean over a protein’s expression values for 0-labelled pixels (in the mask file, pixels belonging to a 
+499 
+cell are denoted by a non-zero integer corresponding to that cell’s ID, whereas pixels that are labelled 
+500 
+as “0” are treated as background). We denote all background features and one-hot encoding covariates 
+501 
+by b. 
+502 
+hmiVAE Architecture 
+503 
+hmiVAE follows a Variational Autoencoder architecture26. It consists of two neural networks: an encoder 
+504 
+and a decoder. The encoder takes in a data matrix corresponding to each view, along with the additional 
+505 
+covariates outlined in Background features and one-hot encoding and generates a separate embedding 
+506 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 17 =====
+16 
+ 
+for each of the four views: protein mean expression, protein subcellular localization, cell morphology 
+507 
+and spatial context. These view-specific embeddings are then concatenated, passed through an 
+508 
+additional hidden layer and integrated to create a latent representation z for each cell informed by all 
+509 
+four views. The decoder takes in the latent representation of each cell and any additional covariates 
+510 
+input to the encoder, i.e. the input to the decoder is concatenated as z + b. The non-linear decoder 
+511 
+follows a symmetric architecture to the encoder in which integrated hidden layers are followed by view-
+512 
+specific hidden layers that reconstruct each view separately.  
+513 
+Model training 
+514 
+Hyperparameter tuning: We tuned the model by varying 6 hyperparameters: (i) initialization (random 
+515 
+seed – 0, 1, 42, 123, 1234), (ii) number of hidden layers (1 or 2), (iii) hidden layer size (i.e. number of 
+516 
+nodes in each hidden layer – 8, 32, 64), (iv) latent representation dimension (10 or 20), (v) beta scheme 
+517 
+(i.e. warmup of the weight of the KL-term in the Evidence Lower Bound (ELBO) loss, starting at zero 
+518 
+and incrementing by 0.1 after each epoch, or keeping the weight of the KL-term constant at 1.0) and 
+519 
+(vi) batch size (i.e. 40000, 16000, 8000, 5333, 4000). We optimized the ELBO loss function to train our 
+520 
+method as defined below: 
+521 
+𝐸𝐿𝐵𝑂 = 
+'
+! ∈ {%,'(,),*(}
+ '
+'
+,-.
+𝐸/[𝑙𝑜𝑔 𝑝(𝑥,,!|𝑧)] − 𝛽 𝐾𝐿(𝑞(𝑧|𝑋)||𝑝(𝑧)) 
+522 
+ 
+523 
+In the above equation, the left-hand side of the expression is the reconstruction likelihood for all views 
+524 
+summed, the right-hand side is the KL-divergence between the estimated distribution, q, and the true 
+525 
+distribution, p. The feature vector for each view j and cell i is represented by xi,j, z is the latent space 
+526 
+feature vector and X is the set of all feature vectors or data i.e. 𝑋 = {𝑥%, 𝑥'(, 𝑥), 𝑥*(}. 
+527 
+We created train and test splits for each dataset and used a grid search algorithm over the different 
+528 
+combinations of these hyperparameters and selected the combination that resulted in the best 
+529 
+reconstruction likelihood over test data. 
+530 
+Run with best model: hmiVAE was run on each dataset with the combination of hyperparameters that 
+531 
+resulted in the best test likelihood for that dataset. The optimal combinations for hyperparameters for 
+532 
+each dataset are detailed in Supplementary Table S2. The whole dataset is passed through the trained 
+533 
+model to generate the latent representations as well as the view-specific embeddings for each cell in 
+534 
+the dataset.  
+535 
+ 
+536 
+Clustering: For creating clusters, first we computed distances between all cells in the integrated and 
+537 
+view-specific latent spaces and found the 100 nearest neighbours within the corresponding latent space 
+538 
+for each cell using the neighbours function from scanpy35. Next, we use the leiden algorithm with 
+539 
+resolutions 1.0, 0.5, 1.0, 0.1 and 0.5 for clustering over the latent space, expression, correlation, 
+540 
+morphology and spatial context embeddings respectively. For the Ali-BC dataset, we clustered over the 
+541 
+expression-only cell embedding using a leiden resolution of 1.0.  
+542 
+ 
+543 
+Benchmarking with FlowSOM and Louvain: Louvain is a community detection algorithm36 very similar 
+544 
+to leiden54 and is popularly used in single-cell data analysis. To mimic the standard workflow in IMC 
+545 
+cluster analysis, we first found the 10 closest neighbours for each cell over the full and expression-only 
+546 
+feature space. We then tried different values for the resolution parameter in louvain to result in a number 
+547 
+of clusters which was at most 1 away from the number of hmiVAE leiden clusters for easy comparison. 
+548 
+For the Ali-BC dataset, a resolution of 0.3 for clustering over the expression-only feature space was 
+549 
+used, for the Jackson-BC dataset a resolution of 0.14 was used and for the Hoch-Melanoma dataset, 
+550 
+we used a resolution of 0.16. For the full feature set we used a resolution of 0.9 for Ali-BC, 0.4 for 
+551 
+Jackson-BC and 0.15 for Hoch-Melanoma. 
+552 
+ 
+553 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 18 =====
+17 
+ 
+FlowSOM, on the other hand, uses self-organising maps to sort single cells into clusters37 and requires 
+554 
+users to set the number of expected clusters. It does so iteratively until the cell membership of the 
+555 
+clusters stop changing or max iterations are reached. We set the number of neurons for clustering over 
+556 
+the full feature set and expression features to be equal to the number of hmiVAE clusters that were 
+557 
+found using the integrated space and expression-only embedding respectively. We noticed that as not 
+558 
+all neurons get cells assigned to them, FlowSOM ‘skips’ some cluster IDs and therefore, results in fewer 
+559 
+clusters than hmiVAE or Louvain. 
+560 
+Ranking of feature drivers per cluster and cell type annotation 
+561 
+Ranking features for integrated clusters: To identify the features driving the clustering in the integrated 
+562 
+latent space of hmiVAE, we applied the rank_gene_groups function from scanpy35 using the features 
+563 
+from each view separately. For each cluster, we selected the top three features which had a positive t-
+564 
+value and an adjusted p-value of less than 0.05. We combined all the features across all clusters and 
+565 
+as this list would contain lots of repeated features, we subset the list to only unique features across the 
+566 
+clusters and then selected their values for each cluster. For the final list of feature drivers across all 
+567 
+clusters, we relaxed our criteria for statistical significance and t-value to include the values for those 
+568 
+features which were not significantly different for some clusters among the list of unique features. 
+569 
+Annotation of cell types: For our cell type annotation we used the rank_gene_groups function from 
+570 
+scanpy35 and used violin plots for visual confirmation after applying a StandardScaler scaling of the 
+571 
+expression features. For the Ali-BC and Jackson-BC datasets, within the epithelial cell lineage, we used 
+572 
+CK8/18, CK19, CK7 and panCK as markers for luminal epithelial cells and CK5 and CK14 for basal 
+573 
+epithelial cells. CD31/vWF was used as a marker for endothelial cells, and Fibronectin was used to 
+574 
+determine fibroblasts and general stromal cells along with Vimentin and SMA. For immune cell lineage, 
+575 
+we used CD45 and CD20 for B cells, CD45 and CD3 for T cells and CD45 and CD68 for macrophages. 
+576 
+Some cell state markers were also included e.g. Ki67 for proliferation and CAIX for hypoxia.  
+577 
+For the Hoch-Melanoma dataset, the panel consisted of tumour cell markers (e.g. MiTF, SOX10, 𝛽-
+578 
+Catenin) and immune cell markers (e.g. CD3, CD8, CD303 etc.) and so, the cell types correspond 
+579 
+largely to these lineages. The panel also consisted of markers for T cell activation such as CD45RO for 
+580 
+memory T cells and CD45RA for naive T cells. 
+581 
+Any clusters that did not show any significant expression for the lineage markers as described above 
+582 
+were annotated as “unknown”. We carried out the same workflow to annotate cell types identified by 
+583 
+FlowSOM and Louvain by clustering over the expression-only features. 
+584 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 19 =====
+18 
+ 
+Benchmarking cell type annotations 
+585 
+Comparisons using published dataset annotations: For the Ali-BC and Jackson-BC datasets, the single-
+586 
+cell assignments were retrieved from the relevant publications. For the Ali-BC dataset, we converted 
+587 
+our annotations from hmiVAE, Louvain and FlowSOM into pandas dataframes, and merged it with the 
+588 
+dataframe containing the Ali-BC publication labels using the sample ID and cell ID. Similarly, for the 
+589 
+Jackson-BC dataset, we first matched each single-cell to its published meta cluster ID and created 
+590 
+sequential cell IDs for our cell labels to match those from the publication as the labels were not 
+591 
+sequential in the original masks which generated the cell IDs, however, it was a simple one-to-one 
+592 
+matching to create the sequential labels. The dataframes containing the published cell labels and our 
+593 
+annotations from hmiVAE, Louvain and FlowSOM were then merged as described earlier. The labels 
+594 
+were compared using the Adjusted Rand Index function available from scikit-learn package55. 
+595 
+Comparisons using manual ground truth annotation of 500 cells:  This was only performed for the 
+596 
+Jackson-BC dataset as this was the only dataset that had any manually labelled ground truth 
+597 
+annotations. These annotations were made by two independent annotators for a subset of 500 cells, 
+598 
+further details on how the annotations were done are described elsewhere14. We edited the format of 
+599 
+our cell IDs and merged the dataframes as described earlier and computed the precision, recall, 
+600 
+specificity and F1-score for the cell type classifications over these 500 cells using the classification 
+601 
+report and confusion matrix functions from the scikit-learn package55.   
+602 
+Association with clinical variables 
+603 
+We did so by using two methods to define cluster prevalence: 1) We summarised the proportion of cells 
+604 
+belonging to a sample from each cluster ID and 2) the prevalence of cells from each cluster per mm2 of 
+605 
+patient tissue. We did this analysis for cluster IDs which resulted from clustering over the full feature set 
+606 
+and only the expression features set for FlowSOM and Louvain. For hmiVAE we used the cluster IDs 
+607 
+which resulted from clustering over the integrated latent space and the expression-only cell 
+608 
+representations. 
+609 
+To get the proportion of cells belonging to a cluster ID, for each sample ID, we counted the number of 
+610 
+cells that belonged to each cluster ID and divided that number by the total number of cells within a 
+611 
+sample. This resulted in a number between 0 and 1 for each cluster ID and these numbers all summed 
+612 
+up to 1. We call this cluster proportion. 
+613 
+To get the prevalence of each cluster as an instance per mm2, for each sample ID, we counted the 
+614 
+number of cells that belonged to each cluster ID and divided it by the dimensions of the image belonging 
+615 
+to the sample ID. To make computation easier, we multiplied the resulting number with 1e6 (assuming 
+616 
+an image of size 1000x1000 pixels). We call this cluster instances per mm2 of tissue.  
+617 
+Association with clinical variables: We carried out an association study between the integrated latent 
+618 
+space and the clinical variables for the Jackson-BC, Ali-BC and Hoch-Melanoma datasets. This was 
+619 
+only done for hmiVAE as FlowSOM and Louvain only generate labels for each cell and do not generate 
+620 
+any embeddings. To understand and compare the association between the resulting clusters, we 
+621 
+conducted an association analysis between cluster prevalence and clinical variables for all three 
+622 
+methods (hmiVAE, Louvain, FlowSOM) across all three datasets. 
+623 
+Association of latent space with clinical variables: For association between the latent space and clinical 
+624 
+variables, for each sample in the dataset, we first calculated the median cell embedding for each 
+625 
+dimension of the latent space. Next, we selected patients belonging to the same category for each 
+626 
+clinical variable and ran a logistic regression with all the median latent space values to find the 
+627 
+associations of each latent dimension with each category for a given clinical variable. 
+628 
+During this analysis, we found that the inclusion of some latent dimensions for a few clinical variables 
+629 
+resulted in a singular matrix during computation, so we excluded them and re-ran a logistic regression 
+630 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 20 =====
+19 
+ 
+with the remaining latent dimensions. For some categories of clinical variables, there were not enough 
+631 
+samples so these were removed from the analysis. 
+632 
+Association of cluster proportion with clinical variables: Based on our definition of cluster proportion; in 
+633 
+order to prevent a degenerate matrix in our analysis, we ran a logistic regression one cluster ID at a 
+634 
+time using a 1 vs rest approach. We did this for all cluster IDs and all categories present within all clinical 
+635 
+variables. Categories that did not have enough samples, we removed or recorded with a ‘NA’ t-value. 
+636 
+Association of cluster prevalence as instances per mm2 of tissue: For the association between cluster 
+637 
+instances per mm2 of tissue, we did not have the same issue of a degenerate matrix as in the case of 
+638 
+cluster proportion and found that the scaling by 1e6 aided in this. Therefore, we ran a logistic regression 
+639 
+over all the cluster IDs for all categories within every clinical variable. Similarly, as before, categories 
+640 
+that did not have enough samples were removed or recorded with a ‘NA’ t-value. 
+641 
+Survival analysis using Cox proportional hazards models 
+642 
+To find the relationship between patient survival outcome and cluster prevalence, we used the python 
+643 
+lifelines package56 to fit a Cox proportional hazards model including disease stage as a covariate. We 
+644 
+carried out this analysis for each cluster ID at a time, for both cluster proportions and cluster instances 
+645 
+per mm2 of tissue. P values for hazard ratios were adjusted by Benjamini-Hochberg correction.  
+646 
+Projection on latent space and comparison with baseline 
+647 
+Only the Jackson-BC and Ali-BC datasets were included for this analysis as these share an antibody 
+648 
+panel. We did this analysis in two ways: use the latent space learnt from the cells in Jackson-BC to 
+649 
+generate low-dimensional cellular representations for cells in Ali-BC and vice versa. We will call the 
+650 
+dataset that the latent space belonged to as the ‘reference dataset’ and the dataset that is projected as 
+651 
+the ‘query dataset’.  
+652 
+While carrying out this analysis, we needed to be mindful of the different numbers of background stains 
+653 
+and samples present in both datasets as this would change the number of covariates expected by the 
+654 
+model. In the case where the query dataset had more background stains than the reference dataset, 
+655 
+we selected the stains that matched between the two. While in the case where the reference dataset 
+656 
+had more background stains than the query dataset, we selected all the stains present in the query 
+657 
+dataset while setting the value for all ‘missing’ stains to zero. In both scenarios, we used a random one-
+658 
+hot encoding for samples similar to Gayoso et al. (2021)22. This ensured that the number of total 
+659 
+covariates input to the model was the same between the reference and query datasets. Details of how 
+660 
+this analysis was carried out is outlined in the Latent space projection with hmiVAE section of the main 
+661 
+text. 
+662 
+Funding 
+663 
+This work was supported by funding from CIHR project grant PJT175270 (KC), NSERC Discovery grant 
+664 
+RGPIN-2020-04083 (KC), and a CIHR CGS-D fellowship no. 493990 (SA). This research was 
+665 
+undertaken, in part, thanks to funding from the Canada Research Chairs Program. 
+666 
+Data and code availability 
+667 
+Code 
+required 
+to 
+reproduce 
+this 
+study 
+can 
+be 
+found 
+at 
+https://github.com/camlab-
+668 
+bioml/hmiVAE_manuscript and code required to run the hmiVAE model can be found at 
+669 
+https://github.com/camlab-bioml/hmiVAE.  
+670 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 21 =====
+20 
+ 
+Contributions 
+671 
+Project conceptualization: SA, KRC, HJ. Data analysis and model development: SA, AS. Manuscript 
+672 
+preparation: SA, KRC. 
+673 
+Competing interests 
+674 
+K.R.C. reports consulting fees received from Abbvie Inc. unrelated to this work. H.W.J. has consulted 
+675 
+for and received travel and research support from Standard BioTools unrelated to this work. A.S. is 
+676 
+currently an employee of Recursion Canada. The remaining authors declare no competing interests. 
+677 
+Supplementary Materials 
+678 
+ 
+679 
+Cohort 
+# of Images 
+# of cells 
+Panel design 
+Clinical 
+variables 
+Tissue 
+Jackson-BC 
+358 
+802591 
+Stromal/Epithelial 
+HR/HER2 
+status, Clinical 
+subtype, 
+Cancer stage, 
+Treatment 
+response 
+Breast 
+Ali-BC 
+548 
+536883 
+Stromal/Epithelial 
+ER 
+status, 
+Cancer grade 
+and stage 
+Breast 
+Hoch-Melanoma 
+167 
+989404 
+Immune 
+Cancer stage, 
+Mutation, 
+Primary type, 
+Treatment 
+response 
+Skin 
+Table S1. Description for all datasets used in this study. 
+680 
+ 
+681 
+Cohort 
+Initializati
+on 
+(random 
+seed) 
+# of 
+hidden 
+layers 
+Hidden 
+layer dim. 
+Latent 
+representation 
+dim. 
+Beta 
+scheme 
+Batch 
+size 
+Jackson-BC  
+123 
+1 
+64 
+20 
+Warm-up 
+8000 
+Ali-BC 
+1234 
+2 
+32 
+20 
+Warm-up 
+4000 
+Hoch-Melanoma 
+123 
+1 
+64 
+20 
+Warm-up 
+16000 
+Table S2. Optimal hmiVAE model hyperparameters for each dataset. 
+682 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 22 =====
+21 
+ 
+ 
+683 
+Supplementary Figure 1. Ranking of all features for Louvain and FlowSOM across datasets. 
+684 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 23 =====
+22 
+ 
+ 
+685 
+Supplementary Figure 2. A) Cell types identified using hmiVAE vs identified by Louvain and FlowSOM 
+686 
+in Hoch-Melanoma. B) Proportion of cell types occurring in each integrated cluster from hmiVAE. 
+687 
+ 
+688 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 24 =====
+23 
+ 
+ 
+689 
+Supplementary Figure 3. CoxPH model hazard ratios with cluster proportions for clusters from full 
+690 
+feature set for Louvain and FlowSOM and hmiVAE integrated clusters for all datasets. 
+691 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 25 =====
+24 
+ 
+ 
+692 
+Supplementary Figure 4. CoxPH model hazard ratios with cluster prevalence per mm2 of tissue for 
+693 
+clusters from full feature set for Louvain and FlowSOM and hmiVAE integrated clusters for all datasets. 
+694 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 26 =====
+25 
+ 
+ 
+695 
+Supplementary Figure 5. CoxPH model hazard ratios with cluster proportions for clusters from 
+696 
+expression feature set for Louvain and FlowSOM and hmiVAE expression embedding clusters for all 
+697 
+datasets. 
+698 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 27 =====
+26 
+ 
+ 
+699 
+Supplementary Figure 6. CoxPH model hazard ratios with cluster prevalence per mm2 of tissue for 
+700 
+clusters from expression feature set for Louvain and FlowSOM and hmiVAE expression embedding 
+701 
+clusters for all datasets. 
+702 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 28 =====
+27 
+ 
+ 
+703 
+Supplementary Figure 7. IMC images from Hoch-Melanoma dataset showing patients that had a high 
+704 
+number of cells belonging to cluster 10 (top), cluster 15 (middle) or both (bottom). SOX10 and MiTF are 
+705 
+tumour cell markers, FOXP3, CD11b and IDO are markers for Tregs, macrophages and T cell 
+706 
+suppressive microenvironment, respectively. Integrated cluster IDs, cluster 10 in red and cluster 15 in 
+707 
+blue. 
+708 
+ 
+709 
+ 
+710 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 29 =====
+28 
+ 
+Supplementary Figure 8. Specificity and F1-Score for all methods in calling the different cell 
+711 
+populations when compared to manually annotated ground truth labels of 500 cells. 
+712 
+ 
+713 
+ 
+714 
+Supplementary Figure 9. Clinical association of hmiVAE latent space dimensions. 
+715 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 30 =====
+29 
+ 
+ 
+716 
+Supplementary Fig 10. IMC images from the Ali-BC dataset showing marker expression patterns for 
+717 
+SMA, CK5, CK14, panCK and CAIX in a patient with low number of cells belonging to cluster 0 (top) 
+718 
+and a patient with a high number of cells belonging to cluster 0 (bottom). Cells belonging to integrated 
+719 
+cluster 0 are shown in red, while all other clusters are shown in shades of grey. 
+720 
+ 
+721 
+ 
+722 
+ 
+723 
+ 
+724 
+ 
+725 
+ 
+726 
+ 
+727 
+ 
+728 
+ 
+729 
+ 
+730 
+ 
+731 
+ 
+732 
+ 
+733 
+ 
+734 
+ 
+735 
+ 
+736 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 31 =====
+30 
+ 
+References 
+737 
+1. 
+Lin, J.-R. et al. Highly multiplexed immunofluorescence imaging of human tissues and tumors 
+738 
+using t-CyCIF and conventional optical microscopes. Elife 7, (2018). 
+739 
+2. 
+Gut, G., Herrmann, M. D. & Pelkmans, L. Multiplexed protein maps link subcellular organization to 
+740 
+cellular states. Science 361, (2018). 
+741 
+3. 
+Giesen, C. et al. Highly multiplexed imaging of tumor tissues with subcellular resolution by mass 
+742 
+cytometry. Nat. Methods 11, 417–422 (2014). 
+743 
+4. 
+Angelo, M. et al. Multiplexed ion beam imaging of human breast tumors. Nat. Med. 20, 436–442 
+744 
+(2014). 
+745 
+5. 
+Jackson, H. W. et al. The single-cell pathology landscape of breast cancer. Nature 578, 615–620 
+746 
+(2020). 
+747 
+6. 
+Ali, H. R. et al. Imaging mass cytometry and multiplatform genomics define the phenogenomic 
+748 
+landscape of breast cancer. Nature Cancer 1, 163–175 (2020). 
+749 
+7. 
+Yousefi, R., Jevdokimenko, K., Kluever, V., Pacheu-Grau, D. & Fornasiero, E. F. Influence of 
+750 
+Subcellular Localization and Functional State on Protein Turnover. Cells 10, (2021). 
+751 
+8. 
+Way, G. P. et al. Morphology and gene expression profiling provide complementary information 
+752 
+for mapping cell state. Cell Syst 13, 911-923.e9 (2022). 
+753 
+9. 
+Li, D., Ding, J. & Bar-Joseph, Z. Identifying signaling genes in spatial single-cell expression data. 
+754 
+Bioinformatics 37, 968–975 (2021). 
+755 
+10. Zidane, M. et al. A review on deep learning applications in highly multiplexed tissue imaging data 
+756 
+analysis. Front Bioinform 3, 1159381 (2023). 
+757 
+11. Greenwald, N. F. et al. Whole-cell segmentation of tissue images with human-level performance 
+758 
+using large-scale data annotation and deep learning. Nat. Biotechnol. 40, 555–565 (2022). 
+759 
+12. Rahim, M. K. et al. Dynamic CD8+ T cell responses to cancer immunotherapy in human regional 
+760 
+lymph nodes are disrupted in metastatic lymph nodes. Cell 186, 1127-1143.e18 (2023). 
+761 
+13. van Maldegem, F. et al. Characterisation of tumour microenvironment remodelling following 
+762 
+oncogene inhibition in preclinical studies with imaging mass cytometry. Nat. Commun. 12, 5906 
+763 
+(2021). 
+764 
+14. Geuenich, M. J. et al. Automated assignment of cell identity from single-cell multiplexed imaging 
+765 
+and proteomic data. Cell Syst 12, 1173-1186.e5 (2021). 
+766 
+15. Amitay, Y. et al. CellSighter: a neural network to classify cells in highly multiplexed images. Nat. 
+767 
+Commun. 14, 4302 (2023). 
+768 
+16. Lee, H.-C., Kosoy, R., Becker, C. E., Dudley, J. T. & Kidd, B. A. Automated cell type discovery and 
+769 
+classification through knowledge transfer. Bioinformatics 33, 1689–1695 (2017). 
+770 
+17. Zhang, W. et al. Identification of cell types in multiplexed in situ images by combining protein 
+771 
+expression and spatial information using CELESTA. Nat. Methods 19, 759–769 (2022). 
+772 
+18. Tanevski, J., Flores, R. O. R., Gabor, A., Schapiro, D. & Saez-Rodriguez, J. Explainable multiview 
+773 
+framework for dissecting spatial relationships from highly multiplexed data. Genome Biol. 23, 97 
+774 
+(2022). 
+775 
+19. Lopez, R. et al. DestVI identifies continuums of cell types in spatial transcriptomics data. Nat. 
+776 
+Biotechnol. (2022) doi:10.1038/s41587-022-01272-8. 
+777 
+20. Maseda, F., Cang, Z. & Nie, Q. DEEPsc: A Deep Learning-Based Map Connecting Single-Cell 
+778 
+Transcriptomics and Spatial Imaging Data. Front. Genet. 12, 636743 (2021). 
+779 
+21. Lopez, R., Regier, J., Cole, M. B., Jordan, M. I. & Yosef, N. Deep generative modeling for single-
+780 
+cell transcriptomics. Nat. Methods 15, 1053–1058 (2018). 
+781 
+22. Gayoso, A. et al. Joint probabilistic modeling of single-cell multi-omic data with totalVI. Nat. 
+782 
+Methods 18, 272–282 (2021). 
+783 
+23. Xu, C. et al. DeepST: identifying spatial domains in spatial transcriptomics by deep learning. 
+784 
+Nucleic Acids Res. 50, e131 (2022). 
+785 
+24. Maan, H. et al. Multi-Modal Disentanglement of Spatial Transcriptomics and Histopathology 
+786 
+Imaging. Genomics (2025). 
+787 
+25. Flores, M. et al. Deep learning tackles single-cell analysis-a survey of deep learning for scRNA-
+788 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 32 =====
+31 
+ 
+seq analysis. Brief. Bioinform. 23, (2022). 
+789 
+26. Kingma, D. P. & Welling, M. Auto-Encoding Variational Bayes. arXiv [stat.ML] (2013). 
+790 
+27. Higgins, I. et al. beta-VAE: Learning Basic Visual Concepts with a Constrained Variational 
+791 
+Framework. (2016). 
+792 
+28. Simidjievski, N. et al. Variational Autoencoders for Cancer Data Integration: Design Principles and 
+793 
+Computational Practice. Front. Genet. 10, 1205 (2019). 
+794 
+29. Lopez, R., Gayoso, A. & Yosef, N. Enhancing scientific discoveries in molecular biology with deep 
+795 
+generative models. Mol. Syst. Biol. 16, e9198 (2020). 
+796 
+30. Chow, Y. L., Singh, S., Carpenter, A. E. & Way, G. P. Predicting drug polypharmacology from cell 
+797 
+morphology readouts using variational autoencoder latent space arithmetic. bioRxiv 
+798 
+2021.09.02.458673 (2021) doi:10.1101/2021.09.02.458673. 
+799 
+31. Hoch, T. et al. Multiplexed imaging mass cytometry of the chemokine milieus in melanoma 
+800 
+characterizes features of the response to immunotherapy. Sci Immunol 7, eabk1692 (2022). 
+801 
+32. Milosevic, V. Different approaches to Imaging Mass Cytometry data analysis. Bioinform. Adv. 3, 
+802 
+vbad046 (2023). 
+803 
+33. Yang, L. & Shami, A. On hyperparameter optimization of machine learning algorithms: Theory and 
+804 
+practice. Neurocomputing 415, 295–316 (2020). 
+805 
+34. Sønderby, C. K., Raiko, T., Maaløe, L., Sønderby, S. K. & Winther, O. Ladder Variational 
+806 
+Autoencoders. arXiv [stat.ML] (2016). 
+807 
+35. Wolf, F. A., Angerer, P. & Theis, F. J. SCANPY: large-scale single-cell gene expression data 
+808 
+analysis. Genome Biol. 19, 15 (2018). 
+809 
+36. Vincent D Blondel, Jean-Loup Guillaume, Renaud Lambiotte, Etienne Lefebvre. Fast unfolding of 
+810 
+communities 
+in 
+large 
+networks. 
+https://iopscience.iop.org/article/10.1088/1742-
+811 
+5468/2008/10/P10008/pdf (2008) doi:10.1088/1742-5468/2008/10/P10008. 
+812 
+37. Van Gassen, S. et al. FlowSOM: Using self-organizing maps for visualization and interpretation of 
+813 
+cytometry data. Cytometry A 87, 636–645 (2015). 
+814 
+38. Warrens, M. J. & van der Hoef, H. Understanding the adjusted Rand index and other partition 
+815 
+comparison indices based on counting object pairs. J. Classif. 39, 487–509 (2022). 
+816 
+39. Bao, F. et al. Integrative spatial analysis of cell morphologies and transcriptional states with MUSE. 
+817 
+Nat. Biotechnol. (2022) doi:10.1038/s41587-022-01251-z. 
+818 
+40. Madhumita & Paul, S. Capturing the latent space of an Autoencoder for multi-omics integration 
+819 
+and cancer subtyping. Comput. Biol. Med. 148, 105832 (2022). 
+820 
+41. Gorringe, K. L. & Fox, S. B. Ductal Carcinoma In Situ Biology, Biomarkers, and Diagnosis. Front. 
+821 
+Oncol. 7, 248 (2017). 
+822 
+42. Uyttenhove, C. et al. Evidence for a tumoral immune resistance mechanism based on tryptophan 
+823 
+degradation by indoleamine 2,3-dioxygenase. Nat. Med. 9, 1269–1274 (2003). 
+824 
+43. Tie, Y., Tang, F., Wei, Y.-Q. & Wei, X.-W. Immunosuppressive cells in cancer: mechanisms and 
+825 
+potential therapeutic targets. J. Hematol. Oncol. 15, 61 (2022). 
+826 
+44. Suzuki, M. & Matsuo, Y. A survey of multimodal deep generative models. Adv. Robot. 36, 261–
+827 
+278 (2022). 
+828 
+45. T. M. Cover, P. E. H. Nearest Neighbor Pattern Classification. IEEE Trans. Inf. Theory 13, (1966). 
+829 
+46. Maan, H. et al. The differential impacts of dataset imbalance in single-cell data integration. bioRxiv 
+830 
+2022.10.06.511156 (2022) doi:10.1101/2022.10.06.511156. 
+831 
+47. Ramirez Flores, R. O., Lanzer, J. D., Dimitrov, D., Velten, B. & Saez-Rodriguez, J. Multicellular 
+832 
+factor analysis of single-cell data for a tissue-centric understanding of disease. Elife 12, (2023). 
+833 
+48. Liu, C. C. et al. Robust phenotyping of highly multiplexed tissue imaging data using pixel-level 
+834 
+clustering. Nat. Commun. 14, 4618 (2023). 
+835 
+49. He, F., Liu, T. & Tao, D. Control batch size and learning rate to generalize well: Theoretical and 
+836 
+empirical evidence. Adv. Neural Inf. Process. Syst. 1141–1150 (2019). 
+837 
+50. Steck, H., Ekanadham, C. & Kallus, N. Is Cosine-Similarity of Embeddings Really About Similarity? 
+838 
+arXiv [cs.IR] (2024). 
+839 
+51. Carstens, J. L. et al. Spatial multiplexing and omics. Nat. Rev. Methods Primers 4, 1–19 (2024). 
+840 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
+
+===== PAGE 33 =====
+32 
+ 
+52. Curtis, C. et al. The genomic and transcriptomic architecture of 2,000 breast tumours reveals novel 
+841 
+subgroups. Nature 486, 346–352 (2012). 
+842 
+53. van der Walt, S. et al. scikit-image: image processing in Python. PeerJ 2, e453 (2014). 
+843 
+54. Traag, V. A., Waltman, L. & van Eck, N. J. From Louvain to Leiden: guaranteeing well-connected 
+844 
+communities. Sci. Rep. 9, 5233 (2019). 
+845 
+55. Pedregosa, F. et al. Scikit-learn: Machine Learning in Python. J. Mach. Learn. Res. 
+846 
+abs/1201.0490, (2011). 
+847 
+56. Davidson-Pilon, C. lifelines: survival analysis in Python. J. Open Source Softw. 4, (2019). 
+848 
+ 
+849 
+ 
+850 
+.
+CC-BY 4.0 International license
+made available under a 
+(which was not certified by peer review) is the author/funder, who has granted bioRxiv a license to display the preprint in perpetuity. It is 
+The copyright holder for this preprint
+this version posted March 17, 2025. 
+; 
+https://doi.org/10.1101/2025.03.14.643377
+doi: 
+bioRxiv preprint 
