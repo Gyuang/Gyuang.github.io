@@ -6,8 +6,8 @@ venue: "ACL 2026"
 date: 2026-04-15
 order: 1
 thumbnail: /assets/images/projects/cpr-rag/hero.png
-hero: /assets/images/projects/cpr-rag/hero.png
-hero_caption: "Three-stage CPR-RAG framework: (1) anatomy-conditional representation via learnable organ queries, (2) clinical-prior-regularized re-ranking using corpus-derived co-occurrence statistics, (3) normality description removal to maximize information density of the retrieved context."
+hero_iframe: /assets/projects/cpr-rag/flow.html
+hero_caption: "Interactive CPR-RAG model flow — three stages: anatomy-conditional representation via learnable organ queries → clinical-prior-regularized re-ranking using corpus co-occurrence statistics → normality description removal to maximize evidence density."
 abstract: "Plug-and-play retrieval-augmented generation framework that integrates clinical priors and removes normal-finding boilerplate to improve organ-level grounding in 3D CT report generation."
 links:
   - { label: "Paper (PDF)", url: "/assets/papers/cpr-rag.pdf" }
