@@ -63,9 +63,6 @@ The most load-bearing piece of evidence in the paper is the **LLM-as-tool ablati
 
 ## Method & Architecture
 
-![TxAgent inference loop hero](/assets/images/paper/txagent/fig_p023_08.png)
-*Figure 3: The full inference loop. The fine-tuned Llama-3.1-8B emits $(T_i, C_i)$ at every step from $(Q, R_{<i}, P_i)$; tool responses $E_i$ are concatenated into the trace; a summarization prompt $F_S$ compresses long tool outputs into $\hat E_i$ when needed; the loop terminates when `[FinalAnswer]` appears in $T_i$, after which the model emits the answer $A$ and a `FINISH` call.*
-
 ### Inference loop
 A reasoning step $R_i = (T_i, C_i, E_i)$:
 

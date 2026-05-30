@@ -70,9 +70,6 @@ The contribution is **not algorithmic** — it is the empirical demonstration th
 4. **Tile embedding.** `concat(CLS_token, mean(patch_tokens))` -> 2,560-D vector (1,280 + 1,280). Distinct from Phikon (CLS-only) and CTransPath (mean-only).
 5. **Slide adapter.** Agata attention-MIL aggregator over frozen tile embeddings, trained with cross-entropy for 25 epochs, AdamW lr=3e-4. Backprop is restricted to the slide with the highest cancer probability per specimen due to memory.
 
-![Dataset cohort overview: 119,629 patients to 1.49M H&E WSIs across 17 tissue types](/assets/images/paper/virchow/page_002.png)
-*Figure 2: MSKCC pretraining cohort — 1,488,550 H&E WSIs from 119,629 patients / 208,815 cases / 392,268 specimens across 17 tissue groups (breast 24.9%, skin 18.4%, lymph node 16.6%, lung 6.1%, ...). 63% biopsy / 37% resection, scanned at 20x (0.5 mpp) on Leica scanners. Single-center, single-vendor.*
-
 ## Experimental Results
 
 ### Pan-cancer detection — specimen-level AUC

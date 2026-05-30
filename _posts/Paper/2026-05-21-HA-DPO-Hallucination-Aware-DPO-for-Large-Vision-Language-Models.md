@@ -65,7 +65,6 @@ C5 has a circularity problem: the model is trained on GPT-4 rewrites of VG annot
 
 ## Method & Architecture
 
-![HA-DPO pipeline overview](/assets/images/paper/ha-dpo/page_003.png)
 *Figure 2: HA-DPO pipeline. (1) Generate detailed captions from the target LVLM with `num_beams=5`, `temperature=1.0`, `do_sample=False`. (2) Feed VG region captions plus the LVLM caption to GPT-4 for per-sentence judgment (hallucination / correct / cannot-judge) and a rewrite of any hallucinated sentence. (3) Style-consistency augmentation — GPT-4 rewrites the negative as well, producing 3 paraphrases of each polarity in matched style. (4) DPO training with the standard objective plus an auxiliary SFT loss.*
 
 The DPO objective is the standard one, conditioned on text and image inputs `[x_T, x_I]`:

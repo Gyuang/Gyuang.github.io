@@ -112,9 +112,6 @@ A modified MCAT (Chen 2021) adding a parallel global-attention-pooling branch fo
 
 ### Architecture detail
 
-![PathGen architecture detail: diffusion model, MCAT_GR head, transformer, co-attention, encoder/decoder](/assets/images/paper/pathgen/page_003.png)
-*Figure 2: Architectural breakdown — (a) PathGen diffusion model; (b) MCAT_GR head; (c) PathGen transformer with three rounds of co-attention; (d) gene encoder; (e) genomic-guided co-attention block; (f) gene decoder.*
-
 ## Experimental Results
 
 ### Datasets

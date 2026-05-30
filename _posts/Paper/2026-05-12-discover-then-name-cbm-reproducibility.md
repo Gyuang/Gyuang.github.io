@@ -146,9 +146,6 @@ Reproduced DN-CBM cosine scores range roughly -0.01 to 0.42 with mean **0.146**.
 ![Original vs fine-tuned local explanations, Places365 rainforest](/assets/images/paper/discover-then-name-cbm/page_012.png)
 *Figure 7: Local explanations for a Places365* "rainforest" image — original DN-CBM neighbors include junk concepts; the fine-tuned model surfaces "meadow", "fields", "flower".*
 
-![Original vs fine-tuned local explanations, CIFAR-10 horse](/assets/images/paper/discover-then-name-cbm/page_012.png)
-*Figure 8: CIFAR-10 horse classification — original DN-CBM lists "arnold", "cosmos", "labrador", "eleven", "pelican", "michigan", "aaliyah", "busty", "elephants"; fine-tuned DN-CBM lists "horses", "equine", "horseback", "meadow", "fields", "flower". Direct evidence that activation-weighted alignment fixes specifically the predictively active neurons.*
-
 ### Study 2: n=203 Wilcoxon comparison
 
 The headline figure (Fig. 9) was not extracted from the PDF. The numerical result, summarized:

@@ -121,9 +121,6 @@ Embedding-type ablation (Table 2, BioViL / ResNet50 / BioViL-T × global/patch/c
 ![Top concepts for Infiltration](/assets/images/paper/multi-label-cbm-medical/page_014.png)
 *Figure 7: Top positive concepts for Infiltration ("diffuse infiltrates", "hazy opacities", "interstitial edema", "interstitial markings", "alveolar infiltrate") are radiologically appropriate — concept attribution works on common classes.*
 
-![Top concepts for Hernia](/assets/images/paper/multi-label-cbm-medical/page_014.png)
-*Figure 8: Top concepts for Hernia ("flattened diaphragms", "hyperinflated lungs", "bowel loops above diaphragm", "stomach bubble in chest") are clinically plausible, but the authors note that none of Hernia's GPT-generated concepts appear in the model's overall top-10 — concept reliability degrades with sample count.*
-
 ## Limitations
 
 Authors acknowledge: concept fidelity degrades on rare classes; AUC alone is misleading; imbalance-aware losses help but do not fully close the rare-class gap; concept prediction is itself a noisy multi-label problem.

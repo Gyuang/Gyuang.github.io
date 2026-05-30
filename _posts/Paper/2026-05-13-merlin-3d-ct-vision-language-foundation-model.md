@@ -114,9 +114,6 @@ The **report-generation claim (C7) deserves the most scepticism.** Numerically M
 ![Zero-shot findings F1 across internal, external, and VerSe](/assets/images/paper/merlin/fig_p018_02.png)
 *Figure 3: Zero-shot findings classification F1 — Merlin internal 0.74 vs OpenCLIP 0.36 / BioMedCLIP 0.43; external 0.65 and VerSe 0.77 (Figure 2b, Table 4).*
 
-![Per-finding F1 radar over 30 abdominal findings](/assets/images/paper/merlin/fig_p018_01.png)
-*Figure 4: Per-finding F1 radar — Merlin holds up on coarse findings (pleural effusion, splenomegaly, AAA) and degrades on fine ones (appendicitis, lymphadenopathy, free air) (Figure 2c).*
-
 ![Zero-shot data-scaling power law](/assets/images/paper/merlin/fig_p021_01.png)
 *Figure 5: Zero-shot data-scaling curve, F1 = 0.458 * D^0.0524, indicating diminishing but non-zero returns at this data scale (Figure 2d).*
 

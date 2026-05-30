@@ -64,9 +64,6 @@ The downstream medical-AI angle is concrete: a universal cell embedding enables 
 ![Universal Cell Embedding pipeline: gene expression → expression-weighted sampling → ESM2 protein tokens → chromosome-sorted transformer → CLS cell embedding](/assets/images/paper/uce/page_008.png)
 *Figure 1a: Universal Cell Embedding pipeline — gene expression is converted into a chromosome-sorted "cell sentence" of ESM2 protein tokens, then encoded by a 33-layer transformer; the CLS output is the cell embedding.*
 
-![Cell-sentence construction and masked gene-presence training objective](/assets/images/paper/uce/page_008.png)
-*Figure 1a (detail): Cell-sentence construction and the masked gene-presence pretraining objective.*
-
 ### 1. Gene tokenization via protein LM
 
 For every protein-coding gene `g`, pre-compute `p_g`, the mean ESM2 embedding (d_p = 5120) over all proteins gene `g` codes for. The dictionary is species-agnostic: a new organism's never-seen genes get their ESM2 embeddings computed from amino-acid sequence — no homolog table.
@@ -119,9 +116,6 @@ Minimal preprocessing (≥200 genes/cell, ≥10 cells/gene; no HVG, no batch cor
 | Fine-tuned | scArches | — | — | UCE "slightly better" |
 
 **Per-cell-type silhouette (TSv2):** UCE has highest silhouette in **67%** of cell types; beats Geneformer on **80%**, tGPT on **73%**, scGPT on **83%**. For B cells specifically, UCE silhouette is **+93% over scGPT and +25% over Geneformer**.
-
-![Cross-species transfer: zero-shot embedding of green monkey lymph node cells with predicted cell types aligning to ground truth](/assets/images/paper/uce/fig_p025_01.png)
-*Figure 2d: A logistic classifier trained on human IMA UCE embeddings transfers zero-shot to green monkey lymph node; predicted and ground-truth cell types align across species.*
 
 **Cross-species zero-shot (nearest-centroid cell-type matching, Extended Data Table 1).**
 

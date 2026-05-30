@@ -101,9 +101,6 @@ with $T \sim \pi_\theta(p_t)$ where $\pi_\theta$ is the LLM and $p_t$ is the ite
 ![Heart dataset](/assets/images/paper/llm-fe/page_022.png)
 *Figure 3: Heart-Disease (XGBoost accuracy). LLM-FE (0.866) with domain knowledge beats LLM-FE without (0.856), OpenFE (0.854), and AutoFeat (0.857). The 1-point gap from anonymizing feature names is what isolates the domain-knowledge contribution — but Wilcoxon on Heart is not statistically significant, qualifying the win.*
 
-![Breast-W dataset](/assets/images/paper/llm-fe/page_022.png)
-*Figure 4: Breast-W (Wisconsin breast cancer). LLM-FE 0.970 vs LLM-FE w/o domain knowledge 0.960 vs OpenFE 0.957 vs AutoFeat 0.957. The discovered `proliferation_activity = Normal_Nucleoli × Mitoses` is a textbook transformation any oncology resident could write — interesting that the LLM rediscovers it, less impressive as a "novel feature discovery" claim.*
-
 **LLM-agnosticism (Tables 5, 10, 11).** XGBoost: base 0.820 → LLM-FE-Llama-3.1-8B 0.832 / LLM-FE-GPT-3.5 0.840. MLP: 0.745 → 0.768 / 0.791. TabPFN: 0.852 → 0.856 / 0.863. Across GPT-3.5, Qwen2.5-72B, GPT-4o-mini, Gemini-2.5-Flash the XGBoost-LLM-FE numbers are essentially equivalent (~0.836-0.842). This is the strongest cross-LLM evidence in the LLM-tabular literature so far.
 
 **Operator-bias evidence (Figure 4).** Base LLM and CAAFE concentrate 75%+ of their operators on `multiply`, `divide`, `add`, `subtract`, `abs`. LLM-FE shifts mass to `GroupByThenMean`, `Residual`, `Sigmoid`, `Log`. The appendix claims ~45% "complex" features under Küken et al. 2024's taxonomy — but the alternate prompt explicitly enumerates these operators for LLM-FE only, so the comparison is partly engineered.

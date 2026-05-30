@@ -43,7 +43,7 @@ Vision Transformers had just landed (Dosovitskiy et al., 2021) and the authors s
 
 ## Method & Architecture
 
-![HisToGene workflow: modified ViT over an entire tissue section with one-hot coordinate embeddings and dense overlapping inference for super-resolution](/assets/images/paper/histogene/page_027.png)
+![HisToGene workflow: modified ViT over an entire tissue section with one-hot coordinate embeddings and dense overlapping inference for super-resolution](/assets/images/paper/histogene/page_020.png)
 *Figure 1: HisToGene workflow. (a) A modified ViT consumes a sequence of H&E spot patches with one-hot (x, y) coordinate embeddings; (b) at inference, dense overlapping patch sampling lets the same trained model emit a 4x super-resolution gene expression map by averaging predictions across overlapping spot-tokens.*
 
 ### 1. Patch extraction

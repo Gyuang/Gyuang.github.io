@@ -132,7 +132,6 @@ Average Pearson correlation between predicted and true concepts is >=0.87 for al
 ![Qualitative intervention examples](/assets/images/paper/cbm-koh-2020/page_007.png)
 *Figure 3: Qualitative test-time intervention. Flipping a single concept value — joint-space narrowing on OAI; under-tail or throat colour on CUB — flips an incorrect prediction to the correct class.*
 
-![Intervention sweep curves](/assets/images/paper/cbm-koh-2020/page_007.png)
 *Figure 4: Intervention sweeps. (Left) OAI with nonlinear c -> y — Independent RMSE collapses to ~0.15 at full intervention; the joint control with lambda=0.01 actually gets worse, exposing concept misalignment. (Middle) OAI with linear c -> y — intervention much less effective (open puzzle). (Right) CUB — Independent reaches near-zero error at full intervention; "Joint from sigmoid" rescues intervenability at a cost to base accuracy.*
 
 ### Background-shift robustness (TravelingBirds)

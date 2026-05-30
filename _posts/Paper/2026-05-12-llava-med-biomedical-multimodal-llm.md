@@ -82,9 +82,6 @@ Train with autoregressive next-token loss on the assistant span only. **Only the
 
 Filter PMC-15M to single-plot figures, sample 60K image-text pairs balanced across the five modalities above. For each, prompt **language-only GPT-4** with the caption plus in-line citance sentences (the "60K-IM" variant) and few-shot examples. The system prompt instructs GPT-4 to **write as if it can see the image** and to avoid quoting caption-specific numbers. Output is 2-3+ turns of user/assistant dialogue. Three data variants are produced for ablation: 10K (no citance), 60K (no citance), and 60K-IM (with in-line citances — the best).
 
-![Five-modality Stage-2 sampling pool: CXR](/assets/images/paper/llava-med/page_005.png)
-*Figure 2a: Example chest X-ray from the Stage-2 balanced modality pool.*
-
 ### 4. Stage 2 training
 
 Unfreeze the LM and projection; vision encoder remains frozen. 3 epochs on 60K-IM, batch 128, ~8h on 8x A100. Total curriculum = ~15h.

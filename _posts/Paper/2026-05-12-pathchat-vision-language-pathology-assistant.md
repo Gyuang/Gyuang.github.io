@@ -110,9 +110,6 @@ BF16, ZeRO-3, batch 64 x grad-accum 2, cosine LR, warmup ratio 0.03, peak LR **2
 
 *GPT-4V: only 12/23 (MCQ image-only) and 97/115 (open-ended) queries succeeded due to guardrails; refusals scored as incorrect. When restricted to successful queries only (Ext. Tab. 10), GPT-4V MCQ image-only rises to 41.7% — still well below PathChat's 66.7% on the same subset.
 
-![Headline benchmark — PathQABench MCQ and 115-question open-ended results](/assets/images/paper/pathchat/page_007.png)
-*Figure 3: Headline benchmark — PathChat dominates image-grounded categories while trailing GPT-4V on text-only Clinical and Ancillary Testing categories.*
-
 ### Head-to-head rankings (Ext. Tab. 12, Fig. 2e)
 
 | Opponent | PathChat Lose | Tie | PathChat Win |
