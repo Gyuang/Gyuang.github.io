@@ -16,8 +16,6 @@ links:
 published: true
 ---
 
-<p style="text-align:center; color:#666; font-size:0.9em; margin-top:-0.5em;">¹ AI Graduate School, GIST &nbsp;&middot;&nbsp; ² Department of Software Convergence, Kyung Hee University<br><span style="font-size:0.85em;">* corresponding authors</span></p>
-
 ## Abstract
 
 Generating radiology reports from 3D volumetric data remains challenging due to the difficulty of grounding fine-grained pathologies within high-dimensional scans. While retrieval-augmented generation (RAG) offers a potential solution, standard approaches struggle with **visual-semantic ambiguity** and often introduce irrelevant "normal" context that **dilutes pathological signals**. To address this, we introduce **CPR-RAG**, a model-agnostic RAG framework that enhances organ-level grounding by integrating clinical priors into the retrieval process.
@@ -37,7 +35,7 @@ CPR-RAG addresses both by **operating at the organ level** and by **regularizing
 
 The framework has three stages:
 
-**(1) Anatomy-conditional representation.** A learnable query matrix $Q = [q_1, \dots, q_{|\Omega|}]^\top$ with one query per anatomical region $\Omega = \{\text{Heart, Lung, Mediastinum, Pleura, Trachea/Bronchi}\}$ attends over the frozen 3D visual tokens $X$:
+**(1) Anatomy-conditional representation.** A learnable query matrix $Q = [q_1, \dots, q_{\lvert\Omega\rvert}]^\top$ with one query per anatomical region $\Omega = \{\text{Heart, Lung, Mediastinum, Pleura, Trachea/Bronchi}\}$ attends over the frozen 3D visual tokens $X$:
 
 $$E = \mathrm{CrossAttn}(Q, X, X)$$
 
