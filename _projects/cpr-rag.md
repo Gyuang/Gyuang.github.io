@@ -43,6 +43,9 @@ producing organ-specific embeddings $e_i$. We train these with an auxiliary mult
 
 $$\mathcal{L}_{\mathrm{aux}} = \sum_{i \in \Omega} \mathrm{BCE}(C_i(e_i),\, y_i)$$
 
+![t-SNE of learned organ-region embeddings](/assets/images/projects/cpr-rag/organ-embedding-tsne.png)
+*t-SNE of the learned organ embedding space $\mathcal{Z}$. The anatomy-conditional queries separate the five regions $\Omega$ into well-defined clusters, confirming that each query captures region-specific visual semantics.*
+
 **(2) Clinical prior-regularized retrieval.** For each organ $i$, we combine visual affinity with a co-occurrence-derived clinical prior $\pi_i$ computed from the training corpus, re-ranking the top-$k$ visually retrieved candidates to enforce clinical consistency.
 
 **(3) Normality description removal.** Boilerplate "no acute abnormality" segments are filtered out of the retrieved context, maximizing pathological signal density in the prompt.
@@ -73,8 +76,15 @@ Gains are largely **recall-driven** — CPR-RAG surfaces pathological findings t
 
 ## Human Evaluation
 
-![Human evaluation results](/assets/images/projects/cpr-rag/human-eval.png)
-*Radiologist-rated factual correctness, completeness, and utility. CPR-RAG outperforms baseline generators across all three axes.*
+A board-certified radiologist rated 100 randomly sampled cases on a **1–5 Likert scale**; statistical significance is assessed with the Wilcoxon signed-rank test.
+
+| Model | Completeness | Correctness | Utility |
+|---|---|---|---|
+| RadFM | 2.48 | 2.30 | 2.76 |
+| RadFM **+ CPR** | **2.93** | **2.45** | **3.09** |
+| *p*-value | < 0.01 | 0.12 | < 0.01 |
+
+CPR-RAG improves all three axes, with **Completeness** and **Utility** gains statistically significant (*p* < 0.01); **Correctness** shows a positive but non-significant trend (*p* = 0.12).
 
 ## BibTeX
 
