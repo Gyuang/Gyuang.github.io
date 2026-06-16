@@ -57,7 +57,6 @@ Undergraduate research: *Parameter-estimation algorithm for polarization-filter 
 
 ### Under Review
 
-- **★** submitted to **MICCAI 2026**.
 - **★** submitted to **NeurIPS 2026**.
 
 ## Awards & Competitions
